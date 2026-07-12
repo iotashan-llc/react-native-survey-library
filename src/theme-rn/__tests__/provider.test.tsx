@@ -191,6 +191,24 @@ describe('SurveyThemeProvider — diagnostics (post-commit, deduped across re-re
     ).length;
     expect(afterSecond).toBe(afterFirst);
   });
+
+  it('a fixed backgroundImageAttachment normalizes to scroll and emits theme-attachment-unsupported through the same seam', () => {
+    const seen: DiagnosticPayload[] = [];
+    setDiagnosticHandler((payload) => seen.push(payload));
+    const captured: SurveyThemeContextValue[] = [];
+    render(
+      <SurveyThemeProvider theme={{ backgroundImageAttachment: 'fixed' }}>
+        <Consumer onValue={(v) => captured.push(v)} />
+      </SurveyThemeProvider>
+    );
+    expect(captured[0]?.normalizedBackground.attachment).toBe('scroll');
+    const attachmentDiagnostics = seen.filter(
+      (p) =>
+        p.code === 'theme-diagnostic' &&
+        p.diagnosticCode === 'theme-attachment-unsupported'
+    );
+    expect(attachmentDiagnostics).toHaveLength(1);
+  });
 });
 
 describe('SurveyThemeProvider — default context value (no provider in tree)', () => {
@@ -199,5 +217,6 @@ describe('SurveyThemeProvider — default context value (no provider in tree)', 
     render(<Consumer onValue={(v) => seen.push(v)} />);
     expect(seen[0]?.resolved.meta.themeName).toBeUndefined();
     expect(seen[0]?.recipes).toBeDefined();
+    expect(seen[0]?.normalizedBackground.attachment).toBe('scroll');
   });
 });

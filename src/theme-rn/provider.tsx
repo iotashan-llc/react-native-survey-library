@@ -30,6 +30,8 @@ import { buildRecipes } from './recipes';
 import type { Recipes } from './recipes';
 import type { BuildContext } from './recipes/types';
 import { reportDiagnostic } from '../diagnostics';
+import { normalizeBackground } from './background';
+import type { NormalizedBackground, BackgroundDiagnostic } from './background';
 
 export interface ThemeMode {
   narrow: boolean;
@@ -40,6 +42,13 @@ export interface SurveyThemeContextValue {
   resolved: ResolvedTheme;
   recipes: Recipes;
   mode: ThemeMode;
+  /**
+   * Ready-to-consume background (design ownership table: 0.7 owns the
+   * `backgroundImageAttachment: 'fixed'` -> 'scroll' mapping + diagnostic;
+   * the M1 Survey-root background component, per the same table, just
+   * renders this -- no re-derivation needed).
+   */
+  normalizedBackground: NormalizedBackground;
 }
 
 function currentPlatformBuildContext(): BuildContext {
@@ -58,17 +67,26 @@ function currentPlatformBuildContext(): BuildContext {
 function buildThemeData(theme: ITheme | undefined): {
   resolved: ResolvedTheme;
   recipes: Recipes;
+  normalizedBackground: NormalizedBackground;
+  backgroundDiagnostics: BackgroundDiagnostic[];
 } {
   const resolved = resolveTheme(theme);
   const recipes = buildRecipes(resolved, currentPlatformBuildContext());
-  return { resolved, recipes };
-}
-
-function makeDefaultContextValue(): SurveyThemeContextValue {
-  const { resolved, recipes } = buildThemeData(undefined);
+  const { normalized, diagnostics } = normalizeBackground(resolved.background);
   return {
     resolved,
     recipes,
+    normalizedBackground: normalized,
+    backgroundDiagnostics: diagnostics,
+  };
+}
+
+function makeDefaultContextValue(): SurveyThemeContextValue {
+  const { resolved, recipes, normalizedBackground } = buildThemeData(undefined);
+  return {
+    resolved,
+    recipes,
+    normalizedBackground,
     mode: { narrow: false, rtl: I18nManager.isRTL },
   };
 }
@@ -140,6 +158,8 @@ interface ThemeDataCacheEntry {
   snapshot: string;
   resolved: ResolvedTheme;
   recipes: Recipes;
+  normalizedBackground: NormalizedBackground;
+  backgroundDiagnostics: BackgroundDiagnostic[];
 }
 
 export class SurveyThemeProvider extends React.Component<
@@ -181,13 +201,20 @@ export class SurveyThemeProvider extends React.Component<
     if (this.cache && this.cache.snapshot === snapshot) {
       return this.cache;
     }
-    const { resolved, recipes } = buildThemeData(this.props.theme);
-    this.cache = { snapshot, resolved, recipes };
+    const { resolved, recipes, normalizedBackground, backgroundDiagnostics } =
+      buildThemeData(this.props.theme);
+    this.cache = {
+      snapshot,
+      resolved,
+      recipes,
+      normalizedBackground,
+      backgroundDiagnostics,
+    };
     return this.cache;
   }
 
   private flushDiagnostics(): void {
-    const { resolved } = this.getOrBuildThemeData();
+    const { resolved, backgroundDiagnostics } = this.getOrBuildThemeData();
     resolved.diagnostics.forEach((diagnostic) => {
       const key = `${diagnostic.code}|${diagnostic.variable}|${diagnostic.value ?? ''}`;
       if (this.emittedDiagnosticKeys.has(key)) return;
@@ -200,13 +227,27 @@ export class SurveyThemeProvider extends React.Component<
         value: diagnostic.value,
       });
     });
+    backgroundDiagnostics.forEach((diagnostic) => {
+      const key = `${diagnostic.code}|background|`;
+      if (this.emittedDiagnosticKeys.has(key)) return;
+      this.emittedDiagnosticKeys.add(key);
+      reportDiagnostic({
+        code: 'theme-diagnostic',
+        diagnosticCode: diagnostic.code,
+        variable: 'background',
+        message: diagnostic.message,
+        value: undefined,
+      });
+    });
   }
 
   render(): React.JSX.Element {
-    const { resolved, recipes } = this.getOrBuildThemeData();
+    const { resolved, recipes, normalizedBackground } =
+      this.getOrBuildThemeData();
     const value: SurveyThemeContextValue = {
       resolved,
       recipes,
+      normalizedBackground,
       mode: { narrow: this.state.narrow, rtl: this.state.rtl },
     };
     return (
