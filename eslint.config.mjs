@@ -26,6 +26,78 @@ const SURVEY_CORE_IMPORT_MESSAGE =
 // the subpath group has to be backslash-escaped here.
 const SURVEY_CORE_SPECIFIER_PATTERN = '^survey-core(\\/.*)?$';
 
+const SURVEY_CORE_RESTRICTED_IMPORTS = {
+  paths: [{ name: 'survey-core', message: SURVEY_CORE_IMPORT_MESSAGE }],
+  patterns: [
+    { group: ['survey-core/*'], message: SURVEY_CORE_IMPORT_MESSAGE },
+  ],
+};
+
+/**
+ * The full non-static escape-hatch selector family for a module specifier
+ * pattern: require('x'), require(`x`), require.resolve both forms, and
+ * dynamic import() both forms. Same shapes the survey-core restriction
+ * enumerates; extracted so the theme-core react-native ban reuses them
+ * (codex review minor 12).
+ */
+function restrictedSyntaxSelectorsFor(pattern, subject, message) {
+  return [
+    {
+      selector: `CallExpression[callee.name='require'][arguments.0.value=/${pattern}/]`,
+      message: `require('${subject}') is not allowed here. ${message}`,
+    },
+    {
+      selector: `CallExpression[callee.name='require'][arguments.0.quasis.0.value.cooked=/${pattern}/]`,
+      message: `require(\`${subject}\`) is not allowed here. ${message}`,
+    },
+    {
+      selector: `CallExpression[callee.object.name='require'][callee.property.name='resolve'][arguments.0.value=/${pattern}/]`,
+      message: `require.resolve('${subject}') is not allowed here. ${message}`,
+    },
+    {
+      selector: `CallExpression[callee.object.name='require'][callee.property.name='resolve'][arguments.0.quasis.0.value.cooked=/${pattern}/]`,
+      message: `require.resolve(\`${subject}\`) is not allowed here. ${message}`,
+    },
+    {
+      selector: `ImportExpression[source.value=/${pattern}/]`,
+      message: `Dynamic import('${subject}') is not allowed here. ${message}`,
+    },
+    {
+      selector: `ImportExpression[source.quasis.0.value.cooked=/${pattern}/]`,
+      message: `Dynamic import(\`${subject}\`) is not allowed here. ${message}`,
+    },
+  ];
+}
+
+const SURVEY_CORE_RESTRICTED_SYNTAX = restrictedSyntaxSelectorsFor(
+  SURVEY_CORE_SPECIFIER_PATTERN,
+  'survey-core',
+  SURVEY_CORE_IMPORT_MESSAGE
+);
+
+// Design: docs/design/0.6-theme-core.md, "Module layout" — theme-core is
+// pure TS with ZERO `react-native` imports (theme-rn, 0.7, is where
+// tokens become StyleSheet/Platform mappings).
+const REACT_NATIVE_IMPORT_MESSAGE =
+  'theme-core is pure TS with zero react-native imports (design: docs/design/0.6-theme-core.md, "Module layout"). StyleSheet/Platform mapping belongs in theme-rn (0.7).';
+const REACT_NATIVE_RESTRICTED_IMPORTS = {
+  paths: [{ name: 'react-native', message: REACT_NATIVE_IMPORT_MESSAGE }],
+  patterns: [
+    {
+      group: ['react-native/*', 'react-native-*'],
+      message: REACT_NATIVE_IMPORT_MESSAGE,
+    },
+  ],
+};
+// Matches 'react-native', 'react-native/<subpath>', and 'react-native-*'
+// ecosystem packages ([\/-] = a subpath slash or a hyphenated package).
+const REACT_NATIVE_SPECIFIER_PATTERN = '^react-native([\\/-].*)?$';
+const REACT_NATIVE_RESTRICTED_SYNTAX = restrictedSyntaxSelectorsFor(
+  REACT_NATIVE_SPECIFIER_PATTERN,
+  'react-native',
+  REACT_NATIVE_IMPORT_MESSAGE
+);
+
 export default defineConfig([
   {
     extends: fixupConfigRules(compat.extends('@react-native', 'prettier')),
@@ -39,47 +111,50 @@ export default defineConfig([
     files: ['src/**/*.{ts,tsx}'],
     ignores: ['src/core/facade.ts'],
     rules: {
+      'no-restricted-imports': ['error', SURVEY_CORE_RESTRICTED_IMPORTS],
+      // Note: `require(`survey-core`)` — a no-substitution template
+      // literal — is a distinct AST shape (TemplateLiteral, not Literal)
+      // from `require('survey-core')`; restrictedSyntaxSelectorsFor emits
+      // both shapes for every escape hatch.
+      'no-restricted-syntax': ['error', ...SURVEY_CORE_RESTRICTED_SYNTAX],
+    },
+  },
+  {
+    // Design: docs/design/0.6-theme-core.md, "Module layout" — theme-core
+    // is pure TS with ZERO `react-native` imports (theme-rn, 0.7, is where
+    // tokens become StyleSheet). This block's `files` glob is a SUBSET of
+    // the general `src/**/*.{ts,tsx}` block above, and ESLint flat config
+    // merges same-named rules per matching config object by REPLACING the
+    // earlier value, not deep-merging paths/patterns arrays — so the
+    // survey-core restriction has to be re-included here too, or a
+    // theme-core file would silently lose it.
+    files: ['src/theme-core/**/*.{ts,tsx}'],
+    rules: {
+      // `no-restricted-imports` accepts only ONE options object per
+      // `rules` entry (not one-per-array-item), so both restrictions are
+      // merged into a single paths/patterns list here. Likewise
+      // `no-restricted-syntax` REPLACES (not extends) the general block's
+      // value for theme-core files, so the survey-core selectors must be
+      // re-included alongside the react-native ones (codex review minor
+      // 12: static imports alone left require/require.resolve/import()
+      // escape hatches open).
       'no-restricted-imports': [
         'error',
         {
           paths: [
-            { name: 'survey-core', message: SURVEY_CORE_IMPORT_MESSAGE },
+            ...SURVEY_CORE_RESTRICTED_IMPORTS.paths,
+            ...REACT_NATIVE_RESTRICTED_IMPORTS.paths,
           ],
           patterns: [
-            { group: ['survey-core/*'], message: SURVEY_CORE_IMPORT_MESSAGE },
+            ...SURVEY_CORE_RESTRICTED_IMPORTS.patterns,
+            ...REACT_NATIVE_RESTRICTED_IMPORTS.patterns,
           ],
         },
       ],
       'no-restricted-syntax': [
         'error',
-        {
-          selector: `CallExpression[callee.name='require'][arguments.0.value=/${SURVEY_CORE_SPECIFIER_PATTERN}/]`,
-          message: `require('survey-core') is not allowed outside the facade. ${SURVEY_CORE_IMPORT_MESSAGE}`,
-        },
-        // `require(`survey-core`)` — a no-substitution template literal —
-        // is a distinct AST shape (TemplateLiteral, not Literal) from
-        // `require('survey-core')` and needs its own selector, or it
-        // bypasses the rule above entirely.
-        {
-          selector: `CallExpression[callee.name='require'][arguments.0.quasis.0.value.cooked=/${SURVEY_CORE_SPECIFIER_PATTERN}/]`,
-          message: `require(\`survey-core\`) is not allowed outside the facade. ${SURVEY_CORE_IMPORT_MESSAGE}`,
-        },
-        {
-          selector: `CallExpression[callee.object.name='require'][callee.property.name='resolve'][arguments.0.value=/${SURVEY_CORE_SPECIFIER_PATTERN}/]`,
-          message: `require.resolve('survey-core') is not allowed outside the facade. ${SURVEY_CORE_IMPORT_MESSAGE}`,
-        },
-        {
-          selector: `CallExpression[callee.object.name='require'][callee.property.name='resolve'][arguments.0.quasis.0.value.cooked=/${SURVEY_CORE_SPECIFIER_PATTERN}/]`,
-          message: `require.resolve(\`survey-core\`) is not allowed outside the facade. ${SURVEY_CORE_IMPORT_MESSAGE}`,
-        },
-        {
-          selector: `ImportExpression[source.value=/${SURVEY_CORE_SPECIFIER_PATTERN}/]`,
-          message: `Dynamic import('survey-core') is not allowed outside the facade. ${SURVEY_CORE_IMPORT_MESSAGE}`,
-        },
-        {
-          selector: `ImportExpression[source.quasis.0.value.cooked=/${SURVEY_CORE_SPECIFIER_PATTERN}/]`,
-          message: `Dynamic import(\`survey-core\`) is not allowed outside the facade. ${SURVEY_CORE_IMPORT_MESSAGE}`,
-        },
+        ...SURVEY_CORE_RESTRICTED_SYNTAX,
+        ...REACT_NATIVE_RESTRICTED_SYNTAX,
       ],
     },
   },
