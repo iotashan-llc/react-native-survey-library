@@ -10,12 +10,12 @@ React Native rendering engine for the SurveyJS Form Library 2.x. Consumers impor
 
 ## Architecture invariants (do not violate without updating the plan doc first)
 
-1. `survey-core` is an **unmodified peerDependency**. Never fork, never patch-package it. All survey-core imports go through `src/core/facade.ts` (applies env shims first); ESLint enforces this.
+1. `survey-core` is an **unmodified peerDependency** (tested version band). Never fork, never patch-package it. All survey-core imports go through `src/core/facade.ts` (applies env shims first); ESLint enforces this. A zero-core-import `…/shim` subpath exists for consumers who import survey-core before the renderer.
 2. Reactive binding is the ported class-based `SurveyElementBase` mechanism (model callbacks → setState). No hooks rewrite, no MobX, no external state lib.
-3. All inputs are controlled components driven by the Question model.
+3. All inputs are controlled components driven by the Question model, through the draft/commit adapter honoring `textUpdateMode` (never bind onChangeText straight to question.value).
 4. Styling is plain `StyleSheet` + theme tokens. No NativeWind/Unistyles/Tamagui, no babel/metro plugins — consumers get zero build-config changes.
 5. Theme pipeline: `theme-core` (pure ITheme→tokens, no RN imports) → `theme-rn` (tokens→styles). Golden-tested against the 40 themes exported by `survey-core`'s `themes/index.ts`.
-6. Conditional styling reuses survey-core's CssClassBuilder output (BEM class strings → registered style fragments, precedence-merged). Never duplicate core's state logic in components.
+6. Hybrid styling: per-component style recipes own native interaction state (pressed/focused/RTL); class-token mapping only for model-derived state (checked/disabled/error) from CssClassBuilder strings. Never duplicate core's model-state logic in components.
 7. Capability libs (svg, gesture-handler, reanimated, slider, signature-canvas, expo pickers, expo-video, HTML renderer) are **required peerDependencies** — batteries-included. Internally lazy-require where possible.
 8. Security: HTML sanitized, URL schemes allowlisted, no auto-navigation (`navigateToUrl` etc. surface via events; host app decides).
 9. Unsupported question types render the non-throwing fallback component with structured diagnostics — never crash the survey.
