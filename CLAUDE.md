@@ -22,7 +22,7 @@ React Native rendering engine for the SurveyJS Form Library 2.x. Consumers impor
 
 ## Development method — non-negotiable
 
-**TDD, red-green-refactor, on every task.** Failing test written and observed failing BEFORE implementation code. Use the `superpowers:test-driven-development` / `tdd` skill flow. Test stack: jest-expo + `@testing-library/react-native`. Reuse survey JSON fixtures from `../survey-library`'s test suites where applicable. Every bugfix lands with a regression test. No task is "done" without its tests green and observed (run them; never claim unverified results).
+**TDD, red-green-refactor, on every task.** Failing test written and observed failing BEFORE implementation code. Use the `superpowers:test-driven-development` / `tdd` skill flow. Test stack: jest (`react-native` preset) + `@testing-library/react-native` at the library root; jest-expo only if example-app tests need it. Reuse survey JSON fixtures from `../survey-library`'s test suites where applicable. Every bugfix lands with a regression test. No task is "done" without its tests green and observed (run them; never claim unverified results).
 
 ## Orchestration model (multi-agent execution)
 
