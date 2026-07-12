@@ -4,13 +4,16 @@
  * "Default-table contract" + test plan #2). Independently parses
  * `var(--sjs-*, <fallback>)` fallback chains out of the reference
  * checkout's `survey-core/src/default-theme/*.scss` and emits a committed
- * fixture (`src/theme-core/scss-defaults.json`).
+ * fixture (`src/theme-core/__fixtures__/scss-defaults.json`).
  *
- * `src/theme-core/registry.ts` is hand-authored against this fixture as
- * ground truth; `src/theme-core/__tests__/registry-vs-fixture.test.ts`
- * exhaustively compares the two so registry.ts can't silently drift from
- * the actual SCSS cascade. This script (plus the fixture) is re-run and
- * re-reviewed whenever the survey-core version band bumps.
+ * The fixture is the TEST-ONLY oracle: the shipped registry data
+ * (`src/theme-core/registry-data.ts`, generated once by
+ * `scripts/generate-registry-data.mjs` and maintained in TS) never
+ * imports it — `src/theme-core/__tests__/registry-vs-fixture.test.ts`
+ * exhaustively compares the two INDEPENDENT artifacts so the registry
+ * can't silently drift from the actual SCSS cascade. This script (plus
+ * the fixture) is re-run and re-reviewed whenever the survey-core version
+ * band bumps.
  *
  * Scope, mirroring the design's own accounting:
  *  - `variables.scss` is authoritative: every top-level `$name: var(--sjs-x,
@@ -60,6 +63,7 @@ const OUTPUT_PATH = join(
   REPO_ROOT,
   'src',
   'theme-core',
+  '__fixtures__',
   'scss-defaults.json'
 );
 
@@ -217,10 +221,32 @@ function buildScssVarTable(source) {
  * both string-interpolated (`#{$name}`, used inline in a larger literal)
  * and bare (`$name` used directly as a function-argument VALUE, e.g.
  * `var(--sjs-x, $font-size)`; SCSS substitutes the value with no `#{}`
- * needed there).
+ * needed there) — plus the one SCSS FUNCTION interpolation the
+ * default-theme sources actually use, `#{calcSize(m)}` (variables.scss's
+ * calcSize emits `calc(m * (#{$base-unit}))`, or the bare base-unit chain
+ * when m === 1). Any other residual Sass construct fails the
+ * generation-time validation in main() rather than leaking into the
+ * fixture.
  */
 function expandInterpolations(value, scssVarTable, depth = 0, seen = new Set()) {
   if (depth > 10) return value;
+  value = value.replace(
+    /#\{calcSize\(\s*(-?\d+(?:\.\d+)?)\s*\)\}/g,
+    (_whole, multiplier) => {
+      const baseUnitEntry = scssVarTable.get('base-unit');
+      const baseChain = baseUnitEntry
+        ? expandInterpolations(
+            baseUnitEntry.value,
+            scssVarTable,
+            depth + 1,
+            seen
+          )
+        : 'var(--sjs-base-unit, var(--base-unit, 8px))';
+      return Number(multiplier) === 1
+        ? baseChain
+        : `calc(${multiplier} * (${baseChain}))`;
+    }
+  );
   return value.replace(
     /#\{\$([a-zA-Z0-9-]+)\}|\$([a-zA-Z0-9-]+)/g,
     (whole, braced, bare) => {
@@ -245,11 +271,18 @@ function extractFromVariablesScss(filePath) {
   for (const [, entry] of scssVarTable) {
     const calls = findVarCalls(entry.value);
     for (const call of calls) {
-      if (call.fallback === undefined) continue;
-      const expanded = unwrapStrayQuotes(
-        expandInterpolations(call.fallback, scssVarTable)
-      );
-      if (!results.has(call.name)) {
+      // A FALLBACKLESS reference (e.g. var(--sjs-default-font-family)) is
+      // still a consumed variable — recorded with rawDefault null so the
+      // registry covers it (codex review major 3); a with-fallback
+      // occurrence elsewhere upgrades it.
+      const expanded =
+        call.fallback === undefined
+          ? null
+          : unwrapStrayQuotes(
+              expandInterpolations(call.fallback, scssVarTable)
+            );
+      const existing = results.get(call.name);
+      if (!existing || (existing.rawDefault === null && expanded !== null)) {
         results.set(call.name, {
           name: call.name,
           rawDefault: expanded,
@@ -269,16 +302,47 @@ function extractFromOtherScss(filePath, relPath, scssVarTable) {
   lines.forEach((line, idx) => {
     const calls = findVarCalls(line);
     for (const call of calls) {
-      if (call.fallback === undefined) continue;
       found.push({
         name: call.name,
-        rawDefault: unwrapStrayQuotes(
-          expandInterpolations(call.fallback, scssVarTable)
-        ),
+        rawDefault:
+          call.fallback === undefined
+            ? null
+            : unwrapStrayQuotes(
+                expandInterpolations(call.fallback, scssVarTable)
+              ),
         file: relPath,
         line: idx + 1,
       });
     }
+  });
+  return found;
+}
+
+/**
+ * LHS custom-property DECLARATIONS (`--sjs-x: value;`) — e.g.
+ * variables.scss's `:root { --sjs-transition-duration: 150ms; }` and the
+ * slider/paneldynamic runtime-machinery declarations in blocks/*.scss. A
+ * declared value IS the cascade's value when no theme sets the name, so a
+ * declaration outranks any var()-fallback occurrence as the primary
+ * default (codex review major 3).
+ */
+function extractLhsDeclarations(filePath, relPath, scssVarTable) {
+  const source = readFileSync(filePath, 'utf8');
+  const lines = source.split('\n');
+  const found = [];
+  const re = /^\s*(--sjs-[a-zA-Z0-9-]+)\s*:\s*([^;]+);/;
+  lines.forEach((line, idx) => {
+    const m = line.match(re);
+    if (!m) return;
+    found.push({
+      name: m[1],
+      rawDefault: unwrapStrayQuotes(
+        expandInterpolations(m[2], scssVarTable)
+      ),
+      file: relPath,
+      line: idx + 1,
+      isDeclaration: true,
+    });
   });
   return found;
 }
@@ -330,24 +394,32 @@ function main() {
   const primary = extractFromVariablesScss(variablesScssPath);
   const scssVarTable = buildScssVarTable(readFileSync(variablesScssPath, 'utf8'));
   const occurrences = new Map();
+  const declarations = new Map();
   for (const [name, entry] of primary) {
     occurrences.set(name, [entry]);
   }
 
   for (const file of files) {
-    if (file === variablesScssPath) continue;
     const relPath = relative(REFERENCE_DEFAULT_THEME_DIR, file).replace(
       /\\/g,
       '/'
     );
     const found = [
-      ...extractFromOtherScss(file, relPath, scssVarTable),
-      ...extractBareScssVarRefs(file, relPath, scssVarTable, primary),
+      ...extractLhsDeclarations(file, relPath, scssVarTable),
+      ...(file === variablesScssPath
+        ? []
+        : [
+            ...extractFromOtherScss(file, relPath, scssVarTable),
+            ...extractBareScssVarRefs(file, relPath, scssVarTable, primary),
+          ]),
     ];
     for (const entry of found) {
       const list = occurrences.get(entry.name) || [];
       list.push(entry);
       occurrences.set(entry.name, list);
+      if (entry.isDeclaration && !declarations.has(entry.name)) {
+        declarations.set(entry.name, entry);
+      }
     }
   }
 
@@ -392,7 +464,18 @@ function main() {
     ),
     variables: names.map((name) => {
       const list = occurrences.get(name);
-      const primaryEntry = primary.get(name) || list[0];
+      // Primary priority: an LHS DECLARATION (the cascade value when
+      // nothing sets the name) > variables.scss's canonical fallback >
+      // the first with-fallback occurrence anywhere > null (fallbackless
+      // consumption only).
+      const variablesScssEntry = primary.get(name);
+      const primaryEntry =
+        declarations.get(name) ||
+        (variablesScssEntry && variablesScssEntry.rawDefault !== null
+          ? variablesScssEntry
+          : undefined) ||
+        list.find((e) => e.rawDefault !== null) ||
+        list[0];
       return {
         name,
         rawDefault: primaryEntry.rawDefault,
@@ -405,10 +488,60 @@ function main() {
     }),
   };
 
+  validate(fixture, files);
+
   writeFileSync(OUTPUT_PATH, JSON.stringify(fixture, null, 2) + '\n');
   console.log(
-    `Extracted ${fixture.variables.length} --sjs-* variables from ${fixture.variables.filter((v) => v.source.startsWith('variables.scss')).length} in variables.scss + others -> ${relative(REPO_ROOT, OUTPUT_PATH)}`
+    `Extracted ${fixture.variables.length} variables (${fixture.variables.filter((v) => v.name.startsWith('--sjs-')).length} --sjs-*, ${fixture.variables.filter((v) => v.rawDefault === null).length} fallbackless) -> ${relative(REPO_ROOT, OUTPUT_PATH)}`
   );
+}
+
+/**
+ * Generation-time validation (codex review major 3):
+ *  1. Residual-Sass check — no emitted default may still contain `#{...}`
+ *     interpolation or a `$name` reference.
+ *  2. Completeness check — the emitted `--sjs-*` name set must EQUAL an
+ *     independently grep-derived set of every `var(--sjs-...)` use and
+ *     every `--sjs-...:` LHS declaration across the scanned tree.
+ * Any failure throws: a fixture must never be committed with silently
+ * dropped or half-parsed entries.
+ */
+function validate(fixture, files) {
+  const residual = [];
+  for (const v of fixture.variables) {
+    for (const occ of v.occurrences) {
+      if (occ.rawDefault === null) continue;
+      if (/#\{/.test(occ.rawDefault) || /\$[a-zA-Z]/.test(occ.rawDefault)) {
+        residual.push(`${v.name} @ ${occ.source}: ${occ.rawDefault}`);
+      }
+    }
+  }
+  if (residual.length > 0) {
+    throw new Error(
+      `Residual Sass constructs in emitted defaults:\n${residual.join('\n')}`
+    );
+  }
+
+  const grepNames = new Set();
+  for (const file of files) {
+    const source = readFileSync(file, 'utf8');
+    for (const m of source.matchAll(/var\(\s*(--sjs-[a-zA-Z0-9-]+)/g)) {
+      grepNames.add(m[1]);
+    }
+    for (const m of source.matchAll(/^\s*(--sjs-[a-zA-Z0-9-]+)\s*:/gm)) {
+      grepNames.add(m[1]);
+    }
+  }
+  const emitted = new Set(
+    fixture.variables.map((v) => v.name).filter((n) => n.startsWith('--sjs-'))
+  );
+  const missing = [...grepNames].filter((n) => !emitted.has(n)).sort();
+  const extra = [...emitted].filter((n) => !grepNames.has(n)).sort();
+  if (missing.length > 0 || extra.length > 0) {
+    throw new Error(
+      `--sjs-* name-set mismatch vs grep-derived ground truth.\nMissing from fixture: ${JSON.stringify(missing)}\nUnaccounted in fixture: ${JSON.stringify(extra)}`
+    );
+  }
 }
 
 main();
