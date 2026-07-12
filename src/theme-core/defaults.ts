@@ -5,11 +5,16 @@
  * contract"), derived from `registry.ts`'s per-entry `default` field.
  *
  * Kept as a thin derivation (rather than a second hand-maintained table)
- * deliberately: registry.ts is the single source of truth for what a
- * variable's default IS (it's already reviewed against
- * `scss-defaults.json` by `registry-vs-fixture.test.ts`) —
- * duplicating that data here would only create a second place it could
- * drift from the SCSS ground truth.
+ * deliberately: registry-data.ts is the single source of truth for what a
+ * variable's default IS (it's already reviewed against the extraction
+ * fixture by `registry-vs-fixture.test.ts`) — duplicating that data here
+ * would only create a second place it could drift from the SCSS ground
+ * truth.
+ *
+ * Null-default entries (fallbackless runtime hooks like
+ * --sjs-default-font-family) are OMITTED — the cascade genuinely has no
+ * value for them, and `evaluateVarExpression` treats a missing key as
+ * unresolved, which is exactly the web behavior.
  *
  * `resolve.ts` step 1 overlays `theme.cssVariables` on top of this table
  * to build the complete cascade environment (`rawVariables`) that step 2's
@@ -19,7 +24,9 @@ import { REGISTRY } from './registry';
 
 export const DEFAULTS: Readonly<Record<string, string>> = Object.freeze(
   Object.fromEntries(
-    Object.entries(REGISTRY).map(([name, entry]) => [name, entry.default])
+    Object.entries(REGISTRY)
+      .filter(([, entry]) => entry.default !== null)
+      .map(([name, entry]) => [name, entry.default as string])
   )
 );
 
