@@ -19,10 +19,14 @@ import {
   MODEL_TYPE_CLASSIFICATION,
   QUESTION_KEY_INVENTORY,
   ELEMENT_KEY_INVENTORY,
+  RUNTIME_TEMPLATE_TYPES,
   diffModelTypeInventory,
   diffKeyInventory,
+  diffManifestConsistency,
 } from '../manifest';
+import type { ModelTypeClassification } from '../manifest';
 import { DESCRIPTOR_TABLE } from '../descriptors';
+import type { Descriptor } from '../descriptors';
 
 function liveQuestionClassNames(): string[] {
   return Serializer.getChildrenClasses('question', true).map((c) => c.name);
@@ -129,14 +133,119 @@ describe('manifest: question-key / element-key inventories', () => {
   });
 });
 
+describe('manifest: classification/descriptor status consistency', () => {
+  it('the live tables are mutually consistent (no violations)', () => {
+    expect(diffManifestConsistency()).toEqual([]);
+  });
+
+  it('detects a supported classification entry with no supported descriptor row', () => {
+    const classification: Record<string, ModelTypeClassification> = {
+      ...MODEL_TYPE_CLASSIFICATION,
+      bogus: {
+        status: 'supported',
+        milestone: 'M9',
+        runtimeRenderable: {
+          expectedTemplate: 'bogus',
+          expectedRoute: 'template',
+        },
+      },
+    };
+    const violations = diffManifestConsistency(
+      classification,
+      DESCRIPTOR_TABLE
+    );
+    expect(violations.some((v) => v.includes('bogus'))).toBe(true);
+  });
+
+  it('detects a supported descriptor row whose model-type classification is not supported', () => {
+    const descriptors: Descriptor[] = [
+      ...DESCRIPTOR_TABLE,
+      {
+        status: 'supported',
+        questionType: 'text',
+        dispatchKey: 'text',
+        route: 'template',
+        component: () => (() => null) as never,
+        milestone: 'M1',
+      },
+    ];
+    const violations = diffManifestConsistency(
+      MODEL_TYPE_CLASSIFICATION,
+      descriptors
+    );
+    expect(violations.some((v) => v.includes('text'))).toBe(true);
+  });
+
+  it('detects a supported classification entry lacking runtimeRenderable safe-construction metadata', () => {
+    const classification: Record<string, ModelTypeClassification> = {
+      ...MODEL_TYPE_CLASSIFICATION,
+      empty: { status: 'supported', milestone: 'M0' },
+    };
+    const violations = diffManifestConsistency(
+      classification,
+      DESCRIPTOR_TABLE
+    );
+    expect(violations.some((v) => v.includes('runtimeRenderable'))).toBe(true);
+  });
+
+  it('runtime-template descriptor rows (custom/composite) are exempt from the class-name gate, by the documented set', () => {
+    expect(Array.from(RUNTIME_TEMPLATE_TYPES).sort()).toEqual([
+      'composite',
+      'custom',
+    ]);
+    // ...and the live-table consistency above already passes with those
+    // rows present, proving the exemption works.
+  });
+});
+
 describe('manifest: safe-construction template assertions', () => {
-  it('"empty" (runtime-renderable, supported) constructs and its getTemplate() matches the descriptor dispatchKey', () => {
-    const model = new Model({ elements: [{ type: 'empty', name: 'q1' }] });
-    try {
-      const question = model.getQuestionByName('q1');
-      expect(question?.getTemplate()).toBe('empty');
-    } finally {
-      model.dispose();
+  const renderableEntries = Object.entries(MODEL_TYPE_CLASSIFICATION).filter(
+    ([, entry]) => entry.runtimeRenderable
+  );
+
+  it('every supported classification entry is covered by the construction gate (metadata present)', () => {
+    const supportedNames = Object.entries(MODEL_TYPE_CLASSIFICATION)
+      .filter(([, entry]) => entry.status === 'supported')
+      .map(([name]) => name)
+      .sort();
+    const renderableNames = renderableEntries.map(([name]) => name).sort();
+    expect(renderableNames).toEqual(supportedNames);
+    expect(renderableNames.length).toBeGreaterThan(0);
+  });
+
+  it('EVERY runtime-renderable entry constructs; its actual template, dispatch route, and descriptor row all match the metadata (disposed in finally)', () => {
+    expect(renderableEntries.length).toBeGreaterThan(0);
+    for (const [name, entry] of renderableEntries) {
+      const meta = entry.runtimeRenderable!;
+      const fixtureJson = {
+        ...(meta.fixtureJson ?? { type: name }),
+        name: 'q1',
+      };
+      const model = new Model({ elements: [fixtureJson] });
+      try {
+        const question = model.getQuestionByName('q1');
+        expect(question).toBeTruthy();
+        expect(question!.getTemplate()).toBe(meta.expectedTemplate);
+
+        const actualRoute = question!.isDefaultRendering()
+          ? 'template'
+          : 'renderer';
+        expect(actualRoute).toBe(meta.expectedRoute);
+        const actualDispatchKey =
+          actualRoute === 'template'
+            ? question!.getTemplate()
+            : question!.getComponentName();
+
+        const row = DESCRIPTOR_TABLE.find(
+          (r) => r.dispatchKey === actualDispatchKey
+        );
+        expect(row).toBeTruthy();
+        expect(row!.status).toBe('supported');
+        expect(row!.route).toBe(meta.expectedRoute);
+        expect(row!.questionType).toBe(name);
+      } finally {
+        model.dispose();
+      }
     }
   });
 

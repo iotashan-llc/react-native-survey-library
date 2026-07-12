@@ -28,20 +28,65 @@
  *    could not exact-match both.
  */
 import { DESCRIPTOR_TABLE } from './descriptors';
+import type { Descriptor } from './descriptors';
 
 export type ModelTypeStatus =
   'supported' | 'planned' | 'internal-base' | 'unsupported';
+
+/**
+ * Safe-construction metadata for the manifest's construction gate (review
+ * round 3): the test suite iterates EVERY entry carrying this — constructs
+ * a disposable fixture, computes the ACTUAL template / dispatch route /
+ * dispatch key, and compares all three against the entry's descriptor row
+ * (not a hand-hardcoded expectation). Every `supported` classification
+ * entry MUST carry this (enforced by `diffManifestConsistency`), so the
+ * gate scales automatically as milestones land instead of silently
+ * covering only `empty`.
+ */
+export interface RuntimeRenderableMeta {
+  /** What `question.getTemplate()` must return for a fresh fixture. */
+  expectedTemplate: string;
+  /**
+   * Which dispatch route a fresh fixture must take
+   * (`isDefaultRendering()` -> 'template', else 'renderer').
+   */
+  expectedRoute: 'template' | 'renderer';
+  /**
+   * Element JSON for the fixture (default `{ type: <name> }`); a
+   * renderer-route entry sets `renderAs` here.
+   */
+  fixtureJson?: Record<string, unknown>;
+}
 
 export interface ModelTypeClassification {
   status: ModelTypeStatus;
   milestone?: string;
   reason?: string;
+  runtimeRenderable?: RuntimeRenderableMeta;
 }
+
+/**
+ * Descriptor questionTypes that are RUNTIME TEMPLATES, not serializer
+ * class names: `QuestionCustomModel.getTemplate() -> 'custom'` /
+ * `QuestionCompositeModel -> 'composite'` (question_custom.ts:797,1112).
+ * They never appear in `Serializer.getChildrenClasses('question')`, so
+ * `diffManifestConsistency` exempts their descriptor rows from the
+ * class-name gate (their coverage lives in the ComponentCollection
+ * fixture tests instead).
+ */
+export const RUNTIME_TEMPLATE_TYPES: ReadonlySet<string> = new Set([
+  'custom',
+  'composite',
+]);
 
 export const MODEL_TYPE_CLASSIFICATION: Readonly<
   Record<string, ModelTypeClassification>
 > = {
-  empty: { status: 'supported', milestone: 'M0' },
+  empty: {
+    status: 'supported',
+    milestone: 'M0',
+    runtimeRenderable: { expectedTemplate: 'empty', expectedRoute: 'template' },
+  },
 
   // Creator-bearing internal bases: `canBeCreated` includes them, but they
   // are never used as a standalone JSON `type` — real questions extend
@@ -175,4 +220,70 @@ export function diffKeyInventory(
       .filter((key) => !expected.has(key))
       .sort(),
   };
+}
+
+/**
+ * Status-consistency gate between the model-type classification and the
+ * descriptor table (review round 3 — the key inventories alone are
+ * self-confirming, since they derive from the same table the registrar
+ * walks). Returns human-readable violations; the test suite asserts the
+ * live tables produce none. Parameters exist for the gate's own negative
+ * tests — production callers use the defaults.
+ *
+ * Checks:
+ * 1. Every question-route descriptor row (template/renderer) whose
+ *    questionType is a serializer class name must have a classification
+ *    entry with the MATCHING status (runtime templates —
+ *    `RUNTIME_TEMPLATE_TYPES` — are exempt from this class-name gate).
+ * 2. Every classification entry with status `supported` must have at least
+ *    one supported question-route descriptor row AND carry
+ *    `runtimeRenderable` safe-construction metadata (so the construction
+ *    gate covers it).
+ */
+export function diffManifestConsistency(
+  classification: Readonly<
+    Record<string, ModelTypeClassification>
+  > = MODEL_TYPE_CLASSIFICATION,
+  descriptors: readonly Descriptor[] = DESCRIPTOR_TABLE
+): string[] {
+  const violations: string[] = [];
+
+  for (const row of descriptors) {
+    if (row.route === 'element') continue;
+    if (RUNTIME_TEMPLATE_TYPES.has(row.questionType)) continue;
+    const entry = classification[row.questionType];
+    if (!entry) {
+      violations.push(
+        `descriptor row "${row.dispatchKey}" references questionType "${row.questionType}" with no model-type classification entry`
+      );
+      continue;
+    }
+    if (entry.status !== row.status) {
+      violations.push(
+        `descriptor row "${row.dispatchKey}" has status "${row.status}" but classification "${row.questionType}" is "${entry.status}"`
+      );
+    }
+  }
+
+  for (const [name, entry] of Object.entries(classification)) {
+    if (entry.status !== 'supported') continue;
+    const supportedRows = descriptors.filter(
+      (row) =>
+        row.questionType === name &&
+        row.status === 'supported' &&
+        row.route !== 'element'
+    );
+    if (supportedRows.length === 0) {
+      violations.push(
+        `classification "${name}" is supported but has no supported question-route descriptor row`
+      );
+    }
+    if (!entry.runtimeRenderable) {
+      violations.push(
+        `classification "${name}" is supported but lacks runtimeRenderable safe-construction metadata`
+      );
+    }
+  }
+
+  return violations;
 }
