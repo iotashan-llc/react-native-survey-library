@@ -10,8 +10,23 @@
       "types": "./lib/typescript/src/index.d.ts",
       "default": "./lib/module/index.js"
     },
+    "./shim": {
+      "iotashan-llc-react-native-survey-library-source": "./src/core/shim.ts",
+      "types": "./lib/typescript/src/core/shim.d.ts",
+      "default": "./lib/module/core/shim.js"
+    },
     "./package.json": "./package.json"
   },
+  "sideEffects": [
+    "./src/core/shim.ts",
+    "./lib/module/core/shim.js",
+    "./src/core/facade.ts",
+    "./lib/module/core/facade.js",
+    "./src/factories/register-all.ts",
+    "./lib/module/factories/register-all.js",
+    "./src/index.tsx",
+    "./lib/module/index.js"
+  ],
   "files": [
     "src",
     "lib",
@@ -37,6 +52,7 @@
     "prepare": "bob build",
     "typecheck": "tsc",
     "test": "jest",
+    "test:packaged": "node scripts/test-packaged.mjs",
     "lint": "eslint \"**/*.{js,ts,tsx}\""
   },
   "keywords": [
@@ -77,6 +93,7 @@
     "@react-native/jest-preset": "0.86.0",
     "@testing-library/react-native": "^13.3.0",
     "@types/jest": "^29.5.14",
+    "@types/node": "^26.1.1",
     "@types/react": "^19.2.0",
     "del-cli": "^7.0.0",
     "eslint": "^9.39.4",
@@ -89,12 +106,14 @@
     "react-native": "0.86.0",
     "react-native-builder-bob": "^0.43.0",
     "react-test-renderer": "19.2.3",
+    "survey-core": "2.5.33",
     "turbo": "^2.9.16",
     "typescript": "^6.0.3"
   },
   "peerDependencies": {
     "react": "*",
-    "react-native": "*"
+    "react-native": "*",
+    "survey-core": ">=2.5.32 <2.6.0"
   },
   "workspaces": [
     "example"
