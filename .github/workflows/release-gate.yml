@@ -1,0 +1,120 @@
+name: Release gate
+on:
+  workflow_dispatch:
+    inputs:
+      break_peer_dep:
+        description: >-
+          Acceptance-check input for task 0.2: when true, deliberately installs an
+          incompatible react-native@0.73.0 peer into the scaffolded smoke app before
+          the native compile, to prove this gate can actually fail. Leave false for a
+          real release run.
+        type: boolean
+        default: false
+  push:
+    tags:
+      - 'v*'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  # Not a per-PR job: this packs the library, scaffolds a stock Expo SDK 57
+  # app via the official create-expo-app CLI (never hand-written), installs
+  # the packed tarball, prebuilds, and native-compiles both platforms.
+  # Metro bundling alone (what the PR-CI `test` job effectively exercises)
+  # doesn't touch CocoaPods/Gradle/autolinking/New-Arch compilation — this
+  # workflow is the gate that does.
+  compile-android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Build library package
+        run: yarn prepare
+
+      - name: Pack library tarball
+        run: yarn pack --out "${{ runner.temp }}/react-native-survey-library.tgz"
+
+      - name: Scaffold a stock Expo SDK 57 app
+        run: npx --yes create-expo-app@latest "${{ runner.temp }}/smoke-app-android" -t blank-typescript -y --no-agents-md
+
+      - name: Prepare smoke app (install tarball, import it, bundle JS)
+        run: |
+          bash scripts/release-gate/prepare-smoke-app.sh \
+            "${{ runner.temp }}/smoke-app-android" \
+            "${{ runner.temp }}/react-native-survey-library.tgz" \
+            "${{ inputs.break_peer_dep == true }}" \
+            android
+
+      - name: Install JDK
+        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Finalize Android SDK
+        run: |
+          /bin/bash -c "yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null"
+
+      - name: expo prebuild (Android)
+        working-directory: ${{ runner.temp }}/smoke-app-android
+        run: npx expo prebuild --platform android --non-interactive
+
+      - name: ./gradlew assembleDebug
+        working-directory: ${{ runner.temp }}/smoke-app-android/android
+        env:
+          JAVA_OPTS: '-XX:MaxHeapSize=6g'
+        run: ./gradlew assembleDebug
+
+  compile-ios:
+    runs-on: macos-latest
+    timeout-minutes: 45
+
+    env:
+      XCODE_VERSION: 26
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+
+      - name: Setup
+        uses: ./.github/actions/setup
+
+      - name: Build library package
+        run: yarn prepare
+
+      - name: Pack library tarball
+        run: yarn pack --out "${{ runner.temp }}/react-native-survey-library.tgz"
+
+      - name: Scaffold a stock Expo SDK 57 app
+        run: npx --yes create-expo-app@latest "${{ runner.temp }}/smoke-app-ios" -t blank-typescript -y --no-agents-md
+
+      - name: Prepare smoke app (install tarball, import it, bundle JS)
+        run: |
+          bash scripts/release-gate/prepare-smoke-app.sh \
+            "${{ runner.temp }}/smoke-app-ios" \
+            "${{ runner.temp }}/react-native-survey-library.tgz" \
+            "${{ inputs.break_peer_dep == true }}" \
+            ios
+
+      - name: Use appropriate Xcode version
+        uses: maxim-lobanov/setup-xcode@60606e260d2fc5762a71e64e74b2174e8ea3c8bd # v1.6.0
+        with:
+          xcode-version: ${{ env.XCODE_VERSION }}
+
+      - name: expo prebuild (iOS)
+        working-directory: ${{ runner.temp }}/smoke-app-ios
+        run: npx expo prebuild --platform ios --non-interactive
+
+      - name: xcodebuild (simulator, no signing) + launch smoke
+        run: bash scripts/release-gate/ios-compile-and-launch.sh "${{ runner.temp }}/smoke-app-ios"
