@@ -4,13 +4,14 @@
  * sanitize memo must key on EVERY input, so a tightened bound / revoked
  * origin / changed baseUrl never renders stale, less-restrictive output).
  */
+import { Image } from 'react-native';
 import { render, screen } from '@testing-library/react-native';
 import { SanitizedHtml, sanitizeConfigKey } from '../SanitizedHtml';
 import { setDiagnosticHandler } from '../../diagnostics';
 import type { DiagnosticPayload } from '../../diagnostics';
 
-describe('#1 zero-network proof — a remote <img> triggers no network at mount', () => {
-  it('mounts a remote-image document without ANY network call (fetch spy stays untouched)', () => {
+describe('#1 zero-network proof — a remote <img> reaches no network sink at mount', () => {
+  it('mounts a remote-image document without ANY fetch call (belt-and-suspenders)', () => {
     const fetchSpy = jest.spyOn(globalThis, 'fetch').mockImplementation(() => {
       throw new Error('no network call may originate from a sanitized image');
     });
@@ -24,12 +25,80 @@ describe('#1 zero-network proof — a remote <img> triggers no network at mount'
           />
         );
       }).not.toThrow();
-      // The renderer received a DOM with no remote src, so nothing could
-      // have been requested — the fetch trap was never armed.
       expect(fetchSpy).not.toHaveBeenCalled();
       expect(screen.getByText('ok')).toBeTruthy();
     } finally {
       fetchSpy.mockRestore();
+    }
+  });
+
+  it('no remote URI ever reaches the REAL image sink (Image.getSize / getSizeWithHeaders)', () => {
+    // The renderer's IMG path resolves natural dimensions via
+    // `Image.getSize(uri, …)` / `Image.getSizeWithHeaders(uri, headers, …)`
+    // (node_modules/@native-html/render/src/elements/useIMGElementState.ts) —
+    // that native call is what would issue the redirect-following network
+    // request. Spy on BOTH and assert no `http(s)` URI ever reaches them.
+    const getSizeSpy = jest
+      .spyOn(Image, 'getSize')
+      .mockImplementation((() => {}) as unknown as typeof Image.getSize);
+    const getSizeWithHeadersSpy = jest
+      .spyOn(Image, 'getSizeWithHeaders')
+      .mockImplementation(
+        (() => {}) as unknown as typeof Image.getSizeWithHeaders
+      );
+    try {
+      render(
+        <SanitizedHtml
+          html={
+            '<p>ok</p>' +
+            '<img src="https://cdn.example.com/a.png">' +
+            '<img src="http://cdn.example.com/b.png">'
+          }
+          imageUriConfig={{ allowedOrigins: ['https://cdn.example.com'] }}
+          contentWidth={320}
+        />
+      );
+      const urisSeen = [
+        ...getSizeSpy.mock.calls.map((c) => String(c[0])),
+        ...getSizeWithHeadersSpy.mock.calls.map((c) => String(c[0])),
+      ];
+      expect(urisSeen.some((u) => /^https?:/i.test(u))).toBe(false);
+      expect(screen.getByText('ok')).toBeTruthy();
+    } finally {
+      getSizeSpy.mockRestore();
+      getSizeWithHeadersSpy.mockRestore();
+    }
+  });
+
+  it('a data: image DOES reach the sink (proving the spy exercises the real path) but ONLY as a data: URI', () => {
+    const getSizeSpy = jest
+      .spyOn(Image, 'getSize')
+      .mockImplementation((() => {}) as unknown as typeof Image.getSize);
+    const getSizeWithHeadersSpy = jest
+      .spyOn(Image, 'getSizeWithHeaders')
+      .mockImplementation(
+        (() => {}) as unknown as typeof Image.getSizeWithHeaders
+      );
+    try {
+      render(
+        <SanitizedHtml
+          html='<img src="data:image/png;base64,iVBORw0KGgo=">'
+          contentWidth={320}
+        />
+      );
+      const urisSeen = [
+        ...getSizeSpy.mock.calls.map((c) => String(c[0])),
+        ...getSizeWithHeadersSpy.mock.calls.map((c) => String(c[0])),
+      ];
+      // The real sink IS reached for the (safe, network-free) data: image —
+      // this proves the previous test's "not reached" is meaningful, not a
+      // false negative from the sink never being wired.
+      expect(urisSeen.length).toBeGreaterThan(0);
+      expect(urisSeen.every((u) => u.startsWith('data:'))).toBe(true);
+      expect(urisSeen.some((u) => /^https?:/i.test(u))).toBe(false);
+    } finally {
+      getSizeSpy.mockRestore();
+      getSizeWithHeadersSpy.mockRestore();
     }
   });
 });
