@@ -76,6 +76,56 @@ describe('evaluateVarExpression', () => {
     expect(value).toBe('rgba(25, 179, 148, 0.1)');
   });
 
+  it('cycle members are invalid FIRST — an internal fallback cannot revive a member (codex review critical 2 repro)', () => {
+    const raw = {
+      '--a': 'var(--b, blue)',
+      '--b': 'var(--a)',
+    };
+    const res = evaluateVarExpression(raw, 'var(--a)');
+    expect(res.value).toBeUndefined();
+    expect(res.diagnostics.some((d) => d.code === 'theme-core/var-cycle')).toBe(
+      true
+    );
+  });
+
+  it('the REFERRING (outside-the-cycle) expression fallback still applies', () => {
+    const raw = {
+      '--a': 'var(--b, blue)',
+      '--b': 'var(--a)',
+    };
+    expect(evaluateVarExpression(raw, 'var(--a, safe)').value).toBe('safe');
+  });
+
+  it('self-cycle: the member own fallback cannot save it', () => {
+    const raw = { '--a': 'var(--a, blue)' };
+    const res = evaluateVarExpression(raw, 'var(--a)');
+    expect(res.value).toBeUndefined();
+    expect(res.diagnostics.some((d) => d.code === 'theme-core/var-cycle')).toBe(
+      true
+    );
+  });
+
+  it('multi-node cycle with internal fallbacks on every member: ALL members invalid', () => {
+    const raw = {
+      '--x': 'var(--y, red)',
+      '--y': 'var(--z, green)',
+      '--z': 'var(--x)',
+    };
+    expect(evaluateVarExpression(raw, 'var(--x)').value).toBeUndefined();
+    expect(evaluateVarExpression(raw, 'var(--y)').value).toBeUndefined();
+    expect(evaluateVarExpression(raw, 'var(--z)').value).toBeUndefined();
+    expect(evaluateVarExpression(raw, 'var(--x, safe)').value).toBe('safe');
+  });
+
+  it('a non-member that only REFERS to a cycle keeps its own fallback (not marked invalid)', () => {
+    const raw = {
+      '--m': 'var(--a, purple)',
+      '--a': 'var(--b)',
+      '--b': 'var(--a)',
+    };
+    expect(evaluateVarExpression(raw, 'var(--m)').value).toBe('purple');
+  });
+
   it('detects a cycle: cycle members become invalid, then the fallback applies', () => {
     const raw = {
       '--a': 'var(--b)',

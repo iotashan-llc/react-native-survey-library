@@ -82,8 +82,11 @@ function clampAlpha(n: number): number {
 // color
 // ---------------------------------------------------------------------------
 
+// Channels are INTEGER-only per the design grammar ("channels finite,
+// 0-255 int") — a decimal channel is a non-match (fallback + diagnostic),
+// never silently rounded. Alpha stays a float.
 const RGB_RE =
-  /^rgba?\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*(?:,\s*(-?\d+(?:\.\d+)?)\s*)?\)$/;
+  /^rgba?\(\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*(-?\d+)\s*(?:,\s*(-?\d+(?:\.\d+)?)\s*)?\)$/;
 const HSL_RE =
   /^hsla?\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)%\s*,\s*(-?\d+(?:\.\d+)?)%\s*(?:,\s*(-?\d+(?:\.\d+)?)\s*)?\)$/;
 const HEX_RE = /^#([0-9a-fA-F]{3,8})$/;
@@ -245,7 +248,13 @@ export function parseColor(
 
 const PX_RE = /^(-?(?:\d+\.?\d*|\.\d+))px$/;
 
-function tryParseLength(raw: string): number | undefined {
+/**
+ * Strict length parse: `<float>px` or bare `0` -> number; anything else ->
+ * undefined (no fallback semantics). Exported for resolve.ts's calc-entry
+ * handling, which needs a failure SIGNAL (undefined) rather than
+ * parseLength's fallback-plus-diagnostic behavior.
+ */
+export function tryParseLength(raw: string): number | undefined {
   const value = raw.trim();
   const pxMatch = value.match(PX_RE);
   if (pxMatch) return Number(pxMatch[1]);
@@ -467,7 +476,11 @@ function tryParseShadowLayer(layer: string): ShadowLayer | undefined {
     /^(rgba?|hsla?)\(/.test(colorToken) ||
     colorToken.startsWith('#') ||
     colorToken === 'transparent';
-  const lengthTokens = isColorLike ? tokens.slice(0, -1) : tokens;
+  // A layer's color is REQUIRED — a colorless `<lengths>`-only layer is a
+  // non-match (never invent black; the web cascade would use currentColor,
+  // which theme-core cannot know).
+  if (!isColorLike) return undefined;
+  const lengthTokens = tokens.slice(0, -1);
   if (lengthTokens.length < 2 || lengthTokens.length > 4) return undefined;
 
   const lengths: number[] = [];
@@ -480,9 +493,7 @@ function tryParseShadowLayer(layer: string): ShadowLayer | undefined {
   const offsetY = lengths[1];
   if (offsetX === undefined || offsetY === undefined) return undefined;
 
-  const color = isColorLike
-    ? tryParseColor(colorToken)
-    : { r: 0, g: 0, b: 0, a: 1 };
+  const color = tryParseColor(colorToken);
   if (!color) return undefined;
 
   return {
@@ -495,31 +506,35 @@ function tryParseShadowLayer(layer: string): ShadowLayer | undefined {
   };
 }
 
+/**
+ * Parses a full comma-separated shadow list. Every layer must be nonempty
+ * and full-match the layer grammar — an empty layer (trailing comma,
+ * double comma) or a colorless/partial layer invalidates the WHOLE value
+ * (full-match rule; nothing is silently discarded).
+ */
+function tryParseShadowList(raw: string): ShadowLayer[] | undefined {
+  const trimmed = raw.trim();
+  if (trimmed.length === 0) return undefined;
+  const layers = splitTopLevel(trimmed).map((l) => l.trim());
+  const parsedLayers: ShadowLayer[] = [];
+  for (const layer of layers) {
+    if (layer.length === 0) return undefined;
+    const parsed = tryParseShadowLayer(layer);
+    if (!parsed) return undefined;
+    parsedLayers.push(parsed);
+  }
+  return parsedLayers;
+}
+
 export function parseShadow(
   raw: string,
   fallback: string,
   variable: string
 ): ParseResult<ShadowLayer[]> {
-  const layers = splitTopLevel(raw.trim())
-    .map((l) => l.trim())
-    .filter((l) => l.length > 0);
-  const parsedLayers: ShadowLayer[] = [];
-  let allValid = layers.length > 0;
-  for (const layer of layers) {
-    const parsed = tryParseShadowLayer(layer);
-    if (!parsed) {
-      allValid = false;
-      break;
-    }
-    parsedLayers.push(parsed);
-  }
-  if (allValid) return { value: parsedLayers, diagnostics: [] };
+  const parsedLayers = tryParseShadowList(raw);
+  if (parsedLayers) return { value: parsedLayers, diagnostics: [] };
 
-  const fallbackLayers = splitTopLevel(fallback.trim())
-    .map((l) => l.trim())
-    .filter((l) => l.length > 0)
-    .map(tryParseShadowLayer)
-    .filter((l): l is ShadowLayer => !!l);
+  const fallbackLayers = tryParseShadowList(fallback) ?? [];
   return {
     value: fallbackLayers,
     diagnostics: [
@@ -537,19 +552,67 @@ export function parseShadow(
 // calc (syntax-only; caller dereferences + parses the operand as a length)
 // ---------------------------------------------------------------------------
 
-const CALC_RE = /^calc\(\s*(-?(?:\d+\.?\d*|\.\d+))\s*\*\s*\((.+)\)\s*\)$/;
-
 export interface ParsedCalc {
   multiplier: number;
   operand: string;
 }
 
-export function parseCalc(raw: string): ParsedCalc | null {
-  const match = raw.trim().match(CALC_RE);
-  if (!match || match[1] === undefined || match[2] === undefined) {
-    return null;
+/** Full-match check: is `text` exactly one balanced `var(...)` call? */
+function isBalancedVarCall(text: string): boolean {
+  const trimmed = text.trim();
+  if (!trimmed.startsWith('var(')) return false;
+  const closeIndex = findMatchingParenIndex(trimmed, 3);
+  return closeIndex === trimmed.length - 1;
+}
+
+function findMatchingParenIndex(text: string, openIndex: number): number {
+  let depth = 0;
+  for (let i = openIndex; i < text.length; i++) {
+    if (text[i] === '(') depth++;
+    else if (text[i] === ')') {
+      depth--;
+      if (depth === 0) return i;
+    }
   }
-  return { multiplier: Number(match[1]), operand: match[2].trim() };
+  return -1;
+}
+
+/**
+ * Parses exactly the SCSS-emitted calc dialect:
+ * `calc(<float> * (<operand>))` where `<operand>` is precisely ONE
+ * balanced group containing either a `var(...)` call (dereferenced by the
+ * caller) or a length token (`<float>px` / bare `0`). Anything else —
+ * addition, a missing operand group, an unbalanced or multi-group operand
+ * (`(8px)(9px)`), a non-length non-var operand — returns null (caller
+ * falls back + diagnoses). Paren-matching is done with a scan, not a
+ * greedy regex, so unbalanced content can never sneak through as an
+ * "operand".
+ */
+export function parseCalc(raw: string): ParsedCalc | null {
+  const trimmed = raw.trim();
+  if (!trimmed.startsWith('calc(') || !trimmed.endsWith(')')) return null;
+  const outerClose = findMatchingParenIndex(trimmed, 4);
+  if (outerClose !== trimmed.length - 1) return null;
+  const inner = trimmed.slice(5, outerClose);
+
+  const starIndex = inner.indexOf('*');
+  if (starIndex === -1) return null;
+  const multiplierText = inner.slice(0, starIndex).trim();
+  if (!/^-?(?:\d+\.?\d*|\.\d+)$/.test(multiplierText)) return null;
+
+  const operandPart = inner.slice(starIndex + 1).trim();
+  if (!operandPart.startsWith('(')) return null;
+  const operandClose = findMatchingParenIndex(operandPart, 0);
+  // The operand must be exactly ONE balanced group with nothing after it.
+  if (operandClose !== operandPart.length - 1) return null;
+  const operand = operandPart.slice(1, operandClose).trim();
+
+  // Operand grammar: a single balanced var() call OR a length token.
+  const operandIsValid =
+    isBalancedVarCall(operand) || tryParseLength(operand) !== undefined;
+  if (!operandIsValid) return null;
+
+  return { multiplier: Number(multiplierText), operand };
 }
 
 // ---------------------------------------------------------------------------

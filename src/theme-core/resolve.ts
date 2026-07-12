@@ -31,6 +31,7 @@ import { evaluateVarExpression, type RawVariables } from './helpers';
 import {
   parseColor,
   parseLength,
+  tryParseLength,
   parseFontWeight,
   parseKeyword,
   parseNumber,
@@ -104,7 +105,16 @@ export type HeaderBackgroundKind = 'none' | 'accent' | 'custom';
 export interface ThemeHeader {
   rawHeader: IHeader | undefined;
   headerView: 'basic' | 'advanced';
+  /** Raw classification of --sjs-header-backcolor, mirroring Cover.updateHeaderClasses' literal check — pre-dereference. */
   backgroundKind: HeaderBackgroundKind;
+  /**
+   * Whether the accent CONTEXT is active for title/description colors:
+   * `backgroundKind === 'accent'` AND neither title nor description color
+   * explicitly set (the sv-header__background-color--accent class is
+   * suppressed by any explicit color — header.ts:113-126). Distinct from
+   * `backgroundKind`, which is the raw classification alone.
+   */
+  accentContextActive: boolean;
   colors: {
     raw: {
       backgroundColor?: string;
@@ -182,9 +192,16 @@ function dereferenceEntry(
 ): string {
   const raw = rawVariables[name];
   if (raw === undefined) return '';
+  // Resolve BY NAME through the graph (`var(name)`), never by evaluating
+  // the entry's raw value as a standalone top-level expression: the
+  // standalone form treats the entry's own definition as a REFERRING
+  // expression, letting a cycle member's internal fallback revive it at
+  // the top level (codex review critical 2, end-to-end case). Through the
+  // graph, a member is guaranteed-invalid and the registry-default path
+  // below applies instead.
   const { value, diagnostics: derefDiagnostics } = evaluateVarExpression(
     rawVariables,
-    raw
+    `var(${name})`
   );
   diagnostics.push(...derefDiagnostics);
   if (value !== undefined) return value;
@@ -275,23 +292,18 @@ function parseByGrammar(
 /**
  * Resolves a `calc(<n> * (<operand>))`-shaped entry to a number: the
  * operand (already fully var()-dereferenced by `dereferenceEntry`) is
- * itself parsed as a length. Falls back to the registry default
- * RE-EVALUATED post-overlay (not a pre-resolved literal) if the value
- * isn't calc-shaped and isn't a plain length either.
+ * itself parsed as a length. Returns undefined — a FAILURE signal, never
+ * a made-up 0 — when the value is neither the calc dialect with a
+ * length-resolvable operand nor a plain length; the caller then
+ * re-evaluates the registry default post-overlay (codex review major 7).
  */
-function calcOrLength(
-  value: string,
-  name: string,
-  diagnostics: ThemeDiagnostic[]
-): number | undefined {
+function calcOrLength(value: string): number | undefined {
   const calc = parseCalc(value);
   if (calc) {
-    const operandLength = parseLength(calc.operand, '0px', name);
-    diagnostics.push(...operandLength.diagnostics);
-    return calc.multiplier * operandLength.value;
+    const operand = tryParseLength(calc.operand);
+    return operand === undefined ? undefined : calc.multiplier * operand;
   }
-  const direct = parseLength(value, '0px', name);
-  return direct.diagnostics.length === 0 ? direct.value : undefined;
+  return tryParseLength(value);
 }
 
 function resolveCalcLength(
@@ -300,13 +312,14 @@ function resolveCalcLength(
   diagnostics: ThemeDiagnostic[]
 ): number {
   const dereferenced = dereferenceEntry(name, rawVariables, diagnostics);
-  const primary = calcOrLength(dereferenced, name, diagnostics);
+  const primary = calcOrLength(dereferenced);
   if (primary !== undefined) return primary;
 
-  // Neither calc-shaped nor a plain length — re-evaluate the registry
-  // default post-overlay (never a pre-resolved literal).
-  const fallbackDeref = dereferenceDefault(name, rawVariables, []);
-  const fallback = calcOrLength(fallbackDeref, name, diagnostics) ?? 0;
+  // Neither calc-shaped with a valid operand nor a plain length —
+  // re-evaluate the registry default post-overlay (never a pre-resolved
+  // literal, never a made-up 0).
+  const fallbackDeref = dereferenceDefault(name, rawVariables, diagnostics);
+  const fallback = calcOrLength(fallbackDeref) ?? 0;
   diagnostics.push({
     code: 'theme-core/invalid-calc',
     variable: name,
@@ -457,24 +470,42 @@ function classifyBackgroundKind(rawBackcolor: string): HeaderBackgroundKind {
 
 function resolveHeaderColor(
   name: string,
-  backgroundKind: HeaderBackgroundKind,
+  useAccentChain: boolean,
   theme: ITheme | undefined,
   rawVariables: RawVariables,
   diagnostics: ThemeDiagnostic[]
 ): { raw: string | undefined; resolved: ColorToken } {
   const entry = REGISTRY[name];
   const rawOverride = theme?.cssVariables?.[name];
-  const contextDefault =
-    backgroundKind === 'accent'
-      ? (entry?.accentDefault ?? entry?.default ?? 'transparent')
-      : (entry?.default ?? 'transparent');
-  const sourceValue = rawOverride ?? contextDefault;
+  const contextDefaultExpr = useAccentChain
+    ? (entry?.accentDefault ?? entry?.default ?? 'transparent')
+    : (entry?.default ?? 'transparent');
+  // Dereference the selected context default FIRST — it is a var() chain
+  // (e.g. var(--sjs-font-pagetitle-color, ...)) and must be a terminal
+  // color string before it can serve as parseColor's fallback (codex
+  // review major 8a: passing the unresolved expression produced black).
+  const contextDefaultDeref = evaluateVarExpression(
+    rawVariables,
+    contextDefaultExpr
+  );
+  const contextFallback = contextDefaultDeref.value ?? 'transparent';
+
+  if (rawOverride === undefined) {
+    const parsed = parseColor(contextFallback, contextFallback, name);
+    diagnostics.push(...contextDefaultDeref.diagnostics);
+    diagnostics.push(...parsed.diagnostics);
+    return { raw: undefined, resolved: toColorToken(parsed.value) };
+  }
+
+  // Resolve the override BY NAME through the graph (same cycle-safety
+  // rationale as dereferenceEntry — rawVariables already carries the
+  // override post-overlay).
   const { value, diagnostics: derefDiagnostics } = evaluateVarExpression(
     rawVariables,
-    sourceValue
+    `var(${name})`
   );
   diagnostics.push(...derefDiagnostics);
-  const parsed = parseColor(value ?? contextDefault, contextDefault, name);
+  const parsed = parseColor(value ?? contextFallback, contextFallback, name);
   diagnostics.push(...parsed.diagnostics);
   return { raw: rawOverride, resolved: toColorToken(parsed.value) };
 }
@@ -487,23 +518,39 @@ function resolveHeader(
   const rawBackcolor = theme?.cssVariables?.['--sjs-header-backcolor'] ?? '';
   const backgroundKind = classifyBackgroundKind(rawBackcolor);
 
+  // Raw classification (mirroring Cover.updateHeaderClasses' literal
+  // check) is NOT the same thing as the accent CONTEXT being active for
+  // title/description colors: the sv-header__background-color--accent
+  // class is only appended when backgroundColorAccent && !titleColor &&
+  // !descriptionColor (header.ts:113-126) — ANY explicit title or
+  // description color suppresses the class, so the un-overridden one
+  // falls back through the NORMAL chain (codex review major 8b).
+  const rawTitleOverride =
+    theme?.cssVariables?.['--sjs-font-headertitle-color'];
+  const rawDescriptionOverride =
+    theme?.cssVariables?.['--sjs-font-headerdescription-color'];
+  const accentContextActive =
+    backgroundKind === 'accent' &&
+    rawTitleOverride === undefined &&
+    rawDescriptionOverride === undefined;
+
   const backgroundColor = resolveHeaderColor(
     '--sjs-header-backcolor',
-    backgroundKind,
+    accentContextActive,
     theme,
     rawVariables,
     diagnostics
   );
   const titleColor = resolveHeaderColor(
     '--sjs-font-headertitle-color',
-    backgroundKind,
+    accentContextActive,
     theme,
     rawVariables,
     diagnostics
   );
   const descriptionColor = resolveHeaderColor(
     '--sjs-font-headerdescription-color',
-    backgroundKind,
+    accentContextActive,
     theme,
     rawVariables,
     diagnostics
@@ -517,6 +564,7 @@ function resolveHeader(
     rawHeader: theme?.header,
     headerView,
     backgroundKind,
+    accentContextActive,
     colors: {
       raw: {
         backgroundColor: backgroundColor.raw,
@@ -541,7 +589,7 @@ function resolveExtras(theme: ITheme | undefined): Record<string, string> {
   return extras;
 }
 
-export function resolveTheme(theme: ITheme | undefined): ResolvedTheme {
+export function resolveTheme(theme?: ITheme): ResolvedTheme {
   const diagnostics: ThemeDiagnostic[] = [];
   const rawVariables = buildRawVariables(theme);
 

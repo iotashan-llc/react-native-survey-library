@@ -16,11 +16,16 @@
  * Dereference semantics, matching the design exactly:
  *  - Bounded by graph size (memoized per name within one call), not an
  *    arbitrary hop cap — verified by the > 4-hop alias-chain test.
- *  - Cycle members are marked invalid FIRST (memoized as unresolved the
- *    moment a grey-revisit is detected), then the referring var() call's
- *    OWN fallback (if any) applies, exactly like the CSS cascade's
- *    "computed value of a custom property that's part of a cycle is the
- *    guaranteed-invalid value" rule.
+ *  - Cycle members are marked invalid FIRST: on a grey-revisit, every
+ *    variable on the active DFS stack from the revisited name onward (the
+ *    actual cycle members — a non-member that merely REFERS into the
+ *    cycle sits earlier on the stack and is spared) enters a permanent
+ *    invalid set BEFORE any fallback evaluation, and an invalid member is
+ *    never overwritten during unwind — a member's own internal
+ *    `var(--x, fallback)` fallback cannot revive it; only a REFERRING
+ *    (outside-the-cycle) expression's fallback applies. This is the CSS
+ *    cascade's "computed value of a custom property that's part of a
+ *    cycle is the guaranteed-invalid value" rule.
  *  - A `var(--x, fallback)` call's fallback is split at the first
  *    TOP-LEVEL comma (paren-aware); nested `var()` calls inside a
  *    fallback are themselves recursively dereferenced.
@@ -50,6 +55,10 @@ interface DerefContext {
   state: Map<string, VarNodeState>;
   resolved: Map<string, string | undefined>;
   diagnostics: ThemeDiagnostic[];
+  /** Active DFS stack — the chain of names currently being resolved. */
+  stack: string[];
+  /** Names proven to be cycle members: permanently guaranteed-invalid. */
+  invalid: Set<string>;
 }
 
 function findMatchingParen(text: string, openIndex: number): number {
@@ -79,15 +88,26 @@ function splitVarArgs(argsText: string): [string, string | undefined] {
 }
 
 function resolveVarName(name: string, ctx: DerefContext): string | undefined {
+  if (ctx.invalid.has(name)) return undefined;
+
   const state = ctx.state.get(name);
   if (state === 'grey') {
+    // Grey-revisit = cycle. Every name on the active DFS stack from the
+    // first occurrence of `name` onward IS a member of this cycle; a
+    // non-member that merely refers INTO the cycle sits earlier on the
+    // stack and keeps its own fallback. Mark all members invalid BEFORE
+    // any unwind so no member's internal fallback can revive it.
+    const start = ctx.stack.indexOf(name);
+    const members = ctx.stack.slice(start === -1 ? 0 : start);
+    for (const member of members) {
+      ctx.invalid.add(member);
+      ctx.resolved.set(member, undefined);
+    }
     ctx.diagnostics.push({
       code: 'theme-core/var-cycle',
       variable: name,
-      message: `cyclic variable reference involving ${name}; treated as invalid`,
+      message: `cyclic variable reference involving ${members.join(' -> ')}; all members treated as invalid`,
     });
-    ctx.state.set(name, 'black');
-    ctx.resolved.set(name, undefined);
     return undefined;
   }
   if (state === 'black') {
@@ -102,8 +122,17 @@ function resolveVarName(name: string, ctx: DerefContext): string | undefined {
   }
 
   ctx.state.set(name, 'grey');
+  ctx.stack.push(name);
   const result = substitute(raw, ctx);
+  ctx.stack.pop();
   ctx.state.set(name, 'black');
+  if (ctx.invalid.has(name)) {
+    // This name was proven a cycle member while its own value was being
+    // computed — the computed result (possibly revived via an internal
+    // fallback during unwind) must NOT overwrite guaranteed-invalid.
+    ctx.resolved.set(name, undefined);
+    return undefined;
+  }
   ctx.resolved.set(name, result);
   return result;
 }
@@ -164,6 +193,8 @@ export function evaluateVarExpression(
     state: new Map(),
     resolved: new Map(),
     diagnostics: [],
+    stack: [],
+    invalid: new Set(),
   };
   const value = substitute(expr, ctx);
   return { value, diagnostics: ctx.diagnostics };

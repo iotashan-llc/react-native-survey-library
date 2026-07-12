@@ -137,6 +137,51 @@ describe('sparse theme overlay', () => {
       )
     ).toBe(true);
   });
+
+  it('an invalid CALC OPERAND re-evaluates the derived default post-overlay — never yields 0 (codex review major 7 exact regression)', () => {
+    const resolved = resolveTheme({
+      cssVariables: {
+        '--sjs-font-size': '20px',
+        '--sjs-article-font-xx-large-fontSize': 'calc(4 * (garbage))',
+      },
+    });
+    // Default for xx-large fontSize is calc(4 * (var(--sjs-font-size, 16px)))
+    // — re-evaluated against the 20px override => 80, NOT 0.
+    expect(resolved.tokens.articleFont.xxLarge.fontSize).toBe(80);
+    expect(
+      resolved.diagnostics.some(
+        (d) => d.variable === '--sjs-article-font-xx-large-fontSize'
+      )
+    ).toBe(true);
+  });
+
+  it('a theme-introduced var() cycle invalidates all members; the token falls back to the registry default (codex review critical 2 end-to-end)', () => {
+    const resolved = resolveTheme({
+      cssVariables: {
+        '--sjs-primary-backcolor':
+          'var(--sjs-primary-backcolor-light, rgba(9, 9, 9, 1))',
+        '--sjs-primary-backcolor-light': 'var(--sjs-primary-backcolor)',
+      },
+    });
+    // The internal rgba(9,9,9,1) fallback must NOT revive the cycle member;
+    // the registry default (var(--primary, #19b394)) applies instead.
+    expect(resolved.tokens.colors.primaryBackcolor).toEqual({
+      r: 0x19,
+      g: 0xb3,
+      b: 0x94,
+      a: 1,
+      css: 'rgba(25, 179, 148, 1)',
+    });
+    expect(
+      resolved.diagnostics.some((d) => d.code === 'theme-core/var-cycle')
+    ).toBe(true);
+  });
+});
+
+describe('resolveTheme() zero-arg call (codex review minor 13)', () => {
+  it('the theme parameter is optional and a zero-arg call equals resolveTheme(undefined)', () => {
+    expect(resolveTheme()).toEqual(resolveTheme(undefined));
+  });
 });
 
 describe('header', () => {
@@ -177,6 +222,59 @@ describe('header', () => {
       headerView: 'basic',
     });
     expect(resolved.header.headerView).toBe('basic');
+  });
+
+  it('one-sided override deactivates the accent context: accent backcolor + explicit descriptionColor means titleColor uses the NORMAL chain (codex review major 8b — mirrors Cover.updateHeaderClasses gating the accent class on !titleColor && !descriptionColor)', () => {
+    const resolved = resolveTheme({
+      cssVariables: {
+        '--sjs-header-backcolor': 'var(--sjs-primary-backcolor)',
+        '--sjs-font-headerdescription-color': 'rgba(1, 2, 3, 1)',
+      },
+    });
+    // Raw classification stays accent...
+    expect(resolved.header.backgroundKind).toBe('accent');
+    // ...but the accent CONTEXT is inactive (an explicit title/description
+    // color suppresses the sv-header__background-color--accent class), so
+    // the unset titleColor resolves via the NORMAL (page-title) chain.
+    expect(resolved.header.colors.resolved.titleColor).toEqual({
+      r: 0,
+      g: 0,
+      b: 0,
+      a: 0.91,
+      css: 'rgba(0, 0, 0, 0.91)',
+    });
+    expect(resolved.header.colors.resolved.descriptionColor).toEqual({
+      r: 1,
+      g: 2,
+      b: 3,
+      a: 1,
+      css: 'rgba(1, 2, 3, 1)',
+    });
+  });
+
+  it('an INVALID explicit header color falls back to the DEREFERENCED context default, not black (codex review major 8a)', () => {
+    const resolved = resolveTheme({
+      cssVariables: {
+        '--sjs-font-headertitle-color': 'garbage-not-a-color',
+      },
+    });
+    // Normal-context default chain: var(--sjs-font-pagetitle-color,
+    // var(--sjs-general-dim-forecolor, rgba(0, 0, 0, 0.91))) — must be
+    // dereferenced before being used as the parse fallback (previously the
+    // unresolved var() expression was handed to parseColor and produced
+    // opaque black).
+    expect(resolved.header.colors.resolved.titleColor).toEqual({
+      r: 0,
+      g: 0,
+      b: 0,
+      a: 0.91,
+      css: 'rgba(0, 0, 0, 0.91)',
+    });
+    expect(
+      resolved.diagnostics.some(
+        (d) => d.variable === '--sjs-font-headertitle-color'
+      )
+    ).toBe(true);
   });
 });
 

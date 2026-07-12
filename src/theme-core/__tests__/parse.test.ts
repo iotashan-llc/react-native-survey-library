@@ -108,6 +108,16 @@ describe('parseColor', () => {
     expect(value.a).toBe(1);
     expect(diagnostics).toHaveLength(1);
   });
+
+  it('rejects DECIMAL rgb()/rgba() channels — channels must be 0-255 INTEGERS per the design grammar (no silent rounding)', () => {
+    const { value, diagnostics } = parseColor(
+      'rgba(1.5, 2, 3, 1)',
+      'rgba(9,9,9,1)',
+      'x'
+    );
+    expect(diagnostics).toHaveLength(1);
+    expect(value).toEqual({ r: 9, g: 9, b: 9, a: 1 });
+  });
 });
 
 describe('parseLength', () => {
@@ -297,6 +307,33 @@ describe('parseShadow', () => {
     );
     expect(diagnostics).toHaveLength(1);
   });
+
+  it('rejects a COLORLESS layer — never invents black (codex review major 6)', () => {
+    const { diagnostics } = parseShadow(
+      '0px 1px 2px',
+      '0px 1px 2px 0px rgba(0,0,0,0.1)',
+      'x'
+    );
+    expect(diagnostics).toHaveLength(1);
+  });
+
+  it('rejects an empty layer from a trailing comma — never silently discards', () => {
+    const { diagnostics } = parseShadow(
+      '0px 1px 2px 0px rgba(0,0,0,0.1),',
+      '0px 1px 2px 0px rgba(0,0,0,0.1)',
+      'x'
+    );
+    expect(diagnostics).toHaveLength(1);
+  });
+
+  it('rejects an empty layer from a double comma', () => {
+    const { diagnostics } = parseShadow(
+      '0px 1px 2px 0px rgba(0,0,0,0.1),,0px 2px 4px 0px rgba(0,0,0,0.2)',
+      '0px 1px 2px 0px rgba(0,0,0,0.1)',
+      'x'
+    );
+    expect(diagnostics).toHaveLength(1);
+  });
 });
 
 describe('parseCalc', () => {
@@ -318,6 +355,22 @@ describe('parseCalc', () => {
     expect(parseCalc('calc(1px + 2px)')).toBeNull();
     expect(parseCalc('calc(2 * 8px)')).toBeNull();
     expect(parseCalc('8px')).toBeNull();
+  });
+
+  it('rejects an unbalanced/multi-group operand — operand must be exactly ONE balanced group (codex review major 6)', () => {
+    expect(parseCalc('calc(2 * (8px)(9px))')).toBeNull();
+  });
+
+  it('rejects a non-length, non-var() operand — operand grammar is var-call-or-length only', () => {
+    expect(parseCalc('calc(4 * (garbage))')).toBeNull();
+    expect(parseCalc('calc(4 * (1em))')).toBeNull();
+  });
+
+  it('accepts a bare-0 operand (valid length token)', () => {
+    expect(parseCalc('calc(2 * (0))')).toEqual({
+      multiplier: 2,
+      operand: '0',
+    });
   });
 });
 
