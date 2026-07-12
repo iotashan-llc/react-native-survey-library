@@ -21,11 +21,18 @@ if [[ -z "$WORKSPACE" ]]; then
   exit 1
 fi
 
-SCHEME=$(xcodebuild -workspace "$WORKSPACE" -list | awk '/Schemes:/{flag=1;next} /^$/{flag=0} flag{print $1; exit}')
-if [[ -z "$SCHEME" ]]; then
-  echo "::error::Could not determine an Xcode scheme from ${WORKSPACE}"
+# Don't parse `xcodebuild -list`'s Schemes: section — CocoaPods shares a
+# scheme per pod target (EXConstants, ExpoModulesCore, ...) alongside the
+# app's own scheme, and `-list` sorts alphabetically, so the first line is
+# very likely a Pods sub-scheme rather than the app. The generated app
+# .xcodeproj's basename (as opposed to Pods.xcodeproj) is the app's actual
+# scheme name and is unambiguous.
+APP_PROJECT=$(find . -maxdepth 1 -name '*.xcodeproj' ! -name 'Pods.xcodeproj' | head -n1)
+if [[ -z "$APP_PROJECT" ]]; then
+  echo "::error::No app .xcodeproj found under ${APP_DIR}/ios — did expo prebuild run?"
   exit 1
 fi
+SCHEME=$(basename "$APP_PROJECT" .xcodeproj)
 
 echo "== Building ${WORKSPACE} (scheme: ${SCHEME}) for iphonesimulator, no signing =="
 xcodebuild \
