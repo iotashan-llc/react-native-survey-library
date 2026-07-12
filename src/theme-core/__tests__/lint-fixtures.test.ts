@@ -78,12 +78,46 @@ describe('ESLint enforcement — theme-core is pure TS (case: react-native impor
       code: "import { StyleSheet } from 'react-native';\nexport const s = StyleSheet.create({});\n",
       filename: OTHER_MODULE_FILENAME,
     },
+    // Non-static escape hatches (codex review minor 12) — same selector
+    // family the survey-core restriction uses.
+    {
+      name: 'require of react-native inside theme-core',
+      code: "const rn = require('react-native');\nexport default rn;\n",
+      filename: THEME_CORE_CONSUMER_FILENAME,
+    },
+    {
+      name: 'require.resolve of react-native inside theme-core',
+      code: "const p = require.resolve('react-native');\nexport default p;\n",
+      filename: THEME_CORE_CONSUMER_FILENAME,
+    },
+    {
+      name: 'dynamic import of react-native inside theme-core',
+      code: "export const pending = import('react-native');\n",
+      filename: THEME_CORE_CONSUMER_FILENAME,
+    },
+    {
+      name: 'require of a react-native subpath inside theme-core',
+      code: "const p = require('react-native/Libraries/Utilities/Platform');\nexport default p;\n",
+      filename: THEME_CORE_CONSUMER_FILENAME,
+    },
   ];
 
   let results: LintResult[];
 
   beforeAll(() => {
     results = runEslintChecks(cases);
+  });
+
+  it.each([
+    'require of react-native inside theme-core',
+    'require.resolve of react-native inside theme-core',
+    'dynamic import of react-native inside theme-core',
+    'require of a react-native subpath inside theme-core',
+  ])('%s fails lint via no-restricted-syntax', (caseName) => {
+    const result = results.find((r) => r.name === caseName);
+    expect(
+      result?.messages.some((m) => m.ruleId === 'no-restricted-syntax')
+    ).toBe(true);
   });
 
   it('react-native import inside theme-core is flagged by no-restricted-imports', () => {
