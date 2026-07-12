@@ -33,6 +33,8 @@ import { resolvePlatformFromRN } from './recipes/types';
 import { reportDiagnostic } from '../diagnostics';
 import { normalizeBackground } from './background';
 import type { NormalizedBackground, BackgroundDiagnostic } from './background';
+import { EMPTY_COMPONENT_STYLES } from './overrides';
+import type { SurveyComponentStyles } from './overrides';
 
 export interface ThemeMode {
   narrow: boolean;
@@ -50,10 +52,27 @@ export interface SurveyThemeContextValue {
    * renders this -- no re-derivation needed).
    */
   normalizedBackground: NormalizedBackground;
+  /**
+   * A12 consumer per-component slot overrides (codex impl-review major 8)
+   * — components compose these LAST (`composeStyles`: recipe < theme <
+   * consumer override). Defaults to a frozen empty object.
+   */
+  styles: SurveyComponentStyles;
 }
 
 function currentPlatformBuildContext(): BuildContext {
   return { platform: resolvePlatformFromRN(Platform.OS, Platform.Version) };
+}
+
+/**
+ * The platform is a recipe BUILD input (types.ts: "every recipe build
+ * input ... participates in the cache key") — encoded into the theme-data
+ * cache key so an OS/apiLevel change can never serve stale recipes (codex
+ * impl-review major 4).
+ */
+function currentPlatformSignature(): string {
+  const platform = resolvePlatformFromRN(Platform.OS, Platform.Version);
+  return `${platform.os}|${platform.apiLevel ?? ''}`;
 }
 
 function buildThemeData(theme: ITheme | undefined): {
@@ -87,6 +106,7 @@ function makeDefaultContextValue(): SurveyThemeContextValue {
     recipes,
     normalizedBackground,
     mode: { narrow: false, rtl: I18nManager.isRTL },
+    styles: EMPTY_COMPONENT_STYLES,
   };
 }
 
@@ -145,6 +165,12 @@ export interface SurveyThemeProviderProps {
   narrow?: boolean;
   /** Explicit override for testing; defaults to `I18nManager.isRTL`. */
   rtl?: boolean;
+  /**
+   * A12 consumer per-component slot overrides. Participates in the
+   * memoized context value by IDENTITY (see overrides.ts) — hoist the
+   * object; don't inline a fresh literal per render.
+   */
+  styles?: SurveyComponentStyles;
   children?: React.ReactNode;
 }
 
@@ -162,11 +188,26 @@ interface ThemeDataCacheEntry {
   recipeDiagnostics: RecipeBuildDiagnostic[];
 }
 
+interface ContextValueCacheEntry {
+  themeData: ThemeDataCacheEntry;
+  narrow: boolean;
+  rtl: boolean;
+  styles: SurveyComponentStyles;
+  value: SurveyThemeContextValue;
+}
+
 export class SurveyThemeProvider extends React.Component<
   SurveyThemeProviderProps,
   SurveyThemeProviderState
 > {
   private cache: ThemeDataCacheEntry | undefined;
+  /**
+   * WHOLE-context-value memoization (codex impl-review major 4): a fresh
+   * value/mode object per render would invalidate every consumer on every
+   * provider render. Keyed on (theme-data cache entry identity, narrow,
+   * rtl, styles identity).
+   */
+  private contextValueCache: ContextValueCacheEntry | undefined;
   /** Deduped `(code,variable,value)` across re-resolutions, provider lifetime (design: "Diagnostics"). */
   private emittedDiagnosticKeys = new Set<string>();
 
@@ -197,7 +238,12 @@ export class SurveyThemeProvider extends React.Component<
   }
 
   private getOrBuildThemeData(): ThemeDataCacheEntry {
-    const snapshot = canonicalThemeSnapshot(this.props.theme);
+    // Platform signature prefix: the platform is a recipe BUILD input and
+    // must invalidate the cached recipes if it ever changes (codex
+    // impl-review major 4).
+    const snapshot = `${currentPlatformSignature()}::${canonicalThemeSnapshot(
+      this.props.theme
+    )}`;
     if (this.cache && this.cache.snapshot === snapshot) {
       return this.cache;
     }
@@ -263,17 +309,34 @@ export class SurveyThemeProvider extends React.Component<
     });
   }
 
-  render(): React.JSX.Element {
-    const { resolved, recipes, normalizedBackground } =
-      this.getOrBuildThemeData();
+  private getContextValue(): SurveyThemeContextValue {
+    const themeData = this.getOrBuildThemeData();
+    const { narrow, rtl } = this.state;
+    const styles = this.props.styles ?? EMPTY_COMPONENT_STYLES;
+    const cached = this.contextValueCache;
+    if (
+      cached &&
+      cached.themeData === themeData &&
+      cached.narrow === narrow &&
+      cached.rtl === rtl &&
+      cached.styles === styles
+    ) {
+      return cached.value;
+    }
     const value: SurveyThemeContextValue = {
-      resolved,
-      recipes,
-      normalizedBackground,
-      mode: { narrow: this.state.narrow, rtl: this.state.rtl },
+      resolved: themeData.resolved,
+      recipes: themeData.recipes,
+      normalizedBackground: themeData.normalizedBackground,
+      mode: { narrow, rtl },
+      styles,
     };
+    this.contextValueCache = { themeData, narrow, rtl, styles, value };
+    return value;
+  }
+
+  render(): React.JSX.Element {
     return (
-      <SurveyThemeContext.Provider value={value}>
+      <SurveyThemeContext.Provider value={this.getContextValue()}>
         {this.props.children}
       </SurveyThemeContext.Provider>
     );

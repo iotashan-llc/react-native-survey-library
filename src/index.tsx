@@ -53,4 +53,31 @@ export type {
   FontWeightValue,
 } from './theme-core/parse';
 
+// theme-rn (design: docs/design/0.7-theme-rn.md) — the provider, its
+// context, and the A12 consumer style-override surface (codex impl-review
+// major 8: the override types must be PUBLIC, not internal-only).
+export { SurveyThemeProvider, SurveyThemeContext } from './theme-rn/provider';
+export type {
+  SurveyThemeProviderProps,
+  SurveyThemeContextValue,
+  ThemeMode,
+} from './theme-rn/provider';
+export { composeStyles } from './theme-rn/recipes/types';
+export type {
+  StyleOverrideLayers,
+  RecipeBuildDiagnostic,
+  RecipeBuildPlatform,
+  BuildContext,
+} from './theme-rn/recipes/types';
+export type { Recipes } from './theme-rn/recipes';
+export type {
+  SurveyComponentStyles,
+  ItemStyleOverrides,
+  InputStyleOverrides,
+  ButtonStyleOverrides,
+  QuestionTitleStyleOverrides,
+  UnsupportedQuestionStyleOverrides,
+} from './theme-rn/overrides';
+export type { NormalizedBackground } from './theme-rn/background';
+
 export const LIBRARY_NAME = '@iotashan-llc/react-native-survey-library';

@@ -32,6 +32,7 @@ import { QuestionElementBase } from '../reactivity/QuestionElementBase';
 import type { QuestionElementBaseProps } from '../reactivity/QuestionElementBase';
 import { reportUnsupportedQuestionTypeOnce } from '../diagnostics';
 import { SurveyThemeContext } from '../theme-rn/provider';
+import { composeStyles } from '../theme-rn/recipes/types';
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'row' },
@@ -58,19 +59,28 @@ function DefaultUnsupportedPresentation(
   props: UnsupportedQuestionProps
 ): React.JSX.Element {
   const { question } = props;
-  const { recipes } = React.useContext(SurveyThemeContext);
+  const { recipes, styles: overrides } = React.useContext(SurveyThemeContext);
   const { panel, message, errorAccentBar } =
     recipes.unsupportedQuestion.fragments;
   const { title: titleRecipe } = recipes.unsupportedQuestion;
+  // A12 slot overrides compose LAST (recipe < theme < consumer override).
+  const slots = overrides.unsupportedQuestion;
   return (
     <View style={styles.row}>
-      <View style={errorAccentBar} />
-      <View style={panel} testID="unsupported-question-panel">
+      <View
+        style={composeStyles(errorAccentBar, {
+          override: slots?.errorAccentBar,
+        })}
+      />
+      <View
+        style={composeStyles(panel, { override: slots?.panel })}
+        testID="unsupported-question-panel"
+      >
         <Text style={titleRecipe.fragments.title}>
           {question.title || question.name}
         </Text>
         <Text
-          style={message}
+          style={composeStyles(message, { override: slots?.message })}
         >{`Unsupported question type: ${question.getType()}`}</Text>
       </View>
     </View>

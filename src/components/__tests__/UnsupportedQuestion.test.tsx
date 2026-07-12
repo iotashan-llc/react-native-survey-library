@@ -115,6 +115,34 @@ describe('UnsupportedQuestion', () => {
     expect(panelStyle.backgroundColor).toBe('rgba(9, 9, 9, 1)');
   });
 
+  it('A12 consumer style overrides from the provider win over recipe AND theme (codex impl-review major 8)', () => {
+    const question = createQuestion('q-override');
+    question.title = 'Override Title';
+    const { getByTestId } = render(
+      <SurveyThemeProvider
+        theme={{
+          cssVariables: { '--sjs-editor-background': 'rgba(9, 9, 9, 1)' },
+        }}
+        styles={{
+          unsupportedQuestion: { panel: { backgroundColor: 'magenta' } },
+        }}
+      >
+        {createUnsupportedQuestion(
+          { question, creator: {} },
+          { dispatchKey: 'sv-missing' }
+        )}
+      </SurveyThemeProvider>
+    );
+    const panelStyle = Object.assign(
+      {},
+      ...[getByTestId('unsupported-question-panel').props.style].flat()
+    );
+    // consumer override (magenta) beats the theme-resolved recipe value
+    expect(panelStyle.backgroundColor).toBe('magenta');
+    // the recipe base still supplies everything not overridden
+    expect(panelStyle.borderWidth).toBe(1);
+  });
+
   it('one supported sibling and one unsupported sibling both render side by side', () => {
     const supported = createQuestion('q-sib-empty', 'empty');
     const unsupported = createQuestion('q-sib-miss');

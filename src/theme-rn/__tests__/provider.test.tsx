@@ -12,6 +12,7 @@ import { render } from '@testing-library/react-native';
 import { Platform, Text } from 'react-native';
 import { SurveyThemeProvider, SurveyThemeContext } from '../provider';
 import type { SurveyThemeContextValue } from '../provider';
+import type { SurveyComponentStyles } from '../overrides';
 import { setDiagnosticHandler } from '../../diagnostics';
 import type { DiagnosticPayload } from '../../diagnostics';
 import type { ITheme } from '../../core/facade';
@@ -123,6 +124,114 @@ describe('SurveyThemeProvider — snapshot memoization', () => {
       </SurveyThemeProvider>
     );
     expect(seen[0]?.mode.rtl).toBe(true);
+  });
+});
+
+describe('SurveyThemeProvider — WHOLE context value identity (codex impl-review major 4)', () => {
+  it('re-render with unchanged inputs keeps the ENTIRE context value identity (no per-render mode/value allocation)', () => {
+    const theme: ITheme = { themeName: 'DefaultLight' };
+    const seen: SurveyThemeContextValue[] = [];
+    const { rerender } = render(
+      <SurveyThemeProvider theme={theme} narrow={false}>
+        <Consumer onValue={(v) => seen.push(v)} />
+      </SurveyThemeProvider>
+    );
+    rerender(
+      <SurveyThemeProvider theme={theme} narrow={false}>
+        <Consumer onValue={(v) => seen.push(v)} />
+      </SurveyThemeProvider>
+    );
+    expect(seen).toHaveLength(2);
+    expect(seen[0]).toBe(seen[1]);
+    expect(seen[0]?.mode).toBe(seen[1]?.mode);
+  });
+
+  it('a mode change produces a NEW context value but keeps resolved/recipes identity', () => {
+    const theme: ITheme = { themeName: 'DefaultLight' };
+    const seen: SurveyThemeContextValue[] = [];
+    const { rerender } = render(
+      <SurveyThemeProvider theme={theme} narrow={false}>
+        <Consumer onValue={(v) => seen.push(v)} />
+      </SurveyThemeProvider>
+    );
+    rerender(
+      <SurveyThemeProvider theme={theme} narrow={true}>
+        <Consumer onValue={(v) => seen.push(v)} />
+      </SurveyThemeProvider>
+    );
+    expect(seen[0]).not.toBe(seen[1]);
+    expect(seen[0]?.resolved).toBe(seen[1]?.resolved);
+    expect(seen[0]?.recipes).toBe(seen[1]?.recipes);
+  });
+
+  it('the A12 styles prop is exposed on the context and participates in the memoization (identity-keyed)', () => {
+    const theme: ITheme = { themeName: 'DefaultLight' };
+    const styles: SurveyComponentStyles = {
+      unsupportedQuestion: { panel: { backgroundColor: 'magenta' } },
+    };
+    const seen: SurveyThemeContextValue[] = [];
+    const { rerender } = render(
+      <SurveyThemeProvider theme={theme} styles={styles}>
+        <Consumer onValue={(v) => seen.push(v)} />
+      </SurveyThemeProvider>
+    );
+    // same identity -> whole value stable
+    rerender(
+      <SurveyThemeProvider theme={theme} styles={styles}>
+        <Consumer onValue={(v) => seen.push(v)} />
+      </SurveyThemeProvider>
+    );
+    // new identity -> new context value carrying the new styles
+    const styles2: SurveyComponentStyles = {
+      unsupportedQuestion: { panel: { backgroundColor: 'cyan' } },
+    };
+    rerender(
+      <SurveyThemeProvider theme={theme} styles={styles2}>
+        <Consumer onValue={(v) => seen.push(v)} />
+      </SurveyThemeProvider>
+    );
+    expect(seen[0]?.styles).toBe(styles);
+    expect(seen[0]).toBe(seen[1]);
+    expect(seen[2]).not.toBe(seen[1]);
+    expect(seen[2]?.styles).toBe(styles2);
+    // theme data untouched by a styles-only change
+    expect(seen[2]?.resolved).toBe(seen[1]?.resolved);
+    expect(seen[2]?.recipes).toBe(seen[1]?.recipes);
+  });
+
+  it('the platform signature participates in the recipe cache key: an OS/apiLevel change rebuilds recipes', () => {
+    const theme: ITheme = { themeName: 'DefaultLight' };
+    const seen: SurveyThemeContextValue[] = [];
+    const { rerender } = render(
+      <SurveyThemeProvider theme={theme}>
+        <Consumer onValue={(v) => seen.push(v)} />
+      </SurveyThemeProvider>
+    );
+    const osDescriptor = Object.getOwnPropertyDescriptor(Platform, 'OS');
+    const versionDescriptor = Object.getOwnPropertyDescriptor(
+      Platform,
+      'Version'
+    );
+    Object.defineProperty(Platform, 'OS', {
+      value: 'android',
+      configurable: true,
+    });
+    Object.defineProperty(Platform, 'Version', {
+      value: 28,
+      configurable: true,
+    });
+    try {
+      rerender(
+        <SurveyThemeProvider theme={theme}>
+          <Consumer onValue={(v) => seen.push(v)} />
+        </SurveyThemeProvider>
+      );
+    } finally {
+      if (osDescriptor) Object.defineProperty(Platform, 'OS', osDescriptor);
+      if (versionDescriptor)
+        Object.defineProperty(Platform, 'Version', versionDescriptor);
+    }
+    expect(seen[0]?.recipes).not.toBe(seen[1]?.recipes);
   });
 });
 
