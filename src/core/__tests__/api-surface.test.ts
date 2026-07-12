@@ -67,6 +67,63 @@ describe('diffApiSurface (pure, synthetic fixtures)', () => {
     expect(diff.breaking).toHaveLength(2);
     expect(diff.relevant).toEqual([]);
   });
+
+  it('classifies an accessor replaced by a non-function data property as breaking (getter logic gone)', () => {
+    const harvested: readonly HarvestedApiMember[] = [
+      { id: 'X.method', kind: 'method' },
+      { id: 'X.accessor', kind: 'data' },
+    ];
+    const diff = diffApiSurface(watchlist, harvested);
+    expect(diff.breaking).toEqual([expect.stringContaining('X.accessor')]);
+    expect(diff.relevant).toEqual([]);
+  });
+
+  it('classifies an accessor replaced by a setter-only accessor as breaking (read contract gone)', () => {
+    const harvested: readonly HarvestedApiMember[] = [
+      { id: 'X.method', kind: 'method' },
+      { id: 'X.accessor', kind: 'setter-only' },
+    ];
+    const diff = diffApiSurface(watchlist, harvested);
+    expect(diff.breaking).toEqual([expect.stringContaining('X.accessor')]);
+    expect(diff.relevant).toEqual([]);
+  });
+
+  it('classifies a method replaced by a non-function data property as breaking (call site would throw)', () => {
+    const harvested: readonly HarvestedApiMember[] = [
+      { id: 'X.method', kind: 'data' },
+      { id: 'X.accessor', kind: 'accessor' },
+    ];
+    const diff = diffApiSurface(watchlist, harvested);
+    expect(diff.breaking).toEqual([expect.stringContaining('X.method')]);
+    expect(diff.relevant).toEqual([]);
+  });
+
+  it('classifies an accessor replaced by a method as relevant, not breaking (still computed; needs review)', () => {
+    const harvested: readonly HarvestedApiMember[] = [
+      { id: 'X.method', kind: 'method' },
+      { id: 'X.accessor', kind: 'method' },
+    ];
+    const diff = diffApiSurface(watchlist, harvested);
+    expect(diff.relevant).toEqual([expect.stringContaining('X.accessor')]);
+    expect(diff.breaking).toEqual([]);
+  });
+
+  it('classifies an expected data member that became an accessor as relevant, not breaking', () => {
+    const dataWatchlist: readonly WatchedApiMember[] = [
+      {
+        id: 'X.data',
+        member: 'data',
+        expectedKind: 'data',
+        resolveHost: () => ({}),
+        reason: 'test fixture',
+      },
+    ];
+    const diff = diffApiSurface(dataWatchlist, [
+      { id: 'X.data', kind: 'accessor' },
+    ]);
+    expect(diff.relevant).toEqual([expect.stringContaining('X.data')]);
+    expect(diff.breaking).toEqual([]);
+  });
 });
 
 describe('harvestApiSurface (reflection helpers)', () => {
@@ -121,6 +178,110 @@ describe('harvestApiSurface (reflection helpers)', () => {
       { id: 'Child.inherited', kind: 'method' },
     ]);
   });
+
+  function watchOne(host: unknown): readonly WatchedApiMember[] {
+    return [
+      {
+        id: 'H.thing',
+        member: 'thing',
+        expectedKind: 'accessor',
+        resolveHost: () => host,
+        reason: 'test fixture',
+      },
+    ];
+  }
+
+  it('classifies a non-function data property as data, never accessor', () => {
+    expect(harvestApiSurface(facade, watchOne({ thing: 42 }))).toEqual([
+      { id: 'H.thing', kind: 'data' },
+    ]);
+  });
+
+  it('classifies an undefined-valued data property as data (present but valueless), never accessor', () => {
+    const host: Record<string, unknown> = {};
+    Object.defineProperty(host, 'thing', {
+      value: undefined,
+      configurable: true,
+    });
+    expect(harvestApiSurface(facade, watchOne(host))).toEqual([
+      { id: 'H.thing', kind: 'data' },
+    ]);
+  });
+
+  it('classifies a setter-without-getter as setter-only, never accessor', () => {
+    const host = {};
+    Object.defineProperty(host, 'thing', {
+      set: () => {},
+      configurable: true,
+    });
+    expect(harvestApiSurface(facade, watchOne(host))).toEqual([
+      { id: 'H.thing', kind: 'setter-only' },
+    ]);
+  });
+
+  it('classifies both getter-only and getter+setter descriptors as accessor', () => {
+    const getterOnly = {
+      get thing(): number {
+        return 1;
+      },
+    };
+    const getterAndSetter = {
+      get thing(): number {
+        return 1;
+      },
+      set thing(_v: number) {},
+    };
+    expect(harvestApiSurface(facade, watchOne(getterOnly))).toEqual([
+      { id: 'H.thing', kind: 'accessor' },
+    ]);
+    expect(harvestApiSurface(facade, watchOne(getterAndSetter))).toEqual([
+      { id: 'H.thing', kind: 'accessor' },
+    ]);
+  });
+});
+
+describe('end-to-end synthetic drift through the full harvest+diff pipeline (live-independent)', () => {
+  function watchAccessor(host: unknown): readonly WatchedApiMember[] {
+    return [
+      {
+        id: 'S.member',
+        member: 'member',
+        expectedKind: 'accessor',
+        resolveHost: () => host,
+        reason: 'test fixture',
+      },
+    ];
+  }
+
+  it('a watched accessor downgraded to an undefined-valued data property fails the gate as breaking', () => {
+    const host: Record<string, unknown> = {};
+    Object.defineProperty(host, 'member', {
+      value: undefined,
+      configurable: true,
+    });
+    const watchlist = watchAccessor(host);
+    const diff = diffApiSurface(
+      watchlist,
+      harvestApiSurface(facade, watchlist)
+    );
+    expect(diff.breaking).toEqual([expect.stringContaining('S.member')]);
+    expect(diff.relevant).toEqual([]);
+  });
+
+  it('a watched accessor downgraded to a setter-only accessor fails the gate as breaking', () => {
+    const host = {};
+    Object.defineProperty(host, 'member', {
+      set: () => {},
+      configurable: true,
+    });
+    const watchlist = watchAccessor(host);
+    const diff = diffApiSurface(
+      watchlist,
+      harvestApiSurface(facade, watchlist)
+    );
+    expect(diff.breaking).toEqual([expect.stringContaining('S.member')]);
+    expect(diff.relevant).toEqual([]);
+  });
 });
 
 describe('0.8 classified-drift gate: installed survey-core vs. the committed renderer-relevant baseline', () => {
@@ -128,6 +289,21 @@ describe('0.8 classified-drift gate: installed survey-core vs. the committed ren
     const harvested = harvestApiSurface(facade, API_SURFACE_WATCHLIST);
     const diff = diffApiSurface(API_SURFACE_WATCHLIST, harvested);
     expect(diff).toEqual({ breaking: [], relevant: [] });
+  });
+
+  it.each([
+    // Production binding: UnsupportedQuestion's default presentation reads
+    // question.title (components/UnsupportedQuestion.tsx).
+    'Question.title',
+    // Production binding: QuestionElementBase's custom-widget-ignored
+    // diagnostic reads widget.name off the discovered QuestionCustomWidget.
+    'QuestionCustomWidget.name',
+    // Design-contract observable: 0.4's subscription-leak tests are built
+    // entirely on this getter — it is the only observable of the
+    // subscribe/unsubscribe contract.
+    'Base.hasActiveUISubscribers',
+  ])('watches %s (source-inventory contract)', (id) => {
+    expect(API_SURFACE_WATCHLIST.map((entry) => entry.id)).toContain(id);
   });
 });
 

@@ -6,24 +6,44 @@
  * harvester exercised by `src/core/__tests__/api-surface.test.ts` against
  * the actually-installed survey-core.
  *
- * Scope: every survey-core class/singleton member this library's SOURCE
- * (production code and its own tests) currently imports through the
- * facade and calls — NOT a full enumeration of survey-core's public API.
- * A member outside this table is, by construction, out of scope and
- * never surfaced. Extend `API_SURFACE_WATCHLIST` whenever a later
- * milestone starts calling a NEW survey-core member.
+ * Scope: every survey-core class/singleton member this library's
+ * PRODUCTION source binds to through the facade, plus two explicitly
+ * named cross-cutting design-contract/test-infrastructure observables
+ * (`Model.getQuestionByName` — the universal fixture lookup every suite
+ * builds on; `Base.hasActiveUISubscribers` — the ONLY observable of 0.4's
+ * subscription-leak contract). NOT a full enumeration of survey-core's
+ * public API. A member outside this table is, by construction, out of
+ * scope and never surfaced. Extend `API_SURFACE_WATCHLIST` whenever a
+ * later milestone's PRODUCTION code starts binding to a NEW survey-core
+ * member.
  *
- * Deliberately excluded (see design doc): `Serializer.getChildrenClasses`
- * and `ComponentCollection.Instance.add`/`.remove`, already exercised
- * live by 0.5's `manifest.test.ts` — not duplicated here. Also excluded:
- * `IPropertyValueChangedEvent`/`IPropertyArrayValueChangedEvent` — type-only
- * interfaces, erased at runtime, nothing to reflect on; their real shape
- * is exercised behaviorally by 0.4's `SurveyElementBase.test.tsx`.
+ * Deliberately excluded (see design doc for the full rationale):
+ * - `Serializer.getChildrenClasses`, `ComponentCollection.Instance.add`/
+ *   `.remove` — already exercised live by 0.5's `manifest.test.ts`.
+ * - `IPropertyValueChangedEvent`/`IPropertyArrayValueChangedEvent` —
+ *   type-only interfaces, erased at runtime, nothing to reflect on; their
+ *   real shape is exercised behaviorally by 0.4's tests.
+ * - Fixture-CHOICE test bindings (`Question.indent`/`readOnly`,
+ *   checkbox `choices`, `Model.dispose`, the shim smoke test's
+ *   `getValue`/`setValue`/`state`/`currentPageNo`/`completeLastPage`,
+ *   `CustomWidgetCollection.Instance.clear`/`.addCustomWidget`) — each is
+ *   read/written by exactly one suite that fails loudly on its own if the
+ *   member drifts; they are interchangeable exercise props, not renderer
+ *   dependencies.
+ *
+ * Two documented limits of the mechanism itself:
+ * - `member` is a plain `string`: no current renderer binding is
+ *   Symbol-keyed. If a future binding reads a Symbol-keyed member, widen
+ *   `WatchedApiMember.member` (and the walk) then.
+ * - Signature/semantic changes WITHIN a surviving function (arity,
+ *   argument meaning, return shape) are invisible to this reflection gate
+ *   by design — the behavioral suites (0.3 shim smoke, 0.4 reactivity,
+ *   0.5 registration) own those.
  */
 import type * as FacadeModule from './facade';
 
-export type MemberKind = 'method' | 'accessor';
-export type HarvestedKind = MemberKind | 'missing';
+export type MemberKind = 'method' | 'accessor' | 'data';
+export type HarvestedKind = MemberKind | 'setter-only' | 'missing';
 
 export interface WatchedApiMember {
   /** Stable id for reporting, e.g. "Base.addOnPropertyValueChangedCallback". */
@@ -61,15 +81,27 @@ export interface ApiDriftReport {
  * `Base.prototype`; `Question.prototype.name` is owned by an intermediate
  * `SurveyElement` class) — a leaf-only check would false-positive
  * "missing" on legitimately-inherited members.
+ *
+ * Every descriptor shape maps to a DISTINCT kind — there is no default
+ * bucket. A descriptor is either an accessor descriptor (get/set) or a
+ * data descriptor (value), never both:
+ * - getter present (with or without a setter) -> `'accessor'`
+ * - setter WITHOUT a getter -> `'setter-only'` (reads yield undefined)
+ * - function-valued data descriptor -> `'method'`
+ * - any other data descriptor (including `value: undefined`) -> `'data'`
+ * A catch-all here would let a real downgrade (accessor replaced by a
+ * plain data property or a setter-only stub) masquerade as an unchanged
+ * accessor and keep the live gate green.
  */
 function descriptorKind(host: unknown, member: string): HarvestedKind {
   let current: object | null = host as object | null;
   while (current) {
     const descriptor = Object.getOwnPropertyDescriptor(current, member);
     if (descriptor) {
-      if (typeof descriptor.value === 'function') return 'method';
       if (typeof descriptor.get === 'function') return 'accessor';
-      return 'accessor';
+      if (typeof descriptor.set === 'function') return 'setter-only';
+      if (typeof descriptor.value === 'function') return 'method';
+      return 'data';
     }
     current = Object.getPrototypeOf(current);
   }
@@ -101,9 +133,23 @@ export function harvestApiSurface(
 
 /**
  * Pure classification: no survey-core access, unit-testable with
- * synthetic fixtures. `breaking` = watched member gone; `relevant` =
- * present but shape changed. Anything not on `watchlist` never appears —
- * that's the "irrelevant" bucket, enforced by scope rather than logic.
+ * synthetic fixtures. Anything not on `watchlist` never appears — that's
+ * the "irrelevant" bucket, enforced by scope rather than logic.
+ *
+ * `breaking` — the watched member's read/call contract is structurally
+ * dead at the binding site:
+ * - `'missing'`: the call/read would throw or the member is simply gone.
+ * - `'setter-only'`: every read yields undefined — the binding is dead
+ *   even though a descriptor still exists.
+ * - `'data'` where computed behavior was expected (`method`/`accessor`):
+ *   a method call site throws (`x.f is not a function`); an accessor read
+ *   silently returns a frozen/undefined value with the getter's logic
+ *   gone — silent misbehavior, treated at breaking severity.
+ *
+ * `relevant` — the member survives WITH computed/callable behavior but in
+ * a different shape (method <-> accessor swaps, or an expected plain data
+ * member that became computed): the binding won't structurally die, but a
+ * human needs to review the call/read site.
  */
 export function diffApiSurface(
   watchlist: readonly WatchedApiMember[],
@@ -116,7 +162,11 @@ export function diffApiSurface(
     const liveKind = harvestedById.get(entry.id) ?? 'missing';
     if (liveKind === entry.expectedKind) continue;
     const message = `${entry.id}: expected ${entry.expectedKind}, found ${liveKind} (${entry.reason})`;
-    if (liveKind === 'missing') {
+    const isBreaking =
+      liveKind === 'missing' ||
+      liveKind === 'setter-only' ||
+      (liveKind === 'data' && entry.expectedKind !== 'data');
+    if (isBreaking) {
       breaking.push(message);
     } else {
       relevant.push(message);
@@ -208,6 +258,36 @@ export const API_SURFACE_WATCHLIST: readonly WatchedApiMember[] = [
     expectedKind: 'accessor',
     resolveHost: (sc) => sc.Question.prototype,
     reason: 'Diagnostics payload `name` field.',
+  },
+  {
+    id: 'Question.title',
+    member: 'title',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Question.prototype,
+    reason:
+      "UnsupportedQuestion's default presentation heading (components/UnsupportedQuestion.tsx).",
+  },
+  {
+    id: 'QuestionCustomWidget.name',
+    member: 'name',
+    // A TS constructor parameter-property: an OWN data property on each
+    // INSTANCE, not on the prototype — so the host is a freshly
+    // constructed probe instance. Verified side-effect-free against the
+    // installed package: the constructor only assigns instance fields and
+    // does NOT register into CustomWidgetCollection.
+    expectedKind: 'data',
+    resolveHost: (sc) =>
+      new sc.QuestionCustomWidget('__api-surface-probe__', {}),
+    reason:
+      "QuestionElementBase's custom-widget-ignored diagnostic reads widget.name (reactivity/QuestionElementBase.tsx).",
+  },
+  {
+    id: 'Base.hasActiveUISubscribers',
+    member: 'hasActiveUISubscribers',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Base.prototype,
+    reason:
+      "The ONLY observable of 0.4's subscription-leak contract — SurveyElementBase's subscribe/unsubscribe tests are built entirely on this getter (design 0.4-reactive-base).",
   },
   {
     id: 'Model.getQuestionByName',
