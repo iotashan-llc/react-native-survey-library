@@ -190,4 +190,61 @@ describe('UnsupportedQuestion', () => {
     );
     expect(screen.getByText('Unsupported question type: text')).toBeTruthy();
   });
+
+  it('a custom renderer is presentation-only: the fixed wrapper still owns the diagnostic contract (once per (question, key), StrictMode-safe, re-emits for a second key)', () => {
+    const seen: DiagnosticPayload[] = [];
+    setDiagnosticHandler((payload) => seen.push(payload));
+    function CustomFallback(): React.JSX.Element {
+      return <Text>custom fallback</Text>;
+    }
+    setUnsupportedQuestionRenderer(CustomFallback);
+    const question = createQuestion('q-custom-diag');
+
+    const { rerender } = render(
+      <React.StrictMode>
+        {createUnsupportedQuestion(
+          { question, creator: {} },
+          { dispatchKey: 'sv-custom-key-a' }
+        )}
+      </React.StrictMode>
+    );
+    expect(screen.getByText('custom fallback')).toBeTruthy();
+    const keysAfterMount = seen
+      .filter((p) => p.code === 'unsupported-question-type')
+      .map((p) => (p as { dispatchKey: string }).dispatchKey);
+    expect(keysAfterMount).toEqual(['sv-custom-key-a']);
+
+    rerender(
+      <React.StrictMode>
+        {createUnsupportedQuestion(
+          { question, creator: {} },
+          { dispatchKey: 'sv-custom-key-b' }
+        )}
+      </React.StrictMode>
+    );
+    const keysAfterSecondKey = seen
+      .filter((p) => p.code === 'unsupported-question-type')
+      .map((p) => (p as { dispatchKey: string }).dispatchKey);
+    expect(keysAfterSecondKey).toEqual(['sv-custom-key-a', 'sv-custom-key-b']);
+  });
+
+  it('a custom renderer receives the full fallback props (question + missInfo)', () => {
+    function InspectingFallback(props: {
+      question: Question;
+      missInfo: { dispatchKey: string };
+    }): React.JSX.Element {
+      return (
+        <Text>{`${props.question.name}:${props.missInfo.dispatchKey}`}</Text>
+      );
+    }
+    setUnsupportedQuestionRenderer(InspectingFallback as never);
+    const question = createQuestion('q-props-flow');
+    render(
+      createUnsupportedQuestion(
+        { question, creator: {} },
+        { dispatchKey: 'sv-props-key' }
+      )
+    );
+    expect(screen.getByText('q-props-flow:sv-props-key')).toBeTruthy();
+  });
 });

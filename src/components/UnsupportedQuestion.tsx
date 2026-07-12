@@ -9,11 +9,18 @@
  *
  *   RNQuestionFactory.createQuestion(dispatchKey, props) ?? createUnsupportedQuestion(props, missInfo)
  *
- * Renders a neutral title + "Unsupported question type: <type>" box.
- * Theme-token styling arrives with 0.7 — there is no theme pipeline yet to
- * style against. Emits an `unsupported-question-type` diagnostic once per
- * (question, dispatchKey) from the commit phase (`componentDidMount`/
- * `componentDidUpdate`), never during render.
+ * `UnsupportedQuestion` is the FIXED lifecycle owner (review round 3): it
+ * always mounts, owning the reactive subscription (via
+ * `QuestionElementBase`) and the commit-phase `unsupported-question-type`
+ * diagnostic — once per (question, dispatchKey), never during render. The
+ * renderer configured through `setUnsupportedQuestionRenderer()` is
+ * PRESENTATION-ONLY: it renders INSIDE `renderElement()` and cannot
+ * displace the diagnostic/reactivity contract (swapping the whole
+ * component would silently lose both).
+ *
+ * Default presentation: a neutral title + "Unsupported question type:
+ * <type>" box. Theme-token styling arrives with 0.7 — there is no theme
+ * pipeline yet to style against.
  */
 import * as React from 'react';
 import { View, Text } from 'react-native';
@@ -28,6 +35,42 @@ export interface UnsupportedMissInfo {
 
 export interface UnsupportedQuestionProps extends QuestionElementBaseProps {
   missInfo: UnsupportedMissInfo;
+}
+
+/**
+ * Presentation component contract for `setUnsupportedQuestionRenderer`:
+ * receives the full fallback props; owns pixels only. Lifecycle
+ * (diagnostics + reactive subscription) stays with `UnsupportedQuestion`.
+ */
+export type UnsupportedQuestionRenderer =
+  React.ComponentType<UnsupportedQuestionProps>;
+
+function DefaultUnsupportedPresentation(
+  props: UnsupportedQuestionProps
+): React.JSX.Element {
+  const { question } = props;
+  return (
+    <View>
+      <Text>{question.title || question.name}</Text>
+      <Text>{`Unsupported question type: ${question.getType()}`}</Text>
+    </View>
+  );
+}
+
+let currentPresentation: UnsupportedQuestionRenderer =
+  DefaultUnsupportedPresentation;
+
+/**
+ * Swaps the PRESENTATION of the fallback (pass `undefined` to restore the
+ * default box). The configured component renders inside the fixed
+ * `UnsupportedQuestion` wrapper, which keeps owning the once-per-
+ * (question, dispatchKey) diagnostic and the reactive subscription — a
+ * custom renderer cannot accidentally opt out of either.
+ */
+export function setUnsupportedQuestionRenderer(
+  component: UnsupportedQuestionRenderer | undefined
+): void {
+  currentPresentation = component ?? DefaultUnsupportedPresentation;
 }
 
 export class UnsupportedQuestion extends QuestionElementBase<UnsupportedQuestionProps> {
@@ -56,32 +99,14 @@ export class UnsupportedQuestion extends QuestionElementBase<UnsupportedQuestion
   }
 
   protected renderElement(): React.JSX.Element {
-    const question = this.questionBase;
-    return (
-      <View>
-        <Text>{question.title || question.name}</Text>
-        <Text>{`Unsupported question type: ${question.getType()}`}</Text>
-      </View>
-    );
+    const Presentation = currentPresentation;
+    return <Presentation {...this.props} />;
   }
-}
-
-type UnsupportedQuestionComponent =
-  React.ComponentType<UnsupportedQuestionProps>;
-
-let currentRenderer: UnsupportedQuestionComponent = UnsupportedQuestion;
-
-/** Pass `undefined` to restore the default `UnsupportedQuestion` renderer. */
-export function setUnsupportedQuestionRenderer(
-  component: UnsupportedQuestionComponent | undefined
-): void {
-  currentRenderer = component ?? UnsupportedQuestion;
 }
 
 export function createUnsupportedQuestion(
   props: QuestionElementBaseProps,
   missInfo: UnsupportedMissInfo
 ): React.JSX.Element {
-  const Component = currentRenderer;
-  return <Component {...props} missInfo={missInfo} />;
+  return <UnsupportedQuestion {...props} missInfo={missInfo} />;
 }

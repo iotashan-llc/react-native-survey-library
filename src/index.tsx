@@ -23,6 +23,7 @@ export {
 export type {
   UnsupportedMissInfo,
   UnsupportedQuestionProps,
+  UnsupportedQuestionRenderer,
 } from './components/UnsupportedQuestion';
 export { setDiagnosticHandler, reportDiagnostic } from './diagnostics';
 export type { DiagnosticHandler, DiagnosticPayload } from './diagnostics';
