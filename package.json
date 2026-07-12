@@ -59,12 +59,13 @@
   },
   "jest": {
     "preset": "react-native",
-    "setupFilesAfterEach": [
-      "@testing-library/react-native/extend-expect"
-    ],
     "modulePathIgnorePatterns": [
       "<rootDir>/example",
       "<rootDir>/lib"
+    ],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "<rootDir>/.claude/"
     ]
   },
   "devDependencies": {
