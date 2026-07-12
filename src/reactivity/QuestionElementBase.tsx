@@ -22,7 +22,10 @@
  * mounted hook keyed to the (question, native ref) PAIR — it re-fires
  * whenever either half of the pair changes, and hooks receive the
  * CAPTURED pair as arguments (a no-arg hook reading current props could
- * not clean up the OLD model after a retarget).
+ * not clean up the OLD model after a retarget). A nullish native ref
+ * means NO mounted pair: `onQuestionMounted` only ever fires with a
+ * concrete ref, and a detach cleans the previous pair without a
+ * mount(nullish).
  */
 import type { Base, Question } from '../core/facade';
 import { SurveyElementBase } from './SurveyElementBase';
@@ -105,14 +108,32 @@ export class QuestionElementBase<
     const question = this.questionBase;
     const ref = this.nativeElementValue;
     const previous = this.mountedPair;
-    if (previous && previous[0] === question && previous[1] === ref) {
+    // A nullish native ref means there is NO mounted pair: nothing to
+    // mount (onQuestionMounted only ever fires with a concrete ref), and a
+    // detach (ref -> nullish) cleans the previous pair without a spurious
+    // mount.
+    const next: MountedPair | undefined =
+      ref === null || ref === undefined
+        ? undefined
+        : ([question, ref] as const);
+    if (previous === undefined && next === undefined) {
+      return;
+    }
+    if (
+      previous &&
+      next &&
+      previous[0] === next[0] &&
+      previous[1] === next[1]
+    ) {
       return;
     }
     if (previous) {
       this.onQuestionWillUnmount(previous[0], previous[1]);
     }
-    this.mountedPair = [question, ref] as const;
-    this.onQuestionMounted(question, ref);
+    this.mountedPair = next;
+    if (next) {
+      this.onQuestionMounted(next[0], next[1]);
+    }
   }
 
   private cleanupMountedHook(): void {

@@ -46,6 +46,17 @@ type ArrayChangedCallback = (
   options: IPropertyArrayValueChangedEvent
 ) => void;
 
+/**
+ * RN's Metro (and jest's react-native preset) define the `__DEV__` global;
+ * declared module-locally so the dev-only mount-commit warning typechecks
+ * without widening the library's ambient types.
+ */
+declare const __DEV__: boolean | undefined;
+
+function isDevMode(): boolean {
+  return typeof __DEV__ !== 'undefined' && __DEV__ === true;
+}
+
 type SubscribableElement = Base & {
   addOnPropertyValueChangedCallback?: (
     callback: PropertyChangedCallback
@@ -88,12 +99,33 @@ export class SurveyElementBase<
    */
   private subscribedElements: Base[] = [];
 
+  /**
+   * D2: stack of per-render-pass snapshots of the rendered-element list.
+   * `render()` pushes the frozen copy it incremented and pops it in
+   * `finally`; while THIS instance is rendering, `isRendering` consults
+   * the top snapshot (membership may have been mutated mid-render — the
+   * captured list is the one whose counters were raised). Outside a
+   * render pass it falls back to current membership, which is how one
+   * observer sees another observer's in-progress render on a shared model.
+   */
+  private activeRenderSnapshots: Base[][] = [];
+
+  /**
+   * True from `componentDidMount` until the next `render()` — D4's mount
+   * reconcile bump guarantees that render immediately follows the mount
+   * commit, so this flag's lifetime is exactly the mount-commit window
+   * (every sibling's componentDidMount in the same commit runs before
+   * React flushes the bump). Powers the dev-only invariant warning below.
+   */
+  private inMountCommit = false;
+
   constructor(props: P) {
     super(props);
     this.state = {} as S;
   }
 
   componentDidMount(): void {
+    this.inMountCommit = true;
     const elements = dedupe(this.getStateElements());
     this.subscribeElements(elements);
     this.subscribedElements = elements;
@@ -136,19 +168,29 @@ export class SurveyElementBase<
   }
 
   render(): React.JSX.Element | null {
+    // The mount-commit window ends when React flushes the D4 bump into
+    // this very render (see inMountCommit).
+    this.inMountCommit = false;
+
     if (!this.canRender()) {
       return null;
     }
 
-    // D2: capture the rendered-element list ONCE; a throw/suspend inside
-    // renderElement() must not strand the shared, model-scoped guard.
-    const renderedElements = this.getRenderedElements();
+    // D2: SNAPSHOT the rendered-element list (Array.from — never an alias
+    // of getRenderedElements()'s return, whose membership renderElement()
+    // could mutate in place); a throw/suspend or membership mutation
+    // inside renderElement() must not strand the shared, model-scoped
+    // guard — the finally decrements exactly the elements that were
+    // incremented.
+    const renderedElements = Array.from(this.getRenderedElements());
+    this.activeRenderSnapshots.push(renderedElements);
     this.startRendering(renderedElements);
     let result: React.JSX.Element | null;
     try {
       result = this.renderElement();
     } finally {
       this.endRendering(renderedElements);
+      this.activeRenderSnapshots.pop();
     }
 
     if (result) {
@@ -163,7 +205,14 @@ export class SurveyElementBase<
   }
 
   protected get isRendering(): boolean {
-    return this.getRenderedElements().some(
+    // While this instance renders, consult the ACTIVE snapshot (its
+    // counters are the raised ones even if membership mutated mid-render);
+    // otherwise, current membership against the shared model counters —
+    // that is how cross-observer suppression on a shared model works.
+    const snapshot =
+      this.activeRenderSnapshots[this.activeRenderSnapshots.length - 1];
+    const elements = snapshot ?? this.getRenderedElements();
+    return elements.some(
       (el) => ((el as RenderGuardHost).reactRendering ?? 0) > 0
     );
   }
@@ -237,6 +286,17 @@ export class SurveyElementBase<
     options: IPropertyValueChangedEvent
   ): void => {
     const key = options.name;
+    if (isDevMode() && this.inMountCommit) {
+      // Renderer-internal invariant (design doc, "render→commit gap"):
+      // renderer components never mutate the model from render/mount
+      // lifecycles — D4 covers app code doing this; the warning keeps our
+      // own house clean.
+      console.warn(
+        `[react-native-survey-library] Model property "${key}" changed during a mount commit. ` +
+          'Renderer components must not mutate the model from render/mount lifecycles ' +
+          '(design 0.4-reactive-base, render-to-commit gap invariant).'
+      );
+    }
     if (!this.canUsePropInState(key) || this.isRendering) return;
     this.changedStatePropNameValue = key;
     this.bumpRevision();

@@ -71,6 +71,20 @@ export class Probe extends SurveyElementBase<
 > {
   public renderElementCalls = 0;
   public propertyCallbackCount = 0;
+  /**
+   * Counts every `isRendering` consultation. Both the scalar and the array
+   * subscription handlers consult `isRendering` on every (non-denied)
+   * invocation, so this is the observable "a callback actually ran" signal
+   * for the ARRAY channel too (which has no `canUsePropInState` entry) —
+   * the design's sharp edge #1 wants array cleanup asserted via
+   * no-callback-after-unmount.
+   */
+  public isRenderingChecks = 0;
+
+  protected get isRendering(): boolean {
+    this.isRenderingChecks += 1;
+    return super.isRendering;
+  }
 
   protected getStateElements(): Base[] {
     return this.props.elements;
