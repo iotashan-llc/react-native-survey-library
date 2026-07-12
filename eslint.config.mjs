@@ -98,6 +98,28 @@ const REACT_NATIVE_RESTRICTED_SYNTAX = restrictedSyntaxSelectorsFor(
   REACT_NATIVE_IMPORT_MESSAGE
 );
 
+// Design: docs/design/1.3-width-resolver.md, "ESLint purity fence" —
+// the layout width resolver is pure TS with ZERO react-native imports
+// (numbers in, numbers out; 1.4's components own onLayout/PixelRatio).
+const LAYOUT_REACT_NATIVE_IMPORT_MESSAGE =
+  'src/layout is pure TS with zero react-native imports (design: docs/design/1.3-width-resolver.md, "ESLint purity fence"). onLayout/PixelRatio wiring belongs in the 1.4 composition components.';
+const LAYOUT_REACT_NATIVE_RESTRICTED_IMPORTS = {
+  paths: [
+    { name: 'react-native', message: LAYOUT_REACT_NATIVE_IMPORT_MESSAGE },
+  ],
+  patterns: [
+    {
+      group: ['react-native/*', 'react-native-*'],
+      message: LAYOUT_REACT_NATIVE_IMPORT_MESSAGE,
+    },
+  ],
+};
+const LAYOUT_REACT_NATIVE_RESTRICTED_SYNTAX = restrictedSyntaxSelectorsFor(
+  REACT_NATIVE_SPECIFIER_PATTERN,
+  'react-native',
+  LAYOUT_REACT_NATIVE_IMPORT_MESSAGE
+);
+
 // Design: docs/design/0.9-html-strategy.md, "Sequencing" — `@native-html/*`
 // (the HTML renderer) is importable ONLY from the secured
 // `<SanitizedHtml>` adapter (which always installs `renderersProps.a.
@@ -229,6 +251,38 @@ export default defineConfig([
         'error',
         ...SURVEY_CORE_RESTRICTED_SYNTAX,
         ...REACT_NATIVE_RESTRICTED_SYNTAX,
+        ...NATIVE_HTML_RESTRICTED_SYNTAX,
+      ],
+    },
+  },
+  {
+    // Design: docs/design/1.3-width-resolver.md, "ESLint purity fence" —
+    // src/layout is pure TS with ZERO react-native imports, same
+    // directory-wide fence as theme-core above (and the same flat-config
+    // caveat: this block REPLACES the general blocks' rule values for
+    // layout files, so the survey-core and native-html restrictions must
+    // be re-included or they'd silently vanish here).
+    files: ['src/layout/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            ...SURVEY_CORE_RESTRICTED_IMPORTS.paths,
+            ...LAYOUT_REACT_NATIVE_RESTRICTED_IMPORTS.paths,
+            ...NATIVE_HTML_RESTRICTED_IMPORTS.paths,
+          ],
+          patterns: [
+            ...SURVEY_CORE_RESTRICTED_IMPORTS.patterns,
+            ...LAYOUT_REACT_NATIVE_RESTRICTED_IMPORTS.patterns,
+            ...NATIVE_HTML_RESTRICTED_IMPORTS.patterns,
+          ],
+        },
+      ],
+      'no-restricted-syntax': [
+        'error',
+        ...SURVEY_CORE_RESTRICTED_SYNTAX,
+        ...LAYOUT_REACT_NATIVE_RESTRICTED_SYNTAX,
         ...NATIVE_HTML_RESTRICTED_SYNTAX,
       ],
     },
