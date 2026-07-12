@@ -28,20 +28,31 @@
  * mount(nullish).
  *
  * ALSO NEW for RN (design: docs/design/0.5-factories.md, "Upstream shape"):
- * every commit checks `question.customWidget` once per question (gated by
- * `../diagnostics`'s module-scoped `WeakSet<Question>`) and reports a
- * `custom-widget-ignored` diagnostic if one matched. DOM custom widgets are
- * won't-support in RN — the widget is never honored, the question renders
- * via its normal dispatch key regardless — this is diagnostic-only, never a
- * render-affecting branch (unlike upstream's customWidget
- * shouldComponentUpdate carve-out, which stays unported per 0.4 D3).
- * Reading `customWidget` triggers core's widget-discovery scan, which is
- * benign (a no-op / cached lookup) when no widgets are registered.
+ * the commit phase checks `question.customWidget` ONCE per question — a
+ * module-scoped attempted-check `WeakSet<Question>` is recorded BEFORE the
+ * read, so even a throw never re-runs discovery — and reports a
+ * `custom-widget-ignored` diagnostic if a widget matched. DOM custom
+ * widgets are won't-support in RN — the widget is never honored, the
+ * question renders via its normal dispatch key regardless — this is
+ * diagnostic-only, never a render-affecting branch (unlike upstream's
+ * customWidget shouldComponentUpdate carve-out, which stays unported per
+ * 0.4 D3). Reading `customWidget` triggers core's widget-discovery scan,
+ * which runs CONSUMER callbacks (`widgetIsLoaded`/`isFit` — survey-core
+ * question.ts:1274-1282, questionCustomWidgets.ts:33-35); the read is
+ * wrapped in try/catch so a throwing consumer callback is contained
+ * (logged once) and can never break a supported question's commit.
  */
 import type { Base, Question } from '../core/facade';
 import { reportCustomWidgetIgnoredOnce } from '../diagnostics';
 import { SurveyElementBase } from './SurveyElementBase';
 import type { SurveyElementBaseState } from './SurveyElementBase';
+
+/**
+ * Questions whose customWidget discovery has already been ATTEMPTED (not
+ * necessarily succeeded) — recorded before the read so a throwing consumer
+ * callback is still only attempted once per question.
+ */
+const customWidgetCheckAttempted = new WeakSet<Question>();
 
 export interface QuestionElementBaseProps {
   question: Question;
@@ -160,7 +171,20 @@ export class QuestionElementBase<
   private checkCustomWidgetIgnored(): void {
     const question = this.questionBase;
     if (!question) return;
-    const widget = question.customWidget;
+    if (customWidgetCheckAttempted.has(question)) return;
+    customWidgetCheckAttempted.add(question);
+    let widget: Question['customWidget'];
+    try {
+      widget = question.customWidget;
+    } catch (error) {
+      // Contained: the getter runs consumer widgetIsLoaded/isFit callbacks
+      // — a throw there must never break a supported question's commit.
+      console.error(
+        '[react-native-survey-library] customWidget discovery threw; continuing without the diagnostic',
+        error
+      );
+      return;
+    }
     if (!widget) return;
     reportCustomWidgetIgnoredOnce(question, {
       code: 'custom-widget-ignored',

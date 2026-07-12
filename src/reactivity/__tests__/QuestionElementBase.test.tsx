@@ -520,4 +520,72 @@ describe('QuestionElementBase: ignored-customWidget diagnostic', () => {
       2
     );
   });
+
+  it('a throwing consumer isFit during widget discovery is contained: the supported question still renders, error logged, no diagnostic emitted', () => {
+    // question.customWidget runs consumer widgetIsLoaded/isFit callbacks
+    // (survey-core question.ts:1274-1282, questionCustomWidgets.ts:33-35)
+    // — a throw there must never break a supported question's commit.
+    CustomWidgetCollection.Instance.addCustomWidget({
+      name: 'throwing-widget',
+      isFit: () => {
+        throw new Error('consumer isFit boom');
+      },
+    });
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const seen: DiagnosticPayload[] = [];
+      setDiagnosticHandler((payload) => seen.push(payload));
+      const question = createQuestion('q-throwing-isfit');
+
+      expect(() =>
+        render(
+          <DiagnosticProbe
+            testID="widget-throw"
+            question={question}
+            creator={{}}
+          />
+        )
+      ).not.toThrow();
+      expect(screen.getByTestId('widget-throw').props.children).toBe('probe');
+      expect(
+        errorSpy.mock.calls.some((call) =>
+          String(call[0]).includes('customWidget discovery threw')
+        )
+      ).toBe(true);
+      expect(
+        seen.filter((p) => p.code === 'custom-widget-ignored')
+      ).toHaveLength(0);
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
+
+  it('the widget-discovery check runs once per question, even across probes and even after a contained throw', () => {
+    let fitCalls = 0;
+    CustomWidgetCollection.Instance.addCustomWidget({
+      name: 'counting-throwing-widget',
+      isFit: () => {
+        fitCalls += 1;
+        throw new Error('consumer isFit boom');
+      },
+    });
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const question = createQuestion('q-once-attempted');
+
+      const { rerender } = render(
+        <DiagnosticProbe testID="once-1" question={question} creator={{}} />
+      );
+      rerender(
+        <DiagnosticProbe testID="once-1" question={question} creator={{}} />
+      );
+      render(
+        <DiagnosticProbe testID="once-2" question={question} creator={{}} />
+      );
+
+      expect(fitCalls).toBe(1);
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
 });
