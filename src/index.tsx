@@ -48,6 +48,7 @@ export type {
   ResolvedScrollTarget,
   ScrollHostHandle,
   ScrollHostViewport,
+  ScrollRequestInfo,
   TargetMeasurement,
 } from './lifecycle/types';
 

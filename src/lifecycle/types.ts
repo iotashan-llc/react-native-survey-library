@@ -17,6 +17,21 @@ import type { View } from 'react-native';
 import type { Base, PageModel, PanelModel, Question } from '../core/facade';
 
 /**
+ * Consumer-facing scroll consultation (design doc, piece 2 "Consumer
+ * parity" — the "1.1-level event prop that the bridge consults"). 1.1's
+ * `<Survey onScrollToElement>` prop is built on this seam.
+ */
+export interface ScrollRequestInfo {
+  /** The model whose handle the bridge resolved (page when falling back). */
+  element: Base;
+  /** Non-null = focus intent (the request came from a question focus). */
+  question: Question | null;
+  page: PageModel | null;
+  /** True when the exact target was unregistered and its page matched. */
+  viaPageFallback: boolean;
+}
+
+/**
  * Models that may own a registered native container. Keyed by model
  * INSTANCE (never by name — names are not unique across pages/panels and
  * a model swap must not leak stale handles).
@@ -129,4 +144,14 @@ export interface LifecycleBridgeOptions {
   scrollSettleMs?: number;
   /** Subtracted from the measured target y (sticky header room). Default 0. */
   topInset?: number;
+  /**
+   * Consulted before every native scroll (design doc, "Consumer
+   * parity"). Return `false` to suppress the NATIVE SCROLL ONLY —
+   * focus-intent completion STILL RUNS on suppression (focusFirst /
+   * a11yFocus + `question.focusIn()`; pinned semantics: web's closest
+   * analog is "scroll suppressed but focus happens"). Return `true` (or
+   * omit the callback) for the normal scroll path. A throwing callback
+   * is contained (logged) and treated as `true`.
+   */
+  onScrollRequest?: (info: ScrollRequestInfo) => boolean;
 }
