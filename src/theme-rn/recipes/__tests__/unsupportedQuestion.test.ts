@@ -24,6 +24,17 @@ describe('buildUnsupportedQuestionRecipe — formulas from resolved tokens', () 
     expect(recipe.fragments.message.lineHeight).toBe(24);
   });
 
+  it('message lineHeight tracks the EDITOR font-size token, not the base font-size (codex impl-review major 5)', () => {
+    const custom = resolveTheme({
+      cssVariables: { '--sjs-font-editorfont-size': '20px' },
+    });
+    const customRecipe = buildUnsupportedQuestionRecipe(custom);
+    expect(customRecipe.fragments.message.lineHeight).toBe(30);
+    expect(customRecipe.fragments.message.lineHeight).toBe(
+      custom.tokens.typography.editorLineHeight
+    );
+  });
+
   it('errorAccentBar: 3dp, special-red', () => {
     expect(recipe.fragments.errorAccentBar.width).toBe(3);
   });

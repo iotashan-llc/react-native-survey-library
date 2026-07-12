@@ -25,6 +25,18 @@ describe('buildInputRecipe — formulas from resolved tokens', () => {
     expect(recipe.fragments.base.fontWeight).toBe('400');
   });
 
+  it('base lineHeight tracks the EDITOR font-size token, not the base font-size (codex impl-review major 5: identical at defaults, diverges under override)', () => {
+    const custom = resolveTheme({
+      cssVariables: { '--sjs-font-editorfont-size': '20px' },
+    });
+    const customRecipe = buildInputRecipe(custom, iosCtx);
+    // editorLineHeight = 1.5 x 20 = 30; the base-font path would say 24.
+    expect(customRecipe.fragments.base.lineHeight).toBe(30);
+    expect(customRecipe.fragments.base.lineHeight).toBe(
+      custom.tokens.typography.editorLineHeight
+    );
+  });
+
   it('borderRadius = editorpanel corner radius token (4 default)', () => {
     expect(recipe.fragments.base.borderRadius).toBe(4);
   });
@@ -40,17 +52,22 @@ describe('buildInputRecipe — formulas from resolved tokens', () => {
     expect(preview.borderBottomWidth).toBe(1);
   });
 
-  it('characterCounter: fontSize 16, lineHeight 24, right=16, bottom=12', () => {
+  it('characterCounter: fontSize 16, lineHeight 24, end=16 (logical, RTL-aware), bottom=12', () => {
     const counter = recipe.fragments.characterCounter;
     expect(counter.fontSize).toBe(16);
     expect(counter.lineHeight).toBe(24);
-    expect(counter.right).toBe(16);
+    expect(counter.end).toBe(16);
+    expect((counter as { right?: number }).right).toBeUndefined();
     expect(counter.bottom).toBe(12);
   });
 
-  it('focused reserved end padding: normal=calcSize(8)=64, big=calcSize(11)=88', () => {
-    expect(recipe.fragments.focusedCounterPadding.paddingRight).toBe(64);
-    expect(recipe.fragments.focusedCounterPaddingBig.paddingRight).toBe(88);
+  it('focused reserved END padding (logical, RTL-aware): normal=calcSize(8)=64, big=calcSize(11)=88 (codex impl-review major 7)', () => {
+    expect(recipe.fragments.focusedCounterPadding.paddingEnd).toBe(64);
+    expect(recipe.fragments.focusedCounterPaddingBig.paddingEnd).toBe(88);
+    expect(
+      (recipe.fragments.focusedCounterPadding as { paddingRight?: number })
+        .paddingRight
+    ).toBeUndefined();
   });
 });
 

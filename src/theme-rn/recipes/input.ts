@@ -70,7 +70,11 @@ export function buildInputRecipe(
     base: {
       paddingVertical: calcSize(resolved, 1.5),
       paddingHorizontal: calcSize(resolved, 2),
-      lineHeight: calcLineHeight(resolved, 1.5),
+      // EDITOR line-height token (1.5 x editor font-size) — NOT the
+      // base-font calcLineHeight path; identical at defaults, diverges
+      // under a theme overriding only one of the two font-size tokens
+      // (fixture header; codex impl-review major 5).
+      lineHeight: resolved.tokens.typography.editorLineHeight,
       fontFamily: resolved.tokens.typography.editor.fontFamily || undefined,
       fontWeight: String(
         resolved.tokens.typography.editor.fontWeight
@@ -130,14 +134,17 @@ export function buildInputRecipe(
         sink
       ).css,
       position: 'absolute',
-      right: calcSize(resolved, 2),
+      // Logical END offset/padding (RTL-aware; codex impl-review major 7)
+      // — RN resolves start/end per I18nManager.isRTL at layout, so RTL
+      // needs no separate fragment.
+      end: calcSize(resolved, 2),
       bottom: calcSize(resolved, 1.5),
     },
     focusedCounterPadding: {
-      paddingRight: calcSize(resolved, 8),
+      paddingEnd: calcSize(resolved, 8),
     },
     focusedCounterPaddingBig: {
-      paddingRight: calcSize(resolved, 11),
+      paddingEnd: calcSize(resolved, 11),
     },
     disabledReserved: {
       opacity: 0.25,

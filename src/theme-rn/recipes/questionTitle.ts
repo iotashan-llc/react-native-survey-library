@@ -63,7 +63,12 @@ export function buildQuestionTitleRecipe(
       opacity: 0.7,
     },
     requiredMark: {
-      color: resolveColorVar(resolved, '--sjs-special-red-forecolor', sink).css,
+      // Upstream: `.sd-question__required-text { color: $red }` =
+      // --sjs-special-red (sd-question.scss:136-138) — NOT the
+      // -forecolor token, which is the ON-red foreground (default white)
+      // and would render the mark invisible on light themes (codex
+      // impl-review major 7).
+      color: resolveColorVar(resolved, '--sjs-special-red', sink).css,
     },
     number: {
       fontSize: calcFontSize(resolved, 0.75),
@@ -72,7 +77,10 @@ export function buildQuestionTitleRecipe(
         .css,
       paddingTop: calcSize(resolved, 0.625),
       paddingBottom: calcSize(resolved, 0.375),
-      paddingRight: calcSize(resolved, 1),
+      // Logical END padding (fixture: "number.paddingEnd") — RN resolves
+      // start/end per I18nManager.isRTL at layout, so RTL needs no
+      // separate fragment (codex impl-review major 7).
+      paddingEnd: calcSize(resolved, 1),
     },
     numberGutter: {
       width: calcSize(resolved, 5),

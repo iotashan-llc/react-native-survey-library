@@ -174,7 +174,10 @@ export function buildItemRecipe(
       gap: calcSize(resolved, 1),
     },
     description: {
-      paddingLeft: calcSize(resolved, 4),
+      // Logical START padding (RTL-aware; codex impl-review major 7) —
+      // the fixture's "description.paddingLeft" is web-LTR phrasing; RN's
+      // start/end resolve per I18nManager.isRTL at layout.
+      paddingStart: calcSize(resolved, 4),
     },
     labelDisabledReserved: {
       opacity: 0.25,

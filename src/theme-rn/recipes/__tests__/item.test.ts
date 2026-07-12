@@ -45,9 +45,12 @@ describe('buildItemRecipe — formulas from resolved tokens (0.7-metrics-fixture
     expect(recipe.fragments.rowMode.columnGap).toBe(32);
   });
 
-  it('labelStack gap = calcSize(1) = 8; description paddingLeft = calcSize(4) = 32', () => {
+  it('labelStack gap = calcSize(1) = 8; description paddingStart = calcSize(4) = 32 (RN logical prop — RTL-aware; codex impl-review major 7)', () => {
     expect(recipe.fragments.labelStack.gap).toBe(8);
-    expect(recipe.fragments.description.paddingLeft).toBe(32);
+    expect(recipe.fragments.description.paddingStart).toBe(32);
+    expect(
+      (recipe.fragments.description as { paddingLeft?: number }).paddingLeft
+    ).toBeUndefined();
   });
 
   it('a non-default theme flows into the formulas (base-unit override changes container padding)', () => {

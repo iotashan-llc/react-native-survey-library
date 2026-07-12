@@ -8,7 +8,7 @@
 import { StyleSheet } from 'react-native';
 import type { ViewStyle, TextStyle } from 'react-native';
 import type { ResolvedTheme } from '../../theme-core/resolve';
-import { calcSize, calcLineHeight, resolveColorVar } from './tokenLookup';
+import { calcSize, resolveColorVar } from './tokenLookup';
 import {
   buildQuestionTitleRecipe,
   type QuestionTitleRecipe,
@@ -41,7 +41,10 @@ export function buildUnsupportedQuestionRecipe(
     message: {
       fontFamily: resolved.tokens.typography.editor.fontFamily || undefined,
       fontSize: resolved.tokens.typography.editor.fontSize,
-      lineHeight: calcLineHeight(resolved, 1.5),
+      // Editor line-height token, not the base-font path (codex
+      // impl-review major 5) — the fixture's "editor-font 16/24" is the
+      // editor family both dimensions.
+      lineHeight: resolved.tokens.typography.editorLineHeight,
       color: resolveColorVar(resolved, '--sjs-general-forecolor', sink).css,
     },
     errorAccentBar: {

@@ -10,6 +10,7 @@ import {
   selectQuestionTitleStyles,
 } from '../questionTitle';
 import type { QuestionTitleVariant } from '../questionTitle';
+import { resolveColorVar } from '../tokenLookup';
 
 const resolved = resolveTheme(undefined);
 
@@ -27,10 +28,22 @@ describe('buildQuestionTitleRecipe — formulas from resolved tokens', () => {
     expect(recipe.fragments.number.lineHeight).toBe(16);
   });
 
-  it('number paddingTop=calcSize(0.625)=5, paddingBottom=calcSize(0.375)=3, paddingEnd(paddingRight)=calcSize(1)=8', () => {
+  it('number paddingTop=calcSize(0.625)=5, paddingBottom=calcSize(0.375)=3, paddingEnd=calcSize(1)=8 (RN logical prop — RTL-aware; codex impl-review major 7)', () => {
     expect(recipe.fragments.number.paddingTop).toBe(5);
     expect(recipe.fragments.number.paddingBottom).toBe(3);
-    expect(recipe.fragments.number.paddingRight).toBe(8);
+    expect(recipe.fragments.number.paddingEnd).toBe(8);
+    expect(
+      (recipe.fragments.number as { paddingRight?: number }).paddingRight
+    ).toBeUndefined();
+  });
+
+  it('requiredMark color = --sjs-special-red (upstream sd-question.scss:136 `$red`), NOT the white -forecolor token (codex impl-review major 7)', () => {
+    expect(recipe.fragments.requiredMark.color).toBe(
+      resolveColorVar(resolved, '--sjs-special-red').css
+    );
+    expect(recipe.fragments.requiredMark.color).not.toBe(
+      resolveColorVar(resolved, '--sjs-special-red-forecolor').css
+    );
   });
 
   it('number gutter is a fixed 40dp width (calcSize(5))', () => {
