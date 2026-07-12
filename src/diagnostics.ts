@@ -90,13 +90,41 @@ export interface SanitizedHtmlLinkPressDroppedPayload {
   reason: string;
 }
 
+/** Emitted (once per resolved key — dedupe owned by
+ * `components/icon-resolution.ts`) when an icon name resolves to no raw
+ * SVG in any source (consumer registries, bundled V2 set). The component
+ * renders null — never throws (design:
+ * docs/design/1.5-icon-actionbutton.md, invariant-9 spirit). */
+export interface UnknownIconPayload {
+  code: 'unknown-icon';
+  /** The name as passed to the component/Action model, pre-resolution. */
+  iconName: string;
+  /** The canonical unprefixed registry key it resolved to. */
+  resolvedKey: string;
+}
+
+/** Forwarded from `sanitizeIconSvg`'s returned diagnostics — once per raw
+ * string (the sanitize cache and this dedupe share that key). Same
+ * decoupling as `SanitizedHtmlDiagnosticPayload`: `sanitizeCode` is
+ * `SvgSanitizeDiagnosticCode` from `./security/sanitize-svg`, typed as
+ * `string` here so this shared module has no dependency on the security
+ * module's internals. */
+export interface IconSvgDiagnosticPayload {
+  code: 'icon-svg-diagnostic';
+  sanitizeCode: string;
+  iconKey: string;
+  detail: string;
+}
+
 export type DiagnosticPayload =
   | UnsupportedQuestionTypePayload
   | CustomWidgetIgnoredPayload
   | UnknownCssTokenPayload
   | ThemeDiagnosticPayload
   | SanitizedHtmlDiagnosticPayload
-  | SanitizedHtmlLinkPressDroppedPayload;
+  | SanitizedHtmlLinkPressDroppedPayload
+  | UnknownIconPayload
+  | IconSvgDiagnosticPayload;
 
 export type DiagnosticHandler = (payload: DiagnosticPayload) => void;
 

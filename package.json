@@ -84,7 +84,7 @@
       "<rootDir>/.claude/"
     ],
     "transformIgnorePatterns": [
-      "node_modules/(?!((jest-)?react-native|@react-native(-community)?|@native-html|stringify-entities|character-entities-html4|character-entities-legacy)/)"
+      "node_modules/(?!((jest-)?react-native|@react-native(-community)?|@native-html|react-native-svg|stringify-entities|character-entities-html4|character-entities-legacy)/)"
     ]
   },
   "devDependencies": {
@@ -109,6 +109,7 @@
     "react": "19.2.3",
     "react-native": "0.86.0",
     "react-native-builder-bob": "^0.43.0",
+    "react-native-svg": "^15.15.5",
     "react-test-renderer": "19.2.3",
     "survey-core": "2.5.33",
     "turbo": "^2.9.16",
@@ -118,6 +119,7 @@
     "@native-html/render": "~1.0.3",
     "react": "*",
     "react-native": "*",
+    "react-native-svg": ">=15.0.0 <16.0.0",
     "survey-core": ">=2.5.32 <2.6.0"
   },
   "workspaces": [
@@ -158,6 +160,7 @@
     "version": "0.63.0"
   },
   "dependencies": {
+    "dom-serializer": "^2.0.0",
     "domhandler": "^5.0.3",
     "htmlparser2": "^10.1.0"
   }

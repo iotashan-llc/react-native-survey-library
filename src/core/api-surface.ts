@@ -319,4 +319,144 @@ export const API_SURFACE_WATCHLIST: readonly WatchedApiMember[] = [
     reason:
       'Test cleanup for renderer-route registration (register-all.test.tsx).',
   },
+  // Task 1.5 (design: docs/design/1.5-icon-actionbutton.md) — RNIcon's
+  // resolution seams. Runtime kinds verified against the installed
+  // v2.5.33 package.
+  // The two module-LEVEL members resolve off the facade namespace, where
+  // babel's `export * from 'survey-core'` re-exports every binding as a
+  // GETTER — so their kind through the facade is 'accessor', regardless
+  // of the member's kind on survey-core's own exports object.
+  {
+    id: 'getIconNameFromProxy',
+    member: 'getIconNameFromProxy',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc,
+    reason:
+      "RNIcon's ONLY name-mapping path (settings.customIcons remap + renamedIcons legacy/size-suffix mapping) — components/icon-resolution.ts.",
+  },
+  {
+    id: 'SvgThemeSets',
+    member: 'SvgThemeSets',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc,
+    reason:
+      'Raw consumer icon strings stored by SvgRegistry.registerIcon — icon-resolution lookup path 1.',
+  },
+  {
+    id: 'settings.customIcons',
+    member: 'customIcons',
+    expectedKind: 'data',
+    resolveHost: (sc) => sc.settings,
+    reason:
+      'The icon-replacement remap getIconNameFromProxy consults; documented consumer surface for icon swaps.',
+  },
+  {
+    id: 'SvgIconRegistry.icons',
+    member: 'icons',
+    expectedKind: 'data',
+    resolveHost: (sc) => sc.SvgRegistry,
+    reason:
+      'Symbol-wrapped consumer registrations — icon-resolution lookup path 2 (unwrapped back to <svg>).',
+  },
+  {
+    id: 'SvgIconRegistry.onIconsChanged',
+    member: 'onIconsChanged',
+    expectedKind: 'data',
+    resolveHost: (sc) => sc.SvgRegistry,
+    reason:
+      "RNIcon's registry-liveness subscription (late registerIcons() calls re-render mounted icons).",
+  },
+  {
+    id: 'EventBase.add',
+    member: 'add',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.EventBase.prototype,
+    reason: "RNIcon's onIconsChanged subscribe (componentDidMount).",
+  },
+  {
+    id: 'EventBase.remove',
+    member: 'remove',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.EventBase.prototype,
+    reason: "RNIcon's onIconsChanged unsubscribe (componentWillUnmount).",
+  },
+  // Task 1.5 — the Action members ActionButton binds (accessor entries
+  // resolve through BaseAction.prototype via descriptorKind's prototype
+  // walk).
+  {
+    id: 'Action.doAction',
+    member: 'doAction',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.Action.prototype,
+    reason: "ActionButton's onPress path (DOM-shaped event shim).",
+  },
+  {
+    id: 'Action.doMouseDown',
+    member: 'doMouseDown',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.Action.prototype,
+    reason:
+      "ActionButton's onPressIn path (mouse-vs-keyboard focus-origin bookkeeping).",
+  },
+  {
+    id: 'Action.doFocus',
+    member: 'doFocus',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.Action.prototype,
+    reason: "ActionButton's onFocus path.",
+  },
+  {
+    id: 'Action.getTooltip',
+    member: 'getTooltip',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.Action.prototype,
+    reason:
+      "ActionButton's accessibilityLabel (tooltip || title — covers icon-only buttons).",
+  },
+  {
+    id: 'Action.hasTitle',
+    member: 'hasTitle',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Action.prototype,
+    reason:
+      'Model-owned show-title logic ActionButton consumes (never re-derives, invariant 6).',
+  },
+  {
+    id: 'Action.isVisible',
+    member: 'isVisible',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Action.prototype,
+    reason:
+      "ActionButton's canRender gate (visible && mode not in {popup, removed}).",
+  },
+  {
+    id: 'Action.disabled',
+    member: 'disabled',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Action.prototype,
+    reason:
+      "ActionButton's Pressable disabled + accessibilityState.disabled + recipe disabled input.",
+  },
+  {
+    id: 'Action.iconName',
+    member: 'iconName',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Action.prototype,
+    reason: "ActionButton's RNIcon dispatch.",
+  },
+  {
+    id: 'Action.iconSize',
+    member: 'iconSize',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Action.prototype,
+    reason: "ActionButton's RNIcon size (model default 24).",
+  },
+  {
+    id: 'Action.locTitle',
+    member: 'locTitle',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Action.prototype,
+    reason:
+      "ActionButton's title rendering through the inherited renderLocString seam (1.6 upgrades it).",
+  },
 ];

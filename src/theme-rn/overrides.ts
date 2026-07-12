@@ -48,6 +48,13 @@ export interface UnsupportedQuestionStyleOverrides {
   errorAccentBar?: StyleProp<ViewStyle>;
 }
 
+/** Task 1.5 (`ActionButton`): the Pressable container, the icon, and the title text. */
+export interface ActionButtonStyleOverrides {
+  container?: StyleProp<ViewStyle>;
+  icon?: StyleProp<ViewStyle>;
+  title?: StyleProp<TextStyle>;
+}
+
 /** Per-component slot overrides distributed via `SurveyThemeProvider`'s `styles` prop and `SurveyThemeContext`'s `styles` field. */
 export interface SurveyComponentStyles {
   item?: ItemStyleOverrides;
@@ -55,6 +62,7 @@ export interface SurveyComponentStyles {
   button?: ButtonStyleOverrides;
   questionTitle?: QuestionTitleStyleOverrides;
   unsupportedQuestion?: UnsupportedQuestionStyleOverrides;
+  actionButton?: ActionButtonStyleOverrides;
 }
 
 /** Stable default so an omitted `styles` prop never churns the provider's memoized context value. */

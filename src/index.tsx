@@ -77,8 +77,34 @@ export type {
   ButtonStyleOverrides,
   QuestionTitleStyleOverrides,
   UnsupportedQuestionStyleOverrides,
+  ActionButtonStyleOverrides,
 } from './theme-rn/overrides';
 export type { NormalizedBackground } from './theme-rn/background';
+
+// Task 1.5 (design: docs/design/1.5-icon-actionbutton.md, A15 icons half)
+// — the shared icon + action-button primitives. `RNIcon` is the ONLY
+// module allowed to import `react-native-svg` (ESLint-enforced) and
+// lazy-requires it, so importing the package root does not eagerly pull
+// the SVG renderer in.
+export { RNIcon, RNICON_DEFAULT_SIZE } from './components/RNIcon';
+export type { RNIconProps } from './components/RNIcon';
+export {
+  ActionButton,
+  partitionButtonStyles,
+  nativeActionEvent,
+} from './components/ActionButton';
+export type {
+  ActionButtonProps,
+  PartitionedButtonStyles,
+} from './components/ActionButton';
+export { resolveIconXml } from './components/icon-resolution';
+export type { ResolvedIconXml } from './components/icon-resolution';
+export { sanitizeIconSvg } from './security/sanitize-svg';
+export type {
+  SanitizeSvgResult,
+  SvgSanitizeDiagnostic,
+  SvgSanitizeDiagnosticCode,
+} from './security/sanitize-svg';
 
 // Security (design: docs/design/0.9-html-strategy.md, A10/A11) — the
 // central URI policy and the single-parse HTML sanitizer AST pipeline.
