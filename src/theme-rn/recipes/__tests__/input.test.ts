@@ -2,9 +2,11 @@
  * Text-input recipe tests (docs/design/0.7-metrics-fixture.md, "Text input
  * -- sd-input.scss"). 9 fixture-locked legal states.
  */
+import { StyleSheet } from 'react-native';
 import { resolveTheme } from '../../../theme-core/resolve';
 import { buildInputRecipe, selectInputStyles } from '../input';
 import type { InputVariant } from '../input';
+import type { RecipeBuildDiagnostic } from '../types';
 
 const resolved = resolveTheme(undefined);
 const iosCtx = { platform: { os: 'ios' as const } };
@@ -96,6 +98,93 @@ describe('selectInputStyles — 9 fixture-locked legal states', () => {
     );
     const flat = Object.assign({}, ...styles);
     expect(flat.borderRadius).toBe(0);
+  });
+});
+
+describe('shadow channel plumbing — elevation applied, no-shadow states clear BOTH (codex impl-review major 1)', () => {
+  const android21 = { platform: { os: 'android' as const, apiLevel: 21 } };
+
+  it('Android <28: base carries the mapper elevation (boxShadow undefined)', () => {
+    const recipe = buildInputRecipe(resolved, android21);
+    const flat = StyleSheet.flatten(recipe.fragments.base);
+    expect(flat.boxShadow).toBeUndefined();
+    expect(typeof flat.elevation).toBe('number');
+    expect(flat.elevation).toBeGreaterThan(0);
+  });
+
+  it('Android <28: focused carries the focus-ring elevation', () => {
+    const recipe = buildInputRecipe(resolved, android21);
+    const flat = StyleSheet.flatten(recipe.fragments.focused);
+    expect(typeof flat.elevation).toBe('number');
+  });
+
+  it('readOnly clears BOTH channels (boxShadow [] and elevation 0) so no tier leaks a shadow', () => {
+    for (const ctx of [iosCtx, android21]) {
+      const recipe = buildInputRecipe(resolved, ctx);
+      const flat = StyleSheet.flatten([
+        recipe.fragments.base,
+        recipe.fragments.readOnly,
+      ]);
+      expect(flat.boxShadow).toEqual([]);
+      expect(flat.elevation).toBe(0);
+    }
+  });
+
+  it('preview clears BOTH channels', () => {
+    for (const ctx of [iosCtx, android21]) {
+      const recipe = buildInputRecipe(resolved, ctx);
+      const flat = StyleSheet.flatten([
+        recipe.fragments.base,
+        recipe.fragments.preview,
+      ]);
+      expect(flat.boxShadow).toEqual([]);
+      expect(flat.elevation).toBe(0);
+    }
+  });
+
+  it('Android 28: inset inner shadow is dropped and the diagnostic reaches the BuildContext sink with the token variable', () => {
+    const diagnostics: RecipeBuildDiagnostic[] = [];
+    buildInputRecipe(resolved, {
+      platform: { os: 'android', apiLevel: 28 },
+      diagnostics,
+    });
+    const dropped = diagnostics.filter(
+      (d) => d.code === 'theme-rn/android-shadow-inset-dropped'
+    );
+    expect(dropped.length).toBeGreaterThan(0);
+    expect(dropped[0]?.variable).toBe('--sjs-shadow-inner');
+  });
+
+  it('Android <28: elevation-fallback diagnostics reach the sink', () => {
+    const diagnostics: RecipeBuildDiagnostic[] = [];
+    buildInputRecipe(resolved, {
+      platform: { os: 'android', apiLevel: 21 },
+      diagnostics,
+    });
+    expect(
+      diagnostics.some(
+        (d) => d.code === 'theme-rn/android-shadow-elevation-fallback'
+      )
+    ).toBe(true);
+  });
+
+  it('iOS: zero android shadow diagnostics', () => {
+    const diagnostics: RecipeBuildDiagnostic[] = [];
+    buildInputRecipe(resolved, { platform: { os: 'ios' }, diagnostics });
+    expect(
+      diagnostics.filter((d) => d.code.startsWith('theme-rn/android'))
+    ).toEqual([]);
+  });
+
+  it('an invalid color-var override surfaces its diagnostic through the same sink (registry-aware lookup)', () => {
+    const broken = resolveTheme({
+      cssVariables: { '--sjs-editor-background': 'not-a-color' },
+    });
+    const diagnostics: RecipeBuildDiagnostic[] = [];
+    buildInputRecipe(broken, { platform: { os: 'ios' }, diagnostics });
+    expect(
+      diagnostics.some((d) => d.variable === '--sjs-editor-background')
+    ).toBe(true);
   });
 });
 

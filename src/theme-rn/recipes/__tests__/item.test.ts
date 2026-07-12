@@ -4,9 +4,13 @@
  * Legal-state tuples are LOCKED exactly per the fixture's enumeration
  * (round-2: "the implementer's selector map enumerates EXACTLY these").
  */
+import { StyleSheet } from 'react-native';
 import { resolveTheme } from '../../../theme-core/resolve';
 import { buildItemRecipe, selectItemStyles, selectIconFill } from '../item';
 import type { ItemVariant } from '../item';
+import { toBoxShadow, composeShadowLayers } from '../../shadows';
+import { resolveColorVar } from '../tokenLookup';
+import type { RecipeBuildDiagnostic } from '../types';
 
 const resolved = resolveTheme(undefined);
 const iosCtx = { platform: { os: 'ios' as const } };
@@ -52,6 +56,73 @@ describe('buildItemRecipe — formulas from resolved tokens (0.7-metrics-fixture
     });
     const customRecipe = buildItemRecipe(custom, iosCtx);
     expect(customRecipe.fragments.container.paddingVertical).toBe(15);
+  });
+});
+
+describe('item decorator shadow composition — inner base, innerReset+ring focus, checked clears (codex impl-review major 1; sd-item.scss:9-47)', () => {
+  const recipe = buildItemRecipe(resolved, iosCtx);
+
+  it('decorator base carries --sjs-shadow-inner verbatim (sd-item.scss: box-shadow: $shadow-inner, ...)', () => {
+    expect(recipe.fragments.decoratorBase.boxShadow).toEqual(
+      toBoxShadow(resolved.tokens.shadows.inner)
+    );
+  });
+
+  it('decorator focused composes innerReset + 2dp primary ring (sd-item.scss:46: $shadow-inner-reset, 0 0 0 2px $primary)', () => {
+    const expected = toBoxShadow(
+      composeShadowLayers(resolved.tokens.shadows.innerReset, [
+        {
+          inset: false,
+          offsetX: 0,
+          offsetY: 0,
+          blurRadius: 0,
+          spreadRadius: 2,
+          color: resolveColorVar(resolved, '--sjs-primary-backcolor'),
+        },
+      ])
+    );
+    expect(recipe.fragments.decoratorFocused.boxShadow).toEqual(expected);
+  });
+
+  it('decorator checked clears BOTH shadow channels (sd-item.scss:40: box-shadow: none)', () => {
+    const flat = StyleSheet.flatten([
+      recipe.fragments.decoratorBase,
+      recipe.fragments.decoratorChecked,
+    ]);
+    expect(flat.boxShadow).toEqual([]);
+    expect(flat.elevation).toBe(0);
+  });
+
+  it('decorator readOnly/preview clear BOTH channels on every tier', () => {
+    for (const ctx of [
+      iosCtx,
+      { platform: { os: 'android' as const, apiLevel: 21 } },
+    ]) {
+      const r = buildItemRecipe(resolved, ctx);
+      for (const fragment of [
+        r.fragments.decoratorReadOnly,
+        r.fragments.decoratorPreview,
+      ]) {
+        const flat = StyleSheet.flatten([r.fragments.decoratorBase, fragment]);
+        expect(flat.boxShadow).toEqual([]);
+        expect(flat.elevation).toBe(0);
+      }
+    }
+  });
+
+  it('Android <28: decorator base carries elevation; shadow diagnostics reach the sink', () => {
+    const diagnostics: RecipeBuildDiagnostic[] = [];
+    const r = buildItemRecipe(resolved, {
+      platform: { os: 'android', apiLevel: 21 },
+      diagnostics,
+    });
+    const flat = StyleSheet.flatten(r.fragments.decoratorBase);
+    expect(typeof flat.elevation).toBe('number');
+    expect(
+      diagnostics.some(
+        (d) => d.code === 'theme-rn/android-shadow-elevation-fallback'
+      )
+    ).toBe(true);
   });
 });
 

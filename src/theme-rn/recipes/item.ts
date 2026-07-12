@@ -10,7 +10,8 @@ import { StyleSheet } from 'react-native';
 import type { ViewStyle, TextStyle } from 'react-native';
 import type { ResolvedTheme } from '../../theme-core/resolve';
 import { calcSize, calcCornerRadius, resolveColorVar } from './tokenLookup';
-import { mapShadowForPlatform } from '../shadows';
+import { mapShadowForPlatform, composeShadowLayers } from '../shadows';
+import { reportShadowResult } from './types';
 import type { BuildContext } from './types';
 
 export interface ItemVariant {
@@ -62,20 +63,34 @@ export function buildItemRecipe(
   resolved: ResolvedTheme,
   buildCtx: BuildContext
 ): ItemRecipe {
+  const sink = buildCtx.diagnostics;
   const decoratorSize = calcSize(resolved, 3);
+  // Base decorator carries the inner shadow verbatim (sd-item.scss:20:
+  // `box-shadow: $shadow-inner, 0 0 0 0px $primary` — the 0-spread primary
+  // layer is a web transition anchor, invisible; not carried per the
+  // fixture's no-transition policy).
+  const innerShadow = mapShadowForPlatform(
+    resolved.tokens.shadows.inner,
+    buildCtx.platform
+  );
+  reportShadowResult(buildCtx, '--sjs-shadow-inner', innerShadow);
+  // Focus = innerReset + 2dp primary ring (sd-item.scss:46:
+  // `box-shadow: $shadow-inner-reset, 0 0 0 2px $primary`) — composed,
+  // not the bare ring (codex impl-review major 1).
   const focusRing = mapShadowForPlatform(
-    [
+    composeShadowLayers(resolved.tokens.shadows.innerReset, [
       {
         inset: false,
         offsetX: 0,
         offsetY: 0,
         blurRadius: 0,
         spreadRadius: 2,
-        color: resolveColorVar(resolved, '--sjs-primary-backcolor'),
+        color: resolveColorVar(resolved, '--sjs-primary-backcolor', sink),
       },
-    ],
+    ]),
     buildCtx.platform
   );
+  reportShadowResult(buildCtx, '--sjs-shadow-inner-reset', focusRing);
 
   const fragments = StyleSheet.create({
     container: {
@@ -89,7 +104,10 @@ export function buildItemRecipe(
       height: decoratorSize,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: resolveColorVar(resolved, '--sjs-editor-background').css,
+      backgroundColor: resolveColorVar(resolved, '--sjs-editor-background', sink)
+        .css,
+      boxShadow: innerShadow.boxShadow,
+      elevation: innerShadow.elevation,
     },
     decoratorRadiusCheckbox: {
       borderRadius: calcCornerRadius(resolved, 0.5),
@@ -98,29 +116,44 @@ export function buildItemRecipe(
       borderRadius: decoratorSize / 2,
     },
     decoratorChecked: {
-      backgroundColor: resolveColorVar(resolved, '--sjs-primary-backcolor').css,
+      backgroundColor: resolveColorVar(resolved, '--sjs-primary-backcolor', sink)
+        .css,
+      // sd-item.scss:40: `.sd-item--checked .sd-item__decorator { box-shadow: none }`
+      boxShadow: [],
+      elevation: 0,
     },
     decoratorReadOnly: {
-      backgroundColor: resolveColorVar(resolved, '--sjs-general-backcolor-dark')
-        .css,
+      backgroundColor: resolveColorVar(
+        resolved,
+        '--sjs-general-backcolor-dark',
+        sink
+      ).css,
       boxShadow: [],
+      elevation: 0,
     },
     decoratorPreview: {
       backgroundColor: 'transparent',
       boxShadow: [],
+      elevation: 0,
     },
     decoratorError: {
-      backgroundColor: resolveColorVar(resolved, '--sjs-special-red-light').css,
+      backgroundColor: resolveColorVar(resolved, '--sjs-special-red-light', sink)
+        .css,
     },
     decoratorFocused: {
-      backgroundColor: resolveColorVar(resolved, '--sjs-question-background')
-        .css,
+      backgroundColor: resolveColorVar(
+        resolved,
+        '--sjs-question-background',
+        sink
+      ).css,
       boxShadow: focusRing.boxShadow,
+      elevation: focusRing.elevation,
     },
     decoratorPressed: {
       backgroundColor: resolveColorVar(
         resolved,
-        '--sjs-general-backcolor-dim-dark'
+        '--sjs-general-backcolor-dim-dark',
+        sink
       ).css,
     },
     label: {
@@ -130,7 +163,8 @@ export function buildItemRecipe(
       ) as TextStyle['fontWeight'],
       fontSize: resolved.tokens.typography.editor.fontSize,
       lineHeight: resolved.tokens.typography.editorLineHeight,
-      color: resolveColorVar(resolved, '--sjs-font-questiontitle-color').css,
+      color: resolveColorVar(resolved, '--sjs-font-questiontitle-color', sink)
+        .css,
     },
     rowMode: {
       flexDirection: 'row',
@@ -152,12 +186,17 @@ export function buildItemRecipe(
     iconSize: calcSize(resolved, 2),
     iconFills: {
       unchecked: 'transparent',
-      checked: resolveColorVar(resolved, '--sjs-primary-forecolor').css,
-      checkedFocused: resolveColorVar(resolved, '--sjs-primary-backcolor').css,
-      checkedReadOnly: resolveColorVar(resolved, '--sjs-general-forecolor').css,
-      checkedDisabledReserved: resolveColorVar(resolved, '--sjs-border-default')
+      checked: resolveColorVar(resolved, '--sjs-primary-forecolor', sink).css,
+      checkedFocused: resolveColorVar(resolved, '--sjs-primary-backcolor', sink)
         .css,
-      preview: resolveColorVar(resolved, '--sjs-general-forecolor').css,
+      checkedReadOnly: resolveColorVar(resolved, '--sjs-general-forecolor', sink)
+        .css,
+      checkedDisabledReserved: resolveColorVar(
+        resolved,
+        '--sjs-border-default',
+        sink
+      ).css,
+      preview: resolveColorVar(resolved, '--sjs-general-forecolor', sink).css,
     },
   };
 }

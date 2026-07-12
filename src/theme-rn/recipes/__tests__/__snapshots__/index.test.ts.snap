@@ -29,6 +29,7 @@ exports[`curated recipe golden snapshots ContrastLight: recipes build to a stabl
           },
         ],
         "color": "rgba(0, 0, 0, 1)",
+        "elevation": undefined,
         "fontFamily": undefined,
         "fontSize": 16,
         "fontWeight": "600",
@@ -67,6 +68,7 @@ exports[`curated recipe golden snapshots ContrastLight: recipes build to a stabl
             "spreadDistance": 2,
           },
         ],
+        "elevation": undefined,
       },
       "pressedDefault": {
         "backgroundColor": "rgba(255, 216, 77, 1)",
@@ -102,6 +104,7 @@ exports[`curated recipe golden snapshots ContrastLight: recipes build to a stabl
           },
         ],
         "color": "rgba(0, 0, 0, 1)",
+        "elevation": undefined,
         "fontFamily": undefined,
         "fontSize": 16,
         "fontWeight": "400",
@@ -150,6 +153,7 @@ exports[`curated recipe golden snapshots ContrastLight: recipes build to a stabl
             "spreadDistance": 2,
           },
         ],
+        "elevation": undefined,
       },
       "focusedCounterPadding": {
         "paddingRight": 64,
@@ -163,12 +167,14 @@ exports[`curated recipe golden snapshots ContrastLight: recipes build to a stabl
         "borderBottomWidth": 1,
         "borderRadius": 0,
         "boxShadow": [],
+        "elevation": 0,
         "paddingHorizontal": 0,
       },
       "readOnly": {
         "backgroundColor": "rgba(255, 216, 77, 1)",
         "boxShadow": [],
         "color": "rgba(0, 0, 0, 1)",
+        "elevation": 0,
       },
     },
   },
@@ -183,12 +189,33 @@ exports[`curated recipe golden snapshots ContrastLight: recipes build to a stabl
       "decoratorBase": {
         "alignItems": "center",
         "backgroundColor": "rgba(255, 216, 77, 1)",
+        "boxShadow": [
+          {
+            "blurRadius": 0,
+            "color": "rgba(0, 0, 0, 1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 2,
+          },
+          {
+            "blurRadius": 0,
+            "color": "rgba(0, 0, 0, 1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": -2,
+            "spreadDistance": 2,
+          },
+        ],
+        "elevation": undefined,
         "height": 24,
         "justifyContent": "center",
         "width": 24,
       },
       "decoratorChecked": {
         "backgroundColor": "rgba(0, 0, 0, 1)",
+        "boxShadow": [],
+        "elevation": 0,
       },
       "decoratorError": {
         "backgroundColor": "rgba(229, 10, 62, 0.1)",
@@ -202,9 +229,26 @@ exports[`curated recipe golden snapshots ContrastLight: recipes build to a stabl
             "inset": false,
             "offsetX": 0,
             "offsetY": 0,
+            "spreadDistance": 0,
+          },
+          {
+            "blurRadius": 0,
+            "color": "rgba(0, 0, 0, 1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 0,
+          },
+          {
+            "blurRadius": 0,
+            "color": "rgba(0, 0, 0, 1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
             "spreadDistance": 2,
           },
         ],
+        "elevation": undefined,
       },
       "decoratorPressed": {
         "backgroundColor": "rgba(255, 216, 77, 1)",
@@ -212,6 +256,7 @@ exports[`curated recipe golden snapshots ContrastLight: recipes build to a stabl
       "decoratorPreview": {
         "backgroundColor": "transparent",
         "boxShadow": [],
+        "elevation": 0,
       },
       "decoratorRadiusCheckbox": {
         "borderRadius": 2,
@@ -222,6 +267,7 @@ exports[`curated recipe golden snapshots ContrastLight: recipes build to a stabl
       "decoratorReadOnly": {
         "backgroundColor": "rgba(255, 216, 77, 1)",
         "boxShadow": [],
+        "elevation": 0,
       },
       "description": {
         "paddingLeft": 32,
@@ -371,6 +417,7 @@ exports[`curated recipe golden snapshots DefaultLight: recipes build to a stable
           },
         ],
         "color": "rgba(25, 179, 148, 1)",
+        "elevation": undefined,
         "fontFamily": undefined,
         "fontSize": 16,
         "fontWeight": "600",
@@ -409,6 +456,7 @@ exports[`curated recipe golden snapshots DefaultLight: recipes build to a stable
             "spreadDistance": 2,
           },
         ],
+        "elevation": undefined,
       },
       "pressedDefault": {
         "backgroundColor": "rgba(248, 248, 248, 1)",
@@ -436,6 +484,7 @@ exports[`curated recipe golden snapshots DefaultLight: recipes build to a stable
           },
         ],
         "color": "rgba(0, 0, 0, 0.91)",
+        "elevation": undefined,
         "fontFamily": undefined,
         "fontSize": 16,
         "fontWeight": "400",
@@ -476,6 +525,7 @@ exports[`curated recipe golden snapshots DefaultLight: recipes build to a stable
             "spreadDistance": 2,
           },
         ],
+        "elevation": undefined,
       },
       "focusedCounterPadding": {
         "paddingRight": 64,
@@ -489,12 +539,14 @@ exports[`curated recipe golden snapshots DefaultLight: recipes build to a stable
         "borderBottomWidth": 1,
         "borderRadius": 0,
         "boxShadow": [],
+        "elevation": 0,
         "paddingHorizontal": 0,
       },
       "readOnly": {
         "backgroundColor": "rgba(248, 248, 248, 1)",
         "boxShadow": [],
         "color": "rgba(0, 0, 0, 0.91)",
+        "elevation": 0,
       },
     },
   },
@@ -509,12 +561,25 @@ exports[`curated recipe golden snapshots DefaultLight: recipes build to a stable
       "decoratorBase": {
         "alignItems": "center",
         "backgroundColor": "rgba(249, 249, 249, 1)",
+        "boxShadow": [
+          {
+            "blurRadius": 2,
+            "color": "rgba(0, 0, 0, 0.15)",
+            "inset": true,
+            "offsetX": 0,
+            "offsetY": 1,
+            "spreadDistance": 0,
+          },
+        ],
+        "elevation": undefined,
         "height": 24,
         "justifyContent": "center",
         "width": 24,
       },
       "decoratorChecked": {
         "backgroundColor": "rgba(25, 179, 148, 1)",
+        "boxShadow": [],
+        "elevation": 0,
       },
       "decoratorError": {
         "backgroundColor": "rgba(229, 10, 62, 0.1)",
@@ -524,6 +589,14 @@ exports[`curated recipe golden snapshots DefaultLight: recipes build to a stable
         "boxShadow": [
           {
             "blurRadius": 0,
+            "color": "rgba(0, 0, 0, 0.15)",
+            "inset": true,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 0,
+          },
+          {
+            "blurRadius": 0,
             "color": "rgba(25, 179, 148, 1)",
             "inset": false,
             "offsetX": 0,
@@ -531,6 +604,7 @@ exports[`curated recipe golden snapshots DefaultLight: recipes build to a stable
             "spreadDistance": 2,
           },
         ],
+        "elevation": undefined,
       },
       "decoratorPressed": {
         "backgroundColor": "rgba(243, 243, 243, 1)",
@@ -538,6 +612,7 @@ exports[`curated recipe golden snapshots DefaultLight: recipes build to a stable
       "decoratorPreview": {
         "backgroundColor": "transparent",
         "boxShadow": [],
+        "elevation": 0,
       },
       "decoratorRadiusCheckbox": {
         "borderRadius": 2,
@@ -548,6 +623,7 @@ exports[`curated recipe golden snapshots DefaultLight: recipes build to a stable
       "decoratorReadOnly": {
         "backgroundColor": "rgba(248, 248, 248, 1)",
         "boxShadow": [],
+        "elevation": 0,
       },
       "description": {
         "paddingLeft": 32,
@@ -713,6 +789,7 @@ exports[`curated recipe golden snapshots LayeredDark: recipes build to a stable 
           },
         ],
         "color": "rgba(164, 127, 243, 1)",
+        "elevation": undefined,
         "fontFamily": undefined,
         "fontSize": 16,
         "fontWeight": "600",
@@ -767,6 +844,7 @@ exports[`curated recipe golden snapshots LayeredDark: recipes build to a stable 
             "spreadDistance": 2,
           },
         ],
+        "elevation": undefined,
       },
       "pressedDefault": {
         "backgroundColor": "rgba(46, 47, 58, 1)",
@@ -802,6 +880,7 @@ exports[`curated recipe golden snapshots LayeredDark: recipes build to a stable 
           },
         ],
         "color": "rgba(213, 215, 238, 1)",
+        "elevation": undefined,
         "fontFamily": undefined,
         "fontSize": 16,
         "fontWeight": "400",
@@ -850,6 +929,7 @@ exports[`curated recipe golden snapshots LayeredDark: recipes build to a stable 
             "spreadDistance": 2,
           },
         ],
+        "elevation": undefined,
       },
       "focusedCounterPadding": {
         "paddingRight": 64,
@@ -863,12 +943,14 @@ exports[`curated recipe golden snapshots LayeredDark: recipes build to a stable 
         "borderBottomWidth": 1,
         "borderRadius": 0,
         "boxShadow": [],
+        "elevation": 0,
         "paddingHorizontal": 0,
       },
       "readOnly": {
         "backgroundColor": "rgba(46, 47, 58, 1)",
         "boxShadow": [],
         "color": "rgba(213, 215, 238, 1)",
+        "elevation": 0,
       },
     },
   },
@@ -883,12 +965,33 @@ exports[`curated recipe golden snapshots LayeredDark: recipes build to a stable 
       "decoratorBase": {
         "alignItems": "center",
         "backgroundColor": "rgba(32, 33, 43, 1)",
+        "boxShadow": [
+          {
+            "blurRadius": 0,
+            "color": "rgba(255, 255, 255, 0.03)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 1,
+          },
+          {
+            "blurRadius": 4,
+            "color": "rgba(0, 0, 0, 0.2)",
+            "inset": true,
+            "offsetX": 0,
+            "offsetY": 1,
+            "spreadDistance": 0,
+          },
+        ],
+        "elevation": undefined,
         "height": 24,
         "justifyContent": "center",
         "width": 24,
       },
       "decoratorChecked": {
         "backgroundColor": "rgba(164, 127, 243, 1)",
+        "boxShadow": [],
+        "elevation": 0,
       },
       "decoratorError": {
         "backgroundColor": "rgba(254, 76, 108, 0.1)",
@@ -898,6 +1001,22 @@ exports[`curated recipe golden snapshots LayeredDark: recipes build to a stable 
         "boxShadow": [
           {
             "blurRadius": 0,
+            "color": "rgba(255, 255, 255, 0.03)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 0,
+          },
+          {
+            "blurRadius": 0,
+            "color": "rgba(0, 0, 0, 0.2)",
+            "inset": true,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 0,
+          },
+          {
+            "blurRadius": 0,
             "color": "rgba(164, 127, 243, 1)",
             "inset": false,
             "offsetX": 0,
@@ -905,6 +1024,7 @@ exports[`curated recipe golden snapshots LayeredDark: recipes build to a stable 
             "spreadDistance": 2,
           },
         ],
+        "elevation": undefined,
       },
       "decoratorPressed": {
         "backgroundColor": "rgba(37, 38, 48, 1)",
@@ -912,6 +1032,7 @@ exports[`curated recipe golden snapshots LayeredDark: recipes build to a stable 
       "decoratorPreview": {
         "backgroundColor": "transparent",
         "boxShadow": [],
+        "elevation": 0,
       },
       "decoratorRadiusCheckbox": {
         "borderRadius": 2,
@@ -922,6 +1043,7 @@ exports[`curated recipe golden snapshots LayeredDark: recipes build to a stable 
       "decoratorReadOnly": {
         "backgroundColor": "rgba(46, 47, 58, 1)",
         "boxShadow": [],
+        "elevation": 0,
       },
       "description": {
         "paddingLeft": 32,
@@ -1071,6 +1193,7 @@ exports[`curated recipe golden snapshots SharpDark: recipes build to a stable sn
           },
         ],
         "color": "rgba(16, 226, 255, 1)",
+        "elevation": undefined,
         "fontFamily": undefined,
         "fontSize": 16,
         "fontWeight": "600",
@@ -1109,6 +1232,7 @@ exports[`curated recipe golden snapshots SharpDark: recipes build to a stable sn
             "spreadDistance": 2,
           },
         ],
+        "elevation": undefined,
       },
       "pressedDefault": {
         "backgroundColor": "rgba(58, 58, 58, 1)",
@@ -1136,6 +1260,7 @@ exports[`curated recipe golden snapshots SharpDark: recipes build to a stable sn
           },
         ],
         "color": "rgba(255, 255, 255, 0.78)",
+        "elevation": undefined,
         "fontFamily": undefined,
         "fontSize": 16,
         "fontWeight": "400",
@@ -1176,6 +1301,7 @@ exports[`curated recipe golden snapshots SharpDark: recipes build to a stable sn
             "spreadDistance": 2,
           },
         ],
+        "elevation": undefined,
       },
       "focusedCounterPadding": {
         "paddingRight": 64,
@@ -1189,12 +1315,14 @@ exports[`curated recipe golden snapshots SharpDark: recipes build to a stable sn
         "borderBottomWidth": 1,
         "borderRadius": 0,
         "boxShadow": [],
+        "elevation": 0,
         "paddingHorizontal": 0,
       },
       "readOnly": {
         "backgroundColor": "rgba(58, 58, 58, 1)",
         "boxShadow": [],
         "color": "rgba(255, 255, 255, 0.78)",
+        "elevation": 0,
       },
     },
   },
@@ -1209,12 +1337,25 @@ exports[`curated recipe golden snapshots SharpDark: recipes build to a stable sn
       "decoratorBase": {
         "alignItems": "center",
         "backgroundColor": "rgba(33, 33, 33, 1)",
+        "boxShadow": [
+          {
+            "blurRadius": 0,
+            "color": "rgba(255, 255, 255, 0.22)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 1,
+          },
+        ],
+        "elevation": undefined,
         "height": 24,
         "justifyContent": "center",
         "width": 24,
       },
       "decoratorChecked": {
         "backgroundColor": "rgba(16, 226, 255, 1)",
+        "boxShadow": [],
+        "elevation": 0,
       },
       "decoratorError": {
         "backgroundColor": "rgba(254, 76, 108, 0.1)",
@@ -1224,6 +1365,14 @@ exports[`curated recipe golden snapshots SharpDark: recipes build to a stable sn
         "boxShadow": [
           {
             "blurRadius": 0,
+            "color": "rgba(255, 255, 255, 0.22)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 0,
+          },
+          {
+            "blurRadius": 0,
             "color": "rgba(16, 226, 255, 1)",
             "inset": false,
             "offsetX": 0,
@@ -1231,6 +1380,7 @@ exports[`curated recipe golden snapshots SharpDark: recipes build to a stable sn
             "spreadDistance": 2,
           },
         ],
+        "elevation": undefined,
       },
       "decoratorPressed": {
         "backgroundColor": "rgba(47, 47, 47, 1)",
@@ -1238,6 +1388,7 @@ exports[`curated recipe golden snapshots SharpDark: recipes build to a stable sn
       "decoratorPreview": {
         "backgroundColor": "transparent",
         "boxShadow": [],
+        "elevation": 0,
       },
       "decoratorRadiusCheckbox": {
         "borderRadius": 2,
@@ -1248,6 +1399,7 @@ exports[`curated recipe golden snapshots SharpDark: recipes build to a stable sn
       "decoratorReadOnly": {
         "backgroundColor": "rgba(58, 58, 58, 1)",
         "boxShadow": [],
+        "elevation": 0,
       },
       "description": {
         "paddingLeft": 32,
@@ -1405,6 +1557,7 @@ exports[`curated recipe golden snapshots ThreeDimensionalLight: recipes build to
           },
         ],
         "color": "rgba(217, 74, 100, 1)",
+        "elevation": undefined,
         "fontFamily": undefined,
         "fontSize": 16,
         "fontWeight": "600",
@@ -1451,6 +1604,7 @@ exports[`curated recipe golden snapshots ThreeDimensionalLight: recipes build to
             "spreadDistance": 2,
           },
         ],
+        "elevation": undefined,
       },
       "pressedDefault": {
         "backgroundColor": "rgba(242, 242, 242, 1)",
@@ -1486,6 +1640,7 @@ exports[`curated recipe golden snapshots ThreeDimensionalLight: recipes build to
           },
         ],
         "color": "rgba(0, 0, 0, 0.91)",
+        "elevation": undefined,
         "fontFamily": undefined,
         "fontSize": 16,
         "fontWeight": "400",
@@ -1534,6 +1689,7 @@ exports[`curated recipe golden snapshots ThreeDimensionalLight: recipes build to
             "spreadDistance": 2,
           },
         ],
+        "elevation": undefined,
       },
       "focusedCounterPadding": {
         "paddingRight": 64,
@@ -1547,12 +1703,14 @@ exports[`curated recipe golden snapshots ThreeDimensionalLight: recipes build to
         "borderBottomWidth": 1,
         "borderRadius": 0,
         "boxShadow": [],
+        "elevation": 0,
         "paddingHorizontal": 0,
       },
       "readOnly": {
         "backgroundColor": "rgba(242, 242, 242, 1)",
         "boxShadow": [],
         "color": "rgba(0, 0, 0, 0.91)",
+        "elevation": 0,
       },
     },
   },
@@ -1567,12 +1725,33 @@ exports[`curated recipe golden snapshots ThreeDimensionalLight: recipes build to
       "decoratorBase": {
         "alignItems": "center",
         "backgroundColor": "rgba(255, 255, 255, 1)",
+        "boxShadow": [
+          {
+            "blurRadius": 0,
+            "color": "rgba(228, 228, 228, 1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 2,
+          },
+          {
+            "blurRadius": 0,
+            "color": "rgba(228, 228, 228, 1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": -2,
+            "spreadDistance": 2,
+          },
+        ],
+        "elevation": undefined,
         "height": 24,
         "justifyContent": "center",
         "width": 24,
       },
       "decoratorChecked": {
         "backgroundColor": "rgba(217, 74, 100, 1)",
+        "boxShadow": [],
+        "elevation": 0,
       },
       "decoratorError": {
         "backgroundColor": "rgba(229, 10, 62, 0.1)",
@@ -1582,6 +1761,22 @@ exports[`curated recipe golden snapshots ThreeDimensionalLight: recipes build to
         "boxShadow": [
           {
             "blurRadius": 0,
+            "color": "rgba(228, 228, 228, 1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 0,
+          },
+          {
+            "blurRadius": 0,
+            "color": "rgba(228, 228, 228, 1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 0,
+          },
+          {
+            "blurRadius": 0,
             "color": "rgba(217, 74, 100, 1)",
             "inset": false,
             "offsetX": 0,
@@ -1589,6 +1784,7 @@ exports[`curated recipe golden snapshots ThreeDimensionalLight: recipes build to
             "spreadDistance": 2,
           },
         ],
+        "elevation": undefined,
       },
       "decoratorPressed": {
         "backgroundColor": "rgba(242, 242, 242, 1)",
@@ -1596,6 +1792,7 @@ exports[`curated recipe golden snapshots ThreeDimensionalLight: recipes build to
       "decoratorPreview": {
         "backgroundColor": "transparent",
         "boxShadow": [],
+        "elevation": 0,
       },
       "decoratorRadiusCheckbox": {
         "borderRadius": 2,
@@ -1606,6 +1803,7 @@ exports[`curated recipe golden snapshots ThreeDimensionalLight: recipes build to
       "decoratorReadOnly": {
         "backgroundColor": "rgba(242, 242, 242, 1)",
         "boxShadow": [],
+        "elevation": 0,
       },
       "description": {
         "paddingLeft": 32,

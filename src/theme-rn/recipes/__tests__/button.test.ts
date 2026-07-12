@@ -2,9 +2,11 @@
  * Button recipe tests (docs/design/0.7-metrics-fixture.md, "Button --
  * sd-button.scss"). 13 fixture-locked legal states.
  */
+import { StyleSheet } from 'react-native';
 import { resolveTheme } from '../../../theme-core/resolve';
 import { buildButtonRecipe, selectButtonStyles } from '../button';
 import type { ButtonVariant } from '../button';
+import type { RecipeBuildDiagnostic } from '../types';
 
 const resolved = resolveTheme(undefined);
 const iosCtx = { platform: { os: 'ios' as const } };
@@ -39,6 +41,33 @@ describe('buildButtonRecipe — formulas from resolved tokens', () => {
 
   it('disabled: opacity 0.25', () => {
     expect(recipe.fragments.disabled.opacity).toBe(0.25);
+  });
+});
+
+describe('button shadow channel plumbing (codex impl-review major 1)', () => {
+  const android21 = { platform: { os: 'android' as const, apiLevel: 21 } };
+
+  it('Android <28: base carries the mapper elevation (boxShadow undefined)', () => {
+    const recipe = buildButtonRecipe(resolved, android21);
+    const flatBase = StyleSheet.flatten(recipe.fragments.base);
+    expect(flatBase.boxShadow).toBeUndefined();
+    expect(typeof flatBase.elevation).toBe('number');
+    expect(flatBase.elevation).toBeGreaterThan(0);
+  });
+
+  it('Android <28: focused carries the focus-ring elevation and the fallback diagnostic reaches the sink', () => {
+    const diagnostics: RecipeBuildDiagnostic[] = [];
+    const recipe = buildButtonRecipe(resolved, {
+      platform: { os: 'android', apiLevel: 21 },
+      diagnostics,
+    });
+    const flatFocused = StyleSheet.flatten(recipe.fragments.focused);
+    expect(typeof flatFocused.elevation).toBe('number');
+    expect(
+      diagnostics.some(
+        (d) => d.code === 'theme-rn/android-shadow-elevation-fallback'
+      )
+    ).toBe(true);
   });
 });
 

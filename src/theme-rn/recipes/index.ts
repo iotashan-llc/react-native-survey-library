@@ -34,8 +34,8 @@ export function buildRecipes(
     item: buildItemRecipe(resolved, buildCtx),
     input: buildInputRecipe(resolved, buildCtx),
     button: buildButtonRecipe(resolved, buildCtx),
-    questionTitle: buildQuestionTitleRecipe(resolved),
-    unsupportedQuestion: buildUnsupportedQuestionRecipe(resolved),
+    questionTitle: buildQuestionTitleRecipe(resolved, buildCtx),
+    unsupportedQuestion: buildUnsupportedQuestionRecipe(resolved, buildCtx),
   };
 }
 

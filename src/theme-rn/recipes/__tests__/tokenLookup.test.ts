@@ -43,3 +43,53 @@ describe('tokenLookup — formula helpers (design: 0.7-metrics-fixture.md header
     expect(token.css).toBe('rgba(9, 9, 9, 1)');
   });
 });
+
+describe('resolveColorVar — registry-aware fallback + diagnostics (codex impl-review major 6)', () => {
+  it('an INVALID override falls back to the post-overlay registry default, NOT transparent, and emits a diagnostic', () => {
+    const custom = resolveTheme({
+      cssVariables: { '--sjs-editor-background': 'not-a-color' },
+    });
+    const sink: import('../../../theme-core/parse').ThemeDiagnostic[] = [];
+    const token = resolveColorVar(custom, '--sjs-editor-background', sink);
+    // Registry default chain: var(--sjs-general-backcolor-dim-light,
+    // var(--background-dim-light, #f9f9f9)) -> #f9f9f9 at defaults.
+    expect(token.css).toBe('rgba(249, 249, 249, 1)');
+    expect(sink.length).toBeGreaterThan(0);
+    expect(sink.some((d) => d.variable === '--sjs-editor-background')).toBe(
+      true
+    );
+  });
+
+  it('an invalid override whose registry default is itself overridden falls back to the POST-OVERLAY default', () => {
+    const custom = resolveTheme({
+      cssVariables: {
+        '--sjs-editor-background': 'garbage',
+        '--sjs-general-backcolor-dim-light': 'rgba(7, 7, 7, 1)',
+      },
+    });
+    const sink: import('../../../theme-core/parse').ThemeDiagnostic[] = [];
+    const token = resolveColorVar(custom, '--sjs-editor-background', sink);
+    expect(token.css).toBe('rgba(7, 7, 7, 1)');
+    expect(sink.length).toBeGreaterThan(0);
+  });
+
+  it('the memoized second lookup REPLAYS its diagnostics into a fresh sink (cache does not swallow)', () => {
+    const custom = resolveTheme({
+      cssVariables: { '--sjs-editor-background': 'not-a-color' },
+    });
+    const first: import('../../../theme-core/parse').ThemeDiagnostic[] = [];
+    resolveColorVar(custom, '--sjs-editor-background', first);
+    const second: import('../../../theme-core/parse').ThemeDiagnostic[] = [];
+    resolveColorVar(custom, '--sjs-editor-background', second);
+    expect(second).toEqual(first);
+    expect(second.length).toBeGreaterThan(0);
+  });
+
+  it('a clean resolution emits NO diagnostics', () => {
+    const clean = resolveTheme(undefined);
+    const sink: import('../../../theme-core/parse').ThemeDiagnostic[] = [];
+    resolveColorVar(clean, '--sjs-editor-background', sink);
+    resolveColorVar(clean, '--sjs-primary-backcolor', sink);
+    expect(sink).toEqual([]);
+  });
+});

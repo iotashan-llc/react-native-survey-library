@@ -14,6 +14,7 @@ import {
   resolveColorVar,
 } from './tokenLookup';
 import { mapShadowForPlatform, composeShadowLayers } from '../shadows';
+import { reportShadowResult } from './types';
 import type { BuildContext } from './types';
 
 export interface InputVariant {
@@ -44,10 +45,12 @@ export function buildInputRecipe(
   resolved: ResolvedTheme,
   buildCtx: BuildContext
 ): InputRecipe {
+  const sink = buildCtx.diagnostics;
   const innerShadow = mapShadowForPlatform(
     resolved.tokens.shadows.inner,
     buildCtx.platform
   );
+  reportShadowResult(buildCtx, '--sjs-shadow-inner', innerShadow);
   const focusRing = mapShadowForPlatform(
     composeShadowLayers(resolved.tokens.shadows.innerReset, [
       {
@@ -56,11 +59,12 @@ export function buildInputRecipe(
         offsetY: 0,
         blurRadius: 0,
         spreadRadius: 2,
-        color: resolveColorVar(resolved, '--sjs-primary-backcolor'),
+        color: resolveColorVar(resolved, '--sjs-primary-backcolor', sink),
       },
     ]),
     buildCtx.platform
   );
+  reportShadowResult(buildCtx, '--sjs-shadow-inner-reset', focusRing);
 
   const fragments = StyleSheet.create({
     base: {
@@ -72,37 +76,59 @@ export function buildInputRecipe(
         resolved.tokens.typography.editor.fontWeight
       ) as TextStyle['fontWeight'],
       fontSize: resolved.tokens.typography.editor.fontSize,
-      color: resolveColorVar(resolved, '--sjs-font-editorfont-color').css,
-      backgroundColor: resolveColorVar(resolved, '--sjs-editor-background').css,
+      color: resolveColorVar(resolved, '--sjs-font-editorfont-color', sink)
+        .css,
+      backgroundColor: resolveColorVar(resolved, '--sjs-editor-background', sink)
+        .css,
       borderRadius: resolved.tokens.typography.editorCornerRadius,
+      // BOTH shadow channels always mapped: boxShadow on iOS/Android>=28,
+      // the mapper's elevation on the Android <28 fallback tier (codex
+      // impl-review major 1 — elevation was previously computed then
+      // discarded).
       boxShadow: innerShadow.boxShadow,
+      elevation: innerShadow.elevation,
     },
     focused: {
       boxShadow: focusRing.boxShadow,
+      elevation: focusRing.elevation,
     },
     readOnly: {
-      backgroundColor: resolveColorVar(resolved, '--sjs-general-backcolor-dark')
-        .css,
-      color: resolveColorVar(resolved, '--sjs-general-forecolor').css,
+      backgroundColor: resolveColorVar(
+        resolved,
+        '--sjs-general-backcolor-dark',
+        sink
+      ).css,
+      color: resolveColorVar(resolved, '--sjs-general-forecolor', sink).css,
+      // No-shadow state clears BOTH channels so no platform tier leaks a
+      // shadow (codex impl-review major 1).
       boxShadow: [],
+      elevation: 0,
     },
     preview: {
       backgroundColor: 'transparent',
       boxShadow: [],
+      elevation: 0,
       borderBottomWidth: 1,
-      borderBottomColor: resolveColorVar(resolved, '--sjs-general-forecolor')
-        .css,
+      borderBottomColor: resolveColorVar(
+        resolved,
+        '--sjs-general-forecolor',
+        sink
+      ).css,
       borderRadius: 0,
       paddingHorizontal: 0,
     },
     error: {
-      backgroundColor: resolveColorVar(resolved, '--sjs-special-red-light').css,
+      backgroundColor: resolveColorVar(resolved, '--sjs-special-red-light', sink)
+        .css,
     },
     characterCounter: {
       fontSize: calcFontSize(resolved, 1),
       lineHeight: calcLineHeight(resolved, 1.5),
-      color: resolveColorVar(resolved, '--sjs-font-editorfont-placeholdercolor')
-        .css,
+      color: resolveColorVar(
+        resolved,
+        '--sjs-font-editorfont-placeholdercolor',
+        sink
+      ).css,
       position: 'absolute',
       right: calcSize(resolved, 2),
       bottom: calcSize(resolved, 1.5),

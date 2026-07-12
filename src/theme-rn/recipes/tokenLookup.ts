@@ -14,7 +14,10 @@
  */
 import { evaluateVarExpression } from '../../theme-core/helpers';
 import { parseColor } from '../../theme-core/parse';
+import type { ThemeDiagnostic } from '../../theme-core/parse';
+import { REGISTRY } from '../../theme-core/registry';
 import type { ResolvedTheme, ColorToken } from '../../theme-core/resolve';
+import type { RecipeBuildDiagnostic } from './types';
 
 function toCamelCase(sjsName: string): string {
   return sjsName
@@ -22,7 +25,16 @@ function toCamelCase(sjsName: string): string {
     .replace(/-([a-zA-Z0-9])/g, (_, c: string) => c.toUpperCase());
 }
 
-const colorVarCache = new WeakMap<ResolvedTheme, Map<string, ColorToken>>();
+interface ColorVarCacheEntry {
+  token: ColorToken;
+  /** Replayed into the caller's sink on every (cached) lookup — memoization must never swallow diagnostics (codex impl-review major 6). */
+  diagnostics: ThemeDiagnostic[];
+}
+
+const colorVarCache = new WeakMap<
+  ResolvedTheme,
+  Map<string, ColorVarCacheEntry>
+>();
 
 /**
  * `calcSize(n)` = n x baseUnit (design 0.7-metrics-fixture.md header formula).
@@ -49,10 +61,22 @@ export function calcCornerRadius(resolved: ResolvedTheme, n: number): number {
  * `resolved.rawVariables` (memoized per `resolved` + variable name, since
  * `resolved` is treated as an immutable snapshot for the provider's
  * cache-entry lifetime).
+ *
+ * REGISTRY-AWARE (codex impl-review major 6): an invalid/unresolvable
+ * value falls back to the variable's registry default RE-EVALUATED against
+ * the post-overlay environment (mirroring 0.6 `resolveEntry`'s
+ * `dereferenceDefault` rule) — never a silent `transparent` — and the
+ * failure emits `ThemeDiagnostic`s into the optional `diagnosticsSink`
+ * (recipes thread `BuildContext.diagnostics` here; the provider flushes
+ * post-commit). The fallback's own dereference diagnostics are merged
+ * only when the fallback is actually used, keeping clean paths silent.
+ * Cached lookups REPLAY their recorded diagnostics into the sink so
+ * memoization never swallows them.
  */
 export function resolveColorVar(
   resolved: ResolvedTheme,
-  sjsName: string
+  sjsName: string,
+  diagnosticsSink?: RecipeBuildDiagnostic[]
 ): ColorToken {
   const key = toCamelCase(sjsName);
   const firstClass = resolved.tokens.colors[key];
@@ -64,21 +88,43 @@ export function resolveColorVar(
     colorVarCache.set(resolved, cache);
   }
   const cached = cache.get(sjsName);
-  if (cached) return cached;
+  if (cached) {
+    diagnosticsSink?.push(...cached.diagnostics);
+    return cached.token;
+  }
 
-  const { value } = evaluateVarExpression(
+  const diagnostics: ThemeDiagnostic[] = [];
+  const { value, diagnostics: derefDiagnostics } = evaluateVarExpression(
     resolved.rawVariables,
     `var(${sjsName})`
   );
-  const parsed = parseColor(
-    value ?? 'transparent',
-    'transparent',
-    sjsName
-  ).value;
+
+  // Post-overlay registry default (the fallback handed to parseColor must
+  // itself be dereferenced — registry defaults are usually var() chains).
+  const fallbackDiagnostics: ThemeDiagnostic[] = [];
+  const registryDefault = REGISTRY[sjsName]?.default;
+  let fallback = 'transparent';
+  if (registryDefault) {
+    const fb = evaluateVarExpression(resolved.rawVariables, registryDefault);
+    fallbackDiagnostics.push(...fb.diagnostics);
+    fallback = fb.value ?? 'transparent';
+  }
+
+  const parsedResult = parseColor(value ?? fallback, fallback, sjsName);
+  const failed =
+    value === undefined || parsedResult.diagnostics.length > 0;
+  if (failed) {
+    diagnostics.push(...derefDiagnostics);
+    diagnostics.push(...parsedResult.diagnostics);
+    diagnostics.push(...fallbackDiagnostics);
+  }
+
+  const parsed = parsedResult.value;
   const token: ColorToken = {
     ...parsed,
     css: `rgba(${parsed.r}, ${parsed.g}, ${parsed.b}, ${parsed.a})`,
   };
-  cache.set(sjsName, token);
+  cache.set(sjsName, { token, diagnostics });
+  diagnosticsSink?.push(...diagnostics);
   return token;
 }

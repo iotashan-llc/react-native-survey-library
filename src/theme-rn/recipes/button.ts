@@ -18,6 +18,7 @@ import {
   resolveColorVar,
 } from './tokenLookup';
 import { mapShadowForPlatform, composeShadowLayers } from '../shadows';
+import { reportShadowResult } from './types';
 import type { BuildContext } from './types';
 
 export type ButtonKind = 'default' | 'action' | 'danger';
@@ -49,6 +50,7 @@ export function buildButtonRecipe(
   resolved: ResolvedTheme,
   buildCtx: BuildContext
 ): ButtonRecipe {
+  const sink = buildCtx.diagnostics;
   const focusRing = mapShadowForPlatform(
     composeShadowLayers(resolved.tokens.shadows.smallReset, [
       {
@@ -57,15 +59,17 @@ export function buildButtonRecipe(
         offsetY: 0,
         blurRadius: 0,
         spreadRadius: 2,
-        color: resolveColorVar(resolved, '--sjs-primary-backcolor'),
+        color: resolveColorVar(resolved, '--sjs-primary-backcolor', sink),
       },
     ]),
     buildCtx.platform
   );
+  reportShadowResult(buildCtx, '--sjs-shadow-small-reset', focusRing);
   const baseShadow = mapShadowForPlatform(
     resolved.tokens.shadows.small,
     buildCtx.platform
   );
+  reportShadowResult(buildCtx, '--sjs-shadow-small', baseShadow);
 
   const fragments = StyleSheet.create({
     base: {
@@ -76,10 +80,15 @@ export function buildButtonRecipe(
       fontWeight: '600',
       fontSize: calcFontSize(resolved, 1),
       lineHeight: calcLineHeight(resolved, 1.5),
-      color: resolveColorVar(resolved, '--sjs-primary-backcolor').css,
-      backgroundColor: resolveColorVar(resolved, '--sjs-question-background')
-        .css,
+      color: resolveColorVar(resolved, '--sjs-primary-backcolor', sink).css,
+      backgroundColor: resolveColorVar(
+        resolved,
+        '--sjs-question-background',
+        sink
+      ).css,
+      // BOTH shadow channels (codex impl-review major 1).
       boxShadow: baseShadow.boxShadow,
+      elevation: baseShadow.elevation,
     },
     small: {
       paddingVertical: calcSize(resolved, 1.5),
@@ -87,34 +96,43 @@ export function buildButtonRecipe(
       flexGrow: 1,
     },
     pressedDefault: {
-      backgroundColor: resolveColorVar(resolved, '--sjs-general-backcolor-dark')
-        .css,
+      backgroundColor: resolveColorVar(
+        resolved,
+        '--sjs-general-backcolor-dark',
+        sink
+      ).css,
     },
     focused: {
       boxShadow: focusRing.boxShadow,
+      elevation: focusRing.elevation,
     },
     disabled: {
-      color: resolveColorVar(resolved, '--sjs-general-forecolor').css,
+      color: resolveColorVar(resolved, '--sjs-general-forecolor', sink).css,
       opacity: 0.25,
     },
     action: {
-      backgroundColor: resolveColorVar(resolved, '--sjs-primary-backcolor').css,
-      color: resolveColorVar(resolved, '--sjs-primary-forecolor').css,
+      backgroundColor: resolveColorVar(resolved, '--sjs-primary-backcolor', sink)
+        .css,
+      color: resolveColorVar(resolved, '--sjs-primary-forecolor', sink).css,
     },
     actionPressed: {
-      backgroundColor: resolveColorVar(resolved, '--sjs-primary-backcolor-dark')
-        .css,
+      backgroundColor: resolveColorVar(
+        resolved,
+        '--sjs-primary-backcolor-dark',
+        sink
+      ).css,
     },
     actionDisabled: {
-      color: resolveColorVar(resolved, '--sjs-primary-forecolor-light').css,
+      color: resolveColorVar(resolved, '--sjs-primary-forecolor-light', sink)
+        .css,
       opacity: 0.25,
     },
     danger: {
-      backgroundColor: resolveColorVar(resolved, '--sjs-special-red').css,
-      color: resolveColorVar(resolved, '--sjs-primary-forecolor').css,
+      backgroundColor: resolveColorVar(resolved, '--sjs-special-red', sink).css,
+      color: resolveColorVar(resolved, '--sjs-primary-forecolor', sink).css,
     },
     dangerDisabled: {
-      color: resolveColorVar(resolved, '--sjs-special-red-forecolor').css,
+      color: resolveColorVar(resolved, '--sjs-special-red-forecolor', sink).css,
       opacity: 0.25,
     },
   });

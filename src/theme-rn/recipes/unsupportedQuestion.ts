@@ -13,6 +13,7 @@ import {
   buildQuestionTitleRecipe,
   type QuestionTitleRecipe,
 } from './questionTitle';
+import type { BuildContext } from './types';
 
 export interface UnsupportedQuestionRecipe {
   fragments: {
@@ -24,13 +25,16 @@ export interface UnsupportedQuestionRecipe {
 }
 
 export function buildUnsupportedQuestionRecipe(
-  resolved: ResolvedTheme
+  resolved: ResolvedTheme,
+  buildCtx?: BuildContext
 ): UnsupportedQuestionRecipe {
+  const sink = buildCtx?.diagnostics;
   const fragments = StyleSheet.create({
     panel: {
-      backgroundColor: resolveColorVar(resolved, '--sjs-editor-background').css,
+      backgroundColor: resolveColorVar(resolved, '--sjs-editor-background', sink)
+        .css,
       borderWidth: 1,
-      borderColor: resolveColorVar(resolved, '--sjs-border-default').css,
+      borderColor: resolveColorVar(resolved, '--sjs-border-default', sink).css,
       borderRadius: resolved.tokens.typography.editorCornerRadius,
       padding: calcSize(resolved, 2),
     },
@@ -38,13 +42,13 @@ export function buildUnsupportedQuestionRecipe(
       fontFamily: resolved.tokens.typography.editor.fontFamily || undefined,
       fontSize: resolved.tokens.typography.editor.fontSize,
       lineHeight: calcLineHeight(resolved, 1.5),
-      color: resolveColorVar(resolved, '--sjs-general-forecolor').css,
+      color: resolveColorVar(resolved, '--sjs-general-forecolor', sink).css,
     },
     errorAccentBar: {
       width: 3,
-      backgroundColor: resolveColorVar(resolved, '--sjs-special-red').css,
+      backgroundColor: resolveColorVar(resolved, '--sjs-special-red', sink).css,
     },
   });
 
-  return { fragments, title: buildQuestionTitleRecipe(resolved) };
+  return { fragments, title: buildQuestionTitleRecipe(resolved, buildCtx) };
 }

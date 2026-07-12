@@ -9,7 +9,7 @@
 import * as React from 'react';
 import { StrictMode } from 'react';
 import { render } from '@testing-library/react-native';
-import { Text } from 'react-native';
+import { Platform, Text } from 'react-native';
 import { SurveyThemeProvider, SurveyThemeContext } from '../provider';
 import type { SurveyThemeContextValue } from '../provider';
 import { setDiagnosticHandler } from '../../diagnostics';
@@ -190,6 +190,62 @@ describe('SurveyThemeProvider — diagnostics (post-commit, deduped across re-re
       (p) => p.code === 'theme-diagnostic'
     ).length;
     expect(afterSecond).toBe(afterFirst);
+  });
+
+  it('aggregates RECIPE-BUILD diagnostics through the same seam (registry-aware color-var fallback; codex impl-review majors 1+6)', () => {
+    const seen: DiagnosticPayload[] = [];
+    setDiagnosticHandler((payload) => seen.push(payload));
+    // --sjs-editor-background is NOT a preset-base token, so resolveTheme
+    // itself emits nothing for it — only the recipe build (via the
+    // BuildContext sink) can surface this failure.
+    render(
+      <SurveyThemeProvider
+        theme={{ cssVariables: { '--sjs-editor-background': 'not-a-color' } }}
+      >
+        <Text>x</Text>
+      </SurveyThemeProvider>
+    );
+    const recipeDiagnostics = seen.filter(
+      (p) =>
+        p.code === 'theme-diagnostic' &&
+        p.variable === '--sjs-editor-background'
+    );
+    expect(recipeDiagnostics.length).toBeGreaterThan(0);
+  });
+
+  it('aggregates shadow-mapper diagnostics on an Android elevation-tier build (codex impl-review major 1)', () => {
+    const seen: DiagnosticPayload[] = [];
+    setDiagnosticHandler((payload) => seen.push(payload));
+    const osDescriptor = Object.getOwnPropertyDescriptor(Platform, 'OS');
+    const versionDescriptor = Object.getOwnPropertyDescriptor(
+      Platform,
+      'Version'
+    );
+    Object.defineProperty(Platform, 'OS', {
+      value: 'android',
+      configurable: true,
+    });
+    Object.defineProperty(Platform, 'Version', {
+      value: 21,
+      configurable: true,
+    });
+    try {
+      render(
+        <SurveyThemeProvider theme={{ themeName: 'shadow-diag-probe' }}>
+          <Text>x</Text>
+        </SurveyThemeProvider>
+      );
+    } finally {
+      if (osDescriptor) Object.defineProperty(Platform, 'OS', osDescriptor);
+      if (versionDescriptor)
+        Object.defineProperty(Platform, 'Version', versionDescriptor);
+    }
+    const shadowDiagnostics = seen.filter(
+      (p) =>
+        p.code === 'theme-diagnostic' &&
+        p.diagnosticCode === 'theme-rn/android-shadow-elevation-fallback'
+    );
+    expect(shadowDiagnostics.length).toBeGreaterThan(0);
   });
 
   it('a fixed backgroundImageAttachment normalizes to scroll and emits theme-attachment-unsupported through the same seam', () => {

@@ -18,6 +18,7 @@ import {
   calcLineHeight,
   resolveColorVar,
 } from './tokenLookup';
+import type { BuildContext } from './types';
 
 export interface QuestionTitleVariant {
   required: boolean;
@@ -37,8 +38,10 @@ export interface QuestionTitleRecipe {
 }
 
 export function buildQuestionTitleRecipe(
-  resolved: ResolvedTheme
+  resolved: ResolvedTheme,
+  buildCtx?: BuildContext
 ): QuestionTitleRecipe {
+  const sink = buildCtx?.diagnostics;
   const titleFontSize = resolved.tokens.typography.questionTitle.fontSize;
 
   const fragments = StyleSheet.create({
@@ -49,22 +52,24 @@ export function buildQuestionTitleRecipe(
       ) as TextStyle['fontWeight'],
       fontFamily:
         resolved.tokens.typography.questionTitle.fontFamily || undefined,
-      color: resolveColorVar(resolved, '--sjs-font-questiontitle-color').css,
+      color: resolveColorVar(resolved, '--sjs-font-questiontitle-color', sink)
+        .css,
       lineHeight: 1.5 * titleFontSize,
     },
     errorTone: {
-      color: resolveColorVar(resolved, '--sjs-special-red-forecolor').css,
+      color: resolveColorVar(resolved, '--sjs-special-red-forecolor', sink).css,
     },
     collapsed: {
       opacity: 0.7,
     },
     requiredMark: {
-      color: resolveColorVar(resolved, '--sjs-special-red-forecolor').css,
+      color: resolveColorVar(resolved, '--sjs-special-red-forecolor', sink).css,
     },
     number: {
       fontSize: calcFontSize(resolved, 0.75),
       lineHeight: calcLineHeight(resolved, 1),
-      color: resolveColorVar(resolved, '--sjs-general-forecolor-light').css,
+      color: resolveColorVar(resolved, '--sjs-general-forecolor-light', sink)
+        .css,
       paddingTop: calcSize(resolved, 0.625),
       paddingBottom: calcSize(resolved, 0.375),
       paddingRight: calcSize(resolved, 1),

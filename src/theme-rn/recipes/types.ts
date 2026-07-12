@@ -10,6 +10,7 @@
  */
 import type { ViewStyle, TextStyle, ImageStyle } from 'react-native';
 import type { ResolvedTheme } from '../../theme-core/resolve';
+import type { ShadowMapResult } from '../shadows';
 
 export type RNStyle = ViewStyle | TextStyle | ImageStyle;
 
@@ -19,8 +20,45 @@ export interface RecipeBuildPlatform {
   apiLevel?: number;
 }
 
+/**
+ * Build-time diagnostic (codex impl-review majors 1+6): a structural
+ * superset of theme-core's `ThemeDiagnostic` (whose closed code union is
+ * assignable into `code: string`) that also carries theme-rn codes
+ * (`theme-rn/android-shadow-*`). Recipes push into
+ * `BuildContext.diagnostics`; `SurveyThemeProvider` flushes post-commit
+ * through the 0.5 seam, deduped for the provider's lifetime.
+ */
+export interface RecipeBuildDiagnostic {
+  code: string;
+  variable?: string;
+  message: string;
+  value?: string;
+}
+
 export interface BuildContext {
   platform: RecipeBuildPlatform;
+  /** Optional build-diagnostics sink (shadow-tier fallbacks, color-var registry fallbacks). */
+  diagnostics?: RecipeBuildDiagnostic[];
+}
+
+/**
+ * Forwards a shadow-map result's diagnostics into the build sink, tagged
+ * with the SOURCE token variable (the mapper itself doesn't know which
+ * token produced the layers — the recipe does).
+ */
+export function reportShadowResult(
+  buildCtx: BuildContext,
+  variable: string,
+  result: ShadowMapResult
+): void {
+  if (!buildCtx.diagnostics) return;
+  for (const diagnostic of result.diagnostics) {
+    buildCtx.diagnostics.push({
+      code: diagnostic.code,
+      variable,
+      message: diagnostic.message,
+    });
+  }
 }
 
 /**

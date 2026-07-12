@@ -28,7 +28,7 @@ import type { ResolvedTheme } from '../theme-core/resolve';
 import type { ITheme } from '../core/facade';
 import { buildRecipes } from './recipes';
 import type { Recipes } from './recipes';
-import type { BuildContext } from './recipes/types';
+import type { BuildContext, RecipeBuildDiagnostic } from './recipes/types';
 import { resolvePlatformFromRN } from './recipes/types';
 import { reportDiagnostic } from '../diagnostics';
 import { normalizeBackground } from './background';
@@ -61,15 +61,22 @@ function buildThemeData(theme: ITheme | undefined): {
   recipes: Recipes;
   normalizedBackground: NormalizedBackground;
   backgroundDiagnostics: BackgroundDiagnostic[];
+  recipeDiagnostics: RecipeBuildDiagnostic[];
 } {
   const resolved = resolveTheme(theme);
-  const recipes = buildRecipes(resolved, currentPlatformBuildContext());
+  const recipeDiagnostics: RecipeBuildDiagnostic[] = [];
+  const buildCtx = currentPlatformBuildContext();
+  const recipes = buildRecipes(resolved, {
+    ...buildCtx,
+    diagnostics: recipeDiagnostics,
+  });
   const { normalized, diagnostics } = normalizeBackground(resolved.background);
   return {
     resolved,
     recipes,
     normalizedBackground: normalized,
     backgroundDiagnostics: diagnostics,
+    recipeDiagnostics,
   };
 }
 
@@ -152,6 +159,7 @@ interface ThemeDataCacheEntry {
   recipes: Recipes;
   normalizedBackground: NormalizedBackground;
   backgroundDiagnostics: BackgroundDiagnostic[];
+  recipeDiagnostics: RecipeBuildDiagnostic[];
 }
 
 export class SurveyThemeProvider extends React.Component<
@@ -193,22 +201,44 @@ export class SurveyThemeProvider extends React.Component<
     if (this.cache && this.cache.snapshot === snapshot) {
       return this.cache;
     }
-    const { resolved, recipes, normalizedBackground, backgroundDiagnostics } =
-      buildThemeData(this.props.theme);
+    const {
+      resolved,
+      recipes,
+      normalizedBackground,
+      backgroundDiagnostics,
+      recipeDiagnostics,
+    } = buildThemeData(this.props.theme);
     this.cache = {
       snapshot,
       resolved,
       recipes,
       normalizedBackground,
       backgroundDiagnostics,
+      recipeDiagnostics,
     };
     return this.cache;
   }
 
   private flushDiagnostics(): void {
-    const { resolved, backgroundDiagnostics } = this.getOrBuildThemeData();
+    const { resolved, backgroundDiagnostics, recipeDiagnostics } =
+      this.getOrBuildThemeData();
     resolved.diagnostics.forEach((diagnostic) => {
       const key = `${diagnostic.code}|${diagnostic.variable}|${diagnostic.value ?? ''}`;
+      if (this.emittedDiagnosticKeys.has(key)) return;
+      this.emittedDiagnosticKeys.add(key);
+      reportDiagnostic({
+        code: 'theme-diagnostic',
+        diagnosticCode: diagnostic.code,
+        variable: diagnostic.variable,
+        message: diagnostic.message,
+        value: diagnostic.value,
+      });
+    });
+    // Recipe-BUILD diagnostics (shadow-tier fallbacks, registry-aware
+    // color-var fallbacks) flush through the same seam with the same
+    // provider-lifetime dedup (codex impl-review majors 1+6).
+    recipeDiagnostics.forEach((diagnostic) => {
+      const key = `${diagnostic.code}|${diagnostic.variable ?? ''}|${diagnostic.value ?? ''}`;
       if (this.emittedDiagnosticKeys.has(key)) return;
       this.emittedDiagnosticKeys.add(key);
       reportDiagnostic({
