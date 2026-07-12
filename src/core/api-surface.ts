@@ -319,4 +319,47 @@ export const API_SURFACE_WATCHLIST: readonly WatchedApiMember[] = [
     reason:
       'Test cleanup for renderer-route registration (register-all.test.tsx).',
   },
+  {
+    id: 'SurveyModel.onScrollToTop',
+    member: 'onScrollToTop',
+    // Assigned in the SurveyModel constructor (`this.addEvent()`), so an
+    // OWN data property on each INSTANCE — probed on a minimal empty
+    // model, same pattern as the QuestionCustomWidget probe above.
+    expectedKind: 'data',
+    resolveHost: (sc) => new sc.Model(undefined),
+    reason:
+      'The lifecycle bridge subscribes the single scroll/focus funnel here (design 1.2-lifecycle-bridge, A15).',
+  },
+  {
+    id: 'EventBase.add',
+    member: 'add',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.EventBase.prototype,
+    reason: 'Lifecycle bridge install subscribes onScrollToTop.',
+  },
+  {
+    id: 'EventBase.remove',
+    member: 'remove',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.EventBase.prototype,
+    reason: 'Lifecycle bridge uninstall unsubscribes onScrollToTop.',
+  },
+  {
+    id: 'Question.focusIn',
+    member: 'focusIn',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.Question.prototype,
+    reason:
+      'Focus-intent completion parity: the bridge fires it after a landed native focus (web drives this from a DOM focus-bubble handler).',
+  },
+  {
+    id: 'settings.environment',
+    member: 'environment',
+    // A data field on the settings singleton — undefined in RN until the
+    // facade's 1.2 stub fills it (the key itself is always present).
+    expectedKind: 'data',
+    resolveHost: (sc) => sc.settings,
+    reason:
+      "The shim's 1.2 amendment stubs it so core's unguarded destructures survive (design 1.2-lifecycle-bridge, piece 3).",
+  },
 ];

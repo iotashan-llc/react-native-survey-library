@@ -230,6 +230,50 @@ console.log('7e: OK');
 `,
     expectSuccess: true,
   },
+  {
+    id: '7f',
+    description:
+      "lifecycle bridge survives packaging: import('<pkg>') exposes the 1.2 API and the packed facade " +
+      'chain applies the settings.environment stub (design: docs/design/1.2-lifecycle-bridge.md, ' +
+      'piece 3 + test plan #8 "packaged-entry assertion")',
+    script: `${RN_PREAMBLE}
+const pkg = await import(${JSON.stringify(PKG_NAME)});
+for (const name of ['createLifecycleRegistry', 'installLifecycleBridge']) {
+  if (typeof pkg[name] !== 'function') {
+    throw new Error(name + ' is not exported from the package root');
+  }
+}
+if (!pkg.LifecycleContext || typeof pkg.LifecycleContext !== 'object') {
+  throw new Error('LifecycleContext is not exported from the package root');
+}
+const sc = await import('survey-core');
+const env = sc.settings.environment;
+if (!env) {
+  throw new Error('settings.environment stub missing after renderer import');
+}
+if (env.rootElement !== undefined || env.root !== undefined) {
+  throw new Error('settings.environment stub fields must be undefined');
+}
+const model = new sc.Model({
+  pages: [
+    {
+      name: 'page1',
+      elements: [{ type: 'text', name: 'q1', isRequired: true }],
+    },
+  ],
+});
+// The A15 headline through the PACKED artifact: invalid required submit
+// must not throw the settings.environment TypeError.
+if (model.completeLastPage() !== false) {
+  throw new Error('expected completeLastPage() to fail validation');
+}
+if (model.state !== 'running') {
+  throw new Error('expected survey still running, got ' + model.state);
+}
+console.log('7f: OK');
+`,
+    expectSuccess: true,
+  },
 ];
 
 function log(message) {
