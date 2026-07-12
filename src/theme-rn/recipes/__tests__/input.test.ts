@@ -88,7 +88,11 @@ describe("resolveInputLegalState + selectInputStyles — the fixture's EXACT 9 l
 
   const tuples: Array<[string, InputStateInput, InputLegalState]> = [
     ['base', base, { kind: 'base' }],
-    ['focused', { ...base, focused: true }, { kind: 'focused', counter: undefined }],
+    [
+      'focused',
+      { ...base, focused: true },
+      { kind: 'focused', counter: undefined },
+    ],
     ['readOnly', { ...base, readOnly: true }, { kind: 'readOnly' }],
     ['previewVariant', { ...base, preview: true }, { kind: 'preview' }],
     ['error', { ...base, error: true }, { kind: 'error', focused: false }],
@@ -114,9 +118,12 @@ describe("resolveInputLegalState + selectInputStyles — the fixture's EXACT 9 l
     ],
   ];
 
-  it.each(tuples)('%s normalizes to its fixture tuple', (_name, input, expected) => {
-    expect(resolveInputLegalState(input)).toEqual(expected);
-  });
+  it.each(tuples)(
+    '%s normalizes to its fixture tuple',
+    (_name, input, expected) => {
+      expect(resolveInputLegalState(input)).toEqual(expected);
+    }
+  );
 
   it.each(tuples)('%s selects a non-empty style array', (_name, input) => {
     const styles = selectInputStyles(recipe, input, mode);
@@ -144,7 +151,11 @@ describe("resolveInputLegalState + selectInputStyles — the fixture's EXACT 9 l
     expect(resolveInputLegalState({ ...base, counter: 'normal' })).toEqual({
       kind: 'base',
     });
-    const styles = selectInputStyles(recipe, { ...base, counter: 'normal' }, mode);
+    const styles = selectInputStyles(
+      recipe,
+      { ...base, counter: 'normal' },
+      mode
+    );
     expect(flatten(styles).paddingEnd).toBeUndefined();
   });
 

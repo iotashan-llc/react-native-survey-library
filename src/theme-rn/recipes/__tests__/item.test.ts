@@ -134,7 +134,7 @@ describe('item decorator shadow composition — inner base, innerReset+ring focu
   });
 });
 
-describe('resolveItemLegalState + selectItemStyles — the fixture\'s EXACT 12 legal tuples (codex impl-review major 2)', () => {
+describe("resolveItemLegalState + selectItemStyles — the fixture's EXACT 12 legal tuples (codex impl-review major 2)", () => {
   const recipe = buildItemRecipe(resolved, { platform: { os: 'ios' } });
   const mode = { narrow: false, rtl: false };
   const flatten = (arr: object[]) => Object.assign({}, ...arr);
@@ -184,7 +184,11 @@ describe('resolveItemLegalState + selectItemStyles — the fixture\'s EXACT 12 l
       { ...baseInput, checked: true, error: true, allowHover: false },
       { kind: 'error', checked: true },
     ],
-    ['pressed (gate passed)', { ...baseInput, pressed: true }, { kind: 'pressed' }],
+    [
+      'pressed (gate passed)',
+      { ...baseInput, pressed: true },
+      { kind: 'pressed' },
+    ],
     [
       'focused',
       { ...baseInput, focused: true },
@@ -202,9 +206,12 @@ describe('resolveItemLegalState + selectItemStyles — the fixture\'s EXACT 12 l
     ],
   ];
 
-  it.each(tuples)('%s normalizes to its fixture tuple', (_name, input, expected) => {
-    expect(resolveItemLegalState(input)).toEqual(expected);
-  });
+  it.each(tuples)(
+    '%s normalizes to its fixture tuple',
+    (_name, input, expected) => {
+      expect(resolveItemLegalState(input)).toEqual(expected);
+    }
+  );
 
   it.each(tuples)(
     '%s selects non-empty container AND decorator slot arrays',
@@ -308,7 +315,6 @@ describe('resolveItemLegalState + selectItemStyles — the fixture\'s EXACT 12 l
     expect(flatten(radioSlots.decorator).borderRadius).toBe(12);
   });
 });
-
 
 describe('selectIconFill — 0.7-metrics-fixture.md icon.fill table (round-2 corrected)', () => {
   const recipe = buildItemRecipe(resolved, iosCtx);

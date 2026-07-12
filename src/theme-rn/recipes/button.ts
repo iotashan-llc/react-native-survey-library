@@ -32,7 +32,8 @@ export interface ButtonStateInput {
   variant: ButtonKind;
 }
 
-export type ButtonInteractionState = 'base' | 'pressed' | 'focused' | 'disabled';
+export type ButtonInteractionState =
+  'base' | 'pressed' | 'focused' | 'disabled';
 
 /**
  * The fixture's EXACT 13 legal tuples ("Legal-state enumerations": base ·
@@ -127,8 +128,11 @@ export function buildButtonRecipe(
       opacity: 0.25,
     },
     action: {
-      backgroundColor: resolveColorVar(resolved, '--sjs-primary-backcolor', sink)
-        .css,
+      backgroundColor: resolveColorVar(
+        resolved,
+        '--sjs-primary-backcolor',
+        sink
+      ).css,
       color: resolveColorVar(resolved, '--sjs-primary-forecolor', sink).css,
     },
     actionPressed: {

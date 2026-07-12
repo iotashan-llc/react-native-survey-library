@@ -111,8 +111,7 @@ export function resolveColorVar(
   }
 
   const parsedResult = parseColor(value ?? fallback, fallback, sjsName);
-  const failed =
-    value === undefined || parsedResult.diagnostics.length > 0;
+  const failed = value === undefined || parsedResult.diagnostics.length > 0;
   if (failed) {
     diagnostics.push(...derefDiagnostics);
     diagnostics.push(...parsedResult.diagnostics);

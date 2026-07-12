@@ -103,10 +103,12 @@ export function buildInputRecipe(
         resolved.tokens.typography.editor.fontWeight
       ) as TextStyle['fontWeight'],
       fontSize: resolved.tokens.typography.editor.fontSize,
-      color: resolveColorVar(resolved, '--sjs-font-editorfont-color', sink)
-        .css,
-      backgroundColor: resolveColorVar(resolved, '--sjs-editor-background', sink)
-        .css,
+      color: resolveColorVar(resolved, '--sjs-font-editorfont-color', sink).css,
+      backgroundColor: resolveColorVar(
+        resolved,
+        '--sjs-editor-background',
+        sink
+      ).css,
       borderRadius: resolved.tokens.typography.editorCornerRadius,
       // BOTH shadow channels always mapped: boxShadow on iOS/Android>=28,
       // the mapper's elevation on the Android <28 fallback tier (codex
@@ -145,8 +147,11 @@ export function buildInputRecipe(
       paddingHorizontal: 0,
     },
     error: {
-      backgroundColor: resolveColorVar(resolved, '--sjs-special-red-light', sink)
-        .css,
+      backgroundColor: resolveColorVar(
+        resolved,
+        '--sjs-special-red-light',
+        sink
+      ).css,
     },
     characterCounter: {
       fontSize: calcFontSize(resolved, 1),

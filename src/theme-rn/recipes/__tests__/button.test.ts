@@ -151,9 +151,12 @@ describe("resolveButtonLegalState + selectButtonStyles — the fixture's EXACT 1
     ],
   ];
 
-  it.each(tuples)('%s normalizes to its fixture tuple', (_name, input, expected) => {
-    expect(resolveButtonLegalState(input)).toEqual(expected);
-  });
+  it.each(tuples)(
+    '%s normalizes to its fixture tuple',
+    (_name, input, expected) => {
+      expect(resolveButtonLegalState(input)).toEqual(expected);
+    }
+  );
 
   it.each(tuples)('%s selects a non-empty style array', (_name, input) => {
     expect(selectButtonStyles(recipe, input, mode).length).toBeGreaterThan(0);

@@ -142,8 +142,11 @@ export function buildItemRecipe(
       height: decoratorSize,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: resolveColorVar(resolved, '--sjs-editor-background', sink)
-        .css,
+      backgroundColor: resolveColorVar(
+        resolved,
+        '--sjs-editor-background',
+        sink
+      ).css,
       boxShadow: innerShadow.boxShadow,
       elevation: innerShadow.elevation,
     },
@@ -154,8 +157,11 @@ export function buildItemRecipe(
       borderRadius: decoratorSize / 2,
     },
     decoratorChecked: {
-      backgroundColor: resolveColorVar(resolved, '--sjs-primary-backcolor', sink)
-        .css,
+      backgroundColor: resolveColorVar(
+        resolved,
+        '--sjs-primary-backcolor',
+        sink
+      ).css,
       // sd-item.scss:40: `.sd-item--checked .sd-item__decorator { box-shadow: none }`
       boxShadow: [],
       elevation: 0,
@@ -175,8 +181,11 @@ export function buildItemRecipe(
       elevation: 0,
     },
     decoratorError: {
-      backgroundColor: resolveColorVar(resolved, '--sjs-special-red-light', sink)
-        .css,
+      backgroundColor: resolveColorVar(
+        resolved,
+        '--sjs-special-red-light',
+        sink
+      ).css,
     },
     decoratorFocused: {
       backgroundColor: resolveColorVar(
@@ -230,8 +239,11 @@ export function buildItemRecipe(
       checked: resolveColorVar(resolved, '--sjs-primary-forecolor', sink).css,
       checkedFocused: resolveColorVar(resolved, '--sjs-primary-backcolor', sink)
         .css,
-      checkedReadOnly: resolveColorVar(resolved, '--sjs-general-forecolor', sink)
-        .css,
+      checkedReadOnly: resolveColorVar(
+        resolved,
+        '--sjs-general-forecolor',
+        sink
+      ).css,
       checkedDisabledReserved: resolveColorVar(
         resolved,
         '--sjs-border-default',
@@ -310,10 +322,7 @@ export function selectItemStyles(
 
 export function selectIconFill(
   recipe: ItemRecipe,
-  variant: Pick<
-    ItemStateInput,
-    'checked' | 'focused' | 'readOnly' | 'preview'
-  >
+  variant: Pick<ItemStateInput, 'checked' | 'focused' | 'readOnly' | 'preview'>
 ): string {
   if (variant.preview) return recipe.iconFills.preview;
   if (!variant.checked) return recipe.iconFills.unchecked;

@@ -31,8 +31,11 @@ export function buildUnsupportedQuestionRecipe(
   const sink = buildCtx?.diagnostics;
   const fragments = StyleSheet.create({
     panel: {
-      backgroundColor: resolveColorVar(resolved, '--sjs-editor-background', sink)
-        .css,
+      backgroundColor: resolveColorVar(
+        resolved,
+        '--sjs-editor-background',
+        sink
+      ).css,
       borderWidth: 1,
       borderColor: resolveColorVar(resolved, '--sjs-border-default', sink).css,
       borderRadius: resolved.tokens.typography.editorCornerRadius,
