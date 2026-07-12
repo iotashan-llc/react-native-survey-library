@@ -53,4 +53,36 @@ export type {
   FontWeightValue,
 } from './theme-core/parse';
 
+// Security (design: docs/design/0.9-html-strategy.md, A10/A11) — the
+// central URI policy and the single-parse HTML sanitizer AST pipeline.
+// `SanitizedHtml` (the ONLY file allowed to import `@native-html/render`
+// — ESLint-enforced) lazily requires it, so importing this package's
+// index does not eagerly pull the renderer in either.
+export { SanitizedHtml } from './components/SanitizedHtml';
+export type { SanitizedHtmlProps } from './components/SanitizedHtml';
+export {
+  sanitizeHtml,
+  DEFAULT_RESOURCE_BOUNDS,
+} from './security/sanitize-html';
+export type {
+  SanitizeHtmlConfig,
+  SanitizeHtmlResult,
+  SanitizeDiagnostic,
+  SanitizeDiagnosticCode,
+  ResourceBounds,
+} from './security/sanitize-html';
+export {
+  validateUri,
+  lintChoicesByUrlTemplate,
+  requiresManualRedirect,
+} from './security/uri-policy';
+export type {
+  UriContext,
+  UriPolicyConfig,
+  UriValidationResult,
+  UriValidationOk,
+  UriValidationFail,
+  ChoicesByUrlLintResult,
+} from './security/uri-policy';
+
 export const LIBRARY_NAME = '@iotashan-llc/react-native-survey-library';

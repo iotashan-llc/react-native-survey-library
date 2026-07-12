@@ -82,9 +82,13 @@ function writeReactNativeStub(consumerDir) {
     "// Minimal stub for the packaged-entry harness — see this script's\n" +
       "// header comment. Real 'react-native' can't be parsed by plain Node.\n" +
       "// Values only need to exist as named exports; nothing in the\n" +
-      '// 7a-7d cases actually renders a component.\n' +
+      '// 7a-7e cases actually renders a component.\n' +
       "export const View = 'View';\n" +
-      "export const Text = 'Text';\n"
+      "export const Text = 'Text';\n" +
+      // `SanitizedHtml` (design: docs/design/0.9-html-strategy.md) reads
+      // `Dimensions.get('window').width` at module scope for its default
+      // `contentWidth` fallback.
+      "export const Dimensions = { get: () => ({ width: 0, height: 0 }) };\n"
   );
 }
 
