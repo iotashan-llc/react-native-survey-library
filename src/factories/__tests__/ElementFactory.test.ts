@@ -45,28 +45,32 @@ describe('ElementFactory', () => {
     expect(factory.createElement('never-registered', {})).toBeNull();
   });
 
-  it('prototype-key names are inert data, never false hits, before explicit registration', () => {
-    const factory = new ElementFactory();
-    expect(factory.createElement('__proto__', {})).toBeNull();
-    expect(factory.createElement('constructor', {})).toBeNull();
-    expect(factory.createElement('toString', {})).toBeNull();
-    expect(factory.isElementRegistered('__proto__')).toBe(false);
-    expect(factory.isElementRegistered('constructor')).toBe(false);
-    expect(factory.isElementRegistered('toString')).toBe(false);
-  });
+  // Mirrors QuestionFactory.test.ts's table-driven prototype-key coverage
+  // (review round 3: keep the two factories symmetric — same keys, both
+  // the clean-miss and the positive-registration directions).
+  const PROTOTYPE_KEYS = ['__proto__', 'constructor', 'toString'] as const;
 
-  it('prototype-key names can be registered and dispatched as ordinary data, without corrupting the registry', () => {
-    const factory = new ElementFactory();
-    factory.registerElement(
-      'toString',
-      () => ({ marker: 'toString' }) as never
-    );
+  it.each(PROTOTYPE_KEYS)(
+    'unregistered prototype key "%s" is a clean miss, never a false hit',
+    (key) => {
+      const factory = new ElementFactory();
+      expect(factory.createElement(key, {})).toBeNull();
+      expect(factory.isElementRegistered(key)).toBe(false);
+    }
+  );
 
-    expect(factory.createElement('toString', {})).toEqual({
-      marker: 'toString',
-    });
-    expect(factory.createElement('hasOwnProperty', {})).toBeNull();
-  });
+  it.each(PROTOTYPE_KEYS)(
+    'prototype key "%s" registers and dispatches as ordinary data, without corrupting the registry',
+    (key) => {
+      const factory = new ElementFactory();
+      factory.registerElement(key, () => ({ marker: key }) as never);
+      expect(factory.createElement(key, {})).toEqual({ marker: key });
+      expect(factory.isElementRegistered(key)).toBe(true);
+      // A genuinely unrelated key must still miss cleanly — the exotic
+      // registration must not have widened what counts as "present".
+      expect(factory.createElement('hasOwnProperty', {})).toBeNull();
+    }
+  );
 
   it('exposes a shared RNElementFactory singleton of the same class', () => {
     expect(RNElementFactory).toBeInstanceOf(ElementFactory);

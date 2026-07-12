@@ -42,46 +42,34 @@ describe('QuestionFactory', () => {
     expect(factory.createQuestion('never-registered', {})).toBeNull();
   });
 
-  it('prototype-key names are inert data, never false hits, before explicit registration', () => {
-    const factory = new QuestionFactory();
-    // A `{}`-backed HashTable would resolve these via the prototype chain
-    // (e.g. `hash['toString']` is `Object.prototype.toString`, a function
-    // — a false hit that a `creator == null` check would miss). The
-    // Map-backed registry must return null for all three until a real
-    // registration happens.
-    expect(factory.createQuestion('__proto__', {})).toBeNull();
-    expect(factory.createQuestion('constructor', {})).toBeNull();
-    expect(factory.createQuestion('toString', {})).toBeNull();
-    expect(factory.isQuestionRegistered('__proto__')).toBe(false);
-    expect(factory.isQuestionRegistered('constructor')).toBe(false);
-    expect(factory.isQuestionRegistered('toString')).toBe(false);
-  });
+  // A `{}`-backed HashTable would resolve these via the prototype chain
+  // (e.g. `hash['toString']` is `Object.prototype.toString`, a function —
+  // a false hit that a `creator == null` check would miss). Table-driven
+  // and mirrored in ElementFactory.test.ts (review round 3: keep the two
+  // factories' prototype-key coverage symmetric).
+  const PROTOTYPE_KEYS = ['__proto__', 'constructor', 'toString'] as const;
 
-  it('prototype-key names can be registered and dispatched as ordinary data, without corrupting the registry', () => {
-    const factory = new QuestionFactory();
-    factory.registerQuestion('__proto__', () => ({ marker: 'proto' }) as never);
-    factory.registerQuestion(
-      'constructor',
-      () => ({ marker: 'ctor' }) as never
-    );
-    factory.registerQuestion(
-      'toString',
-      () => ({ marker: 'toString' }) as never
-    );
+  it.each(PROTOTYPE_KEYS)(
+    'unregistered prototype key "%s" is a clean miss, never a false hit',
+    (key) => {
+      const factory = new QuestionFactory();
+      expect(factory.createQuestion(key, {})).toBeNull();
+      expect(factory.isQuestionRegistered(key)).toBe(false);
+    }
+  );
 
-    expect(factory.createQuestion('__proto__', {})).toEqual({
-      marker: 'proto',
-    });
-    expect(factory.createQuestion('constructor', {})).toEqual({
-      marker: 'ctor',
-    });
-    expect(factory.createQuestion('toString', {})).toEqual({
-      marker: 'toString',
-    });
-    // A genuinely unrelated key must still miss cleanly — the exotic
-    // registrations above must not have widened what counts as "present".
-    expect(factory.createQuestion('hasOwnProperty', {})).toBeNull();
-  });
+  it.each(PROTOTYPE_KEYS)(
+    'prototype key "%s" registers and dispatches as ordinary data, without corrupting the registry',
+    (key) => {
+      const factory = new QuestionFactory();
+      factory.registerQuestion(key, () => ({ marker: key }) as never);
+      expect(factory.createQuestion(key, {})).toEqual({ marker: key });
+      expect(factory.isQuestionRegistered(key)).toBe(true);
+      // A genuinely unrelated key must still miss cleanly — the exotic
+      // registration must not have widened what counts as "present".
+      expect(factory.createQuestion('hasOwnProperty', {})).toBeNull();
+    }
+  );
 
   it('exposes a shared RNQuestionFactory singleton of the same class', () => {
     expect(RNQuestionFactory).toBeInstanceOf(QuestionFactory);
