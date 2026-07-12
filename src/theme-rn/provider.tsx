@@ -29,6 +29,7 @@ import type { ITheme } from '../core/facade';
 import { buildRecipes } from './recipes';
 import type { Recipes } from './recipes';
 import type { BuildContext } from './recipes/types';
+import { resolvePlatformFromRN } from './recipes/types';
 import { reportDiagnostic } from '../diagnostics';
 import { normalizeBackground } from './background';
 import type { NormalizedBackground, BackgroundDiagnostic } from './background';
@@ -52,16 +53,7 @@ export interface SurveyThemeContextValue {
 }
 
 function currentPlatformBuildContext(): BuildContext {
-  if (Platform.OS === 'android') {
-    const apiLevel = Number(Platform.Version);
-    return {
-      platform: {
-        os: 'android',
-        apiLevel: Number.isFinite(apiLevel) ? apiLevel : 0,
-      },
-    };
-  }
-  return { platform: { os: 'ios' } };
+  return { platform: resolvePlatformFromRN(Platform.OS, Platform.Version) };
 }
 
 function buildThemeData(theme: ITheme | undefined): {
