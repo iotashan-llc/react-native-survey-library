@@ -175,6 +175,37 @@ console.log('7d: OK', actualQuestionTypes, actualElementTypes);
 `,
     expectSuccess: true,
   },
+  {
+    id: '7e',
+    description:
+      "theme-core survives packaging: import('<pkg>') exposes resolveTheme and a zero-arg call " +
+      'resolves the cascade-parity default (design: docs/design/0.6-theme-core.md; guards against ' +
+      'runtime-JSON-import regressions under real Node ESM — ERR_IMPORT_ATTRIBUTE_MISSING)',
+    script: `${RN_PREAMBLE}
+const pkg = await import(${JSON.stringify(PKG_NAME)});
+if (typeof pkg.resolveTheme !== 'function') {
+  throw new Error('resolveTheme is not exported from the package root');
+}
+const resolved = pkg.resolveTheme();
+if (resolved.tokens.baseUnit !== 8) {
+  throw new Error('expected baseUnit 8, got ' + resolved.tokens.baseUnit);
+}
+if (resolved.tokens.cornerRadius !== 4) {
+  throw new Error('expected cornerRadius 4, got ' + resolved.tokens.cornerRadius);
+}
+if (resolved.tokens.colors.primaryBackcolor.css !== 'rgba(25, 179, 148, 1)') {
+  throw new Error(
+    'expected primaryBackcolor rgba(25, 179, 148, 1), got ' +
+      resolved.tokens.colors.primaryBackcolor.css
+  );
+}
+if (typeof pkg.spacing !== 'function' || pkg.spacing(8, 1.5) !== 12) {
+  throw new Error('spacing helper missing or wrong');
+}
+console.log('7e: OK');
+`,
+    expectSuccess: true,
+  },
 ];
 
 function log(message) {
