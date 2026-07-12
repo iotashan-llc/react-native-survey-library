@@ -125,7 +125,9 @@ export function buildItemRecipe(
     },
     label: {
       fontFamily: resolved.tokens.typography.editor.fontFamily || undefined,
-      fontWeight: String(resolved.tokens.typography.editor.fontWeight) as TextStyle['fontWeight'],
+      fontWeight: String(
+        resolved.tokens.typography.editor.fontWeight
+      ) as TextStyle['fontWeight'],
       fontSize: resolved.tokens.typography.editor.fontSize,
       lineHeight: resolved.tokens.typography.editorLineHeight,
       color: resolveColorVar(resolved, '--sjs-font-questiontitle-color').css,

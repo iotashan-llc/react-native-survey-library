@@ -46,9 +46,7 @@ describe('typography tokens — resolveTheme(undefined) defaults', () => {
     });
     expect(resolved.tokens.typography.base.fontFamily).toBe('Georgia');
     expect(resolved.tokens.typography.editor.fontFamily).toBe('Georgia');
-    expect(resolved.tokens.typography.questionTitle.fontFamily).toBe(
-      'Georgia'
-    );
+    expect(resolved.tokens.typography.questionTitle.fontFamily).toBe('Georgia');
     expect(resolved.diagnostics).toEqual([]);
   });
 

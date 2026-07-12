@@ -27,7 +27,8 @@ import { resolveTheme } from '../theme-core/resolve';
 import type { ResolvedTheme } from '../theme-core/resolve';
 import type { ITheme } from '../core/facade';
 import { buildRecipes } from './recipes';
-import type { Recipes, BuildContext } from './recipes/types';
+import type { Recipes } from './recipes';
+import type { BuildContext } from './recipes/types';
 import { reportDiagnostic } from '../diagnostics';
 
 export interface ThemeMode {
@@ -72,8 +73,9 @@ function makeDefaultContextValue(): SurveyThemeContextValue {
   };
 }
 
-export const SurveyThemeContext =
-  React.createContext<SurveyThemeContextValue>(makeDefaultContextValue());
+export const SurveyThemeContext = React.createContext<SurveyThemeContextValue>(
+  makeDefaultContextValue()
+);
 SurveyThemeContext.displayName = 'SurveyThemeContext';
 
 /** Recursively sorts object keys so an equal-but-different-reference value produces an identical string (deep-compare via string equality). */

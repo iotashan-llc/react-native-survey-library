@@ -71,7 +71,9 @@ describe('selectButtonStyles — 13 fixture-locked legal states', () => {
   it.each(states.map((v, i) => [i, v] as const))(
     'legal state %i selects without throwing',
     (_i, variant) => {
-      expect(selectButtonStyles(recipe, variant, mode).length).toBeGreaterThan(0);
+      expect(selectButtonStyles(recipe, variant, mode).length).toBeGreaterThan(
+        0
+      );
     }
   );
 

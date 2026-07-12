@@ -68,9 +68,7 @@ export function toBoxShadow(layers: ShadowLayer[]): BoxShadowValue[] {
  * document intent and tests can exercise the contract independently of
  * array-spread call sites.
  */
-export function composeShadowLayers(
-  ...groups: ShadowLayer[][]
-): ShadowLayer[] {
+export function composeShadowLayers(...groups: ShadowLayer[][]): ShadowLayer[] {
   return groups.flat();
 }
 
@@ -86,7 +84,9 @@ function estimateElevation(layers: ShadowLayer[]): number {
   const primary = layers.reduce((max, layer) =>
     layer.blurRadius > max.blurRadius ? layer : max
   );
-  const raw = Math.round((Math.abs(primary.offsetY) + primary.blurRadius / 2) / 2);
+  const raw = Math.round(
+    (Math.abs(primary.offsetY) + primary.blurRadius / 2) / 2
+  );
   return Math.min(24, Math.max(1, raw));
 }
 
@@ -95,7 +95,11 @@ function mapForAndroid(
   apiLevel: number
 ): ShadowMapResult {
   if (apiLevel >= 29) {
-    return { boxShadow: toBoxShadow(layers), elevation: undefined, diagnostics: [] };
+    return {
+      boxShadow: toBoxShadow(layers),
+      elevation: undefined,
+      diagnostics: [],
+    };
   }
   if (apiLevel === 28) {
     const outsetLayers = layers.filter((layer) => !layer.inset);
@@ -109,7 +113,11 @@ function mapForAndroid(
             },
           ]
         : [];
-    return { boxShadow: toBoxShadow(outsetLayers), elevation: undefined, diagnostics };
+    return {
+      boxShadow: toBoxShadow(outsetLayers),
+      elevation: undefined,
+      diagnostics,
+    };
   }
   const diagnostics: ShadowDiagnostic[] =
     layers.length > 0
@@ -133,7 +141,11 @@ export function mapShadowForPlatform(
   platform: PlatformShadowSpec
 ): ShadowMapResult {
   if (platform.os === 'ios') {
-    return { boxShadow: toBoxShadow(layers), elevation: undefined, diagnostics: [] };
+    return {
+      boxShadow: toBoxShadow(layers),
+      elevation: undefined,
+      diagnostics: [],
+    };
   }
   return mapForAndroid(layers, platform.apiLevel ?? 0);
 }

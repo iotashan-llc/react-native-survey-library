@@ -27,11 +27,15 @@
  * A3 — a static React Context read is unrelated).
  */
 import * as React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { QuestionElementBase } from '../reactivity/QuestionElementBase';
 import type { QuestionElementBaseProps } from '../reactivity/QuestionElementBase';
 import { reportUnsupportedQuestionTypeOnce } from '../diagnostics';
 import { SurveyThemeContext } from '../theme-rn/provider';
+
+const styles = StyleSheet.create({
+  row: { flexDirection: 'row' },
+});
 
 export interface UnsupportedMissInfo {
   /** The dispatch key the caller looked up and failed to find. */
@@ -55,16 +59,19 @@ function DefaultUnsupportedPresentation(
 ): React.JSX.Element {
   const { question } = props;
   const { recipes } = React.useContext(SurveyThemeContext);
-  const { panel, message, errorAccentBar } = recipes.unsupportedQuestion.fragments;
+  const { panel, message, errorAccentBar } =
+    recipes.unsupportedQuestion.fragments;
   const { title: titleRecipe } = recipes.unsupportedQuestion;
   return (
-    <View style={{ flexDirection: 'row' }}>
+    <View style={styles.row}>
       <View style={errorAccentBar} />
       <View style={panel} testID="unsupported-question-panel">
         <Text style={titleRecipe.fragments.title}>
           {question.title || question.name}
         </Text>
-        <Text style={message}>{`Unsupported question type: ${question.getType()}`}</Text>
+        <Text
+          style={message}
+        >{`Unsupported question type: ${question.getType()}`}</Text>
       </View>
     </View>
   );

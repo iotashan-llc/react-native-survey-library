@@ -70,8 +70,11 @@ export function resolveColorVar(
     resolved.rawVariables,
     `var(${sjsName})`
   );
-  const parsed = parseColor(value ?? 'transparent', 'transparent', sjsName)
-    .value;
+  const parsed = parseColor(
+    value ?? 'transparent',
+    'transparent',
+    sjsName
+  ).value;
   const token: ColorToken = {
     ...parsed,
     css: `rgba(${parsed.r}, ${parsed.g}, ${parsed.b}, ${parsed.a})`,

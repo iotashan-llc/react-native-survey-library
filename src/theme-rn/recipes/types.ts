@@ -71,7 +71,10 @@ export function resolvePlatformFromRN(
   if (os === 'android') {
     const apiLevel =
       typeof version === 'number' ? version : Number(version ?? 0);
-    return { os: 'android', apiLevel: Number.isFinite(apiLevel) ? apiLevel : 0 };
+    return {
+      os: 'android',
+      apiLevel: Number.isFinite(apiLevel) ? apiLevel : 0,
+    };
   }
   return { os: 'ios' };
 }

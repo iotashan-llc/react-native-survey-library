@@ -490,10 +490,7 @@ function resolveTypography(
       fontSize: baseFontSize,
     },
     editor: {
-      fontFamily: resolveFamily(
-        '--sjs-font-editorfont-family',
-        rawVariables
-      ),
+      fontFamily: resolveFamily('--sjs-font-editorfont-family', rawVariables),
       fontSize: editorFontSize,
       fontWeight: resolveEntry(
         '--sjs-font-editorfont-weight',

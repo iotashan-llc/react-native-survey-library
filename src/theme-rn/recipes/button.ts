@@ -10,7 +10,13 @@
 import { StyleSheet } from 'react-native';
 import type { ViewStyle, TextStyle } from 'react-native';
 import type { ResolvedTheme } from '../../theme-core/resolve';
-import { calcSize, calcFontSize, calcLineHeight, calcCornerRadius, resolveColorVar } from './tokenLookup';
+import {
+  calcSize,
+  calcFontSize,
+  calcLineHeight,
+  calcCornerRadius,
+  resolveColorVar,
+} from './tokenLookup';
 import { mapShadowForPlatform, composeShadowLayers } from '../shadows';
 import type { BuildContext } from './types';
 

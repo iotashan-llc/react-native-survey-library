@@ -56,7 +56,9 @@ describe('extractTokens — pure engine', () => {
   });
 
   it('matches when ANY entry (live value OR canonical alias) fully matches — OR across entries', () => {
-    const schema = { checked: ['sd-item--checked sd-radio--checked', 'sd-item--checked'] };
+    const schema = {
+      checked: ['sd-item--checked sd-radio--checked', 'sd-item--checked'],
+    };
     expect(
       extractTokens('sd-item sd-item--checked', schema).variant.checked
     ).toBe(true);

@@ -12,7 +12,12 @@
 import { StyleSheet } from 'react-native';
 import type { TextStyle, ViewStyle } from 'react-native';
 import type { ResolvedTheme } from '../../theme-core/resolve';
-import { calcSize, calcFontSize, calcLineHeight, resolveColorVar } from './tokenLookup';
+import {
+  calcSize,
+  calcFontSize,
+  calcLineHeight,
+  resolveColorVar,
+} from './tokenLookup';
 
 export interface QuestionTitleVariant {
   required: boolean;

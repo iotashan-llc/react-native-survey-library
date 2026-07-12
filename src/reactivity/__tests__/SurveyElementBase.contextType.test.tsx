@@ -10,12 +10,17 @@ import * as React from 'react';
 import { render } from '@testing-library/react-native';
 import { Text } from 'react-native';
 import { SurveyElementBase } from '../SurveyElementBase';
-import { SurveyThemeProvider, SurveyThemeContext } from '../../theme-rn/provider';
+import {
+  SurveyThemeProvider,
+  SurveyThemeContext,
+} from '../../theme-rn/provider';
 
 class ContextProbe extends SurveyElementBase {
   protected renderElement(): React.JSX.Element {
     const value = this.themeContext;
-    return <Text testID="probe">{value.resolved.meta.themeName ?? 'none'}</Text>;
+    return (
+      <Text testID="probe">{value.resolved.meta.themeName ?? 'none'}</Text>
+    );
   }
 }
 

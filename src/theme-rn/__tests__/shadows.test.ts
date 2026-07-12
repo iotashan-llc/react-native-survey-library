@@ -200,9 +200,9 @@ describe('validity across all 40 themes x 6 shadow tokens x both platform tiers'
               expect(Number.isFinite(layer.offsetY as number)).toBe(true);
               expect(Number.isFinite(layer.blurRadius as number)).toBe(true);
               expect(layer.blurRadius as number).toBeGreaterThanOrEqual(0);
-              expect(
-                Number.isFinite(layer.spreadDistance as number)
-              ).toBe(true);
+              expect(Number.isFinite(layer.spreadDistance as number)).toBe(
+                true
+              );
               expect(typeof layer.color).toBe('string');
               expect(layer.color).toMatch(/^rgba\(/);
             }

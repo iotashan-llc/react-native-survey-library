@@ -10,10 +10,7 @@ import * as React from 'react';
 import { StrictMode } from 'react';
 import { render } from '@testing-library/react-native';
 import { Text } from 'react-native';
-import {
-  SurveyThemeProvider,
-  SurveyThemeContext,
-} from '../provider';
+import { SurveyThemeProvider, SurveyThemeContext } from '../provider';
 import type { SurveyThemeContextValue } from '../provider';
 import { setDiagnosticHandler } from '../../diagnostics';
 import type { DiagnosticPayload } from '../../diagnostics';

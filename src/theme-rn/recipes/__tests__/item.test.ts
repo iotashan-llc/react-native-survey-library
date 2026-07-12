@@ -47,7 +47,9 @@ describe('buildItemRecipe — formulas from resolved tokens (0.7-metrics-fixture
   });
 
   it('a non-default theme flows into the formulas (base-unit override changes container padding)', () => {
-    const custom = resolveTheme({ cssVariables: { '--sjs-base-unit': '10px' } });
+    const custom = resolveTheme({
+      cssVariables: { '--sjs-base-unit': '10px' },
+    });
     const customRecipe = buildItemRecipe(custom, iosCtx);
     expect(customRecipe.fragments.container.paddingVertical).toBe(15);
   });
@@ -58,18 +60,103 @@ describe('selectItemStyles — exactly the 12 fixture-locked legal states', () =
   const mode = { narrow: false, rtl: false };
 
   const legalStates: ItemVariant[] = [
-    { checked: false, readOnly: false, preview: false, error: false, pressed: false, focused: false },
-    { checked: true, readOnly: false, preview: false, error: false, pressed: false, focused: false },
-    { checked: false, readOnly: true, preview: false, error: false, pressed: false, focused: false },
-    { checked: true, readOnly: true, preview: false, error: false, pressed: false, focused: false },
-    { checked: false, readOnly: false, preview: true, error: false, pressed: false, focused: false },
-    { checked: true, readOnly: false, preview: true, error: false, pressed: false, focused: false },
-    { checked: false, readOnly: false, preview: false, error: true, pressed: false, focused: false },
-    { checked: true, readOnly: false, preview: false, error: true, pressed: false, focused: false },
-    { checked: false, readOnly: false, preview: false, error: false, pressed: true, focused: false },
-    { checked: false, readOnly: false, preview: false, error: false, pressed: false, focused: true },
-    { checked: true, readOnly: false, preview: false, error: false, pressed: false, focused: true },
-    { checked: false, readOnly: false, preview: false, error: false, pressed: false, focused: false, none: true },
+    {
+      checked: false,
+      readOnly: false,
+      preview: false,
+      error: false,
+      pressed: false,
+      focused: false,
+    },
+    {
+      checked: true,
+      readOnly: false,
+      preview: false,
+      error: false,
+      pressed: false,
+      focused: false,
+    },
+    {
+      checked: false,
+      readOnly: true,
+      preview: false,
+      error: false,
+      pressed: false,
+      focused: false,
+    },
+    {
+      checked: true,
+      readOnly: true,
+      preview: false,
+      error: false,
+      pressed: false,
+      focused: false,
+    },
+    {
+      checked: false,
+      readOnly: false,
+      preview: true,
+      error: false,
+      pressed: false,
+      focused: false,
+    },
+    {
+      checked: true,
+      readOnly: false,
+      preview: true,
+      error: false,
+      pressed: false,
+      focused: false,
+    },
+    {
+      checked: false,
+      readOnly: false,
+      preview: false,
+      error: true,
+      pressed: false,
+      focused: false,
+    },
+    {
+      checked: true,
+      readOnly: false,
+      preview: false,
+      error: true,
+      pressed: false,
+      focused: false,
+    },
+    {
+      checked: false,
+      readOnly: false,
+      preview: false,
+      error: false,
+      pressed: true,
+      focused: false,
+    },
+    {
+      checked: false,
+      readOnly: false,
+      preview: false,
+      error: false,
+      pressed: false,
+      focused: true,
+    },
+    {
+      checked: true,
+      readOnly: false,
+      preview: false,
+      error: false,
+      pressed: false,
+      focused: true,
+    },
+    {
+      checked: false,
+      readOnly: false,
+      preview: false,
+      error: false,
+      pressed: false,
+      focused: false,
+      none: true,
+    },
   ];
 
   it.each(legalStates.map((v, i) => [i, v] as const))(
@@ -84,13 +171,27 @@ describe('selectItemStyles — exactly the 12 fixture-locked legal states', () =
   it('readOnly wins over checked for decorator background (state.readOnly = background-dark, no shadow)', () => {
     const checkedOnly = selectItemStyles(
       recipe,
-      { checked: true, readOnly: false, preview: false, error: false, pressed: false, focused: false },
+      {
+        checked: true,
+        readOnly: false,
+        preview: false,
+        error: false,
+        pressed: false,
+        focused: false,
+      },
       mode,
       'checkbox'
     );
     const checkedReadOnly = selectItemStyles(
       recipe,
-      { checked: true, readOnly: true, preview: false, error: false, pressed: false, focused: false },
+      {
+        checked: true,
+        readOnly: true,
+        preview: false,
+        error: false,
+        pressed: false,
+        focused: false,
+      },
       mode,
       'checkbox'
     );
@@ -103,13 +204,27 @@ describe('selectItemStyles — exactly the 12 fixture-locked legal states', () =
   it('pressed is gated by allowHover && !readOnly (selector accepts the flag directly -- caller enforces the gate before calling)', () => {
     const pressed = selectItemStyles(
       recipe,
-      { checked: false, readOnly: false, preview: false, error: false, pressed: true, focused: false },
+      {
+        checked: false,
+        readOnly: false,
+        preview: false,
+        error: false,
+        pressed: true,
+        focused: false,
+      },
       mode,
       'checkbox'
     );
     const base = selectItemStyles(
       recipe,
-      { checked: false, readOnly: false, preview: false, error: false, pressed: false, focused: false },
+      {
+        checked: false,
+        readOnly: false,
+        preview: false,
+        error: false,
+        pressed: false,
+        focused: false,
+      },
       mode,
       'checkbox'
     );
@@ -122,13 +237,27 @@ describe('selectItemStyles — exactly the 12 fixture-locked legal states', () =
   it('shape switches the decorator radius fragment (checkbox vs radio)', () => {
     const checkboxStyles = selectItemStyles(
       recipe,
-      { checked: false, readOnly: false, preview: false, error: false, pressed: false, focused: false },
+      {
+        checked: false,
+        readOnly: false,
+        preview: false,
+        error: false,
+        pressed: false,
+        focused: false,
+      },
       mode,
       'checkbox'
     );
     const radioStyles = selectItemStyles(
       recipe,
-      { checked: false, readOnly: false, preview: false, error: false, pressed: false, focused: false },
+      {
+        checked: false,
+        readOnly: false,
+        preview: false,
+        error: false,
+        pressed: false,
+        focused: false,
+      },
       mode,
       'radio'
     );
@@ -143,32 +272,57 @@ describe('selectIconFill — 0.7-metrics-fixture.md icon.fill table (round-2 cor
 
   it('unchecked -> transparent', () => {
     expect(
-      selectIconFill(recipe, { checked: false, focused: false, readOnly: false, preview: false })
+      selectIconFill(recipe, {
+        checked: false,
+        focused: false,
+        readOnly: false,
+        preview: false,
+      })
     ).toBe('transparent');
   });
 
   it('checked -> primary-foreground', () => {
     expect(
-      selectIconFill(recipe, { checked: true, focused: false, readOnly: false, preview: false })
-    ).toBe(resolved.tokens.colors.primaryForecolor.css);
+      selectIconFill(recipe, {
+        checked: true,
+        focused: false,
+        readOnly: false,
+        preview: false,
+      })
+    ).toBe(resolved.tokens.colors.primaryForecolor!.css);
   });
 
   it('checked+focused -> primary', () => {
     expect(
-      selectIconFill(recipe, { checked: true, focused: true, readOnly: false, preview: false })
-    ).toBe(resolved.tokens.colors.primaryBackcolor.css);
+      selectIconFill(recipe, {
+        checked: true,
+        focused: true,
+        readOnly: false,
+        preview: false,
+      })
+    ).toBe(resolved.tokens.colors.primaryBackcolor!.css);
   });
 
   it('checked+readOnly -> foreground', () => {
     expect(
-      selectIconFill(recipe, { checked: true, focused: false, readOnly: true, preview: false })
-    ).toBe(resolved.tokens.colors.generalForecolor.css);
+      selectIconFill(recipe, {
+        checked: true,
+        focused: false,
+        readOnly: true,
+        preview: false,
+      })
+    ).toBe(resolved.tokens.colors.generalForecolor!.css);
   });
 
   it('preview -> foreground', () => {
     expect(
-      selectIconFill(recipe, { checked: false, focused: false, readOnly: false, preview: true })
-    ).toBe(resolved.tokens.colors.generalForecolor.css);
+      selectIconFill(recipe, {
+        checked: false,
+        focused: false,
+        readOnly: false,
+        preview: true,
+      })
+    ).toBe(resolved.tokens.colors.generalForecolor!.css);
   });
 });
 

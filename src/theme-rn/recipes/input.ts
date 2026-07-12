@@ -7,7 +7,12 @@
 import { StyleSheet } from 'react-native';
 import type { ViewStyle, TextStyle } from 'react-native';
 import type { ResolvedTheme } from '../../theme-core/resolve';
-import { calcSize, calcFontSize, calcLineHeight, resolveColorVar } from './tokenLookup';
+import {
+  calcSize,
+  calcFontSize,
+  calcLineHeight,
+  resolveColorVar,
+} from './tokenLookup';
 import { mapShadowForPlatform, composeShadowLayers } from '../shadows';
 import type { BuildContext } from './types';
 
@@ -41,10 +46,6 @@ export function buildInputRecipe(
 ): InputRecipe {
   const innerShadow = mapShadowForPlatform(
     resolved.tokens.shadows.inner,
-    buildCtx.platform
-  );
-  const innerResetShadow = mapShadowForPlatform(
-    resolved.tokens.shadows.innerReset,
     buildCtx.platform
   );
   const focusRing = mapShadowForPlatform(
@@ -100,10 +101,8 @@ export function buildInputRecipe(
     characterCounter: {
       fontSize: calcFontSize(resolved, 1),
       lineHeight: calcLineHeight(resolved, 1.5),
-      color: resolveColorVar(
-        resolved,
-        '--sjs-font-editorfont-placeholdercolor'
-      ).css,
+      color: resolveColorVar(resolved, '--sjs-font-editorfont-placeholdercolor')
+        .css,
       position: 'absolute',
       right: calcSize(resolved, 2),
       bottom: calcSize(resolved, 1.5),

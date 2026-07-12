@@ -28,8 +28,7 @@ export function buildUnsupportedQuestionRecipe(
 ): UnsupportedQuestionRecipe {
   const fragments = StyleSheet.create({
     panel: {
-      backgroundColor: resolveColorVar(resolved, '--sjs-editor-background')
-        .css,
+      backgroundColor: resolveColorVar(resolved, '--sjs-editor-background').css,
       borderWidth: 1,
       borderColor: resolveColorVar(resolved, '--sjs-border-default').css,
       borderRadius: resolved.tokens.typography.editorCornerRadius,

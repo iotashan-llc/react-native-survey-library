@@ -16,9 +16,7 @@ describe('buildUnsupportedQuestionRecipe — formulas from resolved tokens', () 
     expect(recipe.fragments.panel.borderWidth).toBe(1);
     expect(recipe.fragments.panel.borderRadius).toBe(4);
     expect(recipe.fragments.panel.padding).toBe(16);
-    expect(recipe.fragments.panel.backgroundColor).toEqual(
-      expect.any(String)
-    );
+    expect(recipe.fragments.panel.backgroundColor).toEqual(expect.any(String));
   });
 
   it('message: editor-font 16/24, color foreground', () => {

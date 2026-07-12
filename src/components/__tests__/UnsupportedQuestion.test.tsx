@@ -97,7 +97,9 @@ describe('UnsupportedQuestion', () => {
 
     const custom = render(
       <SurveyThemeProvider
-        theme={{ cssVariables: { '--sjs-editor-background': 'rgba(9, 9, 9, 1)' } }}
+        theme={{
+          cssVariables: { '--sjs-editor-background': 'rgba(9, 9, 9, 1)' },
+        }}
       >
         {createUnsupportedQuestion(
           { question, creator: {} },
