@@ -27,14 +27,42 @@
 
 type PatchableGlobal = Record<string, unknown>;
 
+/**
+ * The shape of survey-core's `settings` singleton this shim cares about
+ * (structural — declared locally so this module keeps its zero-imports
+ * invariant).
+ */
+interface SurveyCoreSettingsLike {
+  environment?: unknown;
+}
+
 function noop(): void {}
 
 /**
- * Applies the survey-core environment shim to `global`. Idempotent: safe
- * to call more than once, and never overrides a global that already
- * exists (patches only what's missing).
+ * Applies the survey-core environment shim. Idempotent: safe to call
+ * more than once, and never overrides anything that already exists
+ * (patches only what's missing).
+ *
+ * Global patches (no argument needed): a no-op `addEventListener`/
+ * `removeEventListener` pair on `global` — see the module banner.
+ *
+ * 1.2 amendment (design: docs/design/1.2-lifecycle-bridge.md, piece 3):
+ * when survey-core's `settings` singleton is PASSED IN, additionally
+ * stubs `settings.environment` — an object whose mount fields are all
+ * `undefined` — so core's unguarded destructures (`scrollElementToTop`,
+ * survey.ts:5872, plus dom-utils/dragdrop/popup readers) survive instead
+ * of throwing "Cannot read properties of undefined". Downstream reads
+ * are optional-chained (`surveyRootElement?.querySelector` skips), so
+ * undefined fields are the SSR-safe values. The parameter keeps this
+ * module import-free: the FACADE (the one module allowed to import
+ * survey-core) passes `settings` after survey-core evaluates; the
+ * self-invocation below stays global-only, which is why the `/shim`
+ * subpath remains zero-core-import for consumers who import survey-core
+ * before the renderer.
  */
-export function applySurveyCoreShims(): void {
+export function applySurveyCoreShims(
+  surveyCoreSettings?: SurveyCoreSettingsLike
+): void {
   const target = globalThis as unknown as PatchableGlobal;
 
   if (typeof target.addEventListener !== 'function') {
@@ -42,6 +70,20 @@ export function applySurveyCoreShims(): void {
   }
   if (typeof target.removeEventListener !== 'function') {
     target.removeEventListener = noop;
+  }
+
+  if (surveyCoreSettings) {
+    // `??=`: a consumer-supplied environment (set before the facade
+    // evaluated) is never clobbered. Never define `document` (0.3
+    // invariant unchanged — its absence routes survey-core into its
+    // SSR-safe paths).
+    surveyCoreSettings.environment ??= {
+      root: undefined,
+      rootElement: undefined,
+      popupMountContainer: undefined,
+      svgMountContainer: undefined,
+      stylesSheetsMountContainer: undefined,
+    };
   }
 }
 

@@ -18,3 +18,18 @@
 import './shim';
 
 export * from 'survey-core';
+
+// 1.2 amendment (design: docs/design/1.2-lifecycle-bridge.md, piece 3):
+// with survey-core now evaluated, hand its `settings` singleton back to
+// the shim so it can stub `settings.environment` (defense-in-depth
+// behind the lifecycle bridge — the bridge cancels the scroll funnel
+// before core's unguarded destructure, this stub makes any OTHER reader
+// non-fatal). Import statements above are hoisted ahead of this call in
+// every module system this library ships under (ESM order and Babel's
+// CJS interop alike), so the shim's global patches still precede
+// survey-core's require-time code, and this statement runs strictly
+// after both.
+import { settings } from 'survey-core';
+import { applySurveyCoreShims } from './shim';
+
+applySurveyCoreShims(settings);
