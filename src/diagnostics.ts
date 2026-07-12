@@ -1,7 +1,7 @@
 /**
  * Shared, non-throwing diagnostic seam (design: docs/design/0.5-factories.md,
  * "Diagnostics"). One handler registration + one safe dispatch path, reused
- * by two independent "once" mechanisms:
+ * by independent mechanisms across the library:
  *
  * - `reportUnsupportedQuestionTypeOnce` — once per (question, dispatchKey):
  *   a `WeakMap<Question, Set<string>>` (a question that later misses a
@@ -12,6 +12,10 @@
  *   `WeakSet<Question>`, called from `QuestionElementBase`'s mounted-hook
  *   reconcile (RN divergence: DOM custom widgets are won't-support: see
  *   docs/design/0.5-factories.md "Upstream shape").
+ * - `<SanitizedHtml>` (design: docs/design/0.9-html-strategy.md) forwards
+ *   both the sanitizer's own resource-bound/attribute diagnostics and its
+ *   press-time link-revalidation no-ops through this same seam — no second,
+ *   parallel dev-warning mechanism.
  *
  * `reportDiagnostic` wraps the registered handler in try/catch — a
  * throwing consumer handler is logged once (`console.error`) and can never
@@ -35,8 +39,32 @@ export interface CustomWidgetIgnoredPayload {
   widgetName: string | undefined;
 }
 
+/** Forwarded verbatim from `sanitizeHtml`'s own returned diagnostics
+ * (design: docs/design/0.9-html-strategy.md, resource-bounds table +
+ * "duplicate attributes ... + diagnostic"). `sanitizeCode` is
+ * `SanitizeDiagnosticCode` from `./security/sanitize-html` — typed as
+ * `string` here rather than imported, so this shared module has no
+ * dependency on the security module's internals. */
+export interface SanitizedHtmlDiagnosticPayload {
+  code: 'sanitized-html-diagnostic';
+  sanitizeCode: string;
+  detail: string;
+}
+
+/** Emitted when `<SanitizedHtml>`'s anchor `onPress` drops a press instead
+ * of forwarding it — invalid/re-validation-failed href, or no `onLinkPress`
+ * host callback was provided (design: "no host callback = no-op + dev
+ * diagnostic"). */
+export interface SanitizedHtmlLinkPressDroppedPayload {
+  code: 'sanitized-html-link-press-dropped';
+  reason: string;
+}
+
 export type DiagnosticPayload =
-  UnsupportedQuestionTypePayload | CustomWidgetIgnoredPayload;
+  | UnsupportedQuestionTypePayload
+  | CustomWidgetIgnoredPayload
+  | SanitizedHtmlDiagnosticPayload
+  | SanitizedHtmlLinkPressDroppedPayload;
 
 export type DiagnosticHandler = (payload: DiagnosticPayload) => void;
 
