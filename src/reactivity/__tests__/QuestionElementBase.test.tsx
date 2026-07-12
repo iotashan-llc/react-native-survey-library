@@ -17,10 +17,12 @@ import * as React from 'react';
 import { Text } from 'react-native';
 import { act, render, screen } from '@testing-library/react-native';
 
-import { Model } from '../../core/facade';
+import { CustomWidgetCollection, Model } from '../../core/facade';
 import type { Base, Question } from '../../core/facade';
 import { QuestionElementBase } from '../QuestionElementBase';
 import type { SurveyElementBaseState } from '../SurveyElementBase';
+import { setDiagnosticHandler } from '../../diagnostics';
+import type { DiagnosticPayload } from '../../diagnostics';
 
 function createQuestion(name: string): Question {
   const model = new Model({ elements: [{ type: 'text', name }] });
@@ -406,5 +408,116 @@ describe('QuestionElementBase', () => {
     } finally {
       warnSpy.mockRestore();
     }
+  });
+});
+
+/**
+ * Ignored-customWidget diagnostic (design: docs/design/0.5-factories.md,
+ * "Upstream shape" — RN divergence, explicit: DOM custom widgets are
+ * won't-support, so a question with a matched `customWidget` renders via
+ * its normal dispatch key (widget ignored) + one diagnostic). Wired into
+ * the mounted-hook reconcile: a supported question never mounts the
+ * unsupported-type fallback, so this diagnostic can't live there — it has
+ * to be `QuestionElementBase` itself that notices.
+ */
+class DiagnosticProbe extends QuestionElementBase<
+  { testID: string; question: Question; creator?: unknown },
+  SurveyElementBaseState
+> {
+  protected renderElement(): React.JSX.Element {
+    return <Text testID={this.props.testID}>probe</Text>;
+  }
+}
+
+describe('QuestionElementBase: ignored-customWidget diagnostic', () => {
+  afterEach(() => {
+    CustomWidgetCollection.Instance.clear();
+    setDiagnosticHandler(undefined);
+  });
+
+  it('a question with a matched customWidget emits "custom-widget-ignored" once, from the commit phase', () => {
+    CustomWidgetCollection.Instance.addCustomWidget({
+      name: 'fixture-widget',
+      isFit: () => true,
+    });
+    const seen: DiagnosticPayload[] = [];
+    setDiagnosticHandler((payload) => seen.push(payload));
+    const question = createQuestion('q-widget-ignored');
+
+    render(
+      <DiagnosticProbe testID="widget-1" question={question} creator={{}} />
+    );
+
+    const relevant = seen.filter((p) => p.code === 'custom-widget-ignored');
+    expect(relevant).toHaveLength(1);
+    expect(relevant[0]).toEqual({
+      code: 'custom-widget-ignored',
+      questionType: 'text',
+      name: 'q-widget-ignored',
+      widgetName: 'fixture-widget',
+    });
+    // Behavior-affecting: the question still dispatches/renders normally —
+    // the widget is ignored, not honored.
+    expect(screen.getByTestId('widget-1').props.children).toBe('probe');
+  });
+
+  it('emits only once per question across StrictMode remount and re-renders', () => {
+    CustomWidgetCollection.Instance.addCustomWidget({
+      name: 'fixture-widget-2',
+      isFit: () => true,
+    });
+    const seen: DiagnosticPayload[] = [];
+    setDiagnosticHandler((payload) => seen.push(payload));
+    const question = createQuestion('q-widget-strict');
+
+    const { rerender } = render(
+      <React.StrictMode>
+        <DiagnosticProbe testID="widget-2" question={question} creator={{}} />
+      </React.StrictMode>
+    );
+    rerender(
+      <React.StrictMode>
+        <DiagnosticProbe testID="widget-2" question={question} creator={{}} />
+      </React.StrictMode>
+    );
+
+    const relevant = seen.filter((p) => p.code === 'custom-widget-ignored');
+    expect(relevant).toHaveLength(1);
+  });
+
+  it('a question with no matched customWidget emits nothing', () => {
+    const seen: DiagnosticPayload[] = [];
+    setDiagnosticHandler((payload) => seen.push(payload));
+    const question = createQuestion('q-no-widget');
+
+    render(
+      <DiagnosticProbe testID="widget-3" question={question} creator={{}} />
+    );
+
+    expect(seen.filter((p) => p.code === 'custom-widget-ignored')).toHaveLength(
+      0
+    );
+  });
+
+  it('two questions with matched customWidgets each get their own diagnostic', () => {
+    CustomWidgetCollection.Instance.addCustomWidget({
+      name: 'fixture-widget-3',
+      isFit: () => true,
+    });
+    const seen: DiagnosticPayload[] = [];
+    setDiagnosticHandler((payload) => seen.push(payload));
+    const questionA = createQuestion('q-widget-a');
+    const questionB = createQuestion('q-widget-b');
+
+    render(
+      <>
+        <DiagnosticProbe testID="wa" question={questionA} creator={{}} />
+        <DiagnosticProbe testID="wb" question={questionB} creator={{}} />
+      </>
+    );
+
+    expect(seen.filter((p) => p.code === 'custom-widget-ignored')).toHaveLength(
+      2
+    );
   });
 });

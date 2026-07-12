@@ -26,8 +26,20 @@
  * means NO mounted pair: `onQuestionMounted` only ever fires with a
  * concrete ref, and a detach cleans the previous pair without a
  * mount(nullish).
+ *
+ * ALSO NEW for RN (design: docs/design/0.5-factories.md, "Upstream shape"):
+ * every commit checks `question.customWidget` once per question (gated by
+ * `../diagnostics`'s module-scoped `WeakSet<Question>`) and reports a
+ * `custom-widget-ignored` diagnostic if one matched. DOM custom widgets are
+ * won't-support in RN — the widget is never honored, the question renders
+ * via its normal dispatch key regardless — this is diagnostic-only, never a
+ * render-affecting branch (unlike upstream's customWidget
+ * shouldComponentUpdate carve-out, which stays unported per 0.4 D3).
+ * Reading `customWidget` triggers core's widget-discovery scan, which is
+ * benign (a no-op / cached lookup) when no widgets are registered.
  */
 import type { Base, Question } from '../core/facade';
+import { reportCustomWidgetIgnoredOnce } from '../diagnostics';
 import { SurveyElementBase } from './SurveyElementBase';
 import type { SurveyElementBaseState } from './SurveyElementBase';
 
@@ -82,11 +94,13 @@ export class QuestionElementBase<
 
   componentDidMount(): void {
     super.componentDidMount();
+    this.checkCustomWidgetIgnored();
     this.reconcileMountedHook();
   }
 
   componentDidUpdate(): void {
     super.componentDidUpdate();
+    this.checkCustomWidgetIgnored();
     this.reconcileMountedHook();
   }
 
@@ -141,5 +155,18 @@ export class QuestionElementBase<
       this.onQuestionWillUnmount(this.mountedPair[0], this.mountedPair[1]);
       this.mountedPair = undefined;
     }
+  }
+
+  private checkCustomWidgetIgnored(): void {
+    const question = this.questionBase;
+    if (!question) return;
+    const widget = question.customWidget;
+    if (!widget) return;
+    reportCustomWidgetIgnoredOnce(question, {
+      code: 'custom-widget-ignored',
+      questionType: question.getType(),
+      name: question.name,
+      widgetName: widget.name,
+    });
   }
 }
