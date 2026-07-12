@@ -35,8 +35,41 @@ export interface CustomWidgetIgnoredPayload {
   widgetName: string | undefined;
 }
 
+/**
+ * theme-rn's bridge (design: docs/design/0.7-theme-rn.md, "Hybrid bridge")
+ * — a css-class token present on a live getter's output that no known
+ * schema entry (live value or canonical alias) accounts for. Queued
+ * during render, flushed post-commit through this seam (dev-only, deduped
+ * per (question, token) for the question's lifetime).
+ */
+export interface UnknownCssTokenPayload {
+  code: 'theme-rn-unknown-css-token';
+  token: string;
+  questionName: string | undefined;
+  questionType: string;
+}
+
+/**
+ * theme-core's resolver diagnostics AND theme-rn's shadow-mapper
+ * diagnostics (design: docs/design/0.7-theme-rn.md, "Provider" —
+ * "0.6 resolver diagnostics emitted in a post-commit effect via the 0.5
+ * seam") — both are returned as pure data by their producing modules and
+ * forwarded here by `SurveyThemeProvider`, never called directly from
+ * theme-core/shadows.ts (keeps those modules observably pure).
+ */
+export interface ThemeDiagnosticPayload {
+  code: 'theme-diagnostic';
+  diagnosticCode: string;
+  variable: string | undefined;
+  message: string;
+  value: string | undefined;
+}
+
 export type DiagnosticPayload =
-  UnsupportedQuestionTypePayload | CustomWidgetIgnoredPayload;
+  | UnsupportedQuestionTypePayload
+  | CustomWidgetIgnoredPayload
+  | UnknownCssTokenPayload
+  | ThemeDiagnosticPayload;
 
 export type DiagnosticHandler = (payload: DiagnosticPayload) => void;
 
@@ -91,4 +124,62 @@ export function reportCustomWidgetIgnoredOnce(
   if (customWidgetIgnoredEmitted.has(question)) return;
   customWidgetIgnoredEmitted.add(question);
   reportDiagnostic(payload);
+}
+
+/**
+ * RN's Metro (and jest's react-native preset) define the `__DEV__`
+ * global; declared module-locally (same pattern as
+ * `reactivity/SurveyElementBase.tsx`) so the dev-only unknown-css-token
+ * seam typechecks without widening the library's ambient types.
+ */
+declare const __DEV__: boolean | undefined;
+
+function isDevMode(): boolean {
+  return typeof __DEV__ !== 'undefined' && __DEV__ === true;
+}
+
+/**
+ * theme-rn's bridge unknown-token seam (design: docs/design/0.7-theme-rn.md,
+ * "Hybrid bridge" point 4 — "No diagnostics during render: the component
+ * queues `unknownTokens` and flushes post-commit ... through the guarded
+ * seam, deduped module-wide via `WeakMap<Question, Set<token>>`
+ * (dev-only)"). Two WeakMaps: PENDING (queued this render pass, not yet
+ * reported) and EMITTED (already reported once, ever, for this question —
+ * survives across StrictMode's double-invoked commit phases so a token
+ * queued/flushed twice in the same pass still only reports once; a later,
+ * genuinely different token still reports).
+ */
+const unknownCssTokenPending = new WeakMap<Question, Set<string>>();
+const unknownCssTokenEmitted = new WeakMap<Question, Set<string>>();
+
+export function queueUnknownCssToken(question: Question, token: string): void {
+  if (!isDevMode()) return;
+  let pending = unknownCssTokenPending.get(question);
+  if (!pending) {
+    pending = new Set<string>();
+    unknownCssTokenPending.set(question, pending);
+  }
+  pending.add(token);
+}
+
+export function flushUnknownCssTokenDiagnostics(question: Question): void {
+  if (!isDevMode()) return;
+  const pending = unknownCssTokenPending.get(question);
+  if (!pending || pending.size === 0) return;
+  let emitted = unknownCssTokenEmitted.get(question);
+  if (!emitted) {
+    emitted = new Set<string>();
+    unknownCssTokenEmitted.set(question, emitted);
+  }
+  pending.forEach((token) => {
+    if (emitted?.has(token)) return;
+    emitted?.add(token);
+    reportDiagnostic({
+      code: 'theme-rn-unknown-css-token',
+      token,
+      questionName: question.name,
+      questionType: question.getType(),
+    });
+  });
+  pending.clear();
 }

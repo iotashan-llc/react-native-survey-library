@@ -79,12 +79,36 @@ export interface ArticleFontTokens {
   default: ArticleFontToken;
 }
 
+export interface FontFamilyToken {
+  fontFamily: string;
+  fontSize: number;
+  fontWeight: FontWeightValue;
+}
+
+/**
+ * Companion amendment (design: docs/design/0.7-theme-rn.md, "Companion
+ * amendments" #2): normalized typography families so 0.7 never re-parses
+ * `rawVariables` directly. `editorLineHeight` and `baseLineHeight` are
+ * DELIBERATELY separate tokens (1.5x their respective font-size path) —
+ * identical at defaults, diverge under a theme that overrides only one of
+ * `--sjs-font-editorfont-size` / `--sjs-font-size` (0.7 metrics fixture).
+ */
+export interface TypographyTokens {
+  base: { fontFamily: string; fontSize: number };
+  editor: FontFamilyToken;
+  questionTitle: FontFamilyToken;
+  editorLineHeight: number;
+  baseLineHeight: number;
+  editorCornerRadius: number;
+}
+
 export interface ThemeTokens {
   colors: Record<string, ColorToken>;
   baseUnit: number;
   cornerRadius: number;
   shadows: ShadowTokens;
   articleFont: ArticleFontTokens;
+  typography: TypographyTokens;
 }
 
 export interface ThemeMeta {
@@ -428,6 +452,81 @@ function resolveArticleFont(
   return result;
 }
 
+/**
+ * Font-family chains (`--sjs-font-family` and its editor/questionTitle
+ * dependents) all terminate at `--sjs-default-font-family` — a
+ * documented, deliberately fallback-less runtime hook (registry-data.ts:
+ * "an optional runtime hook; unset in the pure cascade, so dependent
+ * font-family chains resolve to inherit"). An unresolved family is NOT a
+ * malformed-theme condition (the real CSS cascade's answer here is
+ * `inherit`, not an error) — so this resolves through the shared var()
+ * engine but, unlike `resolveEntry`, treats "unresolved" as the
+ * documented empty-string/inherit outcome and never emits a diagnostic
+ * for it. An explicit override (theme or a non-family var overlay) still
+ * resolves normally through the same engine.
+ */
+function resolveFamily(name: string, rawVariables: RawVariables): string {
+  const { value } = evaluateVarExpression(rawVariables, `var(${name})`);
+  return (value ?? '').trim();
+}
+
+function resolveTypography(
+  rawVariables: RawVariables,
+  diagnostics: ThemeDiagnostic[]
+): TypographyTokens {
+  const baseFontSize = resolveEntry(
+    '--sjs-font-size',
+    rawVariables,
+    diagnostics
+  ) as number;
+  const editorFontSize = resolveEntry(
+    '--sjs-font-editorfont-size',
+    rawVariables,
+    diagnostics
+  ) as number;
+  return {
+    base: {
+      fontFamily: resolveFamily('--sjs-font-family', rawVariables),
+      fontSize: baseFontSize,
+    },
+    editor: {
+      fontFamily: resolveFamily(
+        '--sjs-font-editorfont-family',
+        rawVariables
+      ),
+      fontSize: editorFontSize,
+      fontWeight: resolveEntry(
+        '--sjs-font-editorfont-weight',
+        rawVariables,
+        diagnostics
+      ) as FontWeightValue,
+    },
+    questionTitle: {
+      fontFamily: resolveFamily(
+        '--sjs-font-questiontitle-family',
+        rawVariables
+      ),
+      fontSize: resolveEntry(
+        '--sjs-font-questiontitle-size',
+        rawVariables,
+        diagnostics
+      ) as number,
+      fontWeight: resolveEntry(
+        '--sjs-font-questiontitle-weight',
+        rawVariables,
+        diagnostics
+      ) as FontWeightValue,
+    },
+    editorLineHeight: 1.5 * editorFontSize,
+    baseLineHeight: 1.5 * baseFontSize,
+    editorCornerRadius: resolveEntry(
+      '--sjs-editorpanel-cornerRadius',
+      rawVariables,
+      diagnostics
+    ) as number,
+  };
+}
+
 /** `url(...)` unwrap for a background image URI — the SCSS/CSS `url()` wrapper isn't meaningful to a bare RN image source. */
 function unwrapUrl(value: string): string {
   const match = value.trim().match(/^url\(\s*['"]?(.*?)['"]?\s*\)$/);
@@ -606,6 +705,7 @@ export function resolveTheme(theme?: ITheme): ResolvedTheme {
   ) as number;
   const shadows = resolveShadows(rawVariables, diagnostics);
   const articleFont = resolveArticleFont(rawVariables, diagnostics);
+  const typography = resolveTypography(rawVariables, diagnostics);
 
   const tokens: ThemeTokens = {
     colors,
@@ -613,6 +713,7 @@ export function resolveTheme(theme?: ITheme): ResolvedTheme {
     cornerRadius,
     shadows,
     articleFont,
+    typography,
   };
 
   const meta: ThemeMeta = {
