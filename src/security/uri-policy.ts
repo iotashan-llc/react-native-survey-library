@@ -140,6 +140,41 @@ function ok(
 }
 
 // ---------------------------------------------------------------------
+// Config hardening (round-2 review #4). Untrusted config objects are read
+// via OWN properties only (never inherited), coerced to primitives, and
+// numeric knobs must be finite non-negative — a `NaN`/`Infinity`/negative
+// value must NEVER silently disable a ceiling (`Math.min(NaN, cap) === NaN`
+// and `x > NaN` is always false).
+// ---------------------------------------------------------------------
+
+function ownProp(obj: object | undefined, key: string): unknown {
+  if (obj != null && Object.prototype.hasOwnProperty.call(obj, key)) {
+    return (obj as Record<string, unknown>)[key];
+  }
+  return undefined;
+}
+
+/** Snapshots `config.allowedOrigins` into a private Set of OWN, primitive-
+ * string entries. A non-array (e.g. a bare string, whose `.includes` would
+ * substring-match), inherited property, or non-string element is ignored —
+ * only an exact origin-string match ever passes. */
+function toAllowedOriginSet(config: UriPolicyConfig | undefined): Set<string> {
+  const set = new Set<string>();
+  const raw = ownProp(config, 'allowedOrigins');
+  if (!Array.isArray(raw)) return set;
+  for (const entry of raw) {
+    if (typeof entry === 'string' && entry.length > 0) set.add(entry);
+  }
+  return set;
+}
+
+function finiteNonNegativeInt(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0
+    ? value
+    : undefined;
+}
+
+// ---------------------------------------------------------------------
 // Authority (host/port/userinfo) parsing
 // ---------------------------------------------------------------------
 
@@ -198,26 +233,51 @@ function parseAuthority(authority: string): ParsedAuthority | null {
   return { userinfo, host, port };
 }
 
+/** A syntactically valid, in-range (1–65535) port, or `null`. Out-of-range
+ * ports (`:0`, `:70000`, `:99999`) are rejected here (review #5). */
 function parsePort(colonAndDigits: string): number | null {
   if (colonAndDigits.length === 0) return null;
   const match = /^:(\d+)$/.exec(colonAndDigits);
   if (!match) return null;
-  return Number(match[1]);
+  const n = Number(match[1]);
+  if (!Number.isInteger(n) || n < 1 || n > 65535) return null;
+  return n;
 }
 
-const IPV4_PATTERN = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
+/** Canonicalizes a host for comparison/origin computation: lowercased and
+ * with a single terminal DNS dot stripped (`localhost.` → `localhost`,
+ * `example.com.` → `example.com`) so trailing-dot forms can't slip past the
+ * local/IP checks or the origin allowlist (review #6). IPv6 brackets left
+ * intact. */
+function canonicalizeHost(host: string): string {
+  let h = host.toLowerCase();
+  if (!h.startsWith('[') && h.length > 1 && h.endsWith('.')) {
+    h = h.slice(0, -1);
+  }
+  return h;
+}
 
+/** Recognizes ALL textual IPv4 forms (dotted-decimal/octal/hex, short
+ * forms like `127.1`, and bare decimal/hex like `2130706433` / `0x7f000001`)
+ * plus bracketed IPv6 — a legitimate DNS hostname always has at least one
+ * alphabetic label, so "every label is purely numeric/hex" reliably
+ * distinguishes an IP literal from a hostname (review #6, SSRF defense in
+ * depth: these are refused BEFORE the origin allowlist is consulted). */
 function isIpLiteralHost(host: string): boolean {
-  if (host.startsWith('[') && host.endsWith(']')) return true; // IPv6
-  return IPV4_PATTERN.test(host);
+  if (host.startsWith('[')) return true; // IPv6 literal
+  if (host.length === 0) return false;
+  const labels = host.split('.');
+  if (labels.length > 4) return false;
+  return labels.every((label) => /^(0[xX][0-9a-fA-F]+|\d+)$/.test(label));
 }
 
+/** `host` is expected pre-canonicalized (lowercased, terminal dot stripped). */
 function isLocalOrPrivateHostname(host: string): boolean {
-  const lower = host.toLowerCase();
   return (
-    lower === 'localhost' ||
-    lower.endsWith('.localhost') ||
-    lower.endsWith('.local')
+    host === 'localhost' ||
+    host.endsWith('.localhost') ||
+    host === 'local' ||
+    host.endsWith('.local')
   );
 }
 
@@ -266,6 +326,24 @@ function decodeBase64Prefix(payload: string, minBytes: number): number[] {
 function bytesStartWith(bytes: number[], signature: number[]): boolean {
   if (bytes.length < signature.length) return false;
   return signature.every((b, i) => bytes[i] === b);
+}
+
+/** RFC 4648 §3.5: the bits of the final encoded character that lie beyond
+ * the decoded byte(s) MUST be zero. With one `=` the last data char carries
+ * 2 real bits (value % 4 === 0); with `==` the last data char carries 4 real
+ * bits (value % 16 === 0). Rejecting non-canonical padding closes an
+ * encoder-ambiguity gap (review #11) where several distinct payloads decode
+ * to the same bytes. */
+function base64PadBitsValid(payload: string): boolean {
+  if (payload.endsWith('==')) {
+    const v = base64CharValue(payload[payload.length - 3] ?? '');
+    return v >= 0 && v % 16 === 0;
+  }
+  if (payload.endsWith('=')) {
+    const v = base64CharValue(payload[payload.length - 2] ?? '');
+    return v >= 0 && v % 4 === 0;
+  }
+  return true;
 }
 
 type CanonicalImageMime = 'png' | 'jpeg' | 'gif' | 'webp';
@@ -320,14 +398,21 @@ function validateDataImageUri(
   if (!payload || payload.length === 0 || payload.length % 4 !== 0) {
     return fail('data-image-invalid-base64');
   }
+  if (!base64PadBitsValid(payload)) {
+    return fail('data-image-invalid-base64');
+  }
 
   const paddingMatch = /[=]+$/.exec(payload);
   const paddingCount = paddingMatch ? paddingMatch[0].length : 0;
   const decodedByteLength = (payload.length / 4) * 3 - paddingCount;
 
-  const requestedCap = config?.maxDataImageBytes;
+  // A NaN/Infinity/negative override must NOT disable the cap (review #4):
+  // fall back to the default and clamp DOWN only.
+  const requestedCap = finiteNonNegativeInt(
+    ownProp(config, 'maxDataImageBytes')
+  );
   const effectiveCap =
-    requestedCap != null
+    requestedCap !== undefined
       ? Math.min(requestedCap, DEFAULT_MAX_DATA_IMAGE_BYTES)
       : DEFAULT_MAX_DATA_IMAGE_BYTES;
   if (decodedByteLength > effectiveCap) {
@@ -507,12 +592,10 @@ function computeOrigin(
   schemeLower: string,
   authority: ParsedAuthority
 ): string {
-  const hostLower = authority.host.toLowerCase();
+  const host = canonicalizeHost(authority.host);
   const defaultPort = DEFAULT_PORT_FOR_SCHEME[schemeLower];
   const includePort = authority.port !== null && authority.port !== defaultPort;
-  return (
-    schemeLower + '//' + hostLower + (includePort ? ':' + authority.port : '')
-  );
+  return schemeLower + '//' + host + (includePort ? ':' + authority.port : '');
 }
 
 function validateFetchAbsolute(
@@ -526,35 +609,30 @@ function validateFetchAbsolute(
   if (!parsedAuthority) return fail('malformed-uri');
 
   if (parsedAuthority.userinfo !== null) return fail('credentials-in-url');
-  if (isIpLiteralHost(parsedAuthority.host)) return fail('ip-literal-host');
-  if (isLocalOrPrivateHostname(parsedAuthority.host)) {
-    return fail('private-or-local-host');
-  }
 
-  const hostLower = parsedAuthority.host.toLowerCase();
+  const host = canonicalizeHost(parsedAuthority.host);
+  if (isIpLiteralHost(host)) return fail('ip-literal-host');
+  if (isLocalOrPrivateHostname(host)) return fail('private-or-local-host');
+
   const defaultPort = DEFAULT_PORT_FOR_SCHEME[schemeLower];
   const isNonDefaultPort =
     parsedAuthority.port !== null && parsedAuthority.port !== defaultPort;
-  const originWithPort =
-    schemeLower +
-    '//' +
-    hostLower +
-    (parsedAuthority.port !== null ? ':' + parsedAuthority.port : '');
-  const originDefaultForm = schemeLower + '//' + hostLower;
+  // The SINGLE canonical origin: `scheme://host[:non-default-port]`. An
+  // explicit default port (`:443` for https) normalizes away; a non-default
+  // port MUST appear (design: "non-default ports unless origin-listed"), so
+  // it is carried into BOTH the origin and the canonical string — never
+  // dropped so a sink silently contacts 443 (review #5, real bug).
+  const portSuffix = isNonDefaultPort ? ':' + parsedAuthority.port : '';
+  const origin = schemeLower + '//' + host + portSuffix;
 
-  const allowedOrigins = config?.allowedOrigins ?? [];
-  const isAllowlisted =
-    allowedOrigins.includes(originWithPort) ||
-    (!isNonDefaultPort && allowedOrigins.includes(originDefaultForm));
-
-  if (!isAllowlisted) {
+  const allowed = toAllowedOriginSet(config);
+  if (!allowed.has(origin)) {
     return fail(
       isNonDefaultPort ? 'non-default-port' : 'origin-not-allowlisted'
     );
   }
 
-  const canonical = schemeLower + '//' + hostLower + pathAndRest;
-  const origin = isNonDefaultPort ? originWithPort : originDefaultForm;
+  const canonical = schemeLower + '//' + host + portSuffix + pathAndRest;
   return ok(canonical, schemeLower, origin);
 }
 
@@ -567,13 +645,21 @@ function validateRelative(
     return ok(trimmed, null, null);
   }
 
-  const baseUrl = config?.baseUrl;
-  if (!baseUrl) return fail('relative-url-not-allowed');
+  const baseUrl = ownProp(config, 'baseUrl');
+  if (typeof baseUrl !== 'string' || baseUrl.length === 0) {
+    return fail('relative-url-not-allowed');
+  }
 
-  const baseCheck = validateUri(baseUrl, context, {
-    allowedOrigins: config?.allowedOrigins,
-    maxDataImageBytes: config?.maxDataImageBytes,
-  });
+  // Re-validate the base as an ABSOLUTE URL. The re-check config carries
+  // only the OWN allowedOrigins / maxDataImageBytes (hardened reads) and
+  // deliberately DROPS baseUrl — so a base that is itself relative fails
+  // with 'relative-url-not-allowed' instead of recursing forever.
+  const baseConfig: UriPolicyConfig = {};
+  const ownOrigins = ownProp(config, 'allowedOrigins');
+  if (Array.isArray(ownOrigins)) baseConfig.allowedOrigins = ownOrigins;
+  const ownCap = ownProp(config, 'maxDataImageBytes');
+  if (typeof ownCap === 'number') baseConfig.maxDataImageBytes = ownCap;
+  const baseCheck = validateUri(baseUrl, context, baseConfig);
   if (!baseCheck.ok) return fail('base-url-invalid');
 
   const baseParts = parseAbsoluteParts(baseCheck.canonical);
@@ -602,49 +688,64 @@ export function lintChoicesByUrlTemplate(
     return { ok: false, reason: 'empty' };
   }
 
-  // The substring (if any) that must not contain a `{` substitution
-  // placeholder: the scheme token, and/or the authority up to the next
-  // `/`, `?`, or `#`. `null` means the template has no scheme/authority
-  // component at all (a schemeless relative-path reference), in which
-  // case a placeholder anywhere is safely confined to the path.
-  let authorityRegion: string | null = null;
-
-  const schemeMatch = SCHEME_PATTERN.exec(template);
-  if (schemeMatch) {
-    const rest = schemeMatch[2]!;
-    authorityRegion = rest.startsWith('//')
-      ? schemeMatch[1] + '://' + firstSegment(rest.slice(2))
-      : schemeMatch[1] + ':'; // opaque scheme (mailto:-shaped), the token itself is injectable
-  } else if (template.startsWith('//')) {
-    // Protocol-relative: still has an authority component.
-    authorityRegion = '//' + firstSegment(template.slice(2));
-  } else {
-    // No letter-starting scheme match at all — covers the case where the
-    // SCHEME ITSELF is a placeholder, e.g. `{scheme}://host/items`: the
-    // whole prefix up to and including the authority is suspect.
-    const schemeSepIdx = template.indexOf('://');
-    if (schemeSepIdx !== -1) {
-      authorityRegion =
-        template.slice(0, schemeSepIdx) +
-        '://' +
-        firstSegment(template.slice(schemeSepIdx + 3));
-    }
-  }
-
+  const authorityRegion = choicesByUrlAuthorityRegion(template);
   if (authorityRegion !== null && authorityRegion.includes('{')) {
     return { ok: false, reason: 'substitution-in-authority-position' };
   }
   return { ok: true };
 }
 
-/** Returns the leading substring of `text` up to (not including) the
- * first `/`, `?`, or `#` — `text` must already have any scheme/`//`
- * prefix stripped by the caller. */
-function firstSegment(text: string): string {
-  let end = text.length;
+/** Index of the first `/`, `?`, or `#` at/after `from`, or `-1`. */
+function firstDelimiter(text: string, from: number): number {
+  let min = -1;
   for (const marker of ['/', '?', '#']) {
-    const idx = text.indexOf(marker);
-    if (idx !== -1 && idx < end) end = idx;
+    const idx = text.indexOf(marker, from);
+    if (idx !== -1 && (min === -1 || idx < min)) min = idx;
   }
-  return text.slice(0, end);
+  return min;
+}
+
+/**
+ * The leading substring that MUST be free of `{substitution}` placeholders:
+ * the scheme + authority + port, up to (not including) the first delimiter
+ * that legitimately begins the path/query/fragment. `null` means the
+ * template is a pure relative-path reference with no authority component at
+ * all, so a placeholder anywhere is confined to path/query (review #8).
+ *
+ * Because a substitution is opaque (it can expand to ANYTHING — including
+ * `//` that fabricates an authority, per `https:{slashes}evil.example/x`),
+ * an OPAQUE `scheme:rest` form treats everything up to the first LITERAL
+ * delimiter as authority-forming: a placeholder there is rejected.
+ */
+function choicesByUrlAuthorityRegion(template: string): string | null {
+  if (template.startsWith('//')) {
+    // Protocol-relative: `//authority...`.
+    const end = firstDelimiter(template, 2);
+    return end === -1 ? template : template.slice(0, end);
+  }
+
+  const pathStart = firstDelimiter(template, 0);
+  const colonIdx = template.indexOf(':');
+  const hasScheme =
+    colonIdx !== -1 && (pathStart === -1 || colonIdx < pathStart);
+  if (!hasScheme) {
+    // No scheme and not protocol-relative. A LEADING placeholder (before
+    // the first path delimiter) could still fabricate a scheme (`{x}:…`) or
+    // a `//authority` (`{slashes}evil.example/x`), so the FIRST segment must
+    // be literal; a placeholder in a later path segment or the query is
+    // safe. Return that first segment as the region to guard.
+    const end = pathStart === -1 ? template.length : pathStart;
+    return template.slice(0, end);
+  }
+
+  if (template.slice(colonIdx + 1).startsWith('//')) {
+    // `scheme://authority...` — authority ends at the next delimiter after `://`.
+    const end = firstDelimiter(template, colonIdx + 3);
+    return end === -1 ? template : template.slice(0, end);
+  }
+
+  // Opaque `scheme:rest` — a placeholder in `rest` could form `//authority`.
+  // Guard everything up to the first LITERAL delimiter.
+  const end = firstDelimiter(template, colonIdx + 1);
+  return end === -1 ? template : template.slice(0, end);
 }

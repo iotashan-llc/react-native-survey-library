@@ -2258,7 +2258,7 @@ __metadata:
     "@eslint/compat": "npm:^2.1.0"
     "@eslint/eslintrc": "npm:^3.3.5"
     "@eslint/js": "npm:^10.0.1"
-    "@native-html/render": "npm:^1.0.3"
+    "@native-html/render": "npm:~1.0.3"
     "@react-native/babel-preset": "npm:0.85.0"
     "@react-native/eslint-config": "npm:0.85.0"
     "@react-native/jest-preset": "npm:0.86.0"
@@ -2283,7 +2283,7 @@ __metadata:
     turbo: "npm:^2.9.16"
     typescript: "npm:^6.0.3"
   peerDependencies:
-    "@native-html/render": ^1.0.3
+    "@native-html/render": ~1.0.3
     react: "*"
     react-native: "*"
     survey-core: ">=2.5.32 <2.6.0"
@@ -2672,7 +2672,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@native-html/render@npm:^1.0.3":
+"@native-html/render@npm:~1.0.3":
   version: 1.0.3
   resolution: "@native-html/render@npm:1.0.3"
   dependencies:

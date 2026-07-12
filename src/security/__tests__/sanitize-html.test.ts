@@ -318,12 +318,19 @@ describe('sanitizeHtml — href/src go through the URI policy', () => {
     expect(img.attribs.src).toBeUndefined();
   });
 
-  it('keeps img src when the origin is allowlisted via imageUriConfig', () => {
+  it('strips even an allowlisted REMOTE img src (fail-closed redirect policy — see hardening suite)', () => {
+    // Round-2 security review #1: the RN Image sink follows HTTP redirects
+    // with no per-hop validation, so remote image sources fail closed
+    // regardless of the origin allowlist. Only `data:` images reach the
+    // renderer. Full coverage in sanitize-html.hardening.test.ts.
     const result = sanitizeHtml('<img src="https://example.com/i.png">', {
       imageUriConfig: { allowedOrigins: ['https://example.com'] },
     });
     const img = result.dom.children[0] as Element;
-    expect(img.attribs.src).toBe('https://example.com/i.png');
+    expect(img.attribs.src).toBeUndefined();
+    expect(
+      result.diagnostics.some((d) => d.code === 'remote-image-stripped')
+    ).toBe(true);
   });
 
   it('keeps a strict valid data:image src on img (image context data-image rule)', () => {
@@ -399,6 +406,69 @@ describe('sanitizeHtml — bypass corpus', () => {
     );
     const img = result.dom.children[0] as Element;
     expect(img.attribs.src).toBeUndefined();
+  });
+
+  // --- Review #9: strengthened corpus (weak cases replaced with real ones) ---
+
+  it('drops a DIRECT foreignObject subtree (not hidden under an already-dropped svg)', () => {
+    // The previous case nested foreignObject inside <svg>, which is dropped
+    // anyway — so it proved nothing about foreignObject itself. Here it is a
+    // top-level element and must still be dropped as a whole subtree.
+    const html = sanitizedHtml(
+      '<foreignObject><p>smuggled</p></foreignObject><p>kept</p>'
+    );
+    expect(html).toBe('<p>kept</p>');
+    expect(html).not.toContain('smuggled');
+  });
+
+  it('an entity-encoded quote in an ALLOWED attribute cannot break out into a new attribute', () => {
+    // Real breakout attempt on href (an attribute we KEEP): the encoded
+    // quote decodes to a literal `"` INSIDE the value — htmlparser2 yields a
+    // SINGLE attribute (href), never a second `onclick`. Whatever the href
+    // ends up being is an inert attribute VALUE handed to the renderer as a
+    // prop; it is never re-serialized to HTML, so the embedded `onclick=`
+    // text can never become a live handler.
+    const result = sanitizeHtml(
+      '<a href="https://ok.example.com/&quot; onclick=&quot;evil()">t</a>'
+    );
+    const a = result.dom.children[0] as Element;
+    expect(a.attribs.onclick).toBeUndefined();
+    // No injected event-handler attribute exists on the reconstructed node.
+    expect(Object.keys(a.attribs)).not.toContain('onclick');
+  });
+
+  it('a real quote breakout on an allowed attribute yields no second attribute', () => {
+    const result = sanitizeHtml('<a href="x"onclick="evil()" title="t">y</a>');
+    const a = result.dom.children[0] as Element;
+    // `onclick` is not on the <a> allowlist even if the tokenizer split it —
+    // it must never appear in the reconstructed element.
+    expect(a.attribs.onclick).toBeUndefined();
+  });
+
+  it('parser-specific malformed table: stray cells without a row/section never leak a script', () => {
+    const html = sanitizedHtml(
+      '<table><td>a</td><script>evil()</script><td>b</td></table>'
+    );
+    expect(html).not.toContain('evil()');
+  });
+
+  it('parser-specific malformed table: a stray </td> and unclosed row do not crash or smuggle', () => {
+    const result = sanitizeHtml('<table></td><tr><td>x<script>evil()</script>');
+    const html = domToHtml(result.dom);
+    expect(result.mode).toBe('sanitized');
+    expect(html).not.toContain('evil()');
+  });
+
+  it('mounted-equivalent entity check: htmlparser2 single-decode is NOT re-decoded downstream', () => {
+    // `&amp;lt;script&amp;gt;` decodes ONCE to the literal text
+    // "&lt;script&gt;" — it must remain inert TEXT, never re-parsed into a
+    // live <script> element. The reconstructed tree carries it as text data.
+    const result = sanitizeHtml('<p>&amp;lt;script&amp;gt;evil()</p>');
+    const p = result.dom.children[0] as Element;
+    const textData = (p.children[0] as { data?: string }).data ?? '';
+    expect(textData).toContain('&lt;script&gt;');
+    // No element named "script" exists anywhere in the reconstructed tree.
+    expect(domToHtml(result.dom)).not.toMatch(/<script/i);
   });
 });
 

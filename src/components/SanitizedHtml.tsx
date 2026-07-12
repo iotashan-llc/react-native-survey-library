@@ -130,6 +130,28 @@ export function createAnchorOnPress(
   };
 }
 
+/**
+ * Stable memo key over EVERY input that affects the sanitized output
+ * (review #7). `bounds`/`imageUriConfig` are plain option objects re-created
+ * with a new identity on each caller render, so they can't be memo deps
+ * directly — but their VALUES must still bust the memo, or a consumer
+ * tightening a bound / revoking an allowlisted origin / changing `baseUrl`
+ * would silently keep rendering STALE (less-restrictive) sanitized output.
+ * Serializing to a string gives value-equality memoization. Exported for a
+ * direct unit test of the "changes-when-inputs-change" contract.
+ */
+export function sanitizeConfigKey(
+  relaxedFormatting: boolean | undefined,
+  bounds: SanitizedHtmlProps['bounds'],
+  imageUriConfig: UriPolicyConfig | undefined
+): string {
+  return JSON.stringify({
+    relaxedFormatting: !!relaxedFormatting,
+    bounds: bounds ?? null,
+    imageUriConfig: imageUriConfig ?? null,
+  });
+}
+
 export function SanitizedHtml(props: SanitizedHtmlProps): React.JSX.Element {
   const {
     html,
@@ -140,6 +162,11 @@ export function SanitizedHtml(props: SanitizedHtmlProps): React.JSX.Element {
     imageUriConfig,
   } = props;
 
+  const configKey = sanitizeConfigKey(
+    relaxedFormatting,
+    bounds,
+    imageUriConfig
+  );
   const sanitizeResult = React.useMemo(() => {
     const config: SanitizeHtmlConfig = {
       relaxedFormatting,
@@ -147,8 +174,8 @@ export function SanitizedHtml(props: SanitizedHtmlProps): React.JSX.Element {
       imageUriConfig,
     };
     return sanitizeHtml(html, config);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- `bounds`/`imageUriConfig` are plain option objects re-created per caller render; re-sanitizing whenever `html` (the actual untrusted input) or the boolean flag changes is the meaningful contract here.
-  }, [html, relaxedFormatting]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `configKey` (a stable JSON serialization) captures relaxedFormatting/bounds/imageUriConfig by VALUE; re-sanitizing on [html, configKey] is exactly the contract (review #7).
+  }, [html, configKey]);
 
   React.useEffect(() => {
     for (const diagnostic of sanitizeResult.diagnostics) {

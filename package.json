@@ -91,7 +91,7 @@
     "@eslint/compat": "^2.1.0",
     "@eslint/eslintrc": "^3.3.5",
     "@eslint/js": "^10.0.1",
-    "@native-html/render": "^1.0.3",
+    "@native-html/render": "~1.0.3",
     "@react-native/babel-preset": "0.85.0",
     "@react-native/eslint-config": "0.85.0",
     "@react-native/jest-preset": "0.86.0",
@@ -115,7 +115,7 @@
     "typescript": "^6.0.3"
   },
   "peerDependencies": {
-    "@native-html/render": "^1.0.3",
+    "@native-html/render": "~1.0.3",
     "react": "*",
     "react-native": "*",
     "survey-core": ">=2.5.32 <2.6.0"

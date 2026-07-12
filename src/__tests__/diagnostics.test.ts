@@ -44,6 +44,29 @@ describe('diagnostics', () => {
     }
   });
 
+  it('default handler is silent in production (__DEV__ === false) — review #12', () => {
+    const globalWithDev = globalThis as typeof globalThis & {
+      __DEV__: boolean;
+    };
+    const previousDev = globalWithDev.__DEV__;
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      globalWithDev.__DEV__ = false;
+      reportDiagnostic({
+        code: 'unsupported-question-type',
+        questionType: 'bogus',
+        dispatchKey: 'bogus',
+        template: 'bogus',
+        componentName: 'default',
+        name: 'q1',
+      });
+      expect(warnSpy).not.toHaveBeenCalled();
+    } finally {
+      globalWithDev.__DEV__ = previousDev;
+      warnSpy.mockRestore();
+    }
+  });
+
   it('setDiagnosticHandler swaps the handler; passing undefined restores the default', () => {
     const seen: DiagnosticPayload[] = [];
     setDiagnosticHandler((payload) => seen.push(payload));

@@ -80,24 +80,42 @@ ever reaches a sink:
 
 - Anchor `href` (event-only, human-mediated): a broader scheme set
   (`https http mailto tel`), no origin restriction.
-- `<img src>` inside HTML content, and the other automatic-fetch
-  contexts this policy also governs (survey/background images, video,
-  `choicesByUrl` — wired by later tasks): `https:` only by default, and
-  **no origin is fetchable until explicitly allowlisted** — IP-literal
-  hosts, `localhost`/`.local`/private-range hosts, URL-embedded
-  credentials, and non-default ports (unless that exact origin+port is
-  allowlisted) are denied even for an allowlisted host on the wrong
-  port. `data:` images are supported under a strict rule (allowlisted
-  MIME types, strict base64, a decoded-size cap, magic-byte
-  verification) — no other `data:` use is ever permitted.
+- The automatic-fetch contexts the policy governs (survey/background
+  images, video, `choicesByUrl` — wired by later tasks): `https:` only by
+  default, and **no origin is fetchable until explicitly allowlisted** —
+  IP-literal hosts (in every textual form: dotted, octal, hex, short, and
+  bare-decimal), `localhost`/`.local`/private-range hosts, trailing-dot
+  host variants, URL-embedded credentials, out-of-range ports, and
+  non-default ports (unless that exact origin+port is allowlisted) are all
+  denied. `data:` images are supported under a strict rule (allowlisted
+  MIME types, strict RFC-4648 base64 including pad bits, a decoded-size
+  cap, magic-byte verification) — no other `data:` use is ever permitted.
 - `javascript: vbscript: file: about: blob: filesystem: intent: content:
   jar:` are denied everywhere, unconditionally — no configuration can
   widen this set.
 
-**Workaround:** pass `imageUriConfig.allowedOrigins` (and, once wired at
-the `<Survey>` level, per-survey origin configuration) listing every
-origin the survey's images/assets are actually served from. Without it,
-`<img>` tags inside HTML content render without a source.
+### Remote `<img>` sources inside HTML content are stripped (fail-closed)
+
+Web loads any `<img src>` directly. A native React Native `Image` request,
+however, **follows HTTP redirects with no way to validate each hop** — so an
+allowlisted origin could 30x-redirect to a denied one, defeating the origin
+policy. Because per-hop redirect validation is not guaranteed on the
+platform, this library **fails closed**: a remote (`http`/`https`) `<img>`
+source inside sanitized HTML content is stripped entirely (a
+`remote-image-stripped` diagnostic is emitted; the element's `alt` text
+still renders). Only strict inline `data:` images — which involve no network
+request at all — render from HTML `<img>` tags.
+
+This applies specifically to `<img>` inside HTML content (rendered through
+the stock renderer's native `Image`). Other image sinks (image question,
+imagepicker, choice images, survey logo, background image) are wired by
+later tasks (1.1/M2/M4) through a policy-aware, redirect-validating
+transport and can load allowlisted remote images.
+
+**Workaround:** inline small images as `data:` URIs, or serve HTML-embedded
+imagery from the (later) transport-backed image sinks rather than raw
+`<img>` tags. `imageUriConfig.allowedOrigins` remains meaningful for those
+other sinks and for the `data:` decoded-size cap.
 
 ### Oversized/pathological HTML renders as plain text, not a partial DOM
 

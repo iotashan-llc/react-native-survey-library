@@ -148,7 +148,9 @@ export interface ResourceBounds {
   maxTableColumns: number;
 }
 
-export const DEFAULT_RESOURCE_BOUNDS: ResourceBounds = {
+/** Frozen (review #4): the shared default must never be mutated by a
+ * caller who receives it back from `clampBoundsDownOnly`. */
+export const DEFAULT_RESOURCE_BOUNDS: ResourceBounds = Object.freeze({
   maxSourceLength: 256 * 1024,
   maxNodeCount: 5000,
   maxDepth: 32,
@@ -158,18 +160,29 @@ export const DEFAULT_RESOURCE_BOUNDS: ResourceBounds = {
   maxImagesPerDocument: 32,
   maxTableRows: 200,
   maxTableColumns: 64,
-};
+});
 
+/** Clamps caller overrides DOWN only, reading OWN properties and accepting
+ * ONLY finite non-negative integers — a `NaN`/`Infinity`/negative/non-
+ * integer value is ignored (keeps the default), so it can NEVER silently
+ * disable a ceiling via `Math.min(NaN, cap) === NaN` (review #4). */
 function clampBoundsDownOnly(
   overrides: Partial<ResourceBounds> | undefined
 ): ResourceBounds {
-  if (!overrides) return DEFAULT_RESOURCE_BOUNDS;
+  if (!overrides || typeof overrides !== 'object') {
+    return DEFAULT_RESOURCE_BOUNDS;
+  }
   const result = { ...DEFAULT_RESOURCE_BOUNDS };
   for (const key of Object.keys(
     DEFAULT_RESOURCE_BOUNDS
   ) as (keyof ResourceBounds)[]) {
+    if (!Object.prototype.hasOwnProperty.call(overrides, key)) continue;
     const requested = overrides[key];
-    if (typeof requested === 'number') {
+    if (
+      typeof requested === 'number' &&
+      Number.isInteger(requested) &&
+      requested >= 0
+    ) {
       result[key] = Math.min(requested, DEFAULT_RESOURCE_BOUNDS[key]);
     }
   }
@@ -195,7 +208,10 @@ export interface SanitizeHtmlConfig {
 }
 
 export type SanitizeDiagnosticCode =
-  'resource-bound-exceeded' | 'duplicate-attribute' | 'uri-rejected';
+  | 'resource-bound-exceeded'
+  | 'duplicate-attribute'
+  | 'uri-rejected'
+  | 'remote-image-stripped';
 
 export interface SanitizeDiagnostic {
   code: SanitizeDiagnosticCode;
@@ -236,26 +252,62 @@ interface DuplicateAttributeHit {
   name: string;
 }
 
+/** Resource-bound accounting gathered DURING the single parse (review #3),
+ * so every SOURCE token counts — dropped subtrees, comments, and RAW
+ * (pre-dedupe) attributes included — closing the "return before counting"
+ * and "count the parser-deduplicated attribs object" bypasses. */
+interface ParseAccounting {
+  nodeCount: number;
+  maxDepth: number;
+  maxAttributesPerElement: number;
+  maxAttributeValueLength: number;
+  decodedTextLength: number;
+}
+
 function parseSource(html: string): {
   root: Document;
   duplicates: DuplicateAttributeHit[];
+  accounting: ParseAccounting;
 } {
   const handler = new DomHandler(undefined, {});
   const duplicates: DuplicateAttributeHit[] = [];
   let currentTagName = '';
   let currentAttrNames: Set<string> | null = null;
+  let currentAttrCount = 0;
+  let depth = 0;
+
+  const accounting: ParseAccounting = {
+    nodeCount: 0,
+    maxDepth: 0,
+    maxAttributesPerElement: 0,
+    maxAttributeValueLength: 0,
+    decodedTextLength: 0,
+  };
 
   const callbacks = {
     onparserinit: handler.onparserinit?.bind(handler),
     onreset: handler.onreset.bind(handler),
     onend: handler.onend.bind(handler),
     onerror: handler.onerror.bind(handler),
-    onclosetag: handler.onclosetag.bind(handler),
+    onclosetag: () => {
+      depth = Math.max(0, depth - 1);
+      handler.onclosetag();
+    },
     onopentagname: (name: string) => {
       currentTagName = name;
       currentAttrNames = new Set();
+      currentAttrCount = 0;
+      accounting.nodeCount += 1;
     },
-    onattribute: (name: string) => {
+    onattribute: (name: string, value?: string) => {
+      currentAttrCount += 1;
+      if (currentAttrCount > accounting.maxAttributesPerElement) {
+        accounting.maxAttributesPerElement = currentAttrCount;
+      }
+      const valueLength = typeof value === 'string' ? value.length : 0;
+      if (valueLength > accounting.maxAttributeValueLength) {
+        accounting.maxAttributeValueLength = valueLength;
+      }
       if (currentAttrNames) {
         if (currentAttrNames.has(name)) {
           duplicates.push({ tag: currentTagName, name });
@@ -263,13 +315,30 @@ function parseSource(html: string): {
         currentAttrNames.add(name);
       }
     },
-    onopentag: handler.onopentag.bind(handler),
-    ontext: handler.ontext.bind(handler),
-    oncomment: handler.oncomment.bind(handler),
+    onopentag: (name: string, attribs: Record<string, string>) => {
+      depth += 1;
+      if (depth > accounting.maxDepth) accounting.maxDepth = depth;
+      handler.onopentag(name, attribs);
+    },
+    ontext: (data: string) => {
+      accounting.nodeCount += 1;
+      accounting.decodedTextLength += data.length;
+      handler.ontext(data);
+    },
+    oncomment: (data: string) => {
+      accounting.nodeCount += 1;
+      handler.oncomment(data);
+    },
     oncommentend: handler.oncommentend.bind(handler),
-    oncdatastart: handler.oncdatastart.bind(handler),
+    oncdatastart: () => {
+      accounting.nodeCount += 1;
+      handler.oncdatastart();
+    },
     oncdataend: handler.oncdataend.bind(handler),
-    onprocessinginstruction: handler.onprocessinginstruction.bind(handler),
+    onprocessinginstruction: (name: string, data: string) => {
+      accounting.nodeCount += 1;
+      handler.onprocessinginstruction(name, data);
+    },
   };
 
   // The exact TRE default: `{ decodeEntities: true, lowerCaseTags: true }`
@@ -280,7 +349,33 @@ function parseSource(html: string): {
     html
   );
 
-  return { root: handler.root, duplicates };
+  return { root: handler.root, duplicates, accounting };
+}
+
+/** First bound the parse-time accounting exceeds (review #2/#3), or `null`.
+ * Depth/node/attr/value/text are checked here — up front, before any
+ * reconstruction — so a tree too deep to safely reconstruct never reaches
+ * the reconstruction recursion. */
+function firstExceededParseBound(
+  accounting: ParseAccounting,
+  bounds: ResourceBounds
+): string | null {
+  if (accounting.nodeCount > bounds.maxNodeCount) {
+    return `node count exceeded (${accounting.nodeCount} > ${bounds.maxNodeCount})`;
+  }
+  if (accounting.maxDepth > bounds.maxDepth) {
+    return `depth exceeded (${accounting.maxDepth} > ${bounds.maxDepth})`;
+  }
+  if (accounting.maxAttributesPerElement > bounds.maxAttributesPerElement) {
+    return `attributes-per-element exceeded (${accounting.maxAttributesPerElement} > ${bounds.maxAttributesPerElement})`;
+  }
+  if (accounting.maxAttributeValueLength > bounds.maxAttributeValueLength) {
+    return `attribute value length exceeded (${accounting.maxAttributeValueLength} > ${bounds.maxAttributeValueLength})`;
+  }
+  if (accounting.decodedTextLength > bounds.maxDecodedTextLength) {
+    return `decoded text length exceeded (${accounting.decodedTextLength} > ${bounds.maxDecodedTextLength})`;
+  }
+  return null;
 }
 
 // -----------------------------------------------------------------------
@@ -311,62 +406,44 @@ interface ReconstructContext {
   bounds: ResourceBounds;
   allowedTags: ReadonlySet<string>;
   imageUriConfig: UriPolicyConfig | undefined;
-  nodeCount: number;
-  textLength: number;
   imageCount: number;
   diagnostics: SanitizeDiagnostic[];
   tableStack: TableTracker[];
 }
 
-function visitNode(ctx: ReconstructContext, depth: number): void {
+/** Secondary depth guard (defense in depth): the PRIMARY depth bound is
+ * enforced at parse time (`firstExceededParseBound`) before reconstruction,
+ * so this recursion is already guaranteed within `maxDepth` frames — this
+ * throw exists only so a hypothetical accounting miss still fails closed
+ * rather than overflowing the stack. */
+function guardDepth(ctx: ReconstructContext, depth: number): void {
   if (depth > ctx.bounds.maxDepth) {
     throw new ResourceBoundExceeded(
       `depth exceeded (${depth} > ${ctx.bounds.maxDepth})`
     );
   }
-  ctx.nodeCount += 1;
-  if (ctx.nodeCount > ctx.bounds.maxNodeCount) {
-    throw new ResourceBoundExceeded(
-      `node count exceeded (${ctx.nodeCount} > ${ctx.bounds.maxNodeCount})`
-    );
-  }
 }
 
-/** Recursively reconstructs `sourceChildren` as children of `newParent`.
- * Returns the number of `td`/`th` elements directly reconstructed at this
- * level (used by the `tr` case to check the table-columns bound). */
 function reconstructChildren(
   ctx: ReconstructContext,
   sourceChildren: ChildNode[],
   newParent: Document | Element,
   depth: number
-): number {
-  let directCellCount = 0;
+): void {
   for (const child of sourceChildren) {
-    directCellCount += reconstructNode(ctx, child, newParent, depth);
+    reconstructNode(ctx, child, newParent, depth);
   }
-  return directCellCount;
 }
 
-/** Returns 1 if this call produced a direct `td`/`th` child of `newParent`
- * (table-column counting), else 0. */
 function reconstructNode(
   ctx: ReconstructContext,
   source: ChildNode,
   newParent: Document | Element,
   depth: number
-): number {
+): void {
   if (source.type === 'text') {
-    visitNode(ctx, depth);
-    const data = (source as Text).data;
-    ctx.textLength += data.length;
-    if (ctx.textLength > ctx.bounds.maxDecodedTextLength) {
-      throw new ResourceBoundExceeded(
-        `decoded text length exceeded (${ctx.textLength} > ${ctx.bounds.maxDecodedTextLength})`
-      );
-    }
-    appendChild(newParent, new Text(data));
-    return 0;
+    appendChild(newParent, new Text((source as Text).data));
+    return;
   }
 
   if (
@@ -374,27 +451,26 @@ function reconstructNode(
     source.type !== 'script' &&
     source.type !== 'style'
   ) {
-    // Comments, doctypes/processing instructions, CDATA — always dropped,
-    // never visited/counted (design: "comments, doctypes, CDATA,
-    // processing instructions" join the always-dropped list).
-    return 0;
+    // Comments, doctypes/processing instructions, CDATA — always dropped.
+    return;
   }
 
   const element = source as Element;
   const tagName = element.name.toLowerCase();
 
   if (DROPPED_SUBTREE_TAGS.has(tagName)) {
-    // Whole subtree dropped, never unwrapped — do not visit/count children.
-    return 0;
+    // Whole subtree dropped, never unwrapped — do not descend.
+    return;
   }
 
-  visitNode(ctx, depth);
+  guardDepth(ctx, depth);
 
   if (!ctx.allowedTags.has(tagName)) {
-    // Unknown-but-benign: unwrap — drop this element node but keep
-    // reconstructing its children directly under the current parent.
-    reconstructChildren(ctx, element.children, newParent, depth);
-    return 0;
+    // Unknown-but-benign: unwrap — drop this element node but keep its
+    // children. The descent counts as a level (depth + 1) so a deep chain
+    // of unwrapped tags is bounded exactly like allowed nesting (review #2).
+    reconstructChildren(ctx, element.children, newParent, depth + 1);
+    return;
   }
 
   const attribs = buildAttributes(ctx, tagName, element.attribs);
@@ -411,14 +487,14 @@ function reconstructNode(
   }
 
   if (VOID_TAGS.has(tagName)) {
-    return 0;
+    return;
   }
 
   if (tagName === 'table') {
     ctx.tableStack.push({ rows: 0 });
     reconstructChildren(ctx, element.children, newElement, depth + 1);
     ctx.tableStack.pop();
-    return 0;
+    return;
   }
 
   if (tagName === 'tr') {
@@ -431,22 +507,22 @@ function reconstructNode(
         );
       }
     }
-    const cellCount = reconstructChildren(
-      ctx,
-      element.children,
-      newElement,
-      depth + 1
-    );
-    if (cellCount > ctx.bounds.maxTableColumns) {
+    reconstructChildren(ctx, element.children, newElement, depth + 1);
+    // EFFECTIVE column count = actual td/th children AFTER unwrapping (cells
+    // that were nested inside unknown tags get flattened up to this <tr>),
+    // closing the unwrap bypass (review #3).
+    const columns = newElement.children.filter(
+      (c) => c.type === 'tag' && (c.name === 'td' || c.name === 'th')
+    ).length;
+    if (columns > ctx.bounds.maxTableColumns) {
       throw new ResourceBoundExceeded(
-        `table column count exceeded (${cellCount} > ${ctx.bounds.maxTableColumns})`
+        `table column count exceeded (${columns} > ${ctx.bounds.maxTableColumns})`
       );
     }
-    return 0;
+    return;
   }
 
   reconstructChildren(ctx, element.children, newElement, depth + 1);
-  return tagName === 'td' || tagName === 'th' ? 1 : 0;
 }
 
 function buildAttributes(
@@ -454,25 +530,16 @@ function buildAttributes(
   tagName: string,
   sourceAttribs: Record<string, string>
 ): Record<string, string> {
-  const names = Object.keys(sourceAttribs);
-  if (names.length > ctx.bounds.maxAttributesPerElement) {
-    throw new ResourceBoundExceeded(
-      `attributes-per-element exceeded (${names.length} > ${ctx.bounds.maxAttributesPerElement})`
-    );
-  }
-
+  // Attribute COUNT and VALUE LENGTH bounds are enforced at parse time over
+  // the RAW attribute stream (review #3); here `sourceAttribs` is already
+  // the parser-deduplicated, in-bounds object.
   const allowedForTag = ATTRIBUTE_ALLOWLIST[tagName];
   const result: Record<string, string> = {};
   if (!allowedForTag) return result;
 
-  for (const name of names) {
+  for (const name of Object.keys(sourceAttribs)) {
     if (!allowedForTag.has(name)) continue;
     const value = sourceAttribs[name] ?? '';
-    if (value.length > ctx.bounds.maxAttributeValueLength) {
-      throw new ResourceBoundExceeded(
-        `attribute value length exceeded (${tagName}.${name}: ${value.length} > ${ctx.bounds.maxAttributeValueLength})`
-      );
-    }
 
     const boundedInt = BOUNDED_INT_ATTRS[name];
     if (boundedInt) {
@@ -497,8 +564,20 @@ function buildAttributes(
 
     if (name === 'src' && tagName === 'img') {
       const validated = validateUri(value, 'image', ctx.imageUriConfig);
-      if (validated.ok) {
+      if (validated.ok && validated.scheme === 'data:') {
+        // Only inline `data:` images reach the renderer's native Image sink.
         result[name] = validated.canonical;
+      } else if (validated.ok) {
+        // A remote (https) image passed scheme/origin policy, but the RN
+        // Image sink follows HTTP redirects with no per-hop validation —
+        // so an allowlisted origin could 30x-redirect to a denied one.
+        // Design: "Redirects fail CLOSED … where per-hop validation is
+        // impossible on a platform, that fetch context fails closed."
+        // Strip the source (fail closed); alt text still renders (review #1).
+        ctx.diagnostics.push({
+          code: 'remote-image-stripped',
+          detail: `img.src remote source stripped (fail-closed redirect policy): ${validated.origin ?? 'remote'}`,
+        });
       } else {
         ctx.diagnostics.push({
           code: 'uri-rejected',
@@ -531,20 +610,27 @@ function plainTextFromRawSource(raw: string): Document {
   return doc;
 }
 
-/** Used when a bound is exceeded partway through reconstruction — the
- * source is already fully parsed in memory, so this extracts the text
- * nodes from that EXISTING parse (no HTML re-injection risk: only `.data`
- * strings are ever concatenated, never re-interpreted as markup). */
+/** Used when a bound is exceeded — the source is already fully parsed in
+ * memory, so this extracts its text nodes (no HTML re-injection risk: only
+ * `.data` strings are ever concatenated, never re-interpreted as markup).
+ * ITERATIVE (explicit stack) so an arbitrarily deep parsed tree — exactly
+ * the input that tripped the depth bound — never overflows the JS call
+ * stack here (review #2). */
 function plainTextFromParsedTree(root: Document): Document {
   const parts: string[] = [];
-  const walk = (node: AnyNode): void => {
+  const stack: AnyNode[] = [];
+  for (let i = root.children.length - 1; i >= 0; i--) {
+    stack.push(root.children[i]!);
+  }
+  while (stack.length > 0) {
+    const node = stack.pop()!;
     if (node.type === 'text') {
       parts.push((node as Text).data);
     } else if ('children' in node) {
-      for (const child of (node as Document | Element).children) walk(child);
+      const kids = (node as Document | Element).children;
+      for (let i = kids.length - 1; i >= 0; i--) stack.push(kids[i]!);
     }
-  };
-  for (const child of root.children) walk(child);
+  }
   const doc = new Document([]);
   const text = parts.join('');
   if (text.length > 0) {
@@ -580,7 +666,22 @@ export function sanitizeHtml(
     };
   }
 
-  const { root: sourceRoot, duplicates } = parseSource(raw);
+  const { root: sourceRoot, duplicates, accounting } = parseSource(raw);
+
+  // Parse-time bounds (node count, depth, raw attrs, attr value length,
+  // decoded text) are checked BEFORE reconstruction (review #2/#3), so a
+  // tree too deep/large to reconstruct falls back to plain text (extracted
+  // iteratively from the already-parsed tree) instead of recursing into it.
+  const parseBoundDetail = firstExceededParseBound(accounting, bounds);
+  if (parseBoundDetail) {
+    return {
+      dom: plainTextFromParsedTree(sourceRoot),
+      mode: 'plain-text-fallback',
+      diagnostics: [
+        { code: 'resource-bound-exceeded', detail: parseBoundDetail },
+      ],
+    };
+  }
 
   const allowedTags = config?.relaxedFormatting
     ? new Set([...BASE_ALLOWED_TAGS, ...RELAXED_EXTRA_TAGS])
@@ -590,8 +691,6 @@ export function sanitizeHtml(
     bounds,
     allowedTags,
     imageUriConfig: config?.imageUriConfig,
-    nodeCount: 0,
-    textLength: 0,
     imageCount: 0,
     diagnostics: [],
     tableStack: [],

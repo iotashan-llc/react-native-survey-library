@@ -69,6 +69,11 @@ export type DiagnosticPayload =
 export type DiagnosticHandler = (payload: DiagnosticPayload) => void;
 
 function defaultDiagnosticHandler(payload: DiagnosticPayload): void {
+  // Dev-only by default (round-2 review #12): production builds stay silent
+  // unless the host registers its own handler via `setDiagnosticHandler`, so
+  // the library never spams `console.warn` in a shipped app — matching what
+  // DIFFERENCES.md promises for dropped-link/sanitizer diagnostics.
+  if (typeof __DEV__ === 'boolean' && !__DEV__) return;
   console.warn(`[react-native-survey-library] ${payload.code}`, payload);
 }
 
