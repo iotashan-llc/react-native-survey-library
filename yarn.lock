@@ -2263,6 +2263,7 @@ __metadata:
     "@react-native/jest-preset": "npm:0.86.0"
     "@testing-library/react-native": "npm:^13.3.0"
     "@types/jest": "npm:^29.5.14"
+    "@types/node": "npm:^26.1.1"
     "@types/react": "npm:^19.2.0"
     del-cli: "npm:^7.0.0"
     eslint: "npm:^9.39.4"
@@ -2275,11 +2276,13 @@ __metadata:
     react-native: "npm:0.86.0"
     react-native-builder-bob: "npm:^0.43.0"
     react-test-renderer: "npm:19.2.3"
+    survey-core: "npm:2.5.33"
     turbo: "npm:^2.9.16"
     typescript: "npm:^6.0.3"
   peerDependencies:
     react: "*"
     react-native: "*"
+    survey-core: ">=2.5.32 <2.6.0"
   languageName: unknown
   linkType: soft
 
@@ -3133,7 +3136,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:*":
+"@types/node@npm:*, @types/node@npm:^26.1.1":
   version: 26.1.1
   resolution: "@types/node@npm:26.1.1"
   dependencies:
@@ -9606,6 +9609,13 @@ __metadata:
   version: 1.0.0
   resolution: "supports-preserve-symlinks-flag@npm:1.0.0"
   checksum: 10c0/6c4032340701a9950865f7ae8ef38578d8d7053f5e10518076e6554a9381fa91bd9c6850193695c141f32b21f979c985db07265a758867bac95de05f7d8aeb39
+  languageName: node
+  linkType: hard
+
+"survey-core@npm:2.5.33":
+  version: 2.5.33
+  resolution: "survey-core@npm:2.5.33"
+  checksum: 10c0/97e808121555a54462d94fd77ee715e36bec9ac259fa2a8fcee1d1d5a912243bb46ea0a85d08a496884f0b084589485f02f4ea9c3f21a026094d0f16b817bdfb
   languageName: node
   linkType: hard
 
