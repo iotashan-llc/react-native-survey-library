@@ -21,7 +21,11 @@
     "./src/core/shim.ts",
     "./lib/module/core/shim.js",
     "./src/core/facade.ts",
-    "./lib/module/core/facade.js"
+    "./lib/module/core/facade.js",
+    "./src/factories/register-all.ts",
+    "./lib/module/factories/register-all.js",
+    "./src/index.tsx",
+    "./lib/module/index.js"
   ],
   "files": [
     "src",

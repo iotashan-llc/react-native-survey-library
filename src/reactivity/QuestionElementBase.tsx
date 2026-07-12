@@ -26,10 +26,33 @@
  * means NO mounted pair: `onQuestionMounted` only ever fires with a
  * concrete ref, and a detach cleans the previous pair without a
  * mount(nullish).
+ *
+ * ALSO NEW for RN (design: docs/design/0.5-factories.md, "Upstream shape"):
+ * the commit phase checks `question.customWidget` ONCE per question — a
+ * module-scoped attempted-check `WeakSet<Question>` is recorded BEFORE the
+ * read, so even a throw never re-runs discovery — and reports a
+ * `custom-widget-ignored` diagnostic if a widget matched. DOM custom
+ * widgets are won't-support in RN — the widget is never honored, the
+ * question renders via its normal dispatch key regardless — this is
+ * diagnostic-only, never a render-affecting branch (unlike upstream's
+ * customWidget shouldComponentUpdate carve-out, which stays unported per
+ * 0.4 D3). Reading `customWidget` triggers core's widget-discovery scan,
+ * which runs CONSUMER callbacks (`widgetIsLoaded`/`isFit` — survey-core
+ * question.ts:1274-1282, questionCustomWidgets.ts:33-35); the read is
+ * wrapped in try/catch so a throwing consumer callback is contained
+ * (logged once) and can never break a supported question's commit.
  */
 import type { Base, Question } from '../core/facade';
+import { reportCustomWidgetIgnoredOnce } from '../diagnostics';
 import { SurveyElementBase } from './SurveyElementBase';
 import type { SurveyElementBaseState } from './SurveyElementBase';
+
+/**
+ * Questions whose customWidget discovery has already been ATTEMPTED (not
+ * necessarily succeeded) — recorded before the read so a throwing consumer
+ * callback is still only attempted once per question.
+ */
+const customWidgetCheckAttempted = new WeakSet<Question>();
 
 export interface QuestionElementBaseProps {
   question: Question;
@@ -82,11 +105,13 @@ export class QuestionElementBase<
 
   componentDidMount(): void {
     super.componentDidMount();
+    this.checkCustomWidgetIgnored();
     this.reconcileMountedHook();
   }
 
   componentDidUpdate(): void {
     super.componentDidUpdate();
+    this.checkCustomWidgetIgnored();
     this.reconcileMountedHook();
   }
 
@@ -141,5 +166,31 @@ export class QuestionElementBase<
       this.onQuestionWillUnmount(this.mountedPair[0], this.mountedPair[1]);
       this.mountedPair = undefined;
     }
+  }
+
+  private checkCustomWidgetIgnored(): void {
+    const question = this.questionBase;
+    if (!question) return;
+    if (customWidgetCheckAttempted.has(question)) return;
+    customWidgetCheckAttempted.add(question);
+    let widget: Question['customWidget'];
+    try {
+      widget = question.customWidget;
+    } catch (error) {
+      // Contained: the getter runs consumer widgetIsLoaded/isFit callbacks
+      // — a throw there must never break a supported question's commit.
+      console.error(
+        '[react-native-survey-library] customWidget discovery threw; continuing without the diagnostic',
+        error
+      );
+      return;
+    }
+    if (!widget) return;
+    reportCustomWidgetIgnoredOnce(question, {
+      code: 'custom-widget-ignored',
+      questionType: question.getType(),
+      name: question.name,
+      widgetName: widget.name,
+    });
   }
 }

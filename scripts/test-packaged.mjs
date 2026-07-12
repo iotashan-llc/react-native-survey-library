@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * Packaged-entry test suite (design: docs/design/0.3-core-facade.md, test
- * plan #7). Proves the exports map + ESM story survives an actual
+ * plan #7; extended by docs/design/0.5-factories.md, "Registration &
+ * packaging"). Proves the exports map + ESM story survives an actual
  * `yarn pack` → install → real Node ESM `import()`, by package specifier
  * only (never a `lib/...` path — the exports map itself is what's under
  * test):
@@ -12,14 +13,35 @@
  *       (renderer-first; proves the packed facade chain applies the shim)
  *   7c. bare import('survey-core')                        → nonzero exit
  *       (negative control)
+ *   7d. import('<pkg>') registers exactly the M0 supported descriptor
+ *       keys into RNQuestionFactory/RNElementFactory                  → exit 0
+ *       (registrar side effect survives packaging)
  *
  * This does NOT prove Metro/Hermes fidelity (Node isn't Hermes) — that's
  * covered elsewhere (0.2 release gate, example app). It proves the
  * packed artifact's package.json `exports` map resolves the way this
  * design intends, under real Node ESM resolution rules.
+ *
+ * `react` is a real, explicitly-installed dependency here (its published
+ * build is plain JS/CJS, importable under vanilla Node). `react-native`'s
+ * published entry is NOT — it's Flow-typed source with no build step of
+ * its own, meant to be consumed through Metro/Babel, and fails a raw
+ * Node ESM parse (`SyntaxError: Unexpected token 'typeof'`). Since 0.5
+ * wired the registrar (and its component modules) into the package root,
+ * `import('<pkg>')` now transitively touches `react-native`'s `View`/
+ * `Text` exports — so this harness supplies a minimal same-shaped ESM
+ * stub instead of letting npm auto-install the real peer dependency; see
+ * `writeReactNativeStub` below. Keep its export list in sync with the
+ * `react-native` symbols component modules import.
  */
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync } from 'node:fs';
+import {
+  mkdtempSync,
+  mkdirSync,
+  writeFileSync,
+  rmSync,
+  readFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -30,9 +52,40 @@ const REPO_ROOT = dirname(SCRIPT_DIR);
 const pkg = JSON.parse(readFileSync(join(REPO_ROOT, 'package.json'), 'utf8'));
 const PKG_NAME = pkg.name;
 const SURVEY_CORE_VERSION = pkg.devDependencies['survey-core'];
+const REACT_VERSION = pkg.devDependencies['react'];
 
 if (!SURVEY_CORE_VERSION) {
   throw new Error('survey-core devDependency not found in package.json');
+}
+if (!REACT_VERSION) {
+  throw new Error('react devDependency not found in package.json');
+}
+
+function writeReactNativeStub(consumerDir) {
+  const stubDir = join(consumerDir, 'node_modules', 'react-native');
+  mkdirSync(stubDir, { recursive: true });
+  writeFileSync(
+    join(stubDir, 'package.json'),
+    JSON.stringify(
+      {
+        name: 'react-native',
+        version: '0.0.0-packaged-entry-stub',
+        type: 'module',
+        main: './index.js',
+      },
+      null,
+      2
+    )
+  );
+  writeFileSync(
+    join(stubDir, 'index.js'),
+    "// Minimal stub for the packaged-entry harness — see this script's\n" +
+      "// header comment. Real 'react-native' can't be parsed by plain Node.\n" +
+      "// Values only need to exist as named exports; nothing in the\n" +
+      '// 7a-7d cases actually renders a component.\n' +
+      "export const View = 'View';\n" +
+      "export const Text = 'Text';\n"
+  );
 }
 
 // Same descriptor logic as test-utils/rn-globals.ts, inlined for a plain
@@ -97,6 +150,31 @@ console.log('7c: UNEXPECTED SUCCESS');
 `,
     expectSuccess: false,
   },
+  {
+    id: '7d',
+    description:
+      "registrar side effect survives packaging: import('<pkg>') registers exactly the M0 supported descriptor-table keys " +
+      '(design: docs/design/0.5-factories.md, "Registration & packaging" — must track src/factories/descriptors.ts as milestones land)',
+    script: `${RN_PREAMBLE}
+const pkg = await import(${JSON.stringify(PKG_NAME)});
+const expectedQuestionTypes = JSON.stringify(['empty']);
+const expectedElementTypes = JSON.stringify([]);
+const actualQuestionTypes = JSON.stringify(pkg.RNQuestionFactory.getAllTypes());
+const actualElementTypes = JSON.stringify(pkg.RNElementFactory.getAllTypes());
+if (actualQuestionTypes !== expectedQuestionTypes) {
+  throw new Error(
+    'RNQuestionFactory: expected ' + expectedQuestionTypes + ' got ' + actualQuestionTypes
+  );
+}
+if (actualElementTypes !== expectedElementTypes) {
+  throw new Error(
+    'RNElementFactory: expected ' + expectedElementTypes + ' got ' + actualElementTypes
+  );
+}
+console.log('7d: OK', actualQuestionTypes, actualElementTypes);
+`,
+    expectSuccess: true,
+  },
 ];
 
 function log(message) {
@@ -141,12 +219,30 @@ try {
     )
   );
 
-  log('== Installing tarball + survey-core into the temp consumer ==');
+  log('== Installing tarball + survey-core + react into the temp consumer ==');
+  // --legacy-peer-deps: npm 7+ otherwise auto-installs the package's
+  // peerDependencies, which would pull the REAL react-native — Flow-typed
+  // source that a plain Node ESM parse rejects (see header comment). The
+  // peers this harness actually needs are installed explicitly (react,
+  // survey-core); react-native gets the minimal stub written below.
   run(
     'npm',
-    ['install', '--no-audit', '--no-fund', tarballPath, `survey-core@${SURVEY_CORE_VERSION}`],
+    [
+      'install',
+      '--no-audit',
+      '--no-fund',
+      '--legacy-peer-deps',
+      tarballPath,
+      `survey-core@${SURVEY_CORE_VERSION}`,
+      `react@${REACT_VERSION}`,
+    ],
     { cwd: consumerDir }
   );
+
+  log(
+    '== Writing the react-native ESM stub (post-install, so npm cannot clobber it) =='
+  );
+  writeReactNativeStub(consumerDir);
 
   log('== Running packaged-entry cases ==');
   for (const testCase of cases) {
