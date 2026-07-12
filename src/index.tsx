@@ -28,6 +28,14 @@ export type {
 export { setDiagnosticHandler, reportDiagnostic } from './diagnostics';
 export type { DiagnosticHandler, DiagnosticPayload } from './diagnostics';
 
+// Task 1.6 — LocalizableString renderer + basic survey header.
+export { SurveyLocStringViewer } from './components/LocStringViewer';
+export type { SurveyLocStringViewerProps } from './components/LocStringViewer';
+export { SurveyHeader } from './components/SurveyHeader';
+export type { SurveyHeaderProps } from './components/SurveyHeader';
+export { LogoImage } from './components/LogoImage';
+export type { LogoImageProps } from './components/LogoImage';
+
 // theme-core (design: docs/design/0.6-theme-core.md) — the pure
 // ITheme -> tokens resolver plus its standalone helpers. theme-rn (0.7)
 // consumes ResolvedTheme; hosts may also call resolveTheme directly.
@@ -77,6 +85,7 @@ export type {
   ButtonStyleOverrides,
   QuestionTitleStyleOverrides,
   UnsupportedQuestionStyleOverrides,
+  HeaderStyleOverrides,
 } from './theme-rn/overrides';
 export type { NormalizedBackground } from './theme-rn/background';
 

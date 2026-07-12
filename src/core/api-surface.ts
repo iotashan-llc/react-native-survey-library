@@ -319,4 +319,141 @@ export const API_SURFACE_WATCHLIST: readonly WatchedApiMember[] = [
     reason:
       'Test cleanup for renderer-route registration (register-all.test.tsx).',
   },
+
+  // Task 1.6 — LocalizableString renderer + basic survey header.
+  {
+    id: 'LocalizableString.defaultRenderer',
+    member: 'defaultRenderer',
+    expectedKind: 'data',
+    // Static field on the class itself, not the prototype.
+    resolveHost: (sc) => sc.LocalizableString,
+    reason:
+      "The descriptor table's sv-string-viewer element row must stay equal to core's default renderer key (LocStringViewer.test).",
+  },
+  {
+    id: 'LocalizableString.onStringChanged',
+    member: 'onStringChanged',
+    expectedKind: 'data',
+    // Instance field (initializer, not on the prototype) — probe instance;
+    // the constructor only assigns fields (localizablestring.ts:66-69),
+    // side-effect-free with a null owner.
+    resolveHost: (sc) => new sc.LocalizableString(null as never),
+    reason:
+      "SurveyLocStringViewer's subscription lifecycle (components/LocStringViewer.tsx).",
+  },
+  {
+    id: 'LocalizableString.hasHtml',
+    member: 'hasHtml',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.LocalizableString.prototype,
+    reason: 'SurveyLocStringViewer branches plain-Text vs SanitizedHtml on it.',
+  },
+  {
+    id: 'LocalizableString.allowLineBreaks',
+    member: 'allowLineBreaks',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.LocalizableString.prototype,
+    reason:
+      "SurveyLocStringViewer's single-line newline collapsing (upstream --multiline parity).",
+  },
+  {
+    id: 'LocalizableString.renderAs',
+    member: 'renderAs',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.LocalizableString.prototype,
+    reason:
+      "SurveyElementBase.renderLocString's factory dispatch key (reactivity/SurveyElementBase.tsx).",
+  },
+  {
+    id: 'LocalizableString.renderAsData',
+    member: 'renderAsData',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.LocalizableString.prototype,
+    reason:
+      "SurveyElementBase.renderLocString's dispatched model prop (reactivity/SurveyElementBase.tsx).",
+  },
+  {
+    id: 'Model.renderedHasHeader',
+    member: 'renderedHasHeader',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Model.prototype,
+    reason: "SurveyHeader's render gate (components/SurveyHeader.tsx).",
+  },
+  {
+    id: 'Model.renderedHasTitle',
+    member: 'renderedHasTitle',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Model.prototype,
+    reason: "SurveyHeader's title-block gate.",
+  },
+  {
+    id: 'Model.renderedHasDescription',
+    member: 'renderedHasDescription',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Model.prototype,
+    reason: "SurveyHeader's description gate.",
+  },
+  {
+    id: 'Model.renderedHasLogo',
+    member: 'renderedHasLogo',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Model.prototype,
+    reason: "SurveyHeader's logo gate.",
+  },
+  {
+    id: 'Model.isLogoBefore',
+    member: 'isLogoBefore',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Model.prototype,
+    reason: 'SurveyHeader logo/text ordering.',
+  },
+  {
+    id: 'Model.isLogoAfter',
+    member: 'isLogoAfter',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Model.prototype,
+    reason: 'SurveyHeader logo/text ordering.',
+  },
+  {
+    id: 'Model.locTitle',
+    member: 'locTitle',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Model.prototype,
+    reason: 'SurveyHeader title rendering + LogoImage accessibilityLabel.',
+  },
+  {
+    id: 'Model.locDescription',
+    member: 'locDescription',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Model.prototype,
+    reason: 'SurveyHeader description rendering.',
+  },
+  {
+    id: 'Model.locLogo',
+    member: 'locLogo',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Model.prototype,
+    reason: "LogoImage's URI source (components/LogoImage.tsx).",
+  },
+  {
+    id: 'Model.renderedLogoWidth',
+    member: 'renderedLogoWidth',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Model.prototype,
+    reason: "LogoImage's numeric width.",
+  },
+  {
+    id: 'Model.renderedLogoHeight',
+    member: 'renderedLogoHeight',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Model.prototype,
+    reason: "LogoImage's numeric height.",
+  },
+  {
+    id: 'Model.logoFit',
+    member: 'logoFit',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Model.prototype,
+    reason: "LogoImage's resizeMode mapping.",
+  },
 ];

@@ -90,13 +90,26 @@ export interface SanitizedHtmlLinkPressDroppedPayload {
   reason: string;
 }
 
+/** Emitted when a bare-`Image` consumer's URI fails the central URI
+ * policy (context `'image'`) and the image is dropped fail-closed
+ * (invariant 8). `source` names the renderer surface — `'survey-logo'`
+ * (task 1.6); later bare-Image ports (image question, imagepicker) add
+ * their own. Reported from commit lifecycles, deduped per URI. */
+export interface ImageUriBlockedPayload {
+  code: 'image-uri-blocked';
+  source: string;
+  uri: string;
+  reason: string;
+}
+
 export type DiagnosticPayload =
   | UnsupportedQuestionTypePayload
   | CustomWidgetIgnoredPayload
   | UnknownCssTokenPayload
   | ThemeDiagnosticPayload
   | SanitizedHtmlDiagnosticPayload
-  | SanitizedHtmlLinkPressDroppedPayload;
+  | SanitizedHtmlLinkPressDroppedPayload
+  | ImageUriBlockedPayload;
 
 export type DiagnosticHandler = (payload: DiagnosticPayload) => void;
 

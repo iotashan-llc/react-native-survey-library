@@ -14,13 +14,31 @@ function byKey(dispatchKey: string): Descriptor {
   return row;
 }
 
-describe('DESCRIPTOR_TABLE (M0)', () => {
-  it('has exactly the three M0 rows: empty, custom, composite', () => {
+describe('DESCRIPTOR_TABLE (M0 + task 1.6)', () => {
+  it('has exactly the M0 rows (empty, custom, composite) plus the 1.6 element rows', () => {
     expect(DESCRIPTOR_TABLE.map((r) => r.dispatchKey).sort()).toEqual([
       'composite',
       'custom',
       'empty',
+      'survey-header',
+      'sv-logo-image',
+      'sv-string-viewer',
     ]);
+  });
+
+  it('the 1.6 rows are supported/element rows (RNElementFactory keyspace) with resolvable component thunks', () => {
+    for (const key of [
+      'sv-string-viewer',
+      'survey-header',
+      'sv-logo-image',
+    ] as const) {
+      const row = byKey(key);
+      expect(row.status).toBe('supported');
+      expect(row.route).toBe('element');
+      if (row.status !== 'supported') throw new Error('unreachable');
+      expect(typeof row.component()).toBe('function');
+      expect(row.milestone).toBe('M1');
+    }
   });
 
   it('"empty" is a supported/template row with a resolvable component thunk', () => {
