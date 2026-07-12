@@ -104,6 +104,11 @@ function writeReactNativeStub(consumerDir) {
       '  Version: 1,\n' +
       '  select: (spec) => spec.ios ?? spec.default,\n' +
       '};\n'
+      +
+      // `SanitizedHtml` (design: docs/design/0.9-html-strategy.md) reads
+      // `Dimensions.get('window').width` at module scope for its default
+      // `contentWidth` fallback.
+      "export const Dimensions = { get: () => ({ width: 0, height: 0 }) };\n"
   );
 }
 
