@@ -90,13 +90,31 @@ export interface SanitizedHtmlLinkPressDroppedPayload {
   reason: string;
 }
 
+/**
+ * Native lifecycle bridge diagnostics (design:
+ * docs/design/1.2-lifecycle-bridge.md — registry lookup fallbacks). All
+ * non-throwing no-op paths, surfaced dev-only, deduped by the emitting
+ * module:
+ * - `target-unregistered` — scroll request for a model with no registered
+ *   handle and no page fallback (once per model instance).
+ * - `no-scroll-host` — a scroll request arrived before/without the Survey
+ *   root registering its ScrollView host (once per survey instance).
+ */
+export interface LifecycleDiagnosticPayload {
+  code: 'lifecycle-diagnostic';
+  lifecycleCode: 'target-unregistered' | 'no-scroll-host';
+  elementName: string | undefined;
+  elementType: string | undefined;
+}
+
 export type DiagnosticPayload =
   | UnsupportedQuestionTypePayload
   | CustomWidgetIgnoredPayload
   | UnknownCssTokenPayload
   | ThemeDiagnosticPayload
   | SanitizedHtmlDiagnosticPayload
-  | SanitizedHtmlLinkPressDroppedPayload;
+  | SanitizedHtmlLinkPressDroppedPayload
+  | LifecycleDiagnosticPayload;
 
 export type DiagnosticHandler = (payload: DiagnosticPayload) => void;
 
