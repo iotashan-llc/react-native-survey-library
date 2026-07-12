@@ -457,16 +457,37 @@ function resolveArticleFont(
  * dependents) all terminate at `--sjs-default-font-family` — a
  * documented, deliberately fallback-less runtime hook (registry-data.ts:
  * "an optional runtime hook; unset in the pure cascade, so dependent
- * font-family chains resolve to inherit"). An unresolved family is NOT a
- * malformed-theme condition (the real CSS cascade's answer here is
- * `inherit`, not an error) — so this resolves through the shared var()
- * engine but, unlike `resolveEntry`, treats "unresolved" as the
- * documented empty-string/inherit outcome and never emits a diagnostic
- * for it. An explicit override (theme or a non-family var overlay) still
- * resolves normally through the same engine.
+ * font-family chains resolve to inherit"). An unresolved family caused by
+ * THAT hook being unset is NOT a malformed-theme condition (the real CSS
+ * cascade's answer here is `inherit`, not an error), so that ONE case
+ * stays diagnostic-free.
+ *
+ * Every other dereference failure IS forwarded (codex impl-review minor
+ * 10 — the old blanket discard also swallowed genuine cycles and dangling
+ * host references): `var-cycle` diagnostics always pass through, and
+ * `var-unresolved` is suppressed only when the same evaluation shows the
+ * unset `--sjs-default-font-family` terminal hook as the cause.
  */
-function resolveFamily(name: string, rawVariables: RawVariables): string {
-  const { value } = evaluateVarExpression(rawVariables, `var(${name})`);
+function resolveFamily(
+  name: string,
+  rawVariables: RawVariables,
+  diagnostics: ThemeDiagnostic[]
+): string {
+  const { value, diagnostics: derefDiagnostics } = evaluateVarExpression(
+    rawVariables,
+    `var(${name})`
+  );
+  const terminalHookUnset = derefDiagnostics.some(
+    (d) =>
+      d.code === 'theme-core/var-unresolved' &&
+      d.variable === '--sjs-default-font-family'
+  );
+  for (const diagnostic of derefDiagnostics) {
+    if (terminalHookUnset && diagnostic.code === 'theme-core/var-unresolved') {
+      continue;
+    }
+    diagnostics.push(diagnostic);
+  }
   return (value ?? '').trim();
 }
 
@@ -486,11 +507,15 @@ function resolveTypography(
   ) as number;
   return {
     base: {
-      fontFamily: resolveFamily('--sjs-font-family', rawVariables),
+      fontFamily: resolveFamily('--sjs-font-family', rawVariables, diagnostics),
       fontSize: baseFontSize,
     },
     editor: {
-      fontFamily: resolveFamily('--sjs-font-editorfont-family', rawVariables),
+      fontFamily: resolveFamily(
+        '--sjs-font-editorfont-family',
+        rawVariables,
+        diagnostics
+      ),
       fontSize: editorFontSize,
       fontWeight: resolveEntry(
         '--sjs-font-editorfont-weight',
@@ -501,7 +526,8 @@ function resolveTypography(
     questionTitle: {
       fontFamily: resolveFamily(
         '--sjs-font-questiontitle-family',
-        rawVariables
+        rawVariables,
+        diagnostics
       ),
       fontSize: resolveEntry(
         '--sjs-font-questiontitle-size',

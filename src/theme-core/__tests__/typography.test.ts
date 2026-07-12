@@ -62,6 +62,40 @@ describe('typography tokens — resolveTheme(undefined) defaults', () => {
   });
 });
 
+describe('font-family diagnostics — only the documented unset-hook case is silent (codex impl-review minor 10)', () => {
+  it('an EXPLICIT cycle between family variables emits a var-cycle diagnostic (never suppressed)', () => {
+    const resolved = resolveTheme({
+      cssVariables: {
+        '--sjs-font-family': 'var(--sjs-font-editorfont-family)',
+        '--sjs-font-editorfont-family': 'var(--sjs-font-family)',
+      },
+    });
+    expect(
+      resolved.diagnostics.some((d) => d.code === 'theme-core/var-cycle')
+    ).toBe(true);
+    // the cycle still resolves to the documented inherit outcome, not a crash
+    expect(resolved.tokens.typography.base.fontFamily).toBe('');
+  });
+
+  it('a dangling reference to a NON-hook variable emits var-unresolved (the suppression is scoped to --sjs-default-font-family)', () => {
+    const resolved = resolveTheme({
+      cssVariables: { '--sjs-font-family': 'var(--host-brand-font)' },
+    });
+    expect(
+      resolved.diagnostics.some(
+        (d) =>
+          d.code === 'theme-core/var-unresolved' &&
+          d.variable === '--host-brand-font'
+      )
+    ).toBe(true);
+  });
+
+  it('the default unset --sjs-default-font-family chain stays diagnostic-free (documented inherit, not an error)', () => {
+    const resolved = resolveTheme(undefined);
+    expect(resolved.diagnostics).toEqual([]);
+  });
+});
+
 describe('typography tokens — sparse overlay flows into derived line-heights', () => {
   it('overriding --sjs-font-editorfont-size flows into editorLineHeight but NOT baseLineHeight', () => {
     const resolved = resolveTheme({
