@@ -234,6 +234,35 @@ export default defineConfig([
     },
   },
   {
+    // Design: docs/design/0.7-theme-rn.md, test plan #6 — "no
+    // react-native import in bridge.ts" (the pure class-token extraction
+    // engine; SCOPED TO THIS ONE FILE, unlike theme-core's directory-wide
+    // ban — shadows.ts/recipes/provider.tsx in the same theme-rn/
+    // directory legitimately need react-native for StyleSheet/Platform/
+    // boxShadow types, so this can't be a `theme-rn/**` glob).
+    files: ['src/theme-rn/bridge.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            ...SURVEY_CORE_RESTRICTED_IMPORTS.paths,
+            ...REACT_NATIVE_RESTRICTED_IMPORTS.paths,
+          ],
+          patterns: [
+            ...SURVEY_CORE_RESTRICTED_IMPORTS.patterns,
+            ...REACT_NATIVE_RESTRICTED_IMPORTS.patterns,
+          ],
+        },
+      ],
+      'no-restricted-syntax': [
+        'error',
+        ...SURVEY_CORE_RESTRICTED_SYNTAX,
+        ...REACT_NATIVE_RESTRICTED_SYNTAX,
+      ],
+    },
+  },
+  {
     ignores: ['node_modules/', 'lib/'],
   },
 ]);

@@ -18,6 +18,7 @@ import type {
   IPropertyValueChangedEvent,
   LocalizableString,
 } from '../core/facade';
+import { SurveyThemeContext } from '../theme-rn/provider';
 
 /**
  * Reserved base state shape. `__svRev` is a monotonically-bumped counter —
@@ -72,6 +73,28 @@ export class SurveyElementBase<
   P = unknown,
   S extends SurveyElementBaseState = SurveyElementBaseState,
 > extends React.Component<P, S> {
+  /**
+   * Companion amendment 1 (design: docs/design/0.7-theme-rn.md,
+   * "Companion amendments" #1): every `SurveyElementBase` subclass
+   * inherits `SurveyThemeContext` consumption via `this.context` for
+   * free — no `<Context.Consumer>` wrapper, no `useContext` (which
+   * would require a hooks rewrite, contrary to A3). Single-context
+   * constraint: a subclass that ALSO needs a different context cannot
+   * use `static contextType` for it (React allows only one) and must
+   * fall back to `<Context.Consumer>` for that second context — same
+   * limitation any React class component with `contextType` already
+   * set has. (No `declare context` field: this project's Babel-based
+   * TS transform doesn't have `allowDeclareFields` enabled, so a `declare`
+   * class member would emit as a real runtime field write; the typed
+   * accessor below reads the React-managed `this.context` instead.)
+   */
+  static contextType = SurveyThemeContext;
+
+  /** Typed accessor for `this.context` (companion amendment 1's "typed `this.context` accessor"). */
+  protected get themeContext(): React.ContextType<typeof SurveyThemeContext> {
+    return this.context as React.ContextType<typeof SurveyThemeContext>;
+  }
+
   /**
    * Deferred to M1's LocalizableString renderer (task 1.3) — this is the
    * abstract seam every later component port calls through, per the

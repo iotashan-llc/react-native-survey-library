@@ -443,6 +443,25 @@ exports[`golden: all 40 survey-core theme presets (compact projection) Borderles
         },
       ],
     },
+    "typography": {
+      "base": {
+        "fontFamily": "",
+        "fontSize": 16,
+      },
+      "baseLineHeight": 24,
+      "editor": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 400,
+      },
+      "editorCornerRadius": 4,
+      "editorLineHeight": 24,
+      "questionTitle": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 600,
+      },
+    },
   },
 }
 `;
@@ -889,6 +908,25 @@ exports[`golden: all 40 survey-core theme presets (compact projection) Borderles
           "spreadRadius": 0,
         },
       ],
+    },
+    "typography": {
+      "base": {
+        "fontFamily": "",
+        "fontSize": 16,
+      },
+      "baseLineHeight": 24,
+      "editor": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 400,
+      },
+      "editorCornerRadius": 4,
+      "editorLineHeight": 24,
+      "questionTitle": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 600,
+      },
     },
   },
 }
@@ -1337,6 +1375,25 @@ exports[`golden: all 40 survey-core theme presets (compact projection) Borderles
         },
       ],
     },
+    "typography": {
+      "base": {
+        "fontFamily": "",
+        "fontSize": 16,
+      },
+      "baseLineHeight": 24,
+      "editor": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 400,
+      },
+      "editorCornerRadius": 4,
+      "editorLineHeight": 24,
+      "questionTitle": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 600,
+      },
+    },
   },
 }
 `;
@@ -1783,6 +1840,25 @@ exports[`golden: all 40 survey-core theme presets (compact projection) Borderles
           "spreadRadius": 0,
         },
       ],
+    },
+    "typography": {
+      "base": {
+        "fontFamily": "",
+        "fontSize": 16,
+      },
+      "baseLineHeight": 24,
+      "editor": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 400,
+      },
+      "editorCornerRadius": 4,
+      "editorLineHeight": 24,
+      "questionTitle": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 600,
+      },
     },
   },
 }
@@ -2257,6 +2333,25 @@ exports[`golden: all 40 survey-core theme presets (compact projection) ContrastD
         },
       ],
     },
+    "typography": {
+      "base": {
+        "fontFamily": "",
+        "fontSize": 16,
+      },
+      "baseLineHeight": 24,
+      "editor": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 400,
+      },
+      "editorCornerRadius": 4,
+      "editorLineHeight": 24,
+      "questionTitle": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 600,
+      },
+    },
   },
 }
 `;
@@ -2729,6 +2824,25 @@ exports[`golden: all 40 survey-core theme presets (compact projection) ContrastD
           "spreadRadius": 0,
         },
       ],
+    },
+    "typography": {
+      "base": {
+        "fontFamily": "",
+        "fontSize": 16,
+      },
+      "baseLineHeight": 24,
+      "editor": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 400,
+      },
+      "editorCornerRadius": 4,
+      "editorLineHeight": 24,
+      "questionTitle": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 600,
+      },
     },
   },
 }
@@ -3203,6 +3317,25 @@ exports[`golden: all 40 survey-core theme presets (compact projection) ContrastL
         },
       ],
     },
+    "typography": {
+      "base": {
+        "fontFamily": "",
+        "fontSize": 16,
+      },
+      "baseLineHeight": 24,
+      "editor": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 400,
+      },
+      "editorCornerRadius": 4,
+      "editorLineHeight": 24,
+      "questionTitle": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 600,
+      },
+    },
   },
 }
 `;
@@ -3676,6 +3809,25 @@ exports[`golden: all 40 survey-core theme presets (compact projection) ContrastL
         },
       ],
     },
+    "typography": {
+      "base": {
+        "fontFamily": "",
+        "fontSize": 16,
+      },
+      "baseLineHeight": 24,
+      "editor": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 400,
+      },
+      "editorCornerRadius": 4,
+      "editorLineHeight": 24,
+      "questionTitle": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 600,
+      },
+    },
   },
 }
 `;
@@ -4122,6 +4274,25 @@ exports[`golden: all 40 survey-core theme presets (compact projection) DefaultDa
           "spreadRadius": 0,
         },
       ],
+    },
+    "typography": {
+      "base": {
+        "fontFamily": "",
+        "fontSize": 16,
+      },
+      "baseLineHeight": 24,
+      "editor": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 400,
+      },
+      "editorCornerRadius": 4,
+      "editorLineHeight": 24,
+      "questionTitle": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 600,
+      },
     },
   },
 }
@@ -4570,6 +4741,25 @@ exports[`golden: all 40 survey-core theme presets (compact projection) DefaultDa
         },
       ],
     },
+    "typography": {
+      "base": {
+        "fontFamily": "",
+        "fontSize": 16,
+      },
+      "baseLineHeight": 24,
+      "editor": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 400,
+      },
+      "editorCornerRadius": 4,
+      "editorLineHeight": 24,
+      "questionTitle": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 600,
+      },
+    },
   },
 }
 `;
@@ -5016,6 +5206,25 @@ exports[`golden: all 40 survey-core theme presets (compact projection) DefaultLi
           "spreadRadius": 0,
         },
       ],
+    },
+    "typography": {
+      "base": {
+        "fontFamily": "",
+        "fontSize": 16,
+      },
+      "baseLineHeight": 24,
+      "editor": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 400,
+      },
+      "editorCornerRadius": 4,
+      "editorLineHeight": 24,
+      "questionTitle": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 600,
+      },
     },
   },
 }
@@ -5464,6 +5673,25 @@ exports[`golden: all 40 survey-core theme presets (compact projection) DefaultLi
         },
       ],
     },
+    "typography": {
+      "base": {
+        "fontFamily": "",
+        "fontSize": 16,
+      },
+      "baseLineHeight": 24,
+      "editor": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 400,
+      },
+      "editorCornerRadius": 4,
+      "editorLineHeight": 24,
+      "questionTitle": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 600,
+      },
+    },
   },
 }
 `;
@@ -5911,6 +6139,25 @@ exports[`golden: all 40 survey-core theme presets (compact projection) DoubleBor
         },
       ],
     },
+    "typography": {
+      "base": {
+        "fontFamily": "",
+        "fontSize": 16,
+      },
+      "baseLineHeight": 24,
+      "editor": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 400,
+      },
+      "editorCornerRadius": 4,
+      "editorLineHeight": 24,
+      "questionTitle": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 600,
+      },
+    },
   },
 }
 `;
@@ -6357,6 +6604,25 @@ exports[`golden: all 40 survey-core theme presets (compact projection) DoubleBor
           "spreadRadius": 0,
         },
       ],
+    },
+    "typography": {
+      "base": {
+        "fontFamily": "",
+        "fontSize": 16,
+      },
+      "baseLineHeight": 24,
+      "editor": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 400,
+      },
+      "editorCornerRadius": 4,
+      "editorLineHeight": 24,
+      "questionTitle": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 600,
+      },
     },
   },
 }
@@ -6818,6 +7084,25 @@ exports[`golden: all 40 survey-core theme presets (compact projection) DoubleBor
         },
       ],
     },
+    "typography": {
+      "base": {
+        "fontFamily": "",
+        "fontSize": 16,
+      },
+      "baseLineHeight": 24,
+      "editor": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 400,
+      },
+      "editorCornerRadius": 4,
+      "editorLineHeight": 24,
+      "questionTitle": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 600,
+      },
+    },
   },
 }
 `;
@@ -7277,6 +7562,25 @@ exports[`golden: all 40 survey-core theme presets (compact projection) DoubleBor
           "spreadRadius": 0,
         },
       ],
+    },
+    "typography": {
+      "base": {
+        "fontFamily": "",
+        "fontSize": 16,
+      },
+      "baseLineHeight": 24,
+      "editor": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 400,
+      },
+      "editorCornerRadius": 4,
+      "editorLineHeight": 24,
+      "questionTitle": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 600,
+      },
     },
   },
 }
@@ -7738,6 +8042,25 @@ exports[`golden: all 40 survey-core theme presets (compact projection) FlatDark 
         },
       ],
     },
+    "typography": {
+      "base": {
+        "fontFamily": "",
+        "fontSize": 16,
+      },
+      "baseLineHeight": 24,
+      "editor": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 400,
+      },
+      "editorCornerRadius": 4,
+      "editorLineHeight": 24,
+      "questionTitle": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 600,
+      },
+    },
   },
 }
 `;
@@ -8197,6 +8520,25 @@ exports[`golden: all 40 survey-core theme presets (compact projection) FlatDarkP
           "spreadRadius": 0,
         },
       ],
+    },
+    "typography": {
+      "base": {
+        "fontFamily": "",
+        "fontSize": 16,
+      },
+      "baseLineHeight": 24,
+      "editor": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 400,
+      },
+      "editorCornerRadius": 4,
+      "editorLineHeight": 24,
+      "questionTitle": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 600,
+      },
     },
   },
 }
@@ -8658,6 +9000,25 @@ exports[`golden: all 40 survey-core theme presets (compact projection) FlatLight
         },
       ],
     },
+    "typography": {
+      "base": {
+        "fontFamily": "",
+        "fontSize": 16,
+      },
+      "baseLineHeight": 24,
+      "editor": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 400,
+      },
+      "editorCornerRadius": 4,
+      "editorLineHeight": 24,
+      "questionTitle": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 600,
+      },
+    },
   },
 }
 `;
@@ -9117,6 +9478,25 @@ exports[`golden: all 40 survey-core theme presets (compact projection) FlatLight
           "spreadRadius": 0,
         },
       ],
+    },
+    "typography": {
+      "base": {
+        "fontFamily": "",
+        "fontSize": 16,
+      },
+      "baseLineHeight": 24,
+      "editor": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 400,
+      },
+      "editorCornerRadius": 4,
+      "editorLineHeight": 24,
+      "questionTitle": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 600,
+      },
     },
   },
 }
@@ -9656,6 +10036,25 @@ exports[`golden: all 40 survey-core theme presets (compact projection) LayeredDa
         },
       ],
     },
+    "typography": {
+      "base": {
+        "fontFamily": "",
+        "fontSize": 16,
+      },
+      "baseLineHeight": 24,
+      "editor": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 400,
+      },
+      "editorCornerRadius": 4,
+      "editorLineHeight": 24,
+      "questionTitle": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 600,
+      },
+    },
   },
 }
 `;
@@ -10194,6 +10593,25 @@ exports[`golden: all 40 survey-core theme presets (compact projection) LayeredDa
         },
       ],
     },
+    "typography": {
+      "base": {
+        "fontFamily": "",
+        "fontSize": 16,
+      },
+      "baseLineHeight": 24,
+      "editor": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 400,
+      },
+      "editorCornerRadius": 4,
+      "editorLineHeight": 24,
+      "questionTitle": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 600,
+      },
+    },
   },
 }
 `;
@@ -10718,6 +11136,25 @@ exports[`golden: all 40 survey-core theme presets (compact projection) LayeredLi
           "spreadRadius": 0,
         },
       ],
+    },
+    "typography": {
+      "base": {
+        "fontFamily": "",
+        "fontSize": 16,
+      },
+      "baseLineHeight": 24,
+      "editor": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 400,
+      },
+      "editorCornerRadius": 4,
+      "editorLineHeight": 24,
+      "questionTitle": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 600,
+      },
     },
   },
 }
@@ -11244,6 +11681,25 @@ exports[`golden: all 40 survey-core theme presets (compact projection) LayeredLi
         },
       ],
     },
+    "typography": {
+      "base": {
+        "fontFamily": "",
+        "fontSize": 16,
+      },
+      "baseLineHeight": 24,
+      "editor": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 400,
+      },
+      "editorCornerRadius": 4,
+      "editorLineHeight": 24,
+      "questionTitle": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 600,
+      },
+    },
   },
 }
 `;
@@ -11703,6 +12159,25 @@ exports[`golden: all 40 survey-core theme presets (compact projection) PlainDark
           "spreadRadius": 0,
         },
       ],
+    },
+    "typography": {
+      "base": {
+        "fontFamily": "",
+        "fontSize": 16,
+      },
+      "baseLineHeight": 24,
+      "editor": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 400,
+      },
+      "editorCornerRadius": 4,
+      "editorLineHeight": 24,
+      "questionTitle": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 600,
+      },
     },
   },
 }
@@ -12164,6 +12639,25 @@ exports[`golden: all 40 survey-core theme presets (compact projection) PlainDark
         },
       ],
     },
+    "typography": {
+      "base": {
+        "fontFamily": "",
+        "fontSize": 16,
+      },
+      "baseLineHeight": 24,
+      "editor": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 400,
+      },
+      "editorCornerRadius": 4,
+      "editorLineHeight": 24,
+      "questionTitle": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 600,
+      },
+    },
   },
 }
 `;
@@ -12611,6 +13105,25 @@ exports[`golden: all 40 survey-core theme presets (compact projection) PlainLigh
         },
       ],
     },
+    "typography": {
+      "base": {
+        "fontFamily": "",
+        "fontSize": 16,
+      },
+      "baseLineHeight": 24,
+      "editor": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 400,
+      },
+      "editorCornerRadius": 4,
+      "editorLineHeight": 24,
+      "questionTitle": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 600,
+      },
+    },
   },
 }
 `;
@@ -13057,6 +13570,25 @@ exports[`golden: all 40 survey-core theme presets (compact projection) PlainLigh
           "spreadRadius": 0,
         },
       ],
+    },
+    "typography": {
+      "base": {
+        "fontFamily": "",
+        "fontSize": 16,
+      },
+      "baseLineHeight": 24,
+      "editor": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 400,
+      },
+      "editorCornerRadius": 4,
+      "editorLineHeight": 24,
+      "questionTitle": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 600,
+      },
     },
   },
 }
@@ -13518,6 +14050,25 @@ exports[`golden: all 40 survey-core theme presets (compact projection) SharpDark
         },
       ],
     },
+    "typography": {
+      "base": {
+        "fontFamily": "",
+        "fontSize": 16,
+      },
+      "baseLineHeight": 24,
+      "editor": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 400,
+      },
+      "editorCornerRadius": 4,
+      "editorLineHeight": 24,
+      "questionTitle": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 600,
+      },
+    },
   },
 }
 `;
@@ -13978,6 +14529,25 @@ exports[`golden: all 40 survey-core theme presets (compact projection) SharpDark
         },
       ],
     },
+    "typography": {
+      "base": {
+        "fontFamily": "",
+        "fontSize": 16,
+      },
+      "baseLineHeight": 24,
+      "editor": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 400,
+      },
+      "editorCornerRadius": 4,
+      "editorLineHeight": 24,
+      "questionTitle": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 600,
+      },
+    },
   },
 }
 `;
@@ -14424,6 +14994,25 @@ exports[`golden: all 40 survey-core theme presets (compact projection) SharpLigh
           "spreadRadius": 0,
         },
       ],
+    },
+    "typography": {
+      "base": {
+        "fontFamily": "",
+        "fontSize": 16,
+      },
+      "baseLineHeight": 24,
+      "editor": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 400,
+      },
+      "editorCornerRadius": 4,
+      "editorLineHeight": 24,
+      "questionTitle": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 600,
+      },
     },
   },
 }
@@ -14872,6 +15461,25 @@ exports[`golden: all 40 survey-core theme presets (compact projection) SharpLigh
         },
       ],
     },
+    "typography": {
+      "base": {
+        "fontFamily": "",
+        "fontSize": 16,
+      },
+      "baseLineHeight": 24,
+      "editor": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 400,
+      },
+      "editorCornerRadius": 4,
+      "editorLineHeight": 24,
+      "questionTitle": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 600,
+      },
+    },
   },
 }
 `;
@@ -15318,6 +15926,25 @@ exports[`golden: all 40 survey-core theme presets (compact projection) SolidDark
           "spreadRadius": 0,
         },
       ],
+    },
+    "typography": {
+      "base": {
+        "fontFamily": "",
+        "fontSize": 16,
+      },
+      "baseLineHeight": 24,
+      "editor": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 400,
+      },
+      "editorCornerRadius": 4,
+      "editorLineHeight": 24,
+      "questionTitle": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 600,
+      },
     },
   },
 }
@@ -15766,6 +16393,25 @@ exports[`golden: all 40 survey-core theme presets (compact projection) SolidDark
         },
       ],
     },
+    "typography": {
+      "base": {
+        "fontFamily": "",
+        "fontSize": 16,
+      },
+      "baseLineHeight": 24,
+      "editor": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 400,
+      },
+      "editorCornerRadius": 4,
+      "editorLineHeight": 24,
+      "questionTitle": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 600,
+      },
+    },
   },
 }
 `;
@@ -16213,6 +16859,25 @@ exports[`golden: all 40 survey-core theme presets (compact projection) SolidLigh
         },
       ],
     },
+    "typography": {
+      "base": {
+        "fontFamily": "",
+        "fontSize": 16,
+      },
+      "baseLineHeight": 24,
+      "editor": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 400,
+      },
+      "editorCornerRadius": 4,
+      "editorLineHeight": 24,
+      "questionTitle": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 600,
+      },
+    },
   },
 }
 `;
@@ -16659,6 +17324,25 @@ exports[`golden: all 40 survey-core theme presets (compact projection) SolidLigh
           "spreadRadius": 0,
         },
       ],
+    },
+    "typography": {
+      "base": {
+        "fontFamily": "",
+        "fontSize": 16,
+      },
+      "baseLineHeight": 24,
+      "editor": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 400,
+      },
+      "editorCornerRadius": 4,
+      "editorLineHeight": 24,
+      "questionTitle": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 600,
+      },
     },
   },
 }
@@ -17172,6 +17856,25 @@ exports[`golden: all 40 survey-core theme presets (compact projection) ThreeDime
         },
       ],
     },
+    "typography": {
+      "base": {
+        "fontFamily": "",
+        "fontSize": 16,
+      },
+      "baseLineHeight": 24,
+      "editor": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 400,
+      },
+      "editorCornerRadius": 4,
+      "editorLineHeight": 24,
+      "questionTitle": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 600,
+      },
+    },
   },
 }
 `;
@@ -17683,6 +18386,25 @@ exports[`golden: all 40 survey-core theme presets (compact projection) ThreeDime
           "spreadRadius": 0,
         },
       ],
+    },
+    "typography": {
+      "base": {
+        "fontFamily": "",
+        "fontSize": 16,
+      },
+      "baseLineHeight": 24,
+      "editor": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 400,
+      },
+      "editorCornerRadius": 4,
+      "editorLineHeight": 24,
+      "questionTitle": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 600,
+      },
     },
   },
 }
@@ -18196,6 +18918,25 @@ exports[`golden: all 40 survey-core theme presets (compact projection) ThreeDime
         },
       ],
     },
+    "typography": {
+      "base": {
+        "fontFamily": "",
+        "fontSize": 16,
+      },
+      "baseLineHeight": 24,
+      "editor": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 400,
+      },
+      "editorCornerRadius": 4,
+      "editorLineHeight": 24,
+      "questionTitle": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 600,
+      },
+    },
   },
 }
 `;
@@ -18707,6 +19448,25 @@ exports[`golden: all 40 survey-core theme presets (compact projection) ThreeDime
           "spreadRadius": 0,
         },
       ],
+    },
+    "typography": {
+      "base": {
+        "fontFamily": "",
+        "fontSize": 16,
+      },
+      "baseLineHeight": 24,
+      "editor": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 400,
+      },
+      "editorCornerRadius": 4,
+      "editorLineHeight": 24,
+      "questionTitle": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 600,
+      },
     },
   },
 }
@@ -19398,6 +20158,25 @@ exports[`golden: resolveTheme(undefined) matches the committed snapshot (full, i
           "spreadRadius": 0,
         },
       ],
+    },
+    "typography": {
+      "base": {
+        "fontFamily": "",
+        "fontSize": 16,
+      },
+      "baseLineHeight": 24,
+      "editor": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 400,
+      },
+      "editorCornerRadius": 4,
+      "editorLineHeight": 24,
+      "questionTitle": {
+        "fontFamily": "",
+        "fontSize": 16,
+        "fontWeight": 600,
+      },
     },
   },
 }

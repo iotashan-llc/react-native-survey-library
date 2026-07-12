@@ -81,10 +81,30 @@ function writeReactNativeStub(consumerDir) {
     join(stubDir, 'index.js'),
     "// Minimal stub for the packaged-entry harness — see this script's\n" +
       "// header comment. Real 'react-native' can't be parsed by plain Node.\n" +
-      "// Values only need to exist as named exports; nothing in the\n" +
-      '// 7a-7e cases actually renders a component.\n' +
+      '// Values only need to exist as named exports (module EVALUATION —\n' +
+      '// nothing in the 7a-7e cases actually renders a component or calls\n' +
+      '// into a recipe builder — but a StyleSheet.create/Platform.select call\n' +
+      '// buried in an unexercised function body still needs a real-shaped\n' +
+      '// stub if some future case starts exercising it, so these are kept\n' +
+      '// minimally functional, not just present). Keep this list in sync with\n' +
+      '// the react-native symbols any package-root-reachable module imports\n' +
+      '// as VALUES (not `import type`) — currently View/Text (components,\n' +
+      '// reactivity), StyleSheet (theme-rn recipes), I18nManager/Platform\n' +
+      '// (theme-rn provider).\n' +
       "export const View = 'View';\n" +
       "export const Text = 'Text';\n" +
+      'export const StyleSheet = {\n' +
+      '  create: (styles) => styles,\n' +
+      '  flatten: (style) => style,\n' +
+      '  hairlineWidth: 1,\n' +
+      '};\n' +
+      'export const I18nManager = { isRTL: false };\n' +
+      'export const Platform = {\n' +
+      "  OS: 'ios',\n" +
+      '  Version: 1,\n' +
+      '  select: (spec) => spec.ios ?? spec.default,\n' +
+      '};\n'
+      +
       // `SanitizedHtml` (design: docs/design/0.9-html-strategy.md) reads
       // `Dimensions.get('window').width` at module scope for its default
       // `contentWidth` fallback.

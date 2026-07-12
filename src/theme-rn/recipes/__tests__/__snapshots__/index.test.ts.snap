@@ -1,0 +1,1925 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`curated recipe golden snapshots ContrastLight: recipes build to a stable snapshot (iOS) 1`] = `
+{
+  "button": {
+    "fragments": {
+      "action": {
+        "backgroundColor": "rgba(0, 0, 0, 1)",
+        "color": "rgba(255, 255, 255, 1)",
+      },
+      "actionDisabled": {
+        "color": "rgba(255, 255, 255, 0.25)",
+        "opacity": 0.25,
+      },
+      "actionPressed": {
+        "backgroundColor": "rgba(83, 83, 83, 1)",
+      },
+      "base": {
+        "backgroundColor": "rgba(255, 255, 255, 1)",
+        "borderRadius": 4,
+        "boxShadow": [
+          {
+            "blurRadius": 0,
+            "color": "rgba(0, 0, 0, 1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 2,
+          },
+        ],
+        "color": "rgba(0, 0, 0, 1)",
+        "elevation": undefined,
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "fontWeight": "600",
+        "lineHeight": 24,
+        "paddingHorizontal": 48,
+        "paddingVertical": 16,
+      },
+      "danger": {
+        "backgroundColor": "rgba(156, 2, 39, 1)",
+        "color": "rgba(255, 255, 255, 1)",
+      },
+      "dangerDisabled": {
+        "color": "rgba(255, 255, 255, 1)",
+        "opacity": 0.25,
+      },
+      "disabled": {
+        "color": "rgba(0, 0, 0, 1)",
+        "opacity": 0.25,
+      },
+      "focused": {
+        "boxShadow": [
+          {
+            "blurRadius": 0,
+            "color": "rgba(0, 0, 0, 1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 0,
+          },
+          {
+            "blurRadius": 0,
+            "color": "rgba(0, 0, 0, 1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 2,
+          },
+        ],
+        "elevation": undefined,
+      },
+      "pressedDefault": {
+        "backgroundColor": "rgba(255, 216, 77, 1)",
+      },
+      "small": {
+        "flexGrow": 1,
+        "paddingHorizontal": 32,
+        "paddingVertical": 12,
+      },
+    },
+  },
+  "input": {
+    "fragments": {
+      "base": {
+        "backgroundColor": "rgba(255, 216, 77, 1)",
+        "borderRadius": 4,
+        "boxShadow": [
+          {
+            "blurRadius": 0,
+            "color": "rgba(0, 0, 0, 1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 2,
+          },
+          {
+            "blurRadius": 0,
+            "color": "rgba(0, 0, 0, 1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": -2,
+            "spreadDistance": 2,
+          },
+        ],
+        "color": "rgba(0, 0, 0, 1)",
+        "elevation": undefined,
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "fontWeight": "400",
+        "lineHeight": 24,
+        "paddingHorizontal": 16,
+        "paddingVertical": 12,
+      },
+      "characterCounter": {
+        "bottom": 12,
+        "color": "rgba(0, 0, 0, 1)",
+        "end": 16,
+        "fontSize": 16,
+        "lineHeight": 24,
+        "position": "absolute",
+      },
+      "disabledReserved": {
+        "opacity": 0.25,
+      },
+      "error": {
+        "backgroundColor": "rgba(229, 10, 62, 0.1)",
+      },
+      "focused": {
+        "boxShadow": [
+          {
+            "blurRadius": 0,
+            "color": "rgba(0, 0, 0, 1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 0,
+          },
+          {
+            "blurRadius": 0,
+            "color": "rgba(0, 0, 0, 1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 0,
+          },
+          {
+            "blurRadius": 0,
+            "color": "rgba(0, 0, 0, 1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 2,
+          },
+        ],
+        "elevation": undefined,
+      },
+      "focusedCounterPadding": {
+        "paddingEnd": 64,
+      },
+      "focusedCounterPaddingBig": {
+        "paddingEnd": 88,
+      },
+      "preview": {
+        "backgroundColor": "transparent",
+        "borderBottomColor": "rgba(0, 0, 0, 1)",
+        "borderBottomWidth": 1,
+        "borderRadius": 0,
+        "boxShadow": [],
+        "elevation": 0,
+        "paddingHorizontal": 0,
+      },
+      "readOnly": {
+        "backgroundColor": "rgba(255, 216, 77, 1)",
+        "boxShadow": [],
+        "color": "rgba(0, 0, 0, 1)",
+        "elevation": 0,
+      },
+    },
+  },
+  "item": {
+    "fragments": {
+      "container": {
+        "alignItems": "center",
+        "flexDirection": "row",
+        "gap": 8,
+        "paddingVertical": 12,
+      },
+      "decoratorBase": {
+        "alignItems": "center",
+        "backgroundColor": "rgba(255, 216, 77, 1)",
+        "boxShadow": [
+          {
+            "blurRadius": 0,
+            "color": "rgba(0, 0, 0, 1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 2,
+          },
+          {
+            "blurRadius": 0,
+            "color": "rgba(0, 0, 0, 1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": -2,
+            "spreadDistance": 2,
+          },
+        ],
+        "elevation": undefined,
+        "height": 24,
+        "justifyContent": "center",
+        "width": 24,
+      },
+      "decoratorChecked": {
+        "backgroundColor": "rgba(0, 0, 0, 1)",
+        "boxShadow": [],
+        "elevation": 0,
+      },
+      "decoratorError": {
+        "backgroundColor": "rgba(229, 10, 62, 0.1)",
+      },
+      "decoratorFocused": {
+        "backgroundColor": "rgba(255, 255, 255, 1)",
+        "boxShadow": [
+          {
+            "blurRadius": 0,
+            "color": "rgba(0, 0, 0, 1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 0,
+          },
+          {
+            "blurRadius": 0,
+            "color": "rgba(0, 0, 0, 1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 0,
+          },
+          {
+            "blurRadius": 0,
+            "color": "rgba(0, 0, 0, 1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 2,
+          },
+        ],
+        "elevation": undefined,
+      },
+      "decoratorPressed": {
+        "backgroundColor": "rgba(255, 216, 77, 1)",
+      },
+      "decoratorPreview": {
+        "backgroundColor": "transparent",
+        "boxShadow": [],
+        "elevation": 0,
+      },
+      "decoratorRadiusCheckbox": {
+        "borderRadius": 2,
+      },
+      "decoratorRadiusRadio": {
+        "borderRadius": 12,
+      },
+      "decoratorReadOnly": {
+        "backgroundColor": "rgba(255, 216, 77, 1)",
+        "boxShadow": [],
+        "elevation": 0,
+      },
+      "description": {
+        "paddingStart": 32,
+      },
+      "label": {
+        "color": "rgba(0, 0, 0, 1)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "fontWeight": "400",
+        "lineHeight": 24,
+      },
+      "labelDisabledReserved": {
+        "opacity": 0.25,
+      },
+      "labelStack": {
+        "gap": 8,
+      },
+      "rowMode": {
+        "columnGap": 32,
+        "flexDirection": "row",
+      },
+    },
+    "iconFills": {
+      "checked": "rgba(255, 255, 255, 1)",
+      "checkedDisabledReserved": "rgba(0, 0, 0, 1)",
+      "checkedFocused": "rgba(0, 0, 0, 1)",
+      "checkedReadOnly": "rgba(0, 0, 0, 1)",
+      "preview": "rgba(0, 0, 0, 1)",
+      "unchecked": "transparent",
+    },
+    "iconSize": 16,
+  },
+  "questionTitle": {
+    "fragments": {
+      "collapsed": {
+        "opacity": 0.7,
+      },
+      "errorTone": {
+        "color": "rgba(156, 2, 39, 1)",
+      },
+      "number": {
+        "color": "rgba(0, 0, 0, 1)",
+        "fontSize": 12,
+        "lineHeight": 16,
+        "paddingBottom": 3,
+        "paddingEnd": 8,
+        "paddingTop": 5,
+      },
+      "numberGutter": {
+        "flexDirection": "row",
+        "width": 40,
+      },
+      "requiredMark": {
+        "color": "rgba(156, 2, 39, 1)",
+      },
+      "title": {
+        "color": "rgba(0, 0, 0, 1)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "fontWeight": "600",
+        "lineHeight": 24,
+      },
+    },
+  },
+  "unsupportedQuestion": {
+    "fragments": {
+      "errorAccentBar": {
+        "backgroundColor": "rgba(156, 2, 39, 1)",
+        "width": 3,
+      },
+      "message": {
+        "color": "rgba(0, 0, 0, 1)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "lineHeight": 24,
+      },
+      "panel": {
+        "backgroundColor": "rgba(255, 216, 77, 1)",
+        "borderColor": "rgba(0, 0, 0, 1)",
+        "borderRadius": 4,
+        "borderWidth": 1,
+        "padding": 16,
+      },
+    },
+    "title": {
+      "fragments": {
+        "collapsed": {
+          "opacity": 0.7,
+        },
+        "errorTone": {
+          "color": "rgba(156, 2, 39, 1)",
+        },
+        "number": {
+          "color": "rgba(0, 0, 0, 1)",
+          "fontSize": 12,
+          "lineHeight": 16,
+          "paddingBottom": 3,
+          "paddingEnd": 8,
+          "paddingTop": 5,
+        },
+        "numberGutter": {
+          "flexDirection": "row",
+          "width": 40,
+        },
+        "requiredMark": {
+          "color": "rgba(156, 2, 39, 1)",
+        },
+        "title": {
+          "color": "rgba(0, 0, 0, 1)",
+          "fontFamily": undefined,
+          "fontSize": 16,
+          "fontWeight": "600",
+          "lineHeight": 24,
+        },
+      },
+    },
+  },
+}
+`;
+
+exports[`curated recipe golden snapshots DefaultLight: recipes build to a stable snapshot (iOS) 1`] = `
+{
+  "button": {
+    "fragments": {
+      "action": {
+        "backgroundColor": "rgba(25, 179, 148, 1)",
+        "color": "rgba(255, 255, 255, 1)",
+      },
+      "actionDisabled": {
+        "color": "rgba(255, 255, 255, 0.25)",
+        "opacity": 0.25,
+      },
+      "actionPressed": {
+        "backgroundColor": "rgba(20, 164, 139, 1)",
+      },
+      "base": {
+        "backgroundColor": "rgba(255, 255, 255, 1)",
+        "borderRadius": 4,
+        "boxShadow": [
+          {
+            "blurRadius": 2,
+            "color": "rgba(0, 0, 0, 0.15)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 1,
+            "spreadDistance": 0,
+          },
+        ],
+        "color": "rgba(25, 179, 148, 1)",
+        "elevation": undefined,
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "fontWeight": "600",
+        "lineHeight": 24,
+        "paddingHorizontal": 48,
+        "paddingVertical": 16,
+      },
+      "danger": {
+        "backgroundColor": "rgba(229, 10, 62, 1)",
+        "color": "rgba(255, 255, 255, 1)",
+      },
+      "dangerDisabled": {
+        "color": "rgba(255, 255, 255, 1)",
+        "opacity": 0.25,
+      },
+      "disabled": {
+        "color": "rgba(0, 0, 0, 0.91)",
+        "opacity": 0.25,
+      },
+      "focused": {
+        "boxShadow": [
+          {
+            "blurRadius": 0,
+            "color": "rgba(0, 0, 0, 0.15)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 0,
+          },
+          {
+            "blurRadius": 0,
+            "color": "rgba(25, 179, 148, 1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 2,
+          },
+        ],
+        "elevation": undefined,
+      },
+      "pressedDefault": {
+        "backgroundColor": "rgba(248, 248, 248, 1)",
+      },
+      "small": {
+        "flexGrow": 1,
+        "paddingHorizontal": 32,
+        "paddingVertical": 12,
+      },
+    },
+  },
+  "input": {
+    "fragments": {
+      "base": {
+        "backgroundColor": "rgba(249, 249, 249, 1)",
+        "borderRadius": 4,
+        "boxShadow": [
+          {
+            "blurRadius": 2,
+            "color": "rgba(0, 0, 0, 0.15)",
+            "inset": true,
+            "offsetX": 0,
+            "offsetY": 1,
+            "spreadDistance": 0,
+          },
+        ],
+        "color": "rgba(0, 0, 0, 0.91)",
+        "elevation": undefined,
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "fontWeight": "400",
+        "lineHeight": 24,
+        "paddingHorizontal": 16,
+        "paddingVertical": 12,
+      },
+      "characterCounter": {
+        "bottom": 12,
+        "color": "rgba(0, 0, 0, 0.45)",
+        "end": 16,
+        "fontSize": 16,
+        "lineHeight": 24,
+        "position": "absolute",
+      },
+      "disabledReserved": {
+        "opacity": 0.25,
+      },
+      "error": {
+        "backgroundColor": "rgba(229, 10, 62, 0.1)",
+      },
+      "focused": {
+        "boxShadow": [
+          {
+            "blurRadius": 0,
+            "color": "rgba(0, 0, 0, 0.15)",
+            "inset": true,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 0,
+          },
+          {
+            "blurRadius": 0,
+            "color": "rgba(25, 179, 148, 1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 2,
+          },
+        ],
+        "elevation": undefined,
+      },
+      "focusedCounterPadding": {
+        "paddingEnd": 64,
+      },
+      "focusedCounterPaddingBig": {
+        "paddingEnd": 88,
+      },
+      "preview": {
+        "backgroundColor": "transparent",
+        "borderBottomColor": "rgba(0, 0, 0, 0.91)",
+        "borderBottomWidth": 1,
+        "borderRadius": 0,
+        "boxShadow": [],
+        "elevation": 0,
+        "paddingHorizontal": 0,
+      },
+      "readOnly": {
+        "backgroundColor": "rgba(248, 248, 248, 1)",
+        "boxShadow": [],
+        "color": "rgba(0, 0, 0, 0.91)",
+        "elevation": 0,
+      },
+    },
+  },
+  "item": {
+    "fragments": {
+      "container": {
+        "alignItems": "center",
+        "flexDirection": "row",
+        "gap": 8,
+        "paddingVertical": 12,
+      },
+      "decoratorBase": {
+        "alignItems": "center",
+        "backgroundColor": "rgba(249, 249, 249, 1)",
+        "boxShadow": [
+          {
+            "blurRadius": 2,
+            "color": "rgba(0, 0, 0, 0.15)",
+            "inset": true,
+            "offsetX": 0,
+            "offsetY": 1,
+            "spreadDistance": 0,
+          },
+        ],
+        "elevation": undefined,
+        "height": 24,
+        "justifyContent": "center",
+        "width": 24,
+      },
+      "decoratorChecked": {
+        "backgroundColor": "rgba(25, 179, 148, 1)",
+        "boxShadow": [],
+        "elevation": 0,
+      },
+      "decoratorError": {
+        "backgroundColor": "rgba(229, 10, 62, 0.1)",
+      },
+      "decoratorFocused": {
+        "backgroundColor": "rgba(255, 255, 255, 1)",
+        "boxShadow": [
+          {
+            "blurRadius": 0,
+            "color": "rgba(0, 0, 0, 0.15)",
+            "inset": true,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 0,
+          },
+          {
+            "blurRadius": 0,
+            "color": "rgba(25, 179, 148, 1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 2,
+          },
+        ],
+        "elevation": undefined,
+      },
+      "decoratorPressed": {
+        "backgroundColor": "rgba(243, 243, 243, 1)",
+      },
+      "decoratorPreview": {
+        "backgroundColor": "transparent",
+        "boxShadow": [],
+        "elevation": 0,
+      },
+      "decoratorRadiusCheckbox": {
+        "borderRadius": 2,
+      },
+      "decoratorRadiusRadio": {
+        "borderRadius": 12,
+      },
+      "decoratorReadOnly": {
+        "backgroundColor": "rgba(248, 248, 248, 1)",
+        "boxShadow": [],
+        "elevation": 0,
+      },
+      "description": {
+        "paddingStart": 32,
+      },
+      "label": {
+        "color": "rgba(0, 0, 0, 0.91)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "fontWeight": "400",
+        "lineHeight": 24,
+      },
+      "labelDisabledReserved": {
+        "opacity": 0.25,
+      },
+      "labelStack": {
+        "gap": 8,
+      },
+      "rowMode": {
+        "columnGap": 32,
+        "flexDirection": "row",
+      },
+    },
+    "iconFills": {
+      "checked": "rgba(255, 255, 255, 1)",
+      "checkedDisabledReserved": "rgba(0, 0, 0, 0.16)",
+      "checkedFocused": "rgba(25, 179, 148, 1)",
+      "checkedReadOnly": "rgba(0, 0, 0, 0.91)",
+      "preview": "rgba(0, 0, 0, 0.91)",
+      "unchecked": "transparent",
+    },
+    "iconSize": 16,
+  },
+  "questionTitle": {
+    "fragments": {
+      "collapsed": {
+        "opacity": 0.7,
+      },
+      "errorTone": {
+        "color": "rgba(229, 10, 62, 1)",
+      },
+      "number": {
+        "color": "rgba(0, 0, 0, 0.45)",
+        "fontSize": 12,
+        "lineHeight": 16,
+        "paddingBottom": 3,
+        "paddingEnd": 8,
+        "paddingTop": 5,
+      },
+      "numberGutter": {
+        "flexDirection": "row",
+        "width": 40,
+      },
+      "requiredMark": {
+        "color": "rgba(229, 10, 62, 1)",
+      },
+      "title": {
+        "color": "rgba(0, 0, 0, 0.91)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "fontWeight": "600",
+        "lineHeight": 24,
+      },
+    },
+  },
+  "unsupportedQuestion": {
+    "fragments": {
+      "errorAccentBar": {
+        "backgroundColor": "rgba(229, 10, 62, 1)",
+        "width": 3,
+      },
+      "message": {
+        "color": "rgba(0, 0, 0, 0.91)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "lineHeight": 24,
+      },
+      "panel": {
+        "backgroundColor": "rgba(249, 249, 249, 1)",
+        "borderColor": "rgba(0, 0, 0, 0.16)",
+        "borderRadius": 4,
+        "borderWidth": 1,
+        "padding": 16,
+      },
+    },
+    "title": {
+      "fragments": {
+        "collapsed": {
+          "opacity": 0.7,
+        },
+        "errorTone": {
+          "color": "rgba(229, 10, 62, 1)",
+        },
+        "number": {
+          "color": "rgba(0, 0, 0, 0.45)",
+          "fontSize": 12,
+          "lineHeight": 16,
+          "paddingBottom": 3,
+          "paddingEnd": 8,
+          "paddingTop": 5,
+        },
+        "numberGutter": {
+          "flexDirection": "row",
+          "width": 40,
+        },
+        "requiredMark": {
+          "color": "rgba(229, 10, 62, 1)",
+        },
+        "title": {
+          "color": "rgba(0, 0, 0, 0.91)",
+          "fontFamily": undefined,
+          "fontSize": 16,
+          "fontWeight": "600",
+          "lineHeight": 24,
+        },
+      },
+    },
+  },
+}
+`;
+
+exports[`curated recipe golden snapshots LayeredDark: recipes build to a stable snapshot (iOS) 1`] = `
+{
+  "button": {
+    "fragments": {
+      "action": {
+        "backgroundColor": "rgba(164, 127, 243, 1)",
+        "color": "rgba(32, 32, 32, 1)",
+      },
+      "actionDisabled": {
+        "color": "rgba(32, 32, 32, 0.25)",
+        "opacity": 0.25,
+      },
+      "actionPressed": {
+        "backgroundColor": "rgba(192, 165, 251, 1)",
+      },
+      "base": {
+        "backgroundColor": "rgba(39, 40, 50, 1)",
+        "borderRadius": 4,
+        "boxShadow": [
+          {
+            "blurRadius": 0,
+            "color": "rgba(255, 255, 255, 0.1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 1,
+          },
+          {
+            "blurRadius": 16,
+            "color": "rgba(0, 0, 0, 0.15)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 8,
+            "spreadDistance": 0,
+          },
+          {
+            "blurRadius": 4,
+            "color": "rgba(0, 0, 0, 0.2)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 2,
+            "spreadDistance": 0,
+          },
+        ],
+        "color": "rgba(164, 127, 243, 1)",
+        "elevation": undefined,
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "fontWeight": "600",
+        "lineHeight": 24,
+        "paddingHorizontal": 48,
+        "paddingVertical": 16,
+      },
+      "danger": {
+        "backgroundColor": "rgba(254, 76, 108, 1)",
+        "color": "rgba(32, 32, 32, 1)",
+      },
+      "dangerDisabled": {
+        "color": "rgba(48, 48, 48, 1)",
+        "opacity": 0.25,
+      },
+      "disabled": {
+        "color": "rgba(213, 215, 238, 1)",
+        "opacity": 0.25,
+      },
+      "focused": {
+        "boxShadow": [
+          {
+            "blurRadius": 0,
+            "color": "rgba(255, 255, 255, 0.1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 0,
+          },
+          {
+            "blurRadius": 0,
+            "color": "rgba(0, 0, 0, 0.15)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 0,
+          },
+          {
+            "blurRadius": 0,
+            "color": "rgba(0, 0, 0, 0.2)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 0,
+          },
+          {
+            "blurRadius": 0,
+            "color": "rgba(164, 127, 243, 1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 2,
+          },
+        ],
+        "elevation": undefined,
+      },
+      "pressedDefault": {
+        "backgroundColor": "rgba(46, 47, 58, 1)",
+      },
+      "small": {
+        "flexGrow": 1,
+        "paddingHorizontal": 32,
+        "paddingVertical": 12,
+      },
+    },
+  },
+  "input": {
+    "fragments": {
+      "base": {
+        "backgroundColor": "rgba(32, 33, 43, 1)",
+        "borderRadius": 4,
+        "boxShadow": [
+          {
+            "blurRadius": 0,
+            "color": "rgba(255, 255, 255, 0.03)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 1,
+          },
+          {
+            "blurRadius": 4,
+            "color": "rgba(0, 0, 0, 0.2)",
+            "inset": true,
+            "offsetX": 0,
+            "offsetY": 1,
+            "spreadDistance": 0,
+          },
+        ],
+        "color": "rgba(213, 215, 238, 1)",
+        "elevation": undefined,
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "fontWeight": "400",
+        "lineHeight": 24,
+        "paddingHorizontal": 16,
+        "paddingVertical": 12,
+      },
+      "characterCounter": {
+        "bottom": 12,
+        "color": "rgba(117, 120, 140, 1)",
+        "end": 16,
+        "fontSize": 16,
+        "lineHeight": 24,
+        "position": "absolute",
+      },
+      "disabledReserved": {
+        "opacity": 0.25,
+      },
+      "error": {
+        "backgroundColor": "rgba(254, 76, 108, 0.1)",
+      },
+      "focused": {
+        "boxShadow": [
+          {
+            "blurRadius": 0,
+            "color": "rgba(255, 255, 255, 0.03)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 0,
+          },
+          {
+            "blurRadius": 0,
+            "color": "rgba(0, 0, 0, 0.2)",
+            "inset": true,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 0,
+          },
+          {
+            "blurRadius": 0,
+            "color": "rgba(164, 127, 243, 1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 2,
+          },
+        ],
+        "elevation": undefined,
+      },
+      "focusedCounterPadding": {
+        "paddingEnd": 64,
+      },
+      "focusedCounterPaddingBig": {
+        "paddingEnd": 88,
+      },
+      "preview": {
+        "backgroundColor": "transparent",
+        "borderBottomColor": "rgba(213, 215, 238, 1)",
+        "borderBottomWidth": 1,
+        "borderRadius": 0,
+        "boxShadow": [],
+        "elevation": 0,
+        "paddingHorizontal": 0,
+      },
+      "readOnly": {
+        "backgroundColor": "rgba(46, 47, 58, 1)",
+        "boxShadow": [],
+        "color": "rgba(213, 215, 238, 1)",
+        "elevation": 0,
+      },
+    },
+  },
+  "item": {
+    "fragments": {
+      "container": {
+        "alignItems": "center",
+        "flexDirection": "row",
+        "gap": 8,
+        "paddingVertical": 12,
+      },
+      "decoratorBase": {
+        "alignItems": "center",
+        "backgroundColor": "rgba(32, 33, 43, 1)",
+        "boxShadow": [
+          {
+            "blurRadius": 0,
+            "color": "rgba(255, 255, 255, 0.03)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 1,
+          },
+          {
+            "blurRadius": 4,
+            "color": "rgba(0, 0, 0, 0.2)",
+            "inset": true,
+            "offsetX": 0,
+            "offsetY": 1,
+            "spreadDistance": 0,
+          },
+        ],
+        "elevation": undefined,
+        "height": 24,
+        "justifyContent": "center",
+        "width": 24,
+      },
+      "decoratorChecked": {
+        "backgroundColor": "rgba(164, 127, 243, 1)",
+        "boxShadow": [],
+        "elevation": 0,
+      },
+      "decoratorError": {
+        "backgroundColor": "rgba(254, 76, 108, 0.1)",
+      },
+      "decoratorFocused": {
+        "backgroundColor": "rgba(39, 40, 50, 1)",
+        "boxShadow": [
+          {
+            "blurRadius": 0,
+            "color": "rgba(255, 255, 255, 0.03)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 0,
+          },
+          {
+            "blurRadius": 0,
+            "color": "rgba(0, 0, 0, 0.2)",
+            "inset": true,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 0,
+          },
+          {
+            "blurRadius": 0,
+            "color": "rgba(164, 127, 243, 1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 2,
+          },
+        ],
+        "elevation": undefined,
+      },
+      "decoratorPressed": {
+        "backgroundColor": "rgba(37, 38, 48, 1)",
+      },
+      "decoratorPreview": {
+        "backgroundColor": "transparent",
+        "boxShadow": [],
+        "elevation": 0,
+      },
+      "decoratorRadiusCheckbox": {
+        "borderRadius": 2,
+      },
+      "decoratorRadiusRadio": {
+        "borderRadius": 12,
+      },
+      "decoratorReadOnly": {
+        "backgroundColor": "rgba(46, 47, 58, 1)",
+        "boxShadow": [],
+        "elevation": 0,
+      },
+      "description": {
+        "paddingStart": 32,
+      },
+      "label": {
+        "color": "rgba(213, 215, 238, 1)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "fontWeight": "400",
+        "lineHeight": 24,
+      },
+      "labelDisabledReserved": {
+        "opacity": 0.25,
+      },
+      "labelStack": {
+        "gap": 8,
+      },
+      "rowMode": {
+        "columnGap": 32,
+        "flexDirection": "row",
+      },
+    },
+    "iconFills": {
+      "checked": "rgba(32, 32, 32, 1)",
+      "checkedDisabledReserved": "rgba(67, 69, 85, 1)",
+      "checkedFocused": "rgba(164, 127, 243, 1)",
+      "checkedReadOnly": "rgba(213, 215, 238, 1)",
+      "preview": "rgba(213, 215, 238, 1)",
+      "unchecked": "transparent",
+    },
+    "iconSize": 16,
+  },
+  "questionTitle": {
+    "fragments": {
+      "collapsed": {
+        "opacity": 0.7,
+      },
+      "errorTone": {
+        "color": "rgba(254, 76, 108, 1)",
+      },
+      "number": {
+        "color": "rgba(117, 120, 140, 1)",
+        "fontSize": 12,
+        "lineHeight": 16,
+        "paddingBottom": 3,
+        "paddingEnd": 8,
+        "paddingTop": 5,
+      },
+      "numberGutter": {
+        "flexDirection": "row",
+        "width": 40,
+      },
+      "requiredMark": {
+        "color": "rgba(254, 76, 108, 1)",
+      },
+      "title": {
+        "color": "rgba(213, 215, 238, 1)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "fontWeight": "600",
+        "lineHeight": 24,
+      },
+    },
+  },
+  "unsupportedQuestion": {
+    "fragments": {
+      "errorAccentBar": {
+        "backgroundColor": "rgba(254, 76, 108, 1)",
+        "width": 3,
+      },
+      "message": {
+        "color": "rgba(213, 215, 238, 1)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "lineHeight": 24,
+      },
+      "panel": {
+        "backgroundColor": "rgba(32, 33, 43, 1)",
+        "borderColor": "rgba(67, 69, 85, 1)",
+        "borderRadius": 4,
+        "borderWidth": 1,
+        "padding": 16,
+      },
+    },
+    "title": {
+      "fragments": {
+        "collapsed": {
+          "opacity": 0.7,
+        },
+        "errorTone": {
+          "color": "rgba(254, 76, 108, 1)",
+        },
+        "number": {
+          "color": "rgba(117, 120, 140, 1)",
+          "fontSize": 12,
+          "lineHeight": 16,
+          "paddingBottom": 3,
+          "paddingEnd": 8,
+          "paddingTop": 5,
+        },
+        "numberGutter": {
+          "flexDirection": "row",
+          "width": 40,
+        },
+        "requiredMark": {
+          "color": "rgba(254, 76, 108, 1)",
+        },
+        "title": {
+          "color": "rgba(213, 215, 238, 1)",
+          "fontFamily": undefined,
+          "fontSize": 16,
+          "fontWeight": "600",
+          "lineHeight": 24,
+        },
+      },
+    },
+  },
+}
+`;
+
+exports[`curated recipe golden snapshots SharpDark: recipes build to a stable snapshot (iOS) 1`] = `
+{
+  "button": {
+    "fragments": {
+      "action": {
+        "backgroundColor": "rgba(16, 226, 255, 1)",
+        "color": "rgba(32, 32, 32, 1)",
+      },
+      "actionDisabled": {
+        "color": "rgba(32, 32, 32, 0.25)",
+        "opacity": 0.25,
+      },
+      "actionPressed": {
+        "backgroundColor": "rgba(129, 240, 255, 1)",
+      },
+      "base": {
+        "backgroundColor": "rgba(48, 48, 48, 1)",
+        "borderRadius": 4,
+        "boxShadow": [
+          {
+            "blurRadius": 0,
+            "color": "rgba(255, 255, 255, 0.28)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 1,
+          },
+        ],
+        "color": "rgba(16, 226, 255, 1)",
+        "elevation": undefined,
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "fontWeight": "600",
+        "lineHeight": 24,
+        "paddingHorizontal": 48,
+        "paddingVertical": 16,
+      },
+      "danger": {
+        "backgroundColor": "rgba(254, 76, 108, 1)",
+        "color": "rgba(32, 32, 32, 1)",
+      },
+      "dangerDisabled": {
+        "color": "rgba(48, 48, 48, 1)",
+        "opacity": 0.25,
+      },
+      "disabled": {
+        "color": "rgba(255, 255, 255, 0.78)",
+        "opacity": 0.25,
+      },
+      "focused": {
+        "boxShadow": [
+          {
+            "blurRadius": 0,
+            "color": "rgba(255, 255, 255, 0.28)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 0,
+          },
+          {
+            "blurRadius": 0,
+            "color": "rgba(16, 226, 255, 1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 2,
+          },
+        ],
+        "elevation": undefined,
+      },
+      "pressedDefault": {
+        "backgroundColor": "rgba(58, 58, 58, 1)",
+      },
+      "small": {
+        "flexGrow": 1,
+        "paddingHorizontal": 32,
+        "paddingVertical": 12,
+      },
+    },
+  },
+  "input": {
+    "fragments": {
+      "base": {
+        "backgroundColor": "rgba(33, 33, 33, 1)",
+        "borderRadius": 4,
+        "boxShadow": [
+          {
+            "blurRadius": 0,
+            "color": "rgba(255, 255, 255, 0.22)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 1,
+          },
+        ],
+        "color": "rgba(255, 255, 255, 0.78)",
+        "elevation": undefined,
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "fontWeight": "400",
+        "lineHeight": 24,
+        "paddingHorizontal": 16,
+        "paddingVertical": 12,
+      },
+      "characterCounter": {
+        "bottom": 12,
+        "color": "rgba(255, 255, 255, 0.5)",
+        "end": 16,
+        "fontSize": 16,
+        "lineHeight": 24,
+        "position": "absolute",
+      },
+      "disabledReserved": {
+        "opacity": 0.25,
+      },
+      "error": {
+        "backgroundColor": "rgba(254, 76, 108, 0.1)",
+      },
+      "focused": {
+        "boxShadow": [
+          {
+            "blurRadius": 0,
+            "color": "rgba(255, 255, 255, 0.22)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 0,
+          },
+          {
+            "blurRadius": 0,
+            "color": "rgba(16, 226, 255, 1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 2,
+          },
+        ],
+        "elevation": undefined,
+      },
+      "focusedCounterPadding": {
+        "paddingEnd": 64,
+      },
+      "focusedCounterPaddingBig": {
+        "paddingEnd": 88,
+      },
+      "preview": {
+        "backgroundColor": "transparent",
+        "borderBottomColor": "rgba(255, 255, 255, 0.78)",
+        "borderBottomWidth": 1,
+        "borderRadius": 0,
+        "boxShadow": [],
+        "elevation": 0,
+        "paddingHorizontal": 0,
+      },
+      "readOnly": {
+        "backgroundColor": "rgba(58, 58, 58, 1)",
+        "boxShadow": [],
+        "color": "rgba(255, 255, 255, 0.78)",
+        "elevation": 0,
+      },
+    },
+  },
+  "item": {
+    "fragments": {
+      "container": {
+        "alignItems": "center",
+        "flexDirection": "row",
+        "gap": 8,
+        "paddingVertical": 12,
+      },
+      "decoratorBase": {
+        "alignItems": "center",
+        "backgroundColor": "rgba(33, 33, 33, 1)",
+        "boxShadow": [
+          {
+            "blurRadius": 0,
+            "color": "rgba(255, 255, 255, 0.22)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 1,
+          },
+        ],
+        "elevation": undefined,
+        "height": 24,
+        "justifyContent": "center",
+        "width": 24,
+      },
+      "decoratorChecked": {
+        "backgroundColor": "rgba(16, 226, 255, 1)",
+        "boxShadow": [],
+        "elevation": 0,
+      },
+      "decoratorError": {
+        "backgroundColor": "rgba(254, 76, 108, 0.1)",
+      },
+      "decoratorFocused": {
+        "backgroundColor": "rgba(48, 48, 48, 1)",
+        "boxShadow": [
+          {
+            "blurRadius": 0,
+            "color": "rgba(255, 255, 255, 0.22)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 0,
+          },
+          {
+            "blurRadius": 0,
+            "color": "rgba(16, 226, 255, 1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 2,
+          },
+        ],
+        "elevation": undefined,
+      },
+      "decoratorPressed": {
+        "backgroundColor": "rgba(47, 47, 47, 1)",
+      },
+      "decoratorPreview": {
+        "backgroundColor": "transparent",
+        "boxShadow": [],
+        "elevation": 0,
+      },
+      "decoratorRadiusCheckbox": {
+        "borderRadius": 2,
+      },
+      "decoratorRadiusRadio": {
+        "borderRadius": 12,
+      },
+      "decoratorReadOnly": {
+        "backgroundColor": "rgba(58, 58, 58, 1)",
+        "boxShadow": [],
+        "elevation": 0,
+      },
+      "description": {
+        "paddingStart": 32,
+      },
+      "label": {
+        "color": "rgba(255, 255, 255, 0.78)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "fontWeight": "400",
+        "lineHeight": 24,
+      },
+      "labelDisabledReserved": {
+        "opacity": 0.25,
+      },
+      "labelStack": {
+        "gap": 8,
+      },
+      "rowMode": {
+        "columnGap": 32,
+        "flexDirection": "row",
+      },
+    },
+    "iconFills": {
+      "checked": "rgba(32, 32, 32, 1)",
+      "checkedDisabledReserved": "rgba(255, 255, 255, 0.22)",
+      "checkedFocused": "rgba(16, 226, 255, 1)",
+      "checkedReadOnly": "rgba(255, 255, 255, 0.78)",
+      "preview": "rgba(255, 255, 255, 0.78)",
+      "unchecked": "transparent",
+    },
+    "iconSize": 16,
+  },
+  "questionTitle": {
+    "fragments": {
+      "collapsed": {
+        "opacity": 0.7,
+      },
+      "errorTone": {
+        "color": "rgba(254, 76, 108, 1)",
+      },
+      "number": {
+        "color": "rgba(255, 255, 255, 0.5)",
+        "fontSize": 12,
+        "lineHeight": 16,
+        "paddingBottom": 3,
+        "paddingEnd": 8,
+        "paddingTop": 5,
+      },
+      "numberGutter": {
+        "flexDirection": "row",
+        "width": 40,
+      },
+      "requiredMark": {
+        "color": "rgba(254, 76, 108, 1)",
+      },
+      "title": {
+        "color": "rgba(255, 255, 255, 0.78)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "fontWeight": "600",
+        "lineHeight": 24,
+      },
+    },
+  },
+  "unsupportedQuestion": {
+    "fragments": {
+      "errorAccentBar": {
+        "backgroundColor": "rgba(254, 76, 108, 1)",
+        "width": 3,
+      },
+      "message": {
+        "color": "rgba(255, 255, 255, 0.78)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "lineHeight": 24,
+      },
+      "panel": {
+        "backgroundColor": "rgba(33, 33, 33, 1)",
+        "borderColor": "rgba(255, 255, 255, 0.22)",
+        "borderRadius": 4,
+        "borderWidth": 1,
+        "padding": 16,
+      },
+    },
+    "title": {
+      "fragments": {
+        "collapsed": {
+          "opacity": 0.7,
+        },
+        "errorTone": {
+          "color": "rgba(254, 76, 108, 1)",
+        },
+        "number": {
+          "color": "rgba(255, 255, 255, 0.5)",
+          "fontSize": 12,
+          "lineHeight": 16,
+          "paddingBottom": 3,
+          "paddingEnd": 8,
+          "paddingTop": 5,
+        },
+        "numberGutter": {
+          "flexDirection": "row",
+          "width": 40,
+        },
+        "requiredMark": {
+          "color": "rgba(254, 76, 108, 1)",
+        },
+        "title": {
+          "color": "rgba(255, 255, 255, 0.78)",
+          "fontFamily": undefined,
+          "fontSize": 16,
+          "fontWeight": "600",
+          "lineHeight": 24,
+        },
+      },
+    },
+  },
+}
+`;
+
+exports[`curated recipe golden snapshots ThreeDimensionalLight: recipes build to a stable snapshot (iOS) 1`] = `
+{
+  "button": {
+    "fragments": {
+      "action": {
+        "backgroundColor": "rgba(217, 74, 100, 1)",
+        "color": "rgba(255, 255, 255, 1)",
+      },
+      "actionDisabled": {
+        "color": "rgba(255, 255, 255, 0.25)",
+        "opacity": 0.25,
+      },
+      "actionPressed": {
+        "backgroundColor": "rgba(189, 61, 84, 1)",
+      },
+      "base": {
+        "backgroundColor": "rgba(248, 248, 248, 1)",
+        "borderRadius": 4,
+        "boxShadow": [
+          {
+            "blurRadius": 0,
+            "color": "rgba(228, 228, 228, 1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 2,
+            "spreadDistance": 2,
+          },
+          {
+            "blurRadius": 0,
+            "color": "rgba(228, 228, 228, 1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 2,
+          },
+        ],
+        "color": "rgba(217, 74, 100, 1)",
+        "elevation": undefined,
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "fontWeight": "600",
+        "lineHeight": 24,
+        "paddingHorizontal": 48,
+        "paddingVertical": 16,
+      },
+      "danger": {
+        "backgroundColor": "rgba(229, 10, 62, 1)",
+        "color": "rgba(255, 255, 255, 1)",
+      },
+      "dangerDisabled": {
+        "color": "rgba(255, 255, 255, 1)",
+        "opacity": 0.25,
+      },
+      "disabled": {
+        "color": "rgba(0, 0, 0, 0.91)",
+        "opacity": 0.25,
+      },
+      "focused": {
+        "boxShadow": [
+          {
+            "blurRadius": 0,
+            "color": "rgba(228, 228, 228, 1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 0,
+          },
+          {
+            "blurRadius": 0,
+            "color": "rgba(228, 228, 228, 1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 0,
+          },
+          {
+            "blurRadius": 0,
+            "color": "rgba(217, 74, 100, 1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 2,
+          },
+        ],
+        "elevation": undefined,
+      },
+      "pressedDefault": {
+        "backgroundColor": "rgba(242, 242, 242, 1)",
+      },
+      "small": {
+        "flexGrow": 1,
+        "paddingHorizontal": 32,
+        "paddingVertical": 12,
+      },
+    },
+  },
+  "input": {
+    "fragments": {
+      "base": {
+        "backgroundColor": "rgba(255, 255, 255, 1)",
+        "borderRadius": 4,
+        "boxShadow": [
+          {
+            "blurRadius": 0,
+            "color": "rgba(228, 228, 228, 1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 2,
+          },
+          {
+            "blurRadius": 0,
+            "color": "rgba(228, 228, 228, 1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": -2,
+            "spreadDistance": 2,
+          },
+        ],
+        "color": "rgba(0, 0, 0, 0.91)",
+        "elevation": undefined,
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "fontWeight": "400",
+        "lineHeight": 24,
+        "paddingHorizontal": 16,
+        "paddingVertical": 12,
+      },
+      "characterCounter": {
+        "bottom": 12,
+        "color": "rgba(0, 0, 0, 0.45)",
+        "end": 16,
+        "fontSize": 16,
+        "lineHeight": 24,
+        "position": "absolute",
+      },
+      "disabledReserved": {
+        "opacity": 0.25,
+      },
+      "error": {
+        "backgroundColor": "rgba(229, 10, 62, 0.1)",
+      },
+      "focused": {
+        "boxShadow": [
+          {
+            "blurRadius": 0,
+            "color": "rgba(228, 228, 228, 1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 0,
+          },
+          {
+            "blurRadius": 0,
+            "color": "rgba(228, 228, 228, 1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 0,
+          },
+          {
+            "blurRadius": 0,
+            "color": "rgba(217, 74, 100, 1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 2,
+          },
+        ],
+        "elevation": undefined,
+      },
+      "focusedCounterPadding": {
+        "paddingEnd": 64,
+      },
+      "focusedCounterPaddingBig": {
+        "paddingEnd": 88,
+      },
+      "preview": {
+        "backgroundColor": "transparent",
+        "borderBottomColor": "rgba(0, 0, 0, 0.91)",
+        "borderBottomWidth": 1,
+        "borderRadius": 0,
+        "boxShadow": [],
+        "elevation": 0,
+        "paddingHorizontal": 0,
+      },
+      "readOnly": {
+        "backgroundColor": "rgba(242, 242, 242, 1)",
+        "boxShadow": [],
+        "color": "rgba(0, 0, 0, 0.91)",
+        "elevation": 0,
+      },
+    },
+  },
+  "item": {
+    "fragments": {
+      "container": {
+        "alignItems": "center",
+        "flexDirection": "row",
+        "gap": 8,
+        "paddingVertical": 12,
+      },
+      "decoratorBase": {
+        "alignItems": "center",
+        "backgroundColor": "rgba(255, 255, 255, 1)",
+        "boxShadow": [
+          {
+            "blurRadius": 0,
+            "color": "rgba(228, 228, 228, 1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 2,
+          },
+          {
+            "blurRadius": 0,
+            "color": "rgba(228, 228, 228, 1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": -2,
+            "spreadDistance": 2,
+          },
+        ],
+        "elevation": undefined,
+        "height": 24,
+        "justifyContent": "center",
+        "width": 24,
+      },
+      "decoratorChecked": {
+        "backgroundColor": "rgba(217, 74, 100, 1)",
+        "boxShadow": [],
+        "elevation": 0,
+      },
+      "decoratorError": {
+        "backgroundColor": "rgba(229, 10, 62, 0.1)",
+      },
+      "decoratorFocused": {
+        "backgroundColor": "rgba(248, 248, 248, 1)",
+        "boxShadow": [
+          {
+            "blurRadius": 0,
+            "color": "rgba(228, 228, 228, 1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 0,
+          },
+          {
+            "blurRadius": 0,
+            "color": "rgba(228, 228, 228, 1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 0,
+          },
+          {
+            "blurRadius": 0,
+            "color": "rgba(217, 74, 100, 1)",
+            "inset": false,
+            "offsetX": 0,
+            "offsetY": 0,
+            "spreadDistance": 2,
+          },
+        ],
+        "elevation": undefined,
+      },
+      "decoratorPressed": {
+        "backgroundColor": "rgba(242, 242, 242, 1)",
+      },
+      "decoratorPreview": {
+        "backgroundColor": "transparent",
+        "boxShadow": [],
+        "elevation": 0,
+      },
+      "decoratorRadiusCheckbox": {
+        "borderRadius": 2,
+      },
+      "decoratorRadiusRadio": {
+        "borderRadius": 12,
+      },
+      "decoratorReadOnly": {
+        "backgroundColor": "rgba(242, 242, 242, 1)",
+        "boxShadow": [],
+        "elevation": 0,
+      },
+      "description": {
+        "paddingStart": 32,
+      },
+      "label": {
+        "color": "rgba(0, 0, 0, 0.91)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "fontWeight": "400",
+        "lineHeight": 24,
+      },
+      "labelDisabledReserved": {
+        "opacity": 0.25,
+      },
+      "labelStack": {
+        "gap": 8,
+      },
+      "rowMode": {
+        "columnGap": 32,
+        "flexDirection": "row",
+      },
+    },
+    "iconFills": {
+      "checked": "rgba(255, 255, 255, 1)",
+      "checkedDisabledReserved": "rgba(0, 0, 0, 0.08)",
+      "checkedFocused": "rgba(217, 74, 100, 1)",
+      "checkedReadOnly": "rgba(0, 0, 0, 0.91)",
+      "preview": "rgba(0, 0, 0, 0.91)",
+      "unchecked": "transparent",
+    },
+    "iconSize": 16,
+  },
+  "questionTitle": {
+    "fragments": {
+      "collapsed": {
+        "opacity": 0.7,
+      },
+      "errorTone": {
+        "color": "rgba(229, 10, 62, 1)",
+      },
+      "number": {
+        "color": "rgba(0, 0, 0, 0.45)",
+        "fontSize": 12,
+        "lineHeight": 16,
+        "paddingBottom": 3,
+        "paddingEnd": 8,
+        "paddingTop": 5,
+      },
+      "numberGutter": {
+        "flexDirection": "row",
+        "width": 40,
+      },
+      "requiredMark": {
+        "color": "rgba(229, 10, 62, 1)",
+      },
+      "title": {
+        "color": "rgba(0, 0, 0, 0.91)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "fontWeight": "600",
+        "lineHeight": 24,
+      },
+    },
+  },
+  "unsupportedQuestion": {
+    "fragments": {
+      "errorAccentBar": {
+        "backgroundColor": "rgba(229, 10, 62, 1)",
+        "width": 3,
+      },
+      "message": {
+        "color": "rgba(0, 0, 0, 0.91)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "lineHeight": 24,
+      },
+      "panel": {
+        "backgroundColor": "rgba(255, 255, 255, 1)",
+        "borderColor": "rgba(0, 0, 0, 0.08)",
+        "borderRadius": 4,
+        "borderWidth": 1,
+        "padding": 16,
+      },
+    },
+    "title": {
+      "fragments": {
+        "collapsed": {
+          "opacity": 0.7,
+        },
+        "errorTone": {
+          "color": "rgba(229, 10, 62, 1)",
+        },
+        "number": {
+          "color": "rgba(0, 0, 0, 0.45)",
+          "fontSize": 12,
+          "lineHeight": 16,
+          "paddingBottom": 3,
+          "paddingEnd": 8,
+          "paddingTop": 5,
+        },
+        "numberGutter": {
+          "flexDirection": "row",
+          "width": 40,
+        },
+        "requiredMark": {
+          "color": "rgba(229, 10, 62, 1)",
+        },
+        "title": {
+          "color": "rgba(0, 0, 0, 0.91)",
+          "fontFamily": undefined,
+          "fontSize": 16,
+          "fontWeight": "600",
+          "lineHeight": 24,
+        },
+      },
+    },
+  },
+}
+`;

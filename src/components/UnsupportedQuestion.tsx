@@ -19,14 +19,24 @@
  * component would silently lose both).
  *
  * Default presentation: a neutral title + "Unsupported question type:
- * <type>" box. Theme-token styling arrives with 0.7 — there is no theme
- * pipeline yet to style against.
+ * <type>" box, themed via the 0.7 `unsupportedQuestion` recipe (design
+ * ownership table: "UnsupportedQuestion themed recipe (promised in 0.5) |
+ * 0.7 -- recipe + wiring in the component"). A plain function component
+ * reads the theme via `useContext` (not the reactive-binding hooks ban —
+ * that's specifically about the survey-core model-subscription mechanism,
+ * A3 — a static React Context read is unrelated).
  */
 import * as React from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { QuestionElementBase } from '../reactivity/QuestionElementBase';
 import type { QuestionElementBaseProps } from '../reactivity/QuestionElementBase';
 import { reportUnsupportedQuestionTypeOnce } from '../diagnostics';
+import { SurveyThemeContext } from '../theme-rn/provider';
+import { composeStyles } from '../theme-rn/recipes/types';
+
+const styles = StyleSheet.create({
+  row: { flexDirection: 'row' },
+});
 
 export interface UnsupportedMissInfo {
   /** The dispatch key the caller looked up and failed to find. */
@@ -49,10 +59,30 @@ function DefaultUnsupportedPresentation(
   props: UnsupportedQuestionProps
 ): React.JSX.Element {
   const { question } = props;
+  const { recipes, styles: overrides } = React.useContext(SurveyThemeContext);
+  const { panel, message, errorAccentBar } =
+    recipes.unsupportedQuestion.fragments;
+  const { title: titleRecipe } = recipes.unsupportedQuestion;
+  // A12 slot overrides compose LAST (recipe < theme < consumer override).
+  const slots = overrides.unsupportedQuestion;
   return (
-    <View>
-      <Text>{question.title || question.name}</Text>
-      <Text>{`Unsupported question type: ${question.getType()}`}</Text>
+    <View style={styles.row}>
+      <View
+        style={composeStyles(errorAccentBar, {
+          override: slots?.errorAccentBar,
+        })}
+      />
+      <View
+        style={composeStyles(panel, { override: slots?.panel })}
+        testID="unsupported-question-panel"
+      >
+        <Text style={titleRecipe.fragments.title}>
+          {question.title || question.name}
+        </Text>
+        <Text
+          style={composeStyles(message, { override: slots?.message })}
+        >{`Unsupported question type: ${question.getType()}`}</Text>
+      </View>
     </View>
   );
 }

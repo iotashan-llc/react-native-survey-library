@@ -1,0 +1,90 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`curated shadow snapshots — DefaultLight/SharpDark/ContrastLight/LayeredDark/ThreeDimensionalLight ContrastLight: small shadow maps stably (iOS) 1`] = `
+[
+  {
+    "blurRadius": 0,
+    "color": "rgba(0, 0, 0, 1)",
+    "inset": false,
+    "offsetX": 0,
+    "offsetY": 0,
+    "spreadDistance": 2,
+  },
+]
+`;
+
+exports[`curated shadow snapshots — DefaultLight/SharpDark/ContrastLight/LayeredDark/ThreeDimensionalLight DefaultLight: small shadow maps stably (iOS) 1`] = `
+[
+  {
+    "blurRadius": 2,
+    "color": "rgba(0, 0, 0, 0.15)",
+    "inset": false,
+    "offsetX": 0,
+    "offsetY": 1,
+    "spreadDistance": 0,
+  },
+]
+`;
+
+exports[`curated shadow snapshots — DefaultLight/SharpDark/ContrastLight/LayeredDark/ThreeDimensionalLight LayeredDark: small shadow maps stably (iOS) 1`] = `
+[
+  {
+    "blurRadius": 0,
+    "color": "rgba(255, 255, 255, 0.1)",
+    "inset": false,
+    "offsetX": 0,
+    "offsetY": 0,
+    "spreadDistance": 1,
+  },
+  {
+    "blurRadius": 16,
+    "color": "rgba(0, 0, 0, 0.15)",
+    "inset": false,
+    "offsetX": 0,
+    "offsetY": 8,
+    "spreadDistance": 0,
+  },
+  {
+    "blurRadius": 4,
+    "color": "rgba(0, 0, 0, 0.2)",
+    "inset": false,
+    "offsetX": 0,
+    "offsetY": 2,
+    "spreadDistance": 0,
+  },
+]
+`;
+
+exports[`curated shadow snapshots — DefaultLight/SharpDark/ContrastLight/LayeredDark/ThreeDimensionalLight SharpDark: small shadow maps stably (iOS) 1`] = `
+[
+  {
+    "blurRadius": 0,
+    "color": "rgba(255, 255, 255, 0.28)",
+    "inset": false,
+    "offsetX": 0,
+    "offsetY": 0,
+    "spreadDistance": 1,
+  },
+]
+`;
+
+exports[`curated shadow snapshots — DefaultLight/SharpDark/ContrastLight/LayeredDark/ThreeDimensionalLight ThreeDimensionalLight: small shadow maps stably (iOS) 1`] = `
+[
+  {
+    "blurRadius": 0,
+    "color": "rgba(228, 228, 228, 1)",
+    "inset": false,
+    "offsetX": 0,
+    "offsetY": 2,
+    "spreadDistance": 2,
+  },
+  {
+    "blurRadius": 0,
+    "color": "rgba(228, 228, 228, 1)",
+    "inset": false,
+    "offsetX": 0,
+    "offsetY": 0,
+    "spreadDistance": 2,
+  },
+]
+`;

@@ -22,6 +22,7 @@ import {
 } from '../UnsupportedQuestion';
 import { setDiagnosticHandler } from '../../diagnostics';
 import type { DiagnosticPayload } from '../../diagnostics';
+import { SurveyThemeProvider } from '../../theme-rn/provider';
 
 function createQuestion(name: string, type = 'text'): Question {
   const model = new Model({ elements: [{ type, name }] });
@@ -75,6 +76,71 @@ describe('UnsupportedQuestion', () => {
     );
     expect(screen.getByText('My Visible Title')).toBeTruthy();
     expect(screen.getByText('Unsupported question type: text')).toBeTruthy();
+  });
+
+  it('is themed via the 0.7 unsupportedQuestion recipe: title/message pick up the provider theme, panel background changes with a custom theme', () => {
+    const question = createQuestion('q-themed');
+    question.title = 'Themed Title';
+
+    const defaultRender = render(
+      createUnsupportedQuestion(
+        { question, creator: {} },
+        { dispatchKey: 'sv-missing' }
+      )
+    );
+    const defaultTitleStyle = Object.assign(
+      {},
+      ...[defaultRender.getByText('Themed Title').props.style].flat()
+    );
+    expect(defaultTitleStyle.fontWeight).toBe('600');
+    defaultRender.unmount();
+
+    const custom = render(
+      <SurveyThemeProvider
+        theme={{
+          cssVariables: { '--sjs-editor-background': 'rgba(9, 9, 9, 1)' },
+        }}
+      >
+        {createUnsupportedQuestion(
+          { question, creator: {} },
+          { dispatchKey: 'sv-missing' }
+        )}
+      </SurveyThemeProvider>
+    );
+    expect(custom.getByText('Themed Title')).toBeTruthy();
+    const panelStyle = Object.assign(
+      {},
+      ...[custom.getByTestId('unsupported-question-panel').props.style].flat()
+    );
+    expect(panelStyle.backgroundColor).toBe('rgba(9, 9, 9, 1)');
+  });
+
+  it('A12 consumer style overrides from the provider win over recipe AND theme (codex impl-review major 8)', () => {
+    const question = createQuestion('q-override');
+    question.title = 'Override Title';
+    const { getByTestId } = render(
+      <SurveyThemeProvider
+        theme={{
+          cssVariables: { '--sjs-editor-background': 'rgba(9, 9, 9, 1)' },
+        }}
+        styles={{
+          unsupportedQuestion: { panel: { backgroundColor: 'magenta' } },
+        }}
+      >
+        {createUnsupportedQuestion(
+          { question, creator: {} },
+          { dispatchKey: 'sv-missing' }
+        )}
+      </SurveyThemeProvider>
+    );
+    const panelStyle = Object.assign(
+      {},
+      ...[getByTestId('unsupported-question-panel').props.style].flat()
+    );
+    // consumer override (magenta) beats the theme-resolved recipe value
+    expect(panelStyle.backgroundColor).toBe('magenta');
+    // the recipe base still supplies everything not overridden
+    expect(panelStyle.borderWidth).toBe(1);
   });
 
   it('one supported sibling and one unsupported sibling both render side by side', () => {
