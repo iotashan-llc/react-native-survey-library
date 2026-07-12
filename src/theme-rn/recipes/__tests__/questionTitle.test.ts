@@ -46,6 +46,12 @@ describe('buildQuestionTitleRecipe — formulas from resolved tokens', () => {
     );
   });
 
+  it('errorTone color = --sjs-special-red (same red family as the mark; the -forecolor token is the ON-red foreground and would be invisible on light themes)', () => {
+    expect(recipe.fragments.errorTone.color).toBe(
+      resolveColorVar(resolved, '--sjs-special-red').css
+    );
+  });
+
   it('number gutter is a fixed 40dp width (calcSize(5))', () => {
     expect(recipe.fragments.numberGutter.width).toBe(40);
   });

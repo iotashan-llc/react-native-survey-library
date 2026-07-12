@@ -306,7 +306,7 @@ exports[`curated recipe golden snapshots ContrastLight: recipes build to a stabl
         "opacity": 0.7,
       },
       "errorTone": {
-        "color": "rgba(255, 255, 255, 1)",
+        "color": "rgba(156, 2, 39, 1)",
       },
       "number": {
         "color": "rgba(0, 0, 0, 1)",
@@ -358,7 +358,7 @@ exports[`curated recipe golden snapshots ContrastLight: recipes build to a stabl
           "opacity": 0.7,
         },
         "errorTone": {
-          "color": "rgba(255, 255, 255, 1)",
+          "color": "rgba(156, 2, 39, 1)",
         },
         "number": {
           "color": "rgba(0, 0, 0, 1)",
@@ -662,7 +662,7 @@ exports[`curated recipe golden snapshots DefaultLight: recipes build to a stable
         "opacity": 0.7,
       },
       "errorTone": {
-        "color": "rgba(255, 255, 255, 1)",
+        "color": "rgba(229, 10, 62, 1)",
       },
       "number": {
         "color": "rgba(0, 0, 0, 0.45)",
@@ -714,7 +714,7 @@ exports[`curated recipe golden snapshots DefaultLight: recipes build to a stable
           "opacity": 0.7,
         },
         "errorTone": {
-          "color": "rgba(255, 255, 255, 1)",
+          "color": "rgba(229, 10, 62, 1)",
         },
         "number": {
           "color": "rgba(0, 0, 0, 0.45)",
@@ -1082,7 +1082,7 @@ exports[`curated recipe golden snapshots LayeredDark: recipes build to a stable 
         "opacity": 0.7,
       },
       "errorTone": {
-        "color": "rgba(48, 48, 48, 1)",
+        "color": "rgba(254, 76, 108, 1)",
       },
       "number": {
         "color": "rgba(117, 120, 140, 1)",
@@ -1134,7 +1134,7 @@ exports[`curated recipe golden snapshots LayeredDark: recipes build to a stable 
           "opacity": 0.7,
         },
         "errorTone": {
-          "color": "rgba(48, 48, 48, 1)",
+          "color": "rgba(254, 76, 108, 1)",
         },
         "number": {
           "color": "rgba(117, 120, 140, 1)",
@@ -1438,7 +1438,7 @@ exports[`curated recipe golden snapshots SharpDark: recipes build to a stable sn
         "opacity": 0.7,
       },
       "errorTone": {
-        "color": "rgba(48, 48, 48, 1)",
+        "color": "rgba(254, 76, 108, 1)",
       },
       "number": {
         "color": "rgba(255, 255, 255, 0.5)",
@@ -1490,7 +1490,7 @@ exports[`curated recipe golden snapshots SharpDark: recipes build to a stable sn
           "opacity": 0.7,
         },
         "errorTone": {
-          "color": "rgba(48, 48, 48, 1)",
+          "color": "rgba(254, 76, 108, 1)",
         },
         "number": {
           "color": "rgba(255, 255, 255, 0.5)",
@@ -1842,7 +1842,7 @@ exports[`curated recipe golden snapshots ThreeDimensionalLight: recipes build to
         "opacity": 0.7,
       },
       "errorTone": {
-        "color": "rgba(255, 255, 255, 1)",
+        "color": "rgba(229, 10, 62, 1)",
       },
       "number": {
         "color": "rgba(0, 0, 0, 0.45)",
@@ -1894,7 +1894,7 @@ exports[`curated recipe golden snapshots ThreeDimensionalLight: recipes build to
           "opacity": 0.7,
         },
         "errorTone": {
-          "color": "rgba(255, 255, 255, 1)",
+          "color": "rgba(229, 10, 62, 1)",
         },
         "number": {
           "color": "rgba(0, 0, 0, 0.45)",

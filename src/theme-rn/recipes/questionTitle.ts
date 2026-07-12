@@ -57,7 +57,11 @@ export function buildQuestionTitleRecipe(
       lineHeight: 1.5 * titleFontSize,
     },
     errorTone: {
-      color: resolveColorVar(resolved, '--sjs-special-red-forecolor', sink).css,
+      // --sjs-special-red, same family as the required mark: upstream has
+      // NO color rule for `.sd-question__title--error` at all, and the
+      // -forecolor token is the ON-red foreground (default white — invisible
+      // on light themes). Documented as an RN affordance in the fixture.
+      color: resolveColorVar(resolved, '--sjs-special-red', sink).css,
     },
     collapsed: {
       opacity: 0.7,
