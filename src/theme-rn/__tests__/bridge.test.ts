@@ -5,15 +5,22 @@
  * output (`getItemClass`/`getControlClass`/`getRootCss`), including
  * consumer `survey.css` overrides and `onUpdateChoiceItemCss` host hooks.
  */
-import { Model, SurveyError } from '../../core/facade';
+import {
+  Model,
+  SurveyError,
+  QuestionButtonGroupModel,
+  ButtonGroupItemModel,
+} from '../../core/facade';
 import type { Question } from '../../core/facade';
 import {
   extractTokens,
   getItemVariant,
   getControlVariant,
   getRootVariant,
+  getButtonGroupItemVariant,
   ITEM_REACHABILITY,
   CONTROL_REACHABILITY,
+  BUTTONGROUP_REACHABILITY,
   queueUnknownTokens,
   flushUnknownTokenDiagnostics,
 } from '../bridge';
@@ -149,6 +156,159 @@ describe('getItemVariant — real checkbox question, live-model class strings', 
     const classString = question.getItemClass(item);
     const { variant } = getItemVariant(question, classString);
     expect(variant.error).toBe(false);
+  });
+});
+
+describe('known vocabulary — getter-emitted base/layout classes are NOT unknown (codex impl-review major 3)', () => {
+  it('base checkbox item: ZERO unknown tokens (sd-item/sd-checkbox/sd-selectbase__item/sv-q-col-N are getter-emitted vocabulary)', () => {
+    const { question } = createCheckbox();
+    const item = question.visibleChoices[0];
+    const classString = question.getItemClass(item);
+    const result = getItemVariant(question, classString);
+    expect(result.unknownTokens).toEqual([]);
+  });
+
+  it('single-column layout (colCount=1): the DYNAMIC string-built sv-q-col-N class is known vocabulary', () => {
+    // getItemClassCore appends "sv-q-col-" + n when !hasColumns &&
+    // colCount !== 0 — i.e. exactly the colCount=1 path (colCount>1 takes
+    // the hasColumns branch and emits neither itemInline nor sv-q-col-N).
+    const model = new Model({
+      elements: [
+        { type: 'checkbox', name: 'q1', choices: ['a', 'b'], colCount: 1 },
+      ],
+    });
+    const question = model.getQuestionByName('q1') as Question;
+    const item = question.visibleChoices[0];
+    const classString = question.getItemClass(item);
+    expect(classString).toContain('sv-q-col-1');
+    expect(getItemVariant(question, classString).unknownTokens).toEqual([]);
+  });
+
+  it('inline layout (colCount=0): itemInline is known vocabulary', () => {
+    const model = new Model({
+      elements: [
+        { type: 'checkbox', name: 'q1', choices: ['a', 'b'], colCount: 0 },
+      ],
+    });
+    const question = model.getQuestionByName('q1') as Question;
+    const item = question.visibleChoices[0];
+    const classString = question.getItemClass(item);
+    expect(getItemVariant(question, classString).unknownTokens).toEqual([]);
+  });
+
+  it('base text control: ZERO unknown tokens (cssClasses.root is getter-emitted vocabulary)', () => {
+    const { question } = createText();
+    const classString = question.getControlClass();
+    expect(getControlVariant(question, classString).unknownTokens).toEqual([]);
+  });
+
+  it('plain question root: ZERO unknown tokens (mainRoot/withFrame/title-location/small etc. are getter-emitted vocabulary)', () => {
+    const { question } = createText();
+    const rootClassString = question.getRootCss();
+    expect(rootClassString.length).toBeGreaterThan(0);
+    expect(getRootVariant(question, rootClassString).unknownTokens).toEqual([]);
+  });
+
+  it('a genuinely foreign token is still reported unknown', () => {
+    const { question } = createCheckbox();
+    const item = question.visibleChoices[0];
+    const classString = `${question.getItemClass(item)} my-host-custom-class`;
+    expect(getItemVariant(question, classString).unknownTokens).toEqual([
+      'my-host-custom-class',
+    ]);
+  });
+});
+
+describe('itemSelectAll — modeled variant flag (codex impl-review major 3)', () => {
+  it('the select-all item flips variant.selectAll and leaves no unknown tokens', () => {
+    const model = new Model({
+      elements: [
+        {
+          type: 'checkbox',
+          name: 'q1',
+          choices: ['a', 'b'],
+          showSelectAllItem: true,
+        },
+      ],
+    });
+    const question = model.getQuestionByName('q1') as Question;
+    const selectAllItem = (question as unknown as { selectAllItem: unknown })
+      .selectAllItem;
+    const classString = question.getItemClass(selectAllItem);
+    const result = getItemVariant(question, classString);
+    expect(result.variant.selectAll).toBe(true);
+    expect(result.unknownTokens).toEqual([]);
+  });
+
+  it('a regular item does NOT flip selectAll; reachability locks it reachable', () => {
+    expect(ITEM_REACHABILITY.selectAll).toBe(true);
+    const { question } = createCheckbox();
+    const item = question.visibleChoices[0];
+    const result = getItemVariant(question, question.getItemClass(item));
+    expect(result.variant.selectAll).toBe(false);
+  });
+});
+
+describe('ButtonGroup exemplar — disabled REACHABLE (design bridge point 5; codex impl-review major 3)', () => {
+  function createButtonGroup(): { model: Model; question: Question } {
+    const model = new Model({
+      elements: [{ type: 'text', name: 'placeholder' }],
+    });
+    const question = new QuestionButtonGroupModel('bg1');
+    (question as unknown as { choices: string[] }).choices = ['a', 'b'];
+    model.pages[0]?.addQuestion(question as unknown as Question);
+    return { model, question: question as unknown as Question };
+  }
+
+  it('BUTTONGROUP_REACHABILITY locks disabled REACHABLE (labelClass appends itemDisabled on isReadOnly || !item.isEnabled — question_buttongroup.ts:242)', () => {
+    expect(BUTTONGROUP_REACHABILITY.disabled).toBe(true);
+    expect(BUTTONGROUP_REACHABILITY.selected).toBe(true);
+    expect(BUTTONGROUP_REACHABILITY.hover).toBe(true);
+  });
+
+  it('live: a readOnly buttongroup item emits the disabled class and the variant flips (no unknown tokens)', () => {
+    const { question } = createButtonGroup();
+    question.readOnly = true;
+    const itemModel = new ButtonGroupItemModel(
+      question as never,
+      (question as unknown as { visibleChoices: never[] }).visibleChoices[0]!,
+      0
+    );
+    const classString = (itemModel as unknown as { css: { label: string } }).css
+      .label;
+    const result = getButtonGroupItemVariant(question, classString);
+    expect(result.variant.disabled).toBe(true);
+    expect(result.unknownTokens).toEqual([]);
+  });
+
+  it('live: selecting an item flips selected; an enabled unselected item carries hover', () => {
+    const { question } = createButtonGroup();
+    const choices = (question as unknown as { visibleChoices: never[] })
+      .visibleChoices;
+    question.value = (choices[0] as unknown as { value: string }).value;
+    const selectedModel = new ButtonGroupItemModel(
+      question as never,
+      choices[0]!,
+      0
+    );
+    const unselectedModel = new ButtonGroupItemModel(
+      question as never,
+      choices[1]!,
+      1
+    );
+    const selected = getButtonGroupItemVariant(
+      question,
+      (selectedModel as unknown as { css: { label: string } }).css.label
+    );
+    const unselected = getButtonGroupItemVariant(
+      question,
+      (unselectedModel as unknown as { css: { label: string } }).css.label
+    );
+    expect(selected.variant.selected).toBe(true);
+    expect(selected.variant.disabled).toBe(false);
+    expect(unselected.variant.selected).toBe(false);
+    expect(unselected.variant.hover).toBe(true);
+    expect(selected.unknownTokens).toEqual([]);
   });
 });
 

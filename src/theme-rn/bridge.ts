@@ -24,6 +24,21 @@ export interface Schema {
   [flag: string]: string[];
 }
 
+/**
+ * Getter-emitted NON-VARIANT vocabulary (codex impl-review major 3): the
+ * public getters embed base/layout classes (`cssClasses.item`,
+ * `cssClasses.root`, `mainRoot`, the dynamic `sv-q-col-N`, ...) that map
+ * to no variant flag but are absolutely not "unknown" — flagging them
+ * produced false-positive diagnostics on every base render. `entries` are
+ * whitespace-tokenized like schema entries; `patterns` cover classes the
+ * getter STRING-BUILDS (not read from `cssClasses`), e.g. `"sv-q-col-" +
+ * colCount`.
+ */
+export interface KnownVocabularyExtras {
+  entries?: readonly string[];
+  patterns?: readonly RegExp[];
+}
+
 export interface ExtractResult {
   variant: Record<string, boolean>;
   unknownTokens: string[];
@@ -40,13 +55,15 @@ function tokenize(classString: string): string[] {
  * (AND, within one entry) — a flag is "on" when ANY of its entries match
  * (OR, across entries — this is how the live value and the canonical
  * alias both get a chance). `unknownTokens` is every OBSERVED token that
- * doesn't appear in ANY schema entry, matched or not — a token that is
- * part of a known-but-unsatisfied compound entry is still "known
- * vocabulary", not unknown.
+ * doesn't appear in ANY schema entry (or the getter's known non-variant
+ * vocabulary), matched or not — a token that is part of a
+ * known-but-unsatisfied compound entry is still "known vocabulary", not
+ * unknown.
  */
 export function extractTokens(
   classString: string | undefined | null,
-  schema: Schema
+  schema: Schema,
+  knownExtras?: KnownVocabularyExtras
 ): ExtractResult {
   const observedTokens = classString ? tokenize(classString) : [];
   const observedSet = new Set(observedTokens);
@@ -68,8 +85,19 @@ export function extractTokens(
     variant[flag] = matched;
   }
 
+  for (const entry of knownExtras?.entries ?? []) {
+    tokenize(entry).forEach((token) => knownVocabulary.add(token));
+  }
+  const patterns = knownExtras?.patterns ?? [];
+
   const unknownTokens = Array.from(
-    new Set(observedTokens.filter((token) => !knownVocabulary.has(token)))
+    new Set(
+      observedTokens.filter(
+        (token) =>
+          !knownVocabulary.has(token) &&
+          !patterns.some((pattern) => pattern.test(token))
+      )
+    )
   );
   return { variant, unknownTokens };
 }
@@ -77,29 +105,45 @@ export function extractTokens(
 interface SchemaCacheEntry {
   signature: string;
   schema: Schema;
+  knownEntries: string[];
+}
+
+interface BuiltSchema {
+  schema: Schema;
+  knownEntries: string[];
 }
 
 /**
  * Entry-SIGNATURE cache (round-2 fix): identity-only `WeakMap` caching
  * goes stale when `onUpdateQuestionCssClasses` MUTATES the same
  * `cssClasses` object in place (a `survey.css` override does exactly
- * this). The signature is the relevant entries' joined raw values,
- * recomputed cheaply per lookup; the schema rebuilds on any mismatch.
+ * this). The signature is the relevant entries' joined raw values —
+ * INCLUDING the known non-variant base keys, whose values feed the known
+ * vocabulary and can be overridden too — recomputed cheaply per lookup;
+ * the schema rebuilds on any mismatch.
  */
 function getOrBuildSchema(
   cache: WeakMap<object, SchemaCacheEntry>,
   cssClasses: Record<string, unknown>,
   relevantKeys: readonly string[],
+  knownBaseKeys: readonly string[],
   build: (cssClasses: Record<string, unknown>) => Schema
-): Schema {
-  const signature = relevantKeys
+): BuiltSchema {
+  const signature = [...relevantKeys, ...knownBaseKeys]
     .map((key) => String(cssClasses[key] ?? ''))
     .join('\u0000');
   const cached = cache.get(cssClasses);
-  if (cached && cached.signature === signature) return cached.schema;
+  if (cached && cached.signature === signature) {
+    return { schema: cached.schema, knownEntries: cached.knownEntries };
+  }
   const schema = build(cssClasses);
-  cache.set(cssClasses, { signature, schema });
-  return schema;
+  const knownEntries = knownBaseKeys
+    .map((key) => cssClasses[key])
+    .filter(
+      (value): value is string => typeof value === 'string' && !!value.trim()
+    );
+  cache.set(cssClasses, { signature, schema, knownEntries });
+  return { schema, knownEntries };
 }
 
 function getQuestionCssClasses(question: Question): Record<string, unknown> {
@@ -127,19 +171,24 @@ function aliasEntries(
 // actually appears in a base select item's class string. Kept in the
 // schema (for forward-compat with a host appending it manually) but the
 // reachability table below locks it OFF for THIS getter.
+// `selectAll` (checkbox subtype, question_checkbox.ts getItemClassCore:
+// `.append(this.cssClasses.itemSelectAll, options.isSelectAllItem)`) IS
+// reachable — modeled per codex impl-review major 3.
 const ITEM_KEY_BY_FLAG = {
   checked: 'itemChecked',
   readOnly: 'itemReadOnly',
   preview: 'itemPreview',
   hover: 'itemHover',
   none: 'itemNone',
+  selectAll: 'itemSelectAll',
   error: 'itemOnError',
   disabled: 'itemDisabled',
 } as const;
 // `sd-item--*` is the type-independent prefix defaultCss.ts uses across
 // every select-item subtype (checkbox/radio/imagepicker/...); the
 // `sd-{type}--*` suffix half is NOT stable across subtypes, so only the
-// `sd-item--*` half is a safe canonical alias here.
+// `sd-item--*` half is a safe canonical alias here. `selectAll` exists
+// ONLY on checkbox, so its checkbox-specific default IS its canonical.
 const ITEM_CANONICAL: Partial<Record<keyof typeof ITEM_KEY_BY_FLAG, string>> = {
   checked: 'sd-item--checked',
   readOnly: 'sd-item--readonly',
@@ -147,7 +196,15 @@ const ITEM_CANONICAL: Partial<Record<keyof typeof ITEM_KEY_BY_FLAG, string>> = {
   hover: 'sd-item--allowhover',
   error: 'sd-item--error',
   disabled: 'sd-item--disabled',
+  selectAll: 'sd-checkbox--selectall',
 };
+
+// Getter-emitted non-variant vocabulary: `cssClasses.item` (the compound
+// base, e.g. "sd-item sd-checkbox sd-selectbase__item"), `itemInline`
+// (colCount===0), and the string-built grid class `sv-q-col-<n>`
+// (colCount!==0) — question_baseselect.ts getItemClassCore.
+const ITEM_KNOWN_BASE_KEYS = ['item', 'itemInline'] as const;
+const ITEM_KNOWN_PATTERNS = [/^sv-q-col-\d+$/] as const;
 
 export const ITEM_REACHABILITY: Record<keyof typeof ITEM_KEY_BY_FLAG, boolean> =
   {
@@ -156,6 +213,7 @@ export const ITEM_REACHABILITY: Record<keyof typeof ITEM_KEY_BY_FLAG, boolean> =
     preview: true,
     hover: true,
     none: true,
+    selectAll: true,
     error: true,
     disabled: false,
   };
@@ -181,13 +239,17 @@ export function getItemVariant(
   classString: string | undefined
 ): ExtractResult {
   const cssClasses = getQuestionCssClasses(question);
-  const schema = getOrBuildSchema(
+  const { schema, knownEntries } = getOrBuildSchema(
     itemSchemaCache,
     cssClasses,
     Object.values(ITEM_KEY_BY_FLAG),
+    ITEM_KNOWN_BASE_KEYS,
     buildItemSchema
   );
-  return extractTokens(classString, schema);
+  return extractTokens(classString, schema, {
+    entries: knownEntries,
+    patterns: ITEM_KNOWN_PATTERNS,
+  });
 }
 
 // --- CONTROL exemplar (text-like inputs via getControlClass) ---
@@ -208,6 +270,10 @@ const CONTROL_CANONICAL: Partial<
   error: 'sd-input--error',
   disabled: 'sd-input--disabled',
 };
+
+// getControlCssClassBuilder starts from `cssClasses.root` (e.g.
+// "sd-input sd-text") — getter-emitted non-variant vocabulary.
+const CONTROL_KNOWN_BASE_KEYS = ['root'] as const;
 
 export const CONTROL_REACHABILITY: Record<
   keyof typeof CONTROL_KEY_BY_FLAG,
@@ -240,13 +306,14 @@ export function getControlVariant(
   classString: string | undefined
 ): ExtractResult {
   const cssClasses = getQuestionCssClasses(question);
-  const schema = getOrBuildSchema(
+  const { schema, knownEntries } = getOrBuildSchema(
     controlSchemaCache,
     cssClasses,
     Object.values(CONTROL_KEY_BY_FLAG),
+    CONTROL_KNOWN_BASE_KEYS,
     buildControlSchema
   );
-  return extractTokens(classString, schema);
+  return extractTokens(classString, schema, { entries: knownEntries });
 }
 
 // --- ROOT exemplar (question.getRootCss(), public per design round-1 fix) ---
@@ -267,6 +334,28 @@ const ROOT_KEY_BY_FLAG = {
   errorBottom: 'hasErrorBottom',
   answered: 'answered',
 } as const;
+
+// getCssRoot (question.ts:1386 + survey-element.ts:1024) embeds these
+// non-variant layout/structure keys into `cssRoot` — getter-emitted
+// vocabulary, not unknown tokens (codex impl-review major 3).
+const ROOT_KNOWN_BASE_KEYS = [
+  'mainRoot',
+  'flowRoot',
+  'titleLeftRoot',
+  'titleTopRoot',
+  'titleBottomRoot',
+  'descriptionUnderInputRoot',
+  'small',
+  'withFrame',
+  'compact',
+  'collapsed',
+  'expandableAnimating',
+  'expanded',
+  'expandable',
+  'nested',
+  'asCell',
+  'noPointerEventsMode',
+] as const;
 
 export const ROOT_REACHABILITY: Record<keyof typeof ROOT_KEY_BY_FLAG, boolean> =
   {
@@ -298,13 +387,78 @@ export function getRootVariant(
   classString: string | undefined
 ): ExtractResult {
   const cssClasses = getQuestionCssClasses(question);
-  const schema = getOrBuildSchema(
+  const { schema, knownEntries } = getOrBuildSchema(
     rootSchemaCache,
     cssClasses,
     Object.values(ROOT_KEY_BY_FLAG),
+    ROOT_KNOWN_BASE_KEYS,
     buildRootSchema
   );
-  return extractTokens(classString, schema);
+  return extractTokens(classString, schema, { entries: knownEntries });
+}
+
+// --- BUTTONGROUP exemplar (ButtonGroupItemModel.labelClass) ---
+// The design's bridge point 5 promise ("disabled reachable for
+// buttongroup — locked by tests"; codex impl-review major 3): unlike the
+// base select/text getters, ButtonGroupItemModel's labelClass appends
+// `cssClasses.itemDisabled` LIVE on `question.isReadOnly ||
+// !item.isEnabled` (question_buttongroup.ts:242) — the disabled family is
+// a REACHABLE variant for this getter.
+const BUTTONGROUP_KEY_BY_FLAG = {
+  selected: 'itemSelected',
+  hover: 'itemHover',
+  disabled: 'itemDisabled',
+} as const;
+const BUTTONGROUP_CANONICAL: Partial<
+  Record<keyof typeof BUTTONGROUP_KEY_BY_FLAG, string>
+> = {
+  selected: 'sv-button-group__item--selected',
+  hover: 'sv-button-group__item--hover',
+  disabled: 'sv-button-group__item--disabled',
+};
+
+const BUTTONGROUP_KNOWN_BASE_KEYS = ['item'] as const;
+
+export const BUTTONGROUP_REACHABILITY: Record<
+  keyof typeof BUTTONGROUP_KEY_BY_FLAG,
+  boolean
+> = {
+  selected: true,
+  hover: true,
+  disabled: true,
+};
+
+const buttonGroupSchemaCache = new WeakMap<object, SchemaCacheEntry>();
+
+function buildButtonGroupSchema(cssClasses: Record<string, unknown>): Schema {
+  const schema: Schema = {};
+  (
+    Object.keys(BUTTONGROUP_KEY_BY_FLAG) as Array<
+      keyof typeof BUTTONGROUP_KEY_BY_FLAG
+    >
+  ).forEach((flag) => {
+    schema[flag] = aliasEntries(
+      cssClasses,
+      BUTTONGROUP_KEY_BY_FLAG[flag],
+      BUTTONGROUP_CANONICAL[flag]
+    );
+  });
+  return schema;
+}
+
+export function getButtonGroupItemVariant(
+  question: Question,
+  classString: string | undefined
+): ExtractResult {
+  const cssClasses = getQuestionCssClasses(question);
+  const { schema, knownEntries } = getOrBuildSchema(
+    buttonGroupSchemaCache,
+    cssClasses,
+    Object.values(BUTTONGROUP_KEY_BY_FLAG),
+    BUTTONGROUP_KNOWN_BASE_KEYS,
+    buildButtonGroupSchema
+  );
+  return extractTokens(classString, schema, { entries: knownEntries });
 }
 
 // --- Unknown-token queue (design point 4: "no diagnostics during render") ---
