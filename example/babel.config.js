@@ -19,9 +19,7 @@ module.exports = function (api) {
         test: (filename) => !!filename && filename.startsWith(srcDir),
         presets: [
           [
-            require.resolve(
-              'react-native-builder-bob/babel-preset'
-            ),
+            require.resolve('react-native-builder-bob/babel-preset'),
             { supportsStaticESM: true },
           ],
         ],
