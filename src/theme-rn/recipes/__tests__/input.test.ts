@@ -4,8 +4,12 @@
  */
 import { StyleSheet } from 'react-native';
 import { resolveTheme } from '../../../theme-core/resolve';
-import { buildInputRecipe, selectInputStyles } from '../input';
-import type { InputVariant } from '../input';
+import {
+  buildInputRecipe,
+  resolveInputLegalState,
+  selectInputStyles,
+} from '../input';
+import type { InputStateInput, InputLegalState } from '../input';
 import type { RecipeBuildDiagnostic } from '../types';
 
 const resolved = resolveTheme(undefined);
@@ -71,50 +75,82 @@ describe('buildInputRecipe — formulas from resolved tokens', () => {
   });
 });
 
-describe('selectInputStyles — 9 fixture-locked legal states', () => {
+describe("resolveInputLegalState + selectInputStyles — the fixture's EXACT 9 legal tuples (codex impl-review major 2)", () => {
   const recipe = buildInputRecipe(resolved, iosCtx);
   const mode = { narrow: false, rtl: false };
-  const base: InputVariant = {
+  const flatten = (arr: object[]) => Object.assign({}, ...arr);
+  const base: InputStateInput = {
     focused: false,
     readOnly: false,
     preview: false,
     error: false,
-    counter: false,
-    counterBig: false,
   };
-  const states: InputVariant[] = [
-    base,
-    { ...base, focused: true },
-    { ...base, readOnly: true },
-    { ...base, preview: true },
-    { ...base, error: true },
-    { ...base, error: true, focused: true },
-    { ...base, counter: true },
-    { ...base, counterBig: true },
+
+  const tuples: Array<[string, InputStateInput, InputLegalState]> = [
+    ['base', base, { kind: 'base' }],
+    ['focused', { ...base, focused: true }, { kind: 'focused', counter: undefined }],
+    ['readOnly', { ...base, readOnly: true }, { kind: 'readOnly' }],
+    ['previewVariant', { ...base, preview: true }, { kind: 'preview' }],
+    ['error', { ...base, error: true }, { kind: 'error', focused: false }],
+    [
+      'error+focused',
+      { ...base, error: true, focused: true },
+      { kind: 'error', focused: true },
+    ],
+    [
+      'counter (focused reserved end padding)',
+      { ...base, focused: true, counter: 'normal' },
+      { kind: 'focused', counter: 'normal' },
+    ],
+    [
+      'counterBig',
+      { ...base, focused: true, counter: 'big' },
+      { kind: 'focused', counter: 'big' },
+    ],
+    [
+      'disabledReserved (host-appended only; dead upstream branch)',
+      { ...base, disabled: true },
+      { kind: 'disabledReserved' },
+    ],
   ];
 
-  it.each(states.map((v, i) => [i, v] as const))(
-    'legal state %i selects without throwing',
-    (_i, variant) => {
-      const styles = selectInputStyles(recipe, variant, mode);
-      expect(styles.length).toBeGreaterThan(0);
-    }
-  );
+  it.each(tuples)('%s normalizes to its fixture tuple', (_name, input, expected) => {
+    expect(resolveInputLegalState(input)).toEqual(expected);
+  });
+
+  it.each(tuples)('%s selects a non-empty style array', (_name, input) => {
+    const styles = selectInputStyles(recipe, input, mode);
+    expect(styles.length).toBeGreaterThan(0);
+  });
 
   it('readOnly removes the shadow (shadow removed per fixture)', () => {
     const styles = selectInputStyles(recipe, { ...base, readOnly: true }, mode);
-    const flat = Object.assign({}, ...styles);
-    expect(flat.boxShadow).toEqual([]);
+    expect(flatten(styles).boxShadow).toEqual([]);
   });
 
-  it('preview wins layout overrides (radius 0) even combined with error', () => {
+  it('illegal combination preview+error collapses to the preview tuple (radius 0, transparent background)', () => {
+    expect(
+      resolveInputLegalState({ ...base, preview: true, error: true })
+    ).toEqual({ kind: 'preview' });
     const styles = selectInputStyles(
       recipe,
       { ...base, preview: true, error: true },
       mode
     );
-    const flat = Object.assign({}, ...styles);
-    expect(flat.borderRadius).toBe(0);
+    expect(flatten(styles).borderRadius).toBe(0);
+  });
+
+  it('counter without focus does NOT reserve the end padding (the reservation is a focused-state behavior)', () => {
+    expect(resolveInputLegalState({ ...base, counter: 'normal' })).toEqual({
+      kind: 'base',
+    });
+    const styles = selectInputStyles(recipe, { ...base, counter: 'normal' }, mode);
+    expect(flatten(styles).paddingEnd).toBeUndefined();
+  });
+
+  it('disabledReserved selects the reserved fragment (opacity 0.25)', () => {
+    const styles = selectInputStyles(recipe, { ...base, disabled: true }, mode);
+    expect(flatten(styles).opacity).toBe(0.25);
   });
 });
 
@@ -123,7 +159,7 @@ describe('shadow channel plumbing — elevation applied, no-shadow states clear 
 
   it('Android <28: base carries the mapper elevation (boxShadow undefined)', () => {
     const recipe = buildInputRecipe(resolved, android21);
-    const flat = StyleSheet.flatten(recipe.fragments.base);
+    const flat = StyleSheet.flatten(recipe.fragments.base)!;
     expect(flat.boxShadow).toBeUndefined();
     expect(typeof flat.elevation).toBe('number');
     expect(flat.elevation).toBeGreaterThan(0);
@@ -131,7 +167,7 @@ describe('shadow channel plumbing — elevation applied, no-shadow states clear 
 
   it('Android <28: focused carries the focus-ring elevation', () => {
     const recipe = buildInputRecipe(resolved, android21);
-    const flat = StyleSheet.flatten(recipe.fragments.focused);
+    const flat = StyleSheet.flatten(recipe.fragments.focused)!;
     expect(typeof flat.elevation).toBe('number');
   });
 
@@ -141,7 +177,7 @@ describe('shadow channel plumbing — elevation applied, no-shadow states clear 
       const flat = StyleSheet.flatten([
         recipe.fragments.base,
         recipe.fragments.readOnly,
-      ]);
+      ])!;
       expect(flat.boxShadow).toEqual([]);
       expect(flat.elevation).toBe(0);
     }
@@ -153,7 +189,7 @@ describe('shadow channel plumbing — elevation applied, no-shadow states clear 
       const flat = StyleSheet.flatten([
         recipe.fragments.base,
         recipe.fragments.preview,
-      ]);
+      ])!;
       expect(flat.boxShadow).toEqual([]);
       expect(flat.elevation).toBe(0);
     }

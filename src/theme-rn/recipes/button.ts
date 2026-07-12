@@ -23,12 +23,28 @@ import type { BuildContext } from './types';
 
 export type ButtonKind = 'default' | 'action' | 'danger';
 
-export interface ButtonVariant {
+/** RAW state inputs — the selector normalizes to a legal tuple (codex impl-review major 2). */
+export interface ButtonStateInput {
   pressed: boolean;
   focused: boolean;
   disabled: boolean;
   small: boolean;
   variant: ButtonKind;
+}
+
+export type ButtonInteractionState = 'base' | 'pressed' | 'focused' | 'disabled';
+
+/**
+ * The fixture's EXACT 13 legal tuples ("Legal-state enumerations": base ·
+ * pressed · focused · disabled · small(composes) · action · actionPressed
+ * · action+focused · actionDisabled · danger · dangerPressed(=danger) ·
+ * danger+focused · dangerDisabled): 3 variants × 4 interaction states,
+ * with `small` composing orthogonally as the 13th enumeration entry.
+ */
+export interface ButtonLegalState {
+  variant: ButtonKind;
+  state: ButtonInteractionState;
+  small: boolean;
 }
 
 export interface ButtonRecipe {
@@ -140,32 +156,87 @@ export function buildButtonRecipe(
   return { fragments };
 }
 
+/**
+ * Normalizes raw flags to EXACTLY one legal tuple. Precedence: disabled >
+ * pressed > focused > base (a disabled button cannot be interacted with;
+ * an actively-pressed button's press visual wins over its focus ring for
+ * the duration of the press — the fixture enumerates no pressed+focused
+ * tuple).
+ */
+export function resolveButtonLegalState(
+  input: ButtonStateInput
+): ButtonLegalState {
+  const state: ButtonInteractionState = input.disabled
+    ? 'disabled'
+    : input.pressed
+      ? 'pressed'
+      : input.focused
+        ? 'focused'
+        : 'base';
+  return { variant: input.variant, state, small: input.small };
+}
+
+/**
+ * Exhaustive composition map over the legal-state union (codex
+ * impl-review major 2). `small` composes orthogonally right after base.
+ */
 export function selectButtonStyles(
   recipe: ButtonRecipe,
-  variant: ButtonVariant,
+  input: ButtonStateInput,
   _mode: { narrow: boolean; rtl: boolean }
 ): TextStyle[] {
   const f = recipe.fragments;
+  const legal = resolveButtonLegalState(input);
   const styles: TextStyle[] = [f.base];
-  if (variant.small) styles.push(f.small);
+  if (legal.small) styles.push(f.small);
 
-  if (variant.variant === 'action') {
-    styles.push(f.action);
-    if (variant.pressed) styles.push(f.actionPressed);
-    if (variant.focused) styles.push(f.focused);
-    if (variant.disabled) styles.push(f.actionDisabled);
-    return styles;
+  switch (legal.variant) {
+    case 'action':
+      styles.push(f.action);
+      switch (legal.state) {
+        case 'base':
+          break;
+        case 'pressed':
+          styles.push(f.actionPressed);
+          break;
+        case 'focused':
+          styles.push(f.focused);
+          break;
+        case 'disabled':
+          styles.push(f.actionDisabled);
+          break;
+      }
+      break;
+    case 'danger':
+      styles.push(f.danger);
+      switch (legal.state) {
+        case 'base':
+        case 'pressed':
+          // dangerPressed === danger: no distinct fragment (fixture: "unchanged").
+          break;
+        case 'focused':
+          styles.push(f.focused);
+          break;
+        case 'disabled':
+          styles.push(f.dangerDisabled);
+          break;
+      }
+      break;
+    case 'default':
+      switch (legal.state) {
+        case 'base':
+          break;
+        case 'pressed':
+          styles.push(f.pressedDefault);
+          break;
+        case 'focused':
+          styles.push(f.focused);
+          break;
+        case 'disabled':
+          styles.push(f.disabled);
+          break;
+      }
+      break;
   }
-  if (variant.variant === 'danger') {
-    styles.push(f.danger);
-    // dangerPressed === danger: no distinct fragment (fixture: "unchanged").
-    if (variant.focused) styles.push(f.focused);
-    if (variant.disabled) styles.push(f.dangerDisabled);
-    return styles;
-  }
-
-  if (variant.pressed) styles.push(f.pressedDefault);
-  if (variant.focused) styles.push(f.focused);
-  if (variant.disabled) styles.push(f.disabled);
   return styles;
 }

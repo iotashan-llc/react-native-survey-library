@@ -4,8 +4,12 @@
  */
 import { StyleSheet } from 'react-native';
 import { resolveTheme } from '../../../theme-core/resolve';
-import { buildButtonRecipe, selectButtonStyles } from '../button';
-import type { ButtonVariant } from '../button';
+import {
+  buildButtonRecipe,
+  resolveButtonLegalState,
+  selectButtonStyles,
+} from '../button';
+import type { ButtonStateInput, ButtonLegalState } from '../button';
 import type { RecipeBuildDiagnostic } from '../types';
 
 const resolved = resolveTheme(undefined);
@@ -49,7 +53,7 @@ describe('button shadow channel plumbing (codex impl-review major 1)', () => {
 
   it('Android <28: base carries the mapper elevation (boxShadow undefined)', () => {
     const recipe = buildButtonRecipe(resolved, android21);
-    const flatBase = StyleSheet.flatten(recipe.fragments.base);
+    const flatBase = StyleSheet.flatten(recipe.fragments.base)!;
     expect(flatBase.boxShadow).toBeUndefined();
     expect(typeof flatBase.elevation).toBe('number');
     expect(flatBase.elevation).toBeGreaterThan(0);
@@ -61,7 +65,7 @@ describe('button shadow channel plumbing (codex impl-review major 1)', () => {
       platform: { os: 'android', apiLevel: 21 },
       diagnostics,
     });
-    const flatFocused = StyleSheet.flatten(recipe.fragments.focused);
+    const flatFocused = StyleSheet.flatten(recipe.fragments.focused)!;
     expect(typeof flatFocused.elevation).toBe('number');
     expect(
       diagnostics.some(
@@ -71,49 +75,110 @@ describe('button shadow channel plumbing (codex impl-review major 1)', () => {
   });
 });
 
-describe('selectButtonStyles — 13 fixture-locked legal states', () => {
+describe("resolveButtonLegalState + selectButtonStyles — the fixture's EXACT 13 legal tuples (codex impl-review major 2)", () => {
   const recipe = buildButtonRecipe(resolved, iosCtx);
   const mode = { narrow: false, rtl: false };
-  const base: ButtonVariant = {
+  const flatten = (arr: object[]) => Object.assign({}, ...arr);
+  const base: ButtonStateInput = {
     pressed: false,
     focused: false,
     disabled: false,
     small: false,
     variant: 'default',
   };
-  const states: ButtonVariant[] = [
-    base,
-    { ...base, pressed: true },
-    { ...base, focused: true },
-    { ...base, disabled: true },
-    { ...base, small: true },
-    { ...base, variant: 'action' },
-    { ...base, variant: 'action', pressed: true },
-    { ...base, variant: 'action', focused: true },
-    { ...base, variant: 'action', disabled: true },
-    { ...base, variant: 'danger' },
-    { ...base, variant: 'danger', pressed: true },
-    { ...base, variant: 'danger', focused: true },
-    { ...base, variant: 'danger', disabled: true },
+
+  const tuples: Array<[string, ButtonStateInput, ButtonLegalState]> = [
+    ['base', base, { variant: 'default', state: 'base', small: false }],
+    [
+      'pressed',
+      { ...base, pressed: true },
+      { variant: 'default', state: 'pressed', small: false },
+    ],
+    [
+      'focused',
+      { ...base, focused: true },
+      { variant: 'default', state: 'focused', small: false },
+    ],
+    [
+      'disabled',
+      { ...base, disabled: true },
+      { variant: 'default', state: 'disabled', small: false },
+    ],
+    [
+      'small (composes)',
+      { ...base, small: true },
+      { variant: 'default', state: 'base', small: true },
+    ],
+    [
+      'action',
+      { ...base, variant: 'action' },
+      { variant: 'action', state: 'base', small: false },
+    ],
+    [
+      'actionPressed',
+      { ...base, variant: 'action', pressed: true },
+      { variant: 'action', state: 'pressed', small: false },
+    ],
+    [
+      'action+focused',
+      { ...base, variant: 'action', focused: true },
+      { variant: 'action', state: 'focused', small: false },
+    ],
+    [
+      'actionDisabled',
+      { ...base, variant: 'action', disabled: true },
+      { variant: 'action', state: 'disabled', small: false },
+    ],
+    [
+      'danger',
+      { ...base, variant: 'danger' },
+      { variant: 'danger', state: 'base', small: false },
+    ],
+    [
+      'dangerPressed (=danger)',
+      { ...base, variant: 'danger', pressed: true },
+      { variant: 'danger', state: 'pressed', small: false },
+    ],
+    [
+      'danger+focused',
+      { ...base, variant: 'danger', focused: true },
+      { variant: 'danger', state: 'focused', small: false },
+    ],
+    [
+      'dangerDisabled',
+      { ...base, variant: 'danger', disabled: true },
+      { variant: 'danger', state: 'disabled', small: false },
+    ],
   ];
 
-  it.each(states.map((v, i) => [i, v] as const))(
-    'legal state %i selects without throwing',
-    (_i, variant) => {
-      expect(selectButtonStyles(recipe, variant, mode).length).toBeGreaterThan(
-        0
-      );
-    }
-  );
+  it.each(tuples)('%s normalizes to its fixture tuple', (_name, input, expected) => {
+    expect(resolveButtonLegalState(input)).toEqual(expected);
+  });
+
+  it.each(tuples)('%s selects a non-empty style array', (_name, input) => {
+    expect(selectButtonStyles(recipe, input, mode).length).toBeGreaterThan(0);
+  });
+
+  it('illegal Cartesian inputs collapse to ONE legal tuple: disabled beats pressed beats focused', () => {
+    expect(
+      resolveButtonLegalState({
+        ...base,
+        disabled: true,
+        pressed: true,
+        focused: true,
+      })
+    ).toEqual({ variant: 'default', state: 'disabled', small: false });
+    expect(
+      resolveButtonLegalState({ ...base, pressed: true, focused: true })
+    ).toEqual({ variant: 'default', state: 'pressed', small: false });
+  });
 
   it('action pressed uses a DISTINCT fragment from default pressed (primary-background-dark, not general background-dark)', () => {
-    const defaultPressed = Object.assign(
-      {},
-      ...selectButtonStyles(recipe, { ...base, pressed: true }, mode)
+    const defaultPressed = flatten(
+      selectButtonStyles(recipe, { ...base, pressed: true }, mode)
     );
-    const actionPressed = Object.assign(
-      {},
-      ...selectButtonStyles(
+    const actionPressed = flatten(
+      selectButtonStyles(
         recipe,
         { ...base, variant: 'action', pressed: true },
         mode
@@ -125,13 +190,11 @@ describe('selectButtonStyles — 13 fixture-locked legal states', () => {
   });
 
   it('danger pressed is unchanged (same background as danger base)', () => {
-    const dangerBase = Object.assign(
-      {},
-      ...selectButtonStyles(recipe, { ...base, variant: 'danger' }, mode)
+    const dangerBase = flatten(
+      selectButtonStyles(recipe, { ...base, variant: 'danger' }, mode)
     );
-    const dangerPressed = Object.assign(
-      {},
-      ...selectButtonStyles(
+    const dangerPressed = flatten(
+      selectButtonStyles(
         recipe,
         { ...base, variant: 'danger', pressed: true },
         mode
@@ -141,13 +204,11 @@ describe('selectButtonStyles — 13 fixture-locked legal states', () => {
   });
 
   it('action disabled uses primary-foreground-disabled color, distinct from the generic disabled color', () => {
-    const genericDisabled = Object.assign(
-      {},
-      ...selectButtonStyles(recipe, { ...base, disabled: true }, mode)
+    const genericDisabled = flatten(
+      selectButtonStyles(recipe, { ...base, disabled: true }, mode)
     );
-    const actionDisabled = Object.assign(
-      {},
-      ...selectButtonStyles(
+    const actionDisabled = flatten(
+      selectButtonStyles(
         recipe,
         { ...base, variant: 'action', disabled: true },
         mode
@@ -156,16 +217,19 @@ describe('selectButtonStyles — 13 fixture-locked legal states', () => {
     expect(genericDisabled.color).not.toEqual(actionDisabled.color);
   });
 
-  it('small composes (flexGrow 1) regardless of variant', () => {
-    const smallAction = Object.assign(
-      {},
-      ...selectButtonStyles(
+  it('small composes (flexGrow 1) regardless of variant and state', () => {
+    const smallAction = flatten(
+      selectButtonStyles(
         recipe,
         { ...base, variant: 'action', small: true },
         mode
       )
     );
     expect(smallAction.flexGrow).toBe(1);
+    const smallDisabled = flatten(
+      selectButtonStyles(recipe, { ...base, small: true, disabled: true }, mode)
+    );
+    expect(smallDisabled.flexGrow).toBe(1);
   });
 });
 

@@ -14,19 +14,57 @@ import { mapShadowForPlatform, composeShadowLayers } from '../shadows';
 import { reportShadowResult } from './types';
 import type { BuildContext } from './types';
 
-export interface ItemVariant {
+/** Mutually-exclusive add-ons composing with base/checked (fixture: "none/selectAll"); no distinct visual delta documented, so they participate in state ENUMERATION only. */
+export type ItemAddOn = 'none' | 'selectAll';
+
+/**
+ * RAW state inputs (bridge flags + native interaction state). The
+ * selector — not the caller — normalizes these to one of the fixture's
+ * 12 legal tuples, INCLUDING the hover gate (`allowHover && !readOnly`;
+ * codex impl-review major 2: the gate lives here, and arbitrary boolean
+ * Cartesians can no longer select an unenumerated combination).
+ */
+export interface ItemStateInput {
   checked: boolean;
-  /** Gate (`allowHover && !readOnly`) is the CALLER's responsibility (design: "allowHover && !readOnly precedence enforced in the selector" — enforced by the component passing `pressed: false` when the gate fails, not re-derived here). */
+  /** Live Pressable state — gated by `allowHover && !readOnly` IN the selector. */
   pressed: boolean;
   focused: boolean;
   readOnly: boolean;
   preview: boolean;
   error: boolean;
-  /** Mutually-exclusive add-on composing with base/checked (fixture: "none/selectAll"); no distinct visual delta documented, so it participates in state ENUMERATION only. */
-  none?: boolean;
+  /** Upstream affordance gate (`itemHover` class: `!disabled && !checked && !designMode`) — the bridge's `hover` flag. */
+  allowHover: boolean;
+  addOn?: ItemAddOn;
 }
 
+/**
+ * The fixture's EXACT 12 legal tuples ("Legal-state enumerations": base ·
+ * checked · readOnly · checked+readOnly · preview · checked+preview ·
+ * error · checked+error · pressed(gated) · focused · checked+focused ·
+ * none/selectAll) as a discriminated union — base×checked(+addOn) = 3,
+ * readOnly×2, preview×2, error×2, pressed×1 (the gate implies !checked
+ * upstream), focused×2.
+ */
+export type ItemLegalState =
+  | { kind: 'base'; checked: boolean; addOn?: ItemAddOn }
+  | { kind: 'readOnly'; checked: boolean }
+  | { kind: 'preview'; checked: boolean }
+  | { kind: 'error'; checked: boolean }
+  | { kind: 'pressed' }
+  | { kind: 'focused'; checked: boolean };
+
 export type ItemShape = 'checkbox' | 'radio';
+
+/**
+ * Selected styles are returned per SLOT — the container (row layout) and
+ * the decorator (checkbox/radio box) are different native views and must
+ * never share one style array (codex impl-review major 2: "separate
+ * container vs decorator slot mixing").
+ */
+export interface ItemSelectedStyles {
+  container: ViewStyle[];
+  decorator: ViewStyle[];
+}
 
 export interface ItemRecipe {
   fragments: {
@@ -205,39 +243,77 @@ export function buildItemRecipe(
 }
 
 /**
- * Array composition, later wins (design: "zero object allocation beyond
- * the composed array"). `readOnly` is composed AFTER `checked` so its
- * background wins over checked's per the fixture ("state.readOnly =
- * background-dark, no shadow" applies regardless of checked).
+ * Normalizes raw flags to EXACTLY one of the fixture's 12 legal tuples.
+ * Precedence follows the upstream cascade for pairwise conflicts:
+ * readOnly (doubled-specificity readonly rules + gate) > preview
+ * (doubled-specificity) > pressed (hover selector, highest specificity,
+ * gated `allowHover && !readOnly`) > focused > error > base. The hover
+ * gate is enforced HERE (codex impl-review major 2), and the pressed
+ * tuple carries no `checked` (upstream `allowHover` already excludes
+ * checked items).
+ */
+export function resolveItemLegalState(input: ItemStateInput): ItemLegalState {
+  if (input.readOnly) return { kind: 'readOnly', checked: input.checked };
+  if (input.preview) return { kind: 'preview', checked: input.checked };
+  if (input.pressed && input.allowHover) return { kind: 'pressed' };
+  if (input.focused) return { kind: 'focused', checked: input.checked };
+  if (input.error) return { kind: 'error', checked: input.checked };
+  return { kind: 'base', checked: input.checked, addOn: input.addOn };
+}
+
+/**
+ * Array composition per SLOT, later wins (design: "zero object allocation
+ * beyond the composed array" — now one array per slot). The decorator
+ * composition is an EXHAUSTIVE map over the legal-state union — there is
+ * no path that composes an unenumerated combination.
  */
 export function selectItemStyles(
   recipe: ItemRecipe,
-  variant: ItemVariant,
+  input: ItemStateInput,
   _mode: { narrow: boolean; rtl: boolean },
   shape: ItemShape
-): ViewStyle[] {
+): ItemSelectedStyles {
   const f = recipe.fragments;
-  const styles: ViewStyle[] = [
-    f.container,
+  const state = resolveItemLegalState(input);
+  const decorator: ViewStyle[] = [
     f.decoratorBase,
     shape === 'radio' ? f.decoratorRadiusRadio : f.decoratorRadiusCheckbox,
   ];
-  if (variant.checked) styles.push(f.decoratorChecked);
-  if (variant.preview) styles.push(f.decoratorPreview);
-  if (variant.error) styles.push(f.decoratorError);
-  if (variant.pressed) styles.push(f.decoratorPressed);
-  if (variant.focused) styles.push(f.decoratorFocused);
-  // readOnly last among state fragments: wins the background regardless
-  // of checked/preview/error/pressed/focused, per the fixture.
-  if (variant.readOnly) styles.push(f.decoratorReadOnly);
-  return styles;
+  switch (state.kind) {
+    case 'base':
+      // addOn ('none'/'selectAll') participates in enumeration only — no
+      // documented visual delta (fixture).
+      if (state.checked) decorator.push(f.decoratorChecked);
+      break;
+    case 'readOnly':
+      if (state.checked) decorator.push(f.decoratorChecked);
+      decorator.push(f.decoratorReadOnly);
+      break;
+    case 'preview':
+      if (state.checked) decorator.push(f.decoratorChecked);
+      decorator.push(f.decoratorPreview);
+      break;
+    case 'error':
+      if (state.checked) decorator.push(f.decoratorChecked);
+      decorator.push(f.decoratorError);
+      break;
+    case 'pressed':
+      decorator.push(f.decoratorPressed);
+      break;
+    case 'focused':
+      if (state.checked) decorator.push(f.decoratorChecked);
+      decorator.push(f.decoratorFocused);
+      break;
+  }
+  return { container: [f.container], decorator };
 }
 
 export function selectIconFill(
   recipe: ItemRecipe,
-  variant: Pick<ItemVariant, 'checked' | 'focused' | 'readOnly'> & {
-    preview: boolean;
-  }
+  variant: Pick<
+    ItemStateInput,
+    'checked' | 'focused' | 'readOnly' | 'preview'
+  >
 ): string {
   if (variant.preview) return recipe.iconFills.preview;
   if (!variant.checked) return recipe.iconFills.unchecked;

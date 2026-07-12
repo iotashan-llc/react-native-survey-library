@@ -6,8 +6,13 @@
  */
 import { StyleSheet } from 'react-native';
 import { resolveTheme } from '../../../theme-core/resolve';
-import { buildItemRecipe, selectItemStyles, selectIconFill } from '../item';
-import type { ItemVariant } from '../item';
+import {
+  buildItemRecipe,
+  resolveItemLegalState,
+  selectItemStyles,
+  selectIconFill,
+} from '../item';
+import type { ItemStateInput, ItemLegalState } from '../item';
 import { toBoxShadow, composeShadowLayers } from '../../shadows';
 import { resolveColorVar } from '../tokenLookup';
 import type { RecipeBuildDiagnostic } from '../types';
@@ -91,7 +96,7 @@ describe('item decorator shadow composition — inner base, innerReset+ring focu
     const flat = StyleSheet.flatten([
       recipe.fragments.decoratorBase,
       recipe.fragments.decoratorChecked,
-    ]);
+    ])!;
     expect(flat.boxShadow).toEqual([]);
     expect(flat.elevation).toBe(0);
   });
@@ -106,7 +111,7 @@ describe('item decorator shadow composition — inner base, innerReset+ring focu
         r.fragments.decoratorReadOnly,
         r.fragments.decoratorPreview,
       ]) {
-        const flat = StyleSheet.flatten([r.fragments.decoratorBase, fragment]);
+        const flat = StyleSheet.flatten([r.fragments.decoratorBase, fragment])!;
         expect(flat.boxShadow).toEqual([]);
         expect(flat.elevation).toBe(0);
       }
@@ -119,7 +124,7 @@ describe('item decorator shadow composition — inner base, innerReset+ring focu
       platform: { os: 'android', apiLevel: 21 },
       diagnostics,
     });
-    const flat = StyleSheet.flatten(r.fragments.decoratorBase);
+    const flat = StyleSheet.flatten(r.fragments.decoratorBase)!;
     expect(typeof flat.elevation).toBe('number');
     expect(
       diagnostics.some(
@@ -129,217 +134,181 @@ describe('item decorator shadow composition — inner base, innerReset+ring focu
   });
 });
 
-describe('selectItemStyles — exactly the 12 fixture-locked legal states', () => {
+describe('resolveItemLegalState + selectItemStyles — the fixture\'s EXACT 12 legal tuples (codex impl-review major 2)', () => {
   const recipe = buildItemRecipe(resolved, { platform: { os: 'ios' } });
   const mode = { narrow: false, rtl: false };
+  const flatten = (arr: object[]) => Object.assign({}, ...arr);
 
-  const legalStates: ItemVariant[] = [
-    {
-      checked: false,
-      readOnly: false,
-      preview: false,
-      error: false,
-      pressed: false,
-      focused: false,
-    },
-    {
-      checked: true,
-      readOnly: false,
-      preview: false,
-      error: false,
-      pressed: false,
-      focused: false,
-    },
-    {
-      checked: false,
-      readOnly: true,
-      preview: false,
-      error: false,
-      pressed: false,
-      focused: false,
-    },
-    {
-      checked: true,
-      readOnly: true,
-      preview: false,
-      error: false,
-      pressed: false,
-      focused: false,
-    },
-    {
-      checked: false,
-      readOnly: false,
-      preview: true,
-      error: false,
-      pressed: false,
-      focused: false,
-    },
-    {
-      checked: true,
-      readOnly: false,
-      preview: true,
-      error: false,
-      pressed: false,
-      focused: false,
-    },
-    {
-      checked: false,
-      readOnly: false,
-      preview: false,
-      error: true,
-      pressed: false,
-      focused: false,
-    },
-    {
-      checked: true,
-      readOnly: false,
-      preview: false,
-      error: true,
-      pressed: false,
-      focused: false,
-    },
-    {
-      checked: false,
-      readOnly: false,
-      preview: false,
-      error: false,
-      pressed: true,
-      focused: false,
-    },
-    {
-      checked: false,
-      readOnly: false,
-      preview: false,
-      error: false,
-      pressed: false,
-      focused: true,
-    },
-    {
-      checked: true,
-      readOnly: false,
-      preview: false,
-      error: false,
-      pressed: false,
-      focused: true,
-    },
-    {
-      checked: false,
-      readOnly: false,
-      preview: false,
-      error: false,
-      pressed: false,
-      focused: false,
-      none: true,
-    },
+  const baseInput: ItemStateInput = {
+    checked: false,
+    pressed: false,
+    focused: false,
+    readOnly: false,
+    preview: false,
+    error: false,
+    allowHover: true,
+  };
+
+  // The fixture's 12 legal tuples, expressed as raw-flag inputs and the
+  // legal state each must normalize to.
+  const tuples: Array<[string, ItemStateInput, ItemLegalState]> = [
+    ['base', baseInput, { kind: 'base', checked: false, addOn: undefined }],
+    [
+      'checked',
+      { ...baseInput, checked: true, allowHover: false },
+      { kind: 'base', checked: true, addOn: undefined },
+    ],
+    [
+      'readOnly',
+      { ...baseInput, readOnly: true, allowHover: false },
+      { kind: 'readOnly', checked: false },
+    ],
+    [
+      'checked+readOnly',
+      { ...baseInput, checked: true, readOnly: true, allowHover: false },
+      { kind: 'readOnly', checked: true },
+    ],
+    [
+      'preview',
+      { ...baseInput, preview: true },
+      { kind: 'preview', checked: false },
+    ],
+    [
+      'checked+preview',
+      { ...baseInput, checked: true, preview: true, allowHover: false },
+      { kind: 'preview', checked: true },
+    ],
+    ['error', { ...baseInput, error: true }, { kind: 'error', checked: false }],
+    [
+      'checked+error',
+      { ...baseInput, checked: true, error: true, allowHover: false },
+      { kind: 'error', checked: true },
+    ],
+    ['pressed (gate passed)', { ...baseInput, pressed: true }, { kind: 'pressed' }],
+    [
+      'focused',
+      { ...baseInput, focused: true },
+      { kind: 'focused', checked: false },
+    ],
+    [
+      'checked+focused',
+      { ...baseInput, checked: true, focused: true, allowHover: false },
+      { kind: 'focused', checked: true },
+    ],
+    [
+      'selectAll add-on (composes with base)',
+      { ...baseInput, addOn: 'selectAll' },
+      { kind: 'base', checked: false, addOn: 'selectAll' },
+    ],
   ];
 
-  it.each(legalStates.map((v, i) => [i, v] as const))(
-    'legal state %i selects without throwing and returns a non-empty style array',
-    (_i, variant) => {
-      const styles = selectItemStyles(recipe, variant, mode, 'checkbox');
-      expect(Array.isArray(styles)).toBe(true);
-      expect(styles.length).toBeGreaterThan(0);
+  it.each(tuples)('%s normalizes to its fixture tuple', (_name, input, expected) => {
+    expect(resolveItemLegalState(input)).toEqual(expected);
+  });
+
+  it.each(tuples)(
+    '%s selects non-empty container AND decorator slot arrays',
+    (_name, input) => {
+      const slots = selectItemStyles(recipe, input, mode, 'checkbox');
+      expect(slots.container.length).toBeGreaterThan(0);
+      expect(slots.decorator.length).toBeGreaterThan(0);
     }
   );
+
+  it('the hover gate is enforced IN the selector: pressed with allowHover=false normalizes away', () => {
+    expect(
+      resolveItemLegalState({ ...baseInput, pressed: true, allowHover: false })
+    ).toEqual({ kind: 'base', checked: false, addOn: undefined });
+  });
+
+  it('the hover gate is enforced IN the selector: pressed while readOnly normalizes to readOnly', () => {
+    expect(
+      resolveItemLegalState({
+        ...baseInput,
+        pressed: true,
+        readOnly: true,
+      })
+    ).toEqual({ kind: 'readOnly', checked: false });
+  });
+
+  it('none/selectAll add-ons are mutually exclusive by type and compose with base/checked only (no delta on stateful tuples)', () => {
+    expect(
+      resolveItemLegalState({ ...baseInput, readOnly: true, addOn: 'none' })
+    ).toEqual({ kind: 'readOnly', checked: false });
+  });
+
+  it('container and decorator slots are SEPARATE: state fragments only reach the decorator', () => {
+    const base = selectItemStyles(recipe, baseInput, mode, 'checkbox');
+    const readOnly = selectItemStyles(
+      recipe,
+      { ...baseInput, readOnly: true, allowHover: false },
+      mode,
+      'checkbox'
+    );
+    // container slot is state-independent
+    expect(readOnly.container).toEqual(base.container);
+    // decorator slot carries the state delta
+    expect(flatten(readOnly.decorator).backgroundColor).not.toEqual(
+      flatten(base.decorator).backgroundColor
+    );
+    // and the container slot does NOT contain decorator metrics
+    expect(flatten(base.container).width).toBeUndefined();
+  });
 
   it('readOnly wins over checked for decorator background (state.readOnly = background-dark, no shadow)', () => {
     const checkedOnly = selectItemStyles(
       recipe,
-      {
-        checked: true,
-        readOnly: false,
-        preview: false,
-        error: false,
-        pressed: false,
-        focused: false,
-      },
+      { ...baseInput, checked: true, allowHover: false },
       mode,
       'checkbox'
     );
     const checkedReadOnly = selectItemStyles(
       recipe,
-      {
-        checked: true,
-        readOnly: true,
-        preview: false,
-        error: false,
-        pressed: false,
-        focused: false,
-      },
+      { ...baseInput, checked: true, readOnly: true, allowHover: false },
       mode,
       'checkbox'
     );
-    const flatten = (arr: object[]) => Object.assign({}, ...arr);
-    expect(flatten(checkedOnly).backgroundColor).not.toEqual(
-      flatten(checkedReadOnly).backgroundColor
+    expect(flatten(checkedOnly.decorator).backgroundColor).not.toEqual(
+      flatten(checkedReadOnly.decorator).backgroundColor
+    );
+    expect(flatten(checkedReadOnly.decorator).boxShadow).toEqual([]);
+  });
+
+  it('pressed (gate passed) changes the decorator background (background-dim-dark)', () => {
+    const pressed = selectItemStyles(
+      recipe,
+      { ...baseInput, pressed: true },
+      mode,
+      'checkbox'
+    );
+    const base = selectItemStyles(recipe, baseInput, mode, 'checkbox');
+    expect(flatten(pressed.decorator).backgroundColor).not.toEqual(
+      flatten(base.decorator).backgroundColor
     );
   });
 
-  it('pressed is gated by allowHover && !readOnly (selector accepts the flag directly -- caller enforces the gate before calling)', () => {
-    const pressed = selectItemStyles(
+  it('checked+focused: the focus ring wins the decorator shadow, focus background wins over checked', () => {
+    const slots = selectItemStyles(
       recipe,
-      {
-        checked: false,
-        readOnly: false,
-        preview: false,
-        error: false,
-        pressed: true,
-        focused: false,
-      },
+      { ...baseInput, checked: true, focused: true, allowHover: false },
       mode,
       'checkbox'
     );
-    const base = selectItemStyles(
-      recipe,
-      {
-        checked: false,
-        readOnly: false,
-        preview: false,
-        error: false,
-        pressed: false,
-        focused: false,
-      },
-      mode,
-      'checkbox'
-    );
-    const flatten = (arr: object[]) => Object.assign({}, ...arr);
-    expect(flatten(pressed).backgroundColor).not.toEqual(
-      flatten(base).backgroundColor
+    const flat = flatten(slots.decorator);
+    expect(flat.boxShadow).toEqual(recipe.fragments.decoratorFocused.boxShadow);
+    expect(flat.backgroundColor).toBe(
+      recipe.fragments.decoratorFocused.backgroundColor
     );
   });
 
   it('shape switches the decorator radius fragment (checkbox vs radio)', () => {
-    const checkboxStyles = selectItemStyles(
-      recipe,
-      {
-        checked: false,
-        readOnly: false,
-        preview: false,
-        error: false,
-        pressed: false,
-        focused: false,
-      },
-      mode,
-      'checkbox'
-    );
-    const radioStyles = selectItemStyles(
-      recipe,
-      {
-        checked: false,
-        readOnly: false,
-        preview: false,
-        error: false,
-        pressed: false,
-        focused: false,
-      },
-      mode,
-      'radio'
-    );
-    const flatten = (arr: object[]) => Object.assign({}, ...arr);
-    expect(flatten(checkboxStyles).borderRadius).toBe(2);
-    expect(flatten(radioStyles).borderRadius).toBe(12);
+    const checkboxSlots = selectItemStyles(recipe, baseInput, mode, 'checkbox');
+    const radioSlots = selectItemStyles(recipe, baseInput, mode, 'radio');
+    expect(flatten(checkboxSlots.decorator).borderRadius).toBe(2);
+    expect(flatten(radioSlots.decorator).borderRadius).toBe(12);
   });
 });
+
 
 describe('selectIconFill — 0.7-metrics-fixture.md icon.fill table (round-2 corrected)', () => {
   const recipe = buildItemRecipe(resolved, iosCtx);

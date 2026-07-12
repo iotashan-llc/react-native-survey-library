@@ -17,14 +17,37 @@ import { mapShadowForPlatform, composeShadowLayers } from '../shadows';
 import { reportShadowResult } from './types';
 import type { BuildContext } from './types';
 
-export interface InputVariant {
+export type InputCounterSize = 'normal' | 'big';
+
+/**
+ * RAW state inputs — the selector normalizes these to EXACTLY one of the
+ * fixture's 9 legal tuples (codex impl-review major 2).
+ */
+export interface InputStateInput {
   focused: boolean;
   readOnly: boolean;
   preview: boolean;
   error: boolean;
-  counter: boolean;
-  counterBig: boolean;
+  /** Character-counter reservation size; the reserved end padding is a FOCUSED-state behavior (fixture: "focused reserved end padding"). */
+  counter?: InputCounterSize;
+  /** Reserved — unreachable for text getters (dead upstream branch); honored only for hosts appending the class manually. */
+  disabled?: boolean;
 }
+
+/**
+ * The fixture's EXACT 9 legal tuples ("Legal-state enumerations": base ·
+ * focused · readOnly · previewVariant · error · error+focused · counter ·
+ * counterBig · disabledReserved) as a discriminated union — base(1),
+ * focused×counter(3), readOnly(1), preview(1), error×focused(2),
+ * disabledReserved(1).
+ */
+export type InputLegalState =
+  | { kind: 'base' }
+  | { kind: 'focused'; counter?: InputCounterSize }
+  | { kind: 'readOnly' }
+  | { kind: 'preview' }
+  | { kind: 'error'; focused: boolean }
+  | { kind: 'disabledReserved' };
 
 export interface InputRecipe {
   fragments: {
@@ -154,21 +177,58 @@ export function buildInputRecipe(
   return { fragments };
 }
 
+/**
+ * Normalizes raw flags to EXACTLY one of the fixture's 9 legal tuples.
+ * Precedence: disabledReserved (host-appended, whole-control override) >
+ * readOnly > preview (both zero the interactive affordances
+ * unconditionally per the fixture) > error(±focused) > focused(+counter)
+ * > base. The counter reservation only exists WITH focus ("focused
+ * reserved end padding").
+ */
+export function resolveInputLegalState(
+  input: InputStateInput
+): InputLegalState {
+  if (input.disabled) return { kind: 'disabledReserved' };
+  if (input.readOnly) return { kind: 'readOnly' };
+  if (input.preview) return { kind: 'preview' };
+  if (input.error) return { kind: 'error', focused: input.focused };
+  if (input.focused) return { kind: 'focused', counter: input.counter };
+  return { kind: 'base' };
+}
+
+/**
+ * Exhaustive composition map over the legal-state union — no path can
+ * compose an unenumerated combination (codex impl-review major 2).
+ */
 export function selectInputStyles(
   recipe: InputRecipe,
-  variant: InputVariant,
+  input: InputStateInput,
   _mode: { narrow: boolean; rtl: boolean }
 ): TextStyle[] {
   const f = recipe.fragments;
+  const state = resolveInputLegalState(input);
   const styles: TextStyle[] = [f.base];
-  if (variant.error) styles.push(f.error);
-  if (variant.focused) styles.push(f.focused);
-  if (variant.counter) styles.push(f.focusedCounterPadding);
-  if (variant.counterBig) styles.push(f.focusedCounterPaddingBig);
-  // preview/readOnly compose LAST -- they win layout/shadow overrides
-  // regardless of error/focused (fixture: preview zeroes radius/padding
-  // unconditionally; readOnly removes the shadow unconditionally).
-  if (variant.preview) styles.push(f.preview);
-  if (variant.readOnly) styles.push(f.readOnly);
+  switch (state.kind) {
+    case 'base':
+      break;
+    case 'focused':
+      styles.push(f.focused);
+      if (state.counter === 'normal') styles.push(f.focusedCounterPadding);
+      if (state.counter === 'big') styles.push(f.focusedCounterPaddingBig);
+      break;
+    case 'readOnly':
+      styles.push(f.readOnly);
+      break;
+    case 'preview':
+      styles.push(f.preview);
+      break;
+    case 'error':
+      styles.push(f.error);
+      if (state.focused) styles.push(f.focused);
+      break;
+    case 'disabledReserved':
+      styles.push(f.disabledReserved);
+      break;
+  }
   return styles;
 }
