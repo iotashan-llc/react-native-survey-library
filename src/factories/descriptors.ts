@@ -26,6 +26,9 @@
  */
 import type { ComponentType } from 'react';
 import { EmptyQuestion } from '../components/EmptyQuestion';
+import { SurveyLocStringViewer } from '../components/LocStringViewer';
+import { SurveyHeader } from '../components/SurveyHeader';
+import { LogoImage } from '../components/LogoImage';
 
 export type DescriptorRoute = 'template' | 'renderer' | 'element';
 
@@ -63,6 +66,37 @@ export const DESCRIPTOR_TABLE: readonly Descriptor[] = [
     route: 'template',
     component: () => EmptyQuestion,
     milestone: 'M0',
+  },
+
+  // M1, task 1.6 — element-route rows (RNElementFactory keyspace;
+  // `questionType` mirrors the dispatch key: element keys are not
+  // serializer class names and are exempt from the classification gate —
+  // see manifest.ts `diffManifestConsistency`, `route === 'element'`).
+  {
+    status: 'supported',
+    questionType: 'sv-string-viewer',
+    // = LocalizableString.defaultRenderer — every renderLocString call
+    // dispatches here unless the string's owner names another renderer.
+    dispatchKey: 'sv-string-viewer',
+    route: 'element',
+    component: () => SurveyLocStringViewer,
+    milestone: 'M1',
+  },
+  {
+    status: 'supported',
+    questionType: 'survey-header',
+    dispatchKey: 'survey-header',
+    route: 'element',
+    component: () => SurveyHeader,
+    milestone: 'M1',
+  },
+  {
+    status: 'supported',
+    questionType: 'sv-logo-image',
+    dispatchKey: 'sv-logo-image',
+    route: 'element',
+    component: () => LogoImage,
+    milestone: 'M1',
   },
   {
     status: 'planned',
