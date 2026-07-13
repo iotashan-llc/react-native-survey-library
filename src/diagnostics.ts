@@ -116,6 +116,24 @@ export interface ElementWrapperMissingPayload {
   reason: string;
 }
 
+/**
+ * Emitted (once per question) by the 1.9 draft/commit adapter when a
+ * masked text question requested per-keystroke commits (`textUpdateMode:
+ * "onTyping"`, survey- or question-level) but gets blur-commit instead.
+ * Core itself downgrades masked questions to blur-commit on every
+ * platform (`QuestionTextModel.getIsInputTextUpdate`,
+ * question_text.ts:619-621); the adapter enforces the same gate
+ * explicitly and surfaces WHY typing isn't committing live (design:
+ * docs/design/1.9-draft-commit.md). Per-keystroke mask formatting
+ * arrives with 1.10's text input component.
+ */
+export interface MaskedOnTypingDowngradedPayload {
+  code: 'masked-on-typing-downgraded';
+  questionType: string;
+  name: string | undefined;
+  maskType: string;
+}
+
 export type DiagnosticPayload =
   | UnsupportedQuestionTypePayload
   | CustomWidgetIgnoredPayload
@@ -124,7 +142,8 @@ export type DiagnosticPayload =
   | SanitizedHtmlDiagnosticPayload
   | SanitizedHtmlLinkPressDroppedPayload
   | ImageUriBlockedPayload
-  | ElementWrapperMissingPayload;
+  | ElementWrapperMissingPayload
+  | MaskedOnTypingDowngradedPayload;
 
 export type DiagnosticHandler = (payload: DiagnosticPayload) => void;
 
@@ -183,6 +202,20 @@ export function reportCustomWidgetIgnoredOnce(
 ): void {
   if (customWidgetIgnoredEmitted.has(question)) return;
   customWidgetIgnoredEmitted.add(question);
+  reportDiagnostic(payload);
+}
+
+/** Once per QUESTION, full stop (same dedup shape as
+ * `reportCustomWidgetIgnoredOnce`): adapter replacement/recreation on the
+ * same question must not re-emit. */
+const maskedOnTypingDowngradedEmitted = new WeakSet<Question>();
+
+export function reportMaskedOnTypingDowngradedOnce(
+  question: Question,
+  payload: MaskedOnTypingDowngradedPayload
+): void {
+  if (maskedOnTypingDowngradedEmitted.has(question)) return;
+  maskedOnTypingDowngradedEmitted.add(question);
   reportDiagnostic(payload);
 }
 
