@@ -99,10 +99,17 @@ export interface SanitizedHtmlLinkPressDroppedPayload {
  *   handle and no page fallback (once per model instance).
  * - `no-scroll-host` — a scroll request arrived before/without the Survey
  *   root registering its ScrollView host (once per survey instance).
+ * - `allow-override-ignored` — a consumer `onScrollToTop` handler tried to
+ *   reassign `options.allow` after the bridge locked it false; the write
+ *   was ignored (once per install). Scroll ownership is the bridge's —
+ *   consumers suppress the native scroll via the `onScrollRequest` seam.
  */
 export interface LifecycleDiagnosticPayload {
   code: 'lifecycle-diagnostic';
-  lifecycleCode: 'target-unregistered' | 'no-scroll-host';
+  lifecycleCode:
+    | 'target-unregistered'
+    | 'no-scroll-host'
+    | 'allow-override-ignored';
   elementName: string | undefined;
   elementType: string | undefined;
 }

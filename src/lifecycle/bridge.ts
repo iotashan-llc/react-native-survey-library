@@ -74,6 +74,46 @@ export function installLifecycleBridge(
   let flushTimer: ReturnType<typeof setTimeout> | null = null;
   let settleTimer: ReturnType<typeof setTimeout> | null = null;
   let reportedNoScrollHost = false;
+  let reportedAllowOverride = false;
+
+  /**
+   * Makes the cancellation IRREVERSIBLE for the dispatch (review round 2,
+   * critical): `EventBase.fire` hands the SAME mutable options object to
+   * every later subscriber (event.ts:17-23), so a plain `allow = false`
+   * could be reassigned by a consumer handler, re-opening core's DOM
+   * block and the unguarded `settings.environment` destructure
+   * (survey.ts:5872). The getter pins `false`; the setter no-ops (a
+   * throwing setter would crash strict-mode consumer handlers) and
+   * surfaces the `allow-override-ignored` diagnostic once per install.
+   */
+  function lockAllowFalse(eventOptions: ScrollToTopEvent): void {
+    try {
+      Object.defineProperty(eventOptions, 'allow', {
+        configurable: false,
+        enumerable: true,
+        get: () => false,
+        set: () => {
+          if (!reportedAllowOverride) {
+            reportedAllowOverride = true;
+            const question = (eventOptions.question ??
+              eventOptions.element ??
+              null) as unknown as Base | null;
+            reportDiagnostic({
+              code: 'lifecycle-diagnostic',
+              lifecycleCode: 'allow-override-ignored',
+              elementName: question ? readElementName(question) : undefined,
+              elementType: question ? readElementType(question) : undefined,
+            });
+          }
+        },
+      });
+    } catch {
+      // A consumer-frozen/locked options object can't be redefined;
+      // plain assignment is the remaining best effort (non-throwing
+      // invariant — the bridge must never crash the funnel).
+      eventOptions.allow = false;
+    }
+  }
 
   function completeFocusIntent(
     question: Question,
@@ -185,9 +225,10 @@ export function installLifecycleBridge(
     eventOptions: ScrollToTopEvent
   ): void {
     // Native ownership — never let core reach the DOM block or the
-    // settings.environment destructure. Set even when uninstalled races
+    // settings.environment destructure. Locked (not just assigned) so no
+    // later subscriber can reassign it; set even when uninstalled races
     // are impossible (we removed the handler), purely defensive.
-    eventOptions.allow = false;
+    lockAllowFalse(eventOptions);
     if (!installed) return;
     const question = (eventOptions.question ?? null) as Question | null;
     const page = (eventOptions.page ?? null) as PageModel | null;
