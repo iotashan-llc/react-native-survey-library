@@ -170,3 +170,49 @@ working.
 **Workaround:** express element widths in `px`, `%`, or the `calc()`/
 `min()`/`max()` combinations of those — the only forms survey-core's own
 row math ever generates.
+
+## Text input editing (task 1.9)
+
+Web renders text inputs uncontrolled: the DOM input owns in-progress
+text. React Native's `TextInput` is used controlled here (architecture
+invariant 3), with an explicit draft/commit adapter honoring
+`textUpdateMode`. Commit timing, validation timing, expression timing,
+and the external-write policy all mirror web exactly (verified against
+`survey-react-ui`'s `updateDomElement`); the entries below are the
+observable edges of the controlled pattern itself.
+
+### External or transformed writes while typing move the cursor
+
+When the model rewrites a value mid-edit — a trigger or
+`onValueChanging` handler changing the committed text, or
+`survey.setValue` from host code while the field is focused — the
+adapter replaces the in-progress draft, exactly as web overwrites the
+DOM input's buffer (its `updateDomElement` has no focus check). On a
+focused controlled `TextInput` that replacement also repositions the
+cursor (platform-dependent, typically to the end) and can abandon an
+in-flight IME composition. Web's uncontrolled input has the same
+caret-jump on genuine external writes; the difference is only that RN's
+controlled pattern makes the value prop the single source of truth, so
+the reset is guaranteed rather than browser-dependent. Self-commits
+(the user's own typing under `textUpdateMode: "onTyping"`) never
+trigger this — the committed value loosely equals the draft, so the
+draft is left alone.
+
+**Workaround:** avoid rewriting a question's value from
+`onValueChanging`/triggers while the user is actively editing it, or
+use `textUpdateMode: "onBlur"` (the default) so rewrites land at blur
+time.
+
+### Masked text questions never commit per keystroke
+
+Not a divergence — survey-core itself downgrades masked questions
+(`maskType` other than `"none"`) to blur-commit on every platform,
+including web (`QuestionTextModel.getIsInputTextUpdate`). But because
+RN hosts often expect live masking, this library makes the contract
+explicit: the draft/commit adapter enforces the blur-commit gate
+independently of that core internal and emits a one-shot
+`masked-on-typing-downgraded` diagnostic (through the standard
+diagnostic seam) when a survey or question requested
+`textUpdateMode: "onTyping"` on a masked question. Per-keystroke mask
+formatting of the visible text (the web `InputElementAdapter` role)
+arrives with the text question component (task 1.10).
