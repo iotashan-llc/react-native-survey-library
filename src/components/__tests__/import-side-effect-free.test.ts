@@ -31,20 +31,29 @@ function factoryStateAfterImporting(componentModulePath: string): {
 }
 
 describe('component modules are import-side-effect-free', () => {
-  it.each([['../EmptyQuestion'], ['../UnsupportedQuestion']])(
-    'importing %s registers nothing into either factory',
-    (modulePath) => {
-      const { questionTypes, elementTypes } =
-        factoryStateAfterImporting(modulePath);
-      expect(questionTypes).toEqual([]);
-      expect(elementTypes).toEqual([]);
-    }
-  );
+  it.each([
+    ['../EmptyQuestion'],
+    ['../UnsupportedQuestion'],
+    ['../Comment'],
+    ['../Checkbox'],
+    ['../Radiogroup'],
+    ['../ChoiceItemRow'],
+  ])('importing %s registers nothing into either factory', (modulePath) => {
+    const { questionTypes, elementTypes } =
+      factoryStateAfterImporting(modulePath);
+    expect(questionTypes).toEqual([]);
+    expect(elementTypes).toEqual([]);
+  });
 
   it('control: importing the registrar DOES register (the probe can tell the difference)', () => {
     const { questionTypes } = factoryStateAfterImporting(
       '../../factories/register-all'
     );
-    expect(questionTypes).toEqual(['empty']);
+    expect(questionTypes).toEqual([
+      'checkbox',
+      'comment',
+      'empty',
+      'radiogroup',
+    ]);
   });
 });

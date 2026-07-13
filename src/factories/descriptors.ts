@@ -26,6 +26,9 @@
  */
 import type { ComponentType } from 'react';
 import { EmptyQuestion } from '../components/EmptyQuestion';
+import { Comment } from '../components/Comment';
+import { Checkbox } from '../components/Checkbox';
+import { Radiogroup } from '../components/Radiogroup';
 
 export type DescriptorRoute = 'template' | 'renderer' | 'element';
 
@@ -89,5 +92,32 @@ export const DESCRIPTOR_TABLE: readonly Descriptor[] = [
       "regardless of the registered custom type's own name — until the " +
       'adapter exists, a dispatch miss on this key falls through to the ' +
       'unsupported-type fallback + diagnostic.',
+  },
+  // Phase 1 — v0.1 (M1). getTemplate() === getType() for all three (no
+  // override; verified against a live fixture in manifest.ts's
+  // runtimeRenderable construction gate) — dispatchKey === questionType.
+  {
+    status: 'supported',
+    questionType: 'comment',
+    dispatchKey: 'comment',
+    route: 'template',
+    component: () => Comment,
+    milestone: 'M1',
+  },
+  {
+    status: 'supported',
+    questionType: 'checkbox',
+    dispatchKey: 'checkbox',
+    route: 'template',
+    component: () => Checkbox,
+    milestone: 'M1',
+  },
+  {
+    status: 'supported',
+    questionType: 'radiogroup',
+    dispatchKey: 'radiogroup',
+    route: 'template',
+    component: () => Radiogroup,
+    milestone: 'M1',
   },
 ];
