@@ -21,13 +21,18 @@
  * — ComponentCollection adapters land in task 2.11; until then a dispatch
  * miss on either falls through to the unsupported-type fallback +
  * diagnostic, which is honest: no adapter exists yet). M1 rows so far:
- * `boolean` (template + two renderer-route rows for `checkbox`/`radio`
- * renderAs modes, task 1.13) and `expression` (template, task 1.15).
- * Everything else arrives per milestone by adding rows here — this table
- * is NOT pre-populated with every future dispatch key.
+ * the task-1.6 element-route rows (`sv-string-viewer`, `survey-header`,
+ * `sv-logo-image`), `boolean` (template + two renderer-route rows for
+ * `checkbox`/`radio` renderAs modes, task 1.13) and `expression`
+ * (template, task 1.15). Everything else arrives per milestone by adding
+ * rows here — this table is NOT pre-populated with every future dispatch
+ * key.
  */
 import type { ComponentType } from 'react';
 import { EmptyQuestion } from '../components/EmptyQuestion';
+import { SurveyLocStringViewer } from '../components/LocStringViewer';
+import { SurveyHeader } from '../components/SurveyHeader';
+import { LogoImage } from '../components/LogoImage';
 import {
   BooleanCheckboxQuestion,
   BooleanQuestion,
@@ -71,6 +76,37 @@ export const DESCRIPTOR_TABLE: readonly Descriptor[] = [
     route: 'template',
     component: () => EmptyQuestion,
     milestone: 'M0',
+  },
+
+  // M1, task 1.6 — element-route rows (RNElementFactory keyspace;
+  // `questionType` mirrors the dispatch key: element keys are not
+  // serializer class names and are exempt from the classification gate —
+  // see manifest.ts `diffManifestConsistency`, `route === 'element'`).
+  {
+    status: 'supported',
+    questionType: 'sv-string-viewer',
+    // = LocalizableString.defaultRenderer — every renderLocString call
+    // dispatches here unless the string's owner names another renderer.
+    dispatchKey: 'sv-string-viewer',
+    route: 'element',
+    component: () => SurveyLocStringViewer,
+    milestone: 'M1',
+  },
+  {
+    status: 'supported',
+    questionType: 'survey-header',
+    dispatchKey: 'survey-header',
+    route: 'element',
+    component: () => SurveyHeader,
+    milestone: 'M1',
+  },
+  {
+    status: 'supported',
+    questionType: 'sv-logo-image',
+    dispatchKey: 'sv-logo-image',
+    route: 'element',
+    component: () => LogoImage,
+    milestone: 'M1',
   },
   // Task 1.13 (boolean): three rows, one per `renderAs` mode (verified
   // against survey-react-ui's boolean.tsx/boolean-checkbox.tsx/

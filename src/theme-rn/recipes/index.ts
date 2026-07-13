@@ -17,6 +17,7 @@ import {
   buildUnsupportedQuestionRecipe,
   type UnsupportedQuestionRecipe,
 } from './unsupportedQuestion';
+import { buildHeaderRecipe, type HeaderRecipe } from './header';
 
 export interface Recipes {
   item: ItemRecipe;
@@ -24,6 +25,8 @@ export interface Recipes {
   button: ButtonRecipe;
   questionTitle: QuestionTitleRecipe;
   unsupportedQuestion: UnsupportedQuestionRecipe;
+  /** Basic survey header (task 1.6). */
+  header: HeaderRecipe;
 }
 
 export function buildRecipes(
@@ -36,6 +39,7 @@ export function buildRecipes(
     button: buildButtonRecipe(resolved, buildCtx),
     questionTitle: buildQuestionTitleRecipe(resolved, buildCtx),
     unsupportedQuestion: buildUnsupportedQuestionRecipe(resolved, buildCtx),
+    header: buildHeaderRecipe(resolved, buildCtx),
   };
 }
 
@@ -45,3 +49,4 @@ export * from './input';
 export * from './button';
 export * from './questionTitle';
 export * from './unsupportedQuestion';
+export * from './header';

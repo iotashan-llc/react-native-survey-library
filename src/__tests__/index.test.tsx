@@ -23,7 +23,7 @@ describe('test rails', () => {
 });
 
 describe('index.tsx: registrar wiring (design: docs/design/0.5-factories.md)', () => {
-  it('importing the package root registers the supported descriptor rows into RNQuestionFactory', () => {
+  it('importing the package root registers the supported descriptor rows into both factories', () => {
     expect(RNQuestionFactory.getAllTypes()).toEqual([
       'boolean',
       'empty',
@@ -31,7 +31,11 @@ describe('index.tsx: registrar wiring (design: docs/design/0.5-factories.md)', (
       'sv-boolean-checkbox',
       'sv-boolean-radio',
     ]);
-    expect(RNElementFactory.getAllTypes()).toEqual([]);
+    expect(RNElementFactory.getAllTypes()).toEqual([
+      'survey-header',
+      'sv-logo-image',
+      'sv-string-viewer',
+    ]);
   });
 
   it('re-exports the unsupported-fallback pieces, usable as the dispatcher combinator', () => {
