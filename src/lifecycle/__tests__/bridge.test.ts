@@ -4,10 +4,15 @@
 
 // Design: docs/design/1.2-lifecycle-bridge.md, test plan #1-#7, #9, #10.
 // Real SurveyModel via the facade (plain Node — no `document`, so
-// survey-core takes the same SSR-safe paths RN does; the unguarded
-// `settings.environment` destructure reproduces identically), mocked
+// survey-core takes the same SSR-safe paths RN does), mocked
 // handles/host. Fake timers drive the bridge's flush (setTimeout 0) and
 // focus-settle (scrollSettleMs) scheduling.
+//
+// HONESTY NOTE (review round 2 #7): importing the facade above installs
+// the settings.environment stub before any test here runs, so this
+// suite CANNOT prove the bridge keeps core away from the unguarded
+// destructure — bridge.interception.test.ts is the unmasked proof
+// (settings.environment forced back to undefined there).
 import { Model } from '../../core/facade';
 import type { PageModel, Question, SurveyModel } from '../../core/facade';
 import { setDiagnosticHandler } from '../../diagnostics';
@@ -37,6 +42,23 @@ const TWO_PAGES_JSON = {
   pages: [
     { name: 'page1', elements: [{ type: 'text', name: 'q1' }] },
     { name: 'page2', elements: [{ type: 'text', name: 'q2' }] },
+  ],
+};
+
+const COLLAPSED_PANEL_JSON = {
+  pages: [
+    {
+      name: 'page1',
+      elements: [
+        {
+          type: 'panel',
+          name: 'panel1',
+          state: 'collapsed',
+          elements: [{ type: 'text', name: 'pq1' }],
+        },
+        { type: 'text', name: 'q1' },
+      ],
+    },
   ],
 };
 
@@ -148,9 +170,10 @@ describe('lifecycle/bridge — installLifecycleBridge', () => {
       const focusInSpy = jest.fn();
       model.onFocusInQuestion.add(focusInSpy);
 
-      // The regression that motivated A15: with `settings.environment`
-      // undefined this used to throw "Cannot read properties of
-      // undefined (reading 'rootElement')".
+      // The regression that motivated A15 ("Cannot read properties of
+      // undefined (reading 'rootElement')"). Here the facade stub also
+      // protects; the UNMASKED interception proof lives in
+      // bridge.interception.test.ts.
       expect(() => model.completeLastPage()).not.toThrow();
       expect(model.state).toBe('running');
 
@@ -169,8 +192,13 @@ describe('lifecycle/bridge — installLifecycleBridge', () => {
       expect(mock.focusFirst).not.toHaveBeenCalled();
       await settleScroll();
       expect(mock.focusFirst).toHaveBeenCalledTimes(1);
-      // focusFirst landed (returned true) -> question.focusIn() parity.
-      expect(focusInSpy).toHaveBeenCalledTimes(1);
+      // focusIn OWNERSHIP (review round 2 #5): the bridge only INITIATES
+      // focus (focusFirst); question.focusIn() is fired by the
+      // component's native input from its actual onFocus event
+      // (ElementHandle.focusFirst contract) — a synchronous boolean
+      // cannot prove async native focus landed, and synthesizing it here
+      // would double-fire onFocusInQuestion once components wire onFocus.
+      expect(focusInSpy).not.toHaveBeenCalled();
       expect(mock.a11yFocus).not.toHaveBeenCalled();
     });
 
@@ -202,10 +230,74 @@ describe('lifecycle/bridge — installLifecycleBridge', () => {
       expect(mock.focusFirst).not.toHaveBeenCalled();
       expect(mock.a11yFocus).not.toHaveBeenCalled();
     });
+
+    it('panel.expand() (scroll-only shape: elementId === question.inputId) scrolls WITHOUT synthesizing focus', async () => {
+      // Review round 2 #2: panel expansion fires the funnel with
+      // `question` NON-null (panel.ts:2499 — `element: q, question: q,
+      // id: q.inputId`, NO onScolledCallback), so `question != null` is
+      // NOT a focus-intent discriminator. The real focus caller
+      // (question.ts:1618) passes `id: this.id`; panel expand passes
+      // `id: q.inputId` (= id + "i"). The bridge discriminates on
+      // elementId === question.id — web parity: panel expand scrolls to
+      // the first question but never focuses its input (no callback).
+      const { model, registry, mockHost } = makeHarness(COLLAPSED_PANEL_JSON);
+      const pq1 = getQuestion(model, 'pq1');
+      const mock = makeHandle(true);
+      registry.registerElement(pq1, mock.handle);
+      const focusInSpy = jest.fn();
+      model.onFocusInQuestion.add(focusInSpy);
+
+      const panel = model.getPanelByName('panel1');
+      expect(panel).toBeTruthy();
+      panel!.expand();
+      // Core defers the expand-scroll via setTimeout(…, 15) when the
+      // panel content isn't rendered yet (panel.ts:2496-2501); 16 covers
+      // that timer PLUS the bridge's 0ms flush scheduled at the t=15
+      // boundary (jest's async advance won't fire a boundary-scheduled
+      // timer within the same advance, nor on a +0 advance).
+      await jest.advanceTimersByTimeAsync(16);
+
+      expect(mockHost.scrollTo).toHaveBeenCalledTimes(1);
+      await settleScroll();
+      expect(mock.focusFirst).not.toHaveBeenCalled();
+      expect(mock.a11yFocus).not.toHaveBeenCalled();
+      expect(focusInSpy).not.toHaveBeenCalled();
+    });
+
+    it('question.focus() (focus shape: elementId === question.id) completes the focus intent', async () => {
+      const { model, registry, mockHost } = makeHarness(TWO_QUESTIONS_JSON);
+      const q1 = getQuestion(model, 'q1');
+      const mock = makeHandle(true);
+      registry.registerElement(q1, mock.handle);
+
+      q1.focus();
+      await flushBridge();
+      expect(mockHost.scrollTo).toHaveBeenCalledTimes(1);
+      await settleScroll();
+      expect(mock.focusFirst).toHaveBeenCalledTimes(1);
+    });
   });
 
-  describe('test plan #3 — cross-page focus', () => {
-    it('focusQuestion() changes the page; the 1.1 render-complete simulation re-enters the funnel and lands focus on the new page', async () => {
+  describe('test plan #3 — cross-page focus (the 1.1 render-complete seam)', () => {
+    // The seam 1.1 MUST wire on page render completion — an EXACT mirror
+    // of web's afterRenderPage (survey.ts:5514-5519): while a focus is
+    // parked in focusingQuestionInfo, afterRenderPage SKIPS
+    // scrollToTopOnPageChange and calls PRIVATE focusQuestionInfo()
+    // (review round 2 #3; the method's existence is pinned by the
+    // api-surface watchlist so core drift fails loudly).
+    function runRenderCompleteSeam(model: SurveyModel): void {
+      const seam = model as unknown as {
+        focusingQuestionInfo?: unknown;
+        focusQuestionInfo(): void;
+      };
+      if (seam.focusingQuestionInfo) {
+        seam.focusQuestionInfo();
+      } else {
+        model.scrollToTopOnPageChange();
+      }
+    }
+
+    it('focusQuestion() parks focusingQuestionInfo across the page change; the seam executes the parked focus', async () => {
       const { model, registry, mockHost } = makeHarness(TWO_PAGES_JSON);
       const q2 = getQuestion(model, 'q2');
       const mock = makeHandle(true);
@@ -215,17 +307,37 @@ describe('lifecycle/bridge — installLifecycleBridge', () => {
       expect(model.focusQuestion('q2')).toBe(true);
       expect(model.currentPageNo).toBe(1);
 
-      // Two-phase: core parked the focus in focusingQuestionInfo waiting
-      // for the page render. Simulate 1.1's render-complete call, which
-      // executes the parked focus (web: afterRenderPage does this).
-      (
-        model as unknown as { focusQuestionInfo: () => void }
-      ).focusQuestionInfo();
+      // Two-phase: the focus is parked waiting for the page render; the
+      // seam must take the focusQuestionInfo() branch.
+      expect(
+        (model as unknown as { focusingQuestionInfo?: unknown })
+          .focusingQuestionInfo
+      ).toBeTruthy();
+      runRenderCompleteSeam(model);
 
       await flushBridge();
       expect(mockHost.scrollTo).toHaveBeenCalledTimes(1);
       await settleScroll();
       expect(mock.focusFirst).toHaveBeenCalledTimes(1);
+    });
+
+    it('plain page change (nothing parked): the seam takes the scrollToTopOnPageChange branch and scrolls the page without focus', async () => {
+      const { model, registry, mockHost } = makeHarness(TWO_PAGES_JSON);
+      const page2 = model.pages[1] as PageModel;
+      const pageMock = makeHandle('none');
+      registry.registerElement(page2, pageMock.handle);
+
+      expect(model.nextPage()).toBe(true);
+      expect(
+        (model as unknown as { focusingQuestionInfo?: unknown })
+          .focusingQuestionInfo
+      ).toBeFalsy();
+      runRenderCompleteSeam(model);
+
+      await flushBridge();
+      expect(mockHost.scrollTo).toHaveBeenCalledTimes(1);
+      await settleScroll();
+      expect(pageMock.a11yFocus).not.toHaveBeenCalled();
     });
   });
 
@@ -411,8 +523,141 @@ describe('lifecycle/bridge — installLifecycleBridge', () => {
     });
   });
 
+  describe('review round 2 #4 — async ordering and coalescing races', () => {
+    it('focus→page same tick: ONE scroll to the LAST target (the page); the focus intent is retained, not dropped', async () => {
+      const { model, registry, mockHost } = makeHarness(TWO_QUESTIONS_JSON);
+      const q1 = getQuestion(model, 'q1');
+      const page = model.pages[0] as PageModel;
+      const qMock = makeHandle(true);
+      const pageMock = makeHandle('none');
+      registry.registerElement(q1, qMock.handle);
+      registry.registerElement(page, pageMock.handle);
+
+      q1.focus();
+      page.scrollToTop();
+
+      await flushBridge();
+      expect(mockHost.measureTarget).toHaveBeenCalledTimes(1);
+      expect(mockHost.measureTarget).toHaveBeenCalledWith(
+        pageMock.handle.containerRef
+      );
+      expect(mockHost.scrollTo).toHaveBeenCalledTimes(1);
+      await settleScroll();
+      // The scroll target coalesced to the page, but q1's focus intent
+      // must survive (coalesced SEPARATELY from the scroll target).
+      expect(qMock.focusFirst).toHaveBeenCalledTimes(1);
+    });
+
+    it('page→focus same tick: ONE scroll to the question; focus completes', async () => {
+      const { model, registry, mockHost } = makeHarness(TWO_QUESTIONS_JSON);
+      const q1 = getQuestion(model, 'q1');
+      const page = model.pages[0] as PageModel;
+      const qMock = makeHandle(true);
+      const pageMock = makeHandle('none');
+      registry.registerElement(q1, qMock.handle);
+      registry.registerElement(page, pageMock.handle);
+
+      page.scrollToTop();
+      q1.focus();
+
+      await flushBridge();
+      expect(mockHost.measureTarget).toHaveBeenCalledTimes(1);
+      expect(mockHost.measureTarget).toHaveBeenCalledWith(
+        qMock.handle.containerRef
+      );
+      expect(mockHost.scrollTo).toHaveBeenCalledTimes(1);
+      await settleScroll();
+      expect(qMock.focusFirst).toHaveBeenCalledTimes(1);
+    });
+
+    it('a measurement superseded mid-flight never scrolls (stale drop)', async () => {
+      const { model, registry, mockHost } = makeHarness(TWO_QUESTIONS_JSON);
+      const q1 = getQuestion(model, 'q1');
+      const q2 = getQuestion(model, 'q2');
+      const mock1 = makeHandle(true);
+      const mock2 = makeHandle(true);
+      registry.registerElement(q1, mock1.handle);
+      registry.registerElement(q2, mock2.handle);
+
+      let resolveFirst!: (m: { y: number; height: number } | null) => void;
+      mockHost.measureTarget
+        .mockImplementationOnce(
+          () =>
+            new Promise<{ y: number; height: number } | null>((resolve) => {
+              resolveFirst = resolve;
+            })
+        )
+        .mockImplementationOnce(async () => ({ y: 900, height: 80 }));
+
+      q1.focus();
+      await flushBridge(); // flush 1 starts and parks on measureTarget
+      q2.focus(); // supersedes while measure 1 is in flight
+      await flushBridge(); // flush 2 completes: scroll to q2
+
+      expect(mockHost.scrollTo).toHaveBeenCalledTimes(1);
+      expect(mockHost.scrollTo).toHaveBeenCalledWith(900, true);
+
+      // The STALE measurement lands late — it must be dropped, never
+      // scrolled (pre-fix it scrolled to q1 AFTER the q2 scroll).
+      resolveFirst({ y: 800, height: 80 });
+      await flushBridge();
+      expect(mockHost.scrollTo).toHaveBeenCalledTimes(1);
+
+      await settleScroll();
+      expect(mock2.focusFirst).toHaveBeenCalledTimes(1);
+      expect(mock1.focusFirst).not.toHaveBeenCalled();
+    });
+
+    it('a second FOCUS request during the settle window supersedes the first completion (old settle canceled)', async () => {
+      const { model, registry, mockHost } = makeHarness(TWO_QUESTIONS_JSON);
+      const q1 = getQuestion(model, 'q1');
+      const q2 = getQuestion(model, 'q2');
+      const mock1 = makeHandle(true);
+      const mock2 = makeHandle(true);
+      registry.registerElement(q1, mock1.handle);
+      registry.registerElement(q2, mock2.handle);
+
+      q1.focus();
+      await flushBridge();
+      expect(mockHost.scrollTo).toHaveBeenCalledTimes(1);
+      await jest.advanceTimersByTimeAsync(150); // mid-settle
+
+      q2.focus();
+      await flushBridge();
+      expect(mockHost.scrollTo).toHaveBeenCalledTimes(2);
+
+      await settleScroll();
+      await settleScroll(); // drain any leftover (pre-fix: q1's leaked timer)
+      expect(mock2.focusFirst).toHaveBeenCalledTimes(1);
+      expect(mock1.focusFirst).not.toHaveBeenCalled();
+    });
+
+    it('a SCROLL-ONLY request during the settle window re-parks the focus intent (completes exactly once, after the new scroll)', async () => {
+      const { model, registry, mockHost } = makeHarness(TWO_QUESTIONS_JSON);
+      const q1 = getQuestion(model, 'q1');
+      const page = model.pages[0] as PageModel;
+      const qMock = makeHandle(true);
+      const pageMock = makeHandle('none');
+      registry.registerElement(q1, qMock.handle);
+      registry.registerElement(page, pageMock.handle);
+
+      q1.focus();
+      await flushBridge();
+      await jest.advanceTimersByTimeAsync(150); // mid-settle
+
+      page.scrollToTop();
+      await flushBridge();
+      expect(mockHost.scrollTo).toHaveBeenCalledTimes(2);
+      expect(qMock.focusFirst).not.toHaveBeenCalled();
+
+      await settleScroll();
+      await settleScroll(); // drain — must NOT double-complete
+      expect(qMock.focusFirst).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('test plan #10 — the onScrollRequest consult seam', () => {
-    it('returning false suppresses the NATIVE SCROLL ONLY: focus intent still completes with focusIn parity', async () => {
+    it('returning false suppresses the NATIVE SCROLL ONLY: focus intent still initiates (focusIn stays component-owned)', async () => {
       const infos: ScrollRequestInfo[] = [];
       const onScrollRequest = jest.fn((info: ScrollRequestInfo) => {
         infos.push(info);
@@ -437,7 +682,9 @@ describe('lifecycle/bridge — installLifecycleBridge', () => {
       expect(infos[0]?.viaPageFallback).toBe(false);
 
       expect(mock.focusFirst).toHaveBeenCalledTimes(1);
-      expect(focusInSpy).toHaveBeenCalledTimes(1);
+      // Ownership (review round 2 #5): the bridge never fires focusIn —
+      // the component's native onFocus does.
+      expect(focusInSpy).not.toHaveBeenCalled();
     });
 
     it('returning true keeps the normal scroll path', async () => {
