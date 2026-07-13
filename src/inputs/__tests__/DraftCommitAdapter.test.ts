@@ -1,8 +1,9 @@
 /**
  * Task 1.9 — text draft/commit adapter (A5). Design:
  * docs/design/1.9-draft-commit.md (state machine, verified upstream
- * semantics with file:line refs, test plan #1-#14 — this suite implements
- * that plan against a REAL survey-core `Model` via the facade).
+ * semantics with file:line refs, test plan #1-#19 — this suite implements
+ * that plan against a REAL survey-core `Model` via the facade; #15-#19
+ * landed with review round 1).
  *
  * The headline contracts under test:
  * - onBlur (default): drafts accumulate locally; question.value and the
@@ -24,6 +25,8 @@ import type {
   QuestionCommentModel,
   QuestionTextModel,
 } from '../../core/facade';
+import { setDiagnosticHandler } from '../../diagnostics';
+import type { DiagnosticPayload } from '../../diagnostics';
 import { DraftCommitAdapter } from '../DraftCommitAdapter';
 
 function textSurvey(
@@ -399,6 +402,217 @@ describe('DraftCommitAdapter — masked text (core mask logic, no DOM adapter)',
 
     expect(adapter.renderedValue).toBe('654-321');
     adapter.dispose();
+  });
+});
+
+describe('DraftCommitAdapter — masked question under onTyping (forced blur-commit)', () => {
+  const maskedOnTyping = () =>
+    textSurvey(
+      { textUpdateMode: 'onTyping' },
+      { maskType: 'pattern', maskSettings: { pattern: '999-999' } }
+    );
+
+  it('test 15: incremental typing never live-commits and never reformats the draft mid-type; blur commits via the mask pipeline', () => {
+    const { model, question } = maskedOnTyping();
+    const changed = countValueChanged(model);
+    const adapter = new DraftCommitAdapter({ question });
+
+    adapter.handleFocus();
+    for (const step of ['1', '12', '123', '123-4', '123-45', '123-456']) {
+      adapter.handleChangeText(step);
+      // No commit-echo bounces a reformatted mask into the draft mid-type.
+      expect(adapter.renderedValue).toBe(step);
+    }
+    expect(question.value).toBeUndefined();
+    expect(changed.count()).toBe(0);
+
+    adapter.handleBlur();
+    expect(question.value).toBe('123456');
+    expect(adapter.renderedValue).toBe('123-456');
+    expect(changed.count()).toBe(1);
+    adapter.dispose();
+  });
+
+  it('test 15b: downgrade diagnostic emitted once per question through the seam; silent when onBlur was requested', () => {
+    const events: DiagnosticPayload[] = [];
+    setDiagnosticHandler((payload) => {
+      events.push(payload);
+    });
+    const downgrades = () =>
+      events.filter((e) => e.code === 'masked-on-typing-downgraded');
+    try {
+      const { question } = maskedOnTyping();
+      const adapter = new DraftCommitAdapter({ question });
+      adapter.handleFocus();
+      adapter.handleChangeText('1');
+      adapter.handleChangeText('12');
+
+      expect(downgrades()).toHaveLength(1);
+      expect(downgrades()[0]).toMatchObject({
+        name: 'q1',
+        questionType: 'text',
+        maskType: 'pattern',
+      });
+
+      // Once per QUESTION: a replacement adapter does not re-emit.
+      adapter.dispose();
+      const replacement = new DraftCommitAdapter({ question });
+      replacement.handleFocus();
+      replacement.handleChangeText('123');
+      expect(downgrades()).toHaveLength(1);
+      replacement.dispose();
+
+      // Masked + onBlur requested: silent — the host gets exactly the
+      // commit timing it asked for.
+      const onBlurCase = textSurvey(
+        {},
+        { maskType: 'pattern', maskSettings: { pattern: '999-999' } }
+      );
+      const quiet = new DraftCommitAdapter({ question: onBlurCase.question });
+      quiet.handleFocus();
+      quiet.handleChangeText('9');
+      expect(downgrades()).toHaveLength(1);
+      quiet.dispose();
+    } finally {
+      setDiagnosticHandler(undefined);
+    }
+  });
+});
+
+describe('DraftCommitAdapter — textUpdateMode switched mid-edit (live isInputTextUpdate read)', () => {
+  it('test 16: onBlur→onTyping while focused — the next keystroke commits', () => {
+    const { model, question } = textSurvey();
+    const changed = countValueChanged(model);
+    const adapter = new DraftCommitAdapter({ question });
+
+    adapter.handleFocus();
+    adapter.handleChangeText('dra');
+    expect(changed.count()).toBe(0);
+
+    model.textUpdateMode = 'onTyping';
+    adapter.handleChangeText('draf');
+    expect(question.value).toBe('draf');
+    expect(changed.count()).toBe(1);
+    adapter.dispose();
+  });
+
+  it('test 16b: onTyping→onBlur while focused — live commits stop; blur commits the final draft', () => {
+    const { model, question } = textSurvey({ textUpdateMode: 'onTyping' });
+    const changed = countValueChanged(model);
+    const adapter = new DraftCommitAdapter({ question });
+
+    adapter.handleFocus();
+    adapter.handleChangeText('a');
+    expect(changed.count()).toBe(1);
+
+    model.textUpdateMode = 'onBlur';
+    adapter.handleChangeText('ab');
+    expect(question.value).toBe('a');
+    expect(changed.count()).toBe(1);
+
+    adapter.handleBlur();
+    expect(question.value).toBe('ab');
+    expect(changed.count()).toBe(2);
+    adapter.dispose();
+  });
+});
+
+describe('DraftCommitAdapter — auto-advance (goNextPageAutomatic)', () => {
+  function twoPageSurvey(mode: string): {
+    model: Model;
+    question: QuestionTextModel;
+  } {
+    const model = new Model({
+      goNextPageAutomatic: true,
+      textUpdateMode: mode,
+      pages: [
+        { elements: [{ type: 'text', name: 'q1' }] },
+        { elements: [{ type: 'text', name: 'q2' }] },
+      ],
+    });
+    return {
+      model,
+      question: model.getQuestionByName('q1') as QuestionTextModel,
+    };
+  }
+
+  it('test 17: blur commit in onBlur mode advances the page (deferred by autoAdvanceDelay); onTyping commits never do (locNotification "text" + supportAutoAdvance gate)', () => {
+    // Core schedules the advance via surveyTimerFunctions.safeTimeOut(
+    // goNextPage, settings.autoAdvanceDelay) — 300ms by default
+    // (survey.ts:7126-7135, surveytimer.ts:10-16).
+    jest.useFakeTimers();
+    try {
+      const blurCase = twoPageSurvey('onBlur');
+      const a1 = new DraftCommitAdapter({ question: blurCase.question });
+      a1.handleFocus();
+      a1.handleChangeText('answer');
+      jest.runAllTimers();
+      expect(blurCase.model.currentPageNo).toBe(0);
+      a1.handleBlur();
+      // Deferred, not synchronous — web parity.
+      expect(blurCase.model.currentPageNo).toBe(0);
+      jest.runAllTimers();
+      expect(blurCase.model.currentPageNo).toBe(1);
+      a1.dispose();
+
+      const typingCase = twoPageSurvey('onTyping');
+      const a2 = new DraftCommitAdapter({ question: typingCase.question });
+      a2.handleFocus();
+      a2.handleChangeText('answer');
+      jest.runAllTimers();
+      expect(typingCase.question.value).toBe('answer');
+      expect(typingCase.model.currentPageNo).toBe(0);
+      a2.handleBlur();
+      jest.runAllTimers();
+      // Web parity: an onTyping text question never auto-advances, even
+      // at blur (supportAutoAdvance is false while isInputTextUpdate —
+      // question_text.ts:622-624).
+      expect(typingCase.model.currentPageNo).toBe(0);
+      a2.dispose();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+});
+
+describe('DraftCommitAdapter — multiple adapters & replacement', () => {
+  it('test 18: replacement — dispose old, create new: old inert, new subscribed', () => {
+    const { model, question } = textSurvey();
+    const oldNotify = jest.fn();
+    const newNotify = jest.fn();
+    const oldAdapter = new DraftCommitAdapter({
+      question,
+      onRenderedValueChange: oldNotify,
+    });
+    oldAdapter.dispose();
+    const newAdapter = new DraftCommitAdapter({
+      question,
+      onRenderedValueChange: newNotify,
+    });
+
+    model.setValue('q1', 'next value');
+
+    expect(newAdapter.renderedValue).toBe('next value');
+    expect(newNotify).toHaveBeenCalled();
+    expect(oldAdapter.renderedValue).toBe('');
+    expect(oldNotify).not.toHaveBeenCalled();
+    newAdapter.dispose();
+  });
+
+  it('test 19: two live adapters on one question coexist; disposing one leaves the other subscribed (instance-unique keys)', () => {
+    const { model, question } = textSurvey();
+    const a = new DraftCommitAdapter({ question });
+    const b = new DraftCommitAdapter({ question });
+
+    model.setValue('q1', 'first');
+    expect(a.renderedValue).toBe('first');
+    expect(b.renderedValue).toBe('first');
+
+    a.dispose();
+    model.setValue('q1', 'second');
+    expect(a.renderedValue).toBe('first');
+    expect(b.renderedValue).toBe('second');
+    b.dispose();
   });
 });
 
