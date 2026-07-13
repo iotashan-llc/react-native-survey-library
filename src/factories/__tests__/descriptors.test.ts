@@ -3,7 +3,9 @@
  * table") — the single source of registration truth. M0 rows: `empty`
  * (supported/template) and `custom`/`composite` (planned — no placeholder
  * components; a dispatch miss on either falls through to the fallback +
- * diagnostic until task 2.11 lands their adapters).
+ * diagnostic until task 2.11 lands their adapters). M1 rows added by
+ * tasks 1.13 (boolean: template + checkbox/radio renderer routes) and
+ * 1.15 (expression: template).
  */
 import { DESCRIPTOR_TABLE } from '../descriptors';
 import type { Descriptor } from '../descriptors';
@@ -14,12 +16,16 @@ function byKey(dispatchKey: string): Descriptor {
   return row;
 }
 
-describe('DESCRIPTOR_TABLE (M0)', () => {
-  it('has exactly the three M0 rows: empty, custom, composite', () => {
+describe('DESCRIPTOR_TABLE (M0 + M1 boolean/expression rows)', () => {
+  it('has exactly the expected dispatch keys', () => {
     expect(DESCRIPTOR_TABLE.map((r) => r.dispatchKey).sort()).toEqual([
+      'boolean',
       'composite',
       'custom',
       'empty',
+      'expression',
+      'sv-boolean-checkbox',
+      'sv-boolean-radio',
     ]);
   });
 
@@ -50,5 +56,41 @@ describe('DESCRIPTOR_TABLE (M0)', () => {
   it('every dispatchKey in the table is unique', () => {
     const keys = DESCRIPTOR_TABLE.map((r) => r.dispatchKey);
     expect(new Set(keys).size).toBe(keys.length);
+  });
+
+  it('"boolean" is a supported/template row (default renderAs -> getTemplate() route)', () => {
+    const row = byKey('boolean');
+    expect(row.status).toBe('supported');
+    expect(row.route).toBe('template');
+    expect(row.questionType).toBe('boolean');
+    if (row.status !== 'supported') throw new Error('unreachable');
+    expect(typeof row.component()).toBe('function');
+    expect(row.milestone).toBe('M1');
+  });
+
+  it('"sv-boolean-checkbox"/"sv-boolean-radio" are supported/renderer rows carrying the matching renderAs', () => {
+    for (const [key, renderAs] of [
+      ['sv-boolean-checkbox', 'checkbox'],
+      ['sv-boolean-radio', 'radio'],
+    ] as const) {
+      const row = byKey(key);
+      expect(row.status).toBe('supported');
+      expect(row.route).toBe('renderer');
+      expect(row.questionType).toBe('boolean');
+      if (row.status !== 'supported') throw new Error('unreachable');
+      expect(row.renderAs).toBe(renderAs);
+      expect(typeof row.component()).toBe('function');
+      expect(row.milestone).toBe('M1');
+    }
+  });
+
+  it('"expression" is a supported/template row', () => {
+    const row = byKey('expression');
+    expect(row.status).toBe('supported');
+    expect(row.route).toBe('template');
+    expect(row.questionType).toBe('expression');
+    if (row.status !== 'supported') throw new Error('unreachable');
+    expect(typeof row.component()).toBe('function');
+    expect(row.milestone).toBe('M1');
   });
 });
