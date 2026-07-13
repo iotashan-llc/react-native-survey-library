@@ -17,6 +17,10 @@ import {
   buildUnsupportedQuestionRecipe,
   type UnsupportedQuestionRecipe,
 } from './unsupportedQuestion';
+import {
+  buildQuestionChromeRecipe,
+  type QuestionChromeRecipe,
+} from './questionChrome';
 
 export interface Recipes {
   item: ItemRecipe;
@@ -24,6 +28,7 @@ export interface Recipes {
   button: ButtonRecipe;
   questionTitle: QuestionTitleRecipe;
   unsupportedQuestion: UnsupportedQuestionRecipe;
+  questionChrome: QuestionChromeRecipe;
 }
 
 export function buildRecipes(
@@ -36,6 +41,7 @@ export function buildRecipes(
     button: buildButtonRecipe(resolved, buildCtx),
     questionTitle: buildQuestionTitleRecipe(resolved, buildCtx),
     unsupportedQuestion: buildUnsupportedQuestionRecipe(resolved, buildCtx),
+    questionChrome: buildQuestionChromeRecipe(resolved, buildCtx),
   };
 }
 
@@ -45,3 +51,4 @@ export * from './input';
 export * from './button';
 export * from './questionTitle';
 export * from './unsupportedQuestion';
+export * from './questionChrome';

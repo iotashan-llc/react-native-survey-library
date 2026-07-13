@@ -48,6 +48,16 @@ export interface UnsupportedQuestionStyleOverrides {
   errorAccentBar?: StyleProp<ViewStyle>;
 }
 
+/** `QuestionChrome` (task 1.7) — title/description/errors/comment wrapper. */
+export interface QuestionChromeStyleOverrides {
+  description?: StyleProp<TextStyle>;
+  errorPanel?: StyleProp<ViewStyle>;
+  errorItem?: StyleProp<TextStyle>;
+  commentArea?: StyleProp<ViewStyle>;
+  commentLabel?: StyleProp<TextStyle>;
+  commentInput?: StyleProp<TextStyle>;
+}
+
 /** Per-component slot overrides distributed via `SurveyThemeProvider`'s `styles` prop and `SurveyThemeContext`'s `styles` field. */
 export interface SurveyComponentStyles {
   item?: ItemStyleOverrides;
@@ -55,6 +65,7 @@ export interface SurveyComponentStyles {
   button?: ButtonStyleOverrides;
   questionTitle?: QuestionTitleStyleOverrides;
   unsupportedQuestion?: UnsupportedQuestionStyleOverrides;
+  questionChrome?: QuestionChromeStyleOverrides;
 }
 
 /** Stable default so an omitted `styles` prop never churns the provider's memoized context value. */

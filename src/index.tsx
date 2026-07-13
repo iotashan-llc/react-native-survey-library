@@ -25,6 +25,8 @@ export type {
   UnsupportedQuestionProps,
   UnsupportedQuestionRenderer,
 } from './components/UnsupportedQuestion';
+export { QuestionChrome } from './components/QuestionChrome';
+export type { QuestionChromeProps } from './components/QuestionChrome';
 export { setDiagnosticHandler, reportDiagnostic } from './diagnostics';
 export type { DiagnosticHandler, DiagnosticPayload } from './diagnostics';
 
@@ -77,6 +79,7 @@ export type {
   ButtonStyleOverrides,
   QuestionTitleStyleOverrides,
   UnsupportedQuestionStyleOverrides,
+  QuestionChromeStyleOverrides,
 } from './theme-rn/overrides';
 export type { NormalizedBackground } from './theme-rn/background';
 
