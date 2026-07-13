@@ -48,6 +48,13 @@ export interface UnsupportedQuestionStyleOverrides {
   errorAccentBar?: StyleProp<ViewStyle>;
 }
 
+/** Task 1.5 (`ActionButton`): the Pressable container, the icon, and the title text. */
+export interface ActionButtonStyleOverrides {
+  container?: StyleProp<ViewStyle>;
+  icon?: StyleProp<ViewStyle>;
+  title?: StyleProp<TextStyle>;
+}
+
 /** Basic survey header slots (task 1.6). */
 export interface HeaderStyleOverrides {
   root?: StyleProp<ViewStyle>;
@@ -65,6 +72,7 @@ export interface SurveyComponentStyles {
   button?: ButtonStyleOverrides;
   questionTitle?: QuestionTitleStyleOverrides;
   unsupportedQuestion?: UnsupportedQuestionStyleOverrides;
+  actionButton?: ActionButtonStyleOverrides;
   header?: HeaderStyleOverrides;
 }
 

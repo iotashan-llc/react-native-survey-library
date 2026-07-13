@@ -7,6 +7,8 @@ import {
   RNElementFactory,
   UnsupportedQuestion,
   createUnsupportedQuestion,
+  RNIcon,
+  ActionButton,
 } from '../index';
 import { Model } from '../core/facade';
 import type { Question } from '../core/facade';
@@ -14,6 +16,11 @@ import type { Question } from '../core/facade';
 describe('test rails', () => {
   it('exports the library name', () => {
     expect(LIBRARY_NAME).toBe('@iotashan-llc/react-native-survey-library');
+  });
+
+  it('exports the 1.5 icon/action primitives from the package root', () => {
+    expect(RNIcon).toBeDefined();
+    expect(ActionButton).toBeDefined();
   });
 
   it('renders react-native components', () => {
