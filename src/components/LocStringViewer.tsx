@@ -45,9 +45,11 @@ interface SurveyLocStringViewerState {
   changed: number;
 }
 
-/** Upstream single-line rendering: runs of `\n` (with surrounding spaces) collapse to one space. */
+/** Upstream single-line rendering: hard line breaks — LF, CRLF, or a
+ * legacy bare CR (HTML whitespace-collapses all three) — collapse, with
+ * surrounding spaces, to one space. */
 function collapseHardLineBreaks(text: string): string {
-  return text.replace(/[ \t]*\r?\n[ \t]*/g, ' ');
+  return text.replace(/[ \t]*(?:\r\n?|\n)[ \t]*/g, ' ');
 }
 
 export class SurveyLocStringViewer extends React.Component<

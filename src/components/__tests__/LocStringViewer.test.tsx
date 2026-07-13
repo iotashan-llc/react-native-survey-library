@@ -21,6 +21,7 @@
  *   reactquestion_element.tsx:8-18) with the plain-Text fallback ONLY on
  *   a factory miss.
  */
+import * as React from 'react';
 import { render, screen, act } from '@testing-library/react-native';
 
 import { Model, LocalizableString } from '../../core/facade';
@@ -69,6 +70,13 @@ describe('SurveyLocStringViewer — plain text path', () => {
     expect(screen.getByText('line one line two')).toBeTruthy();
   });
 
+  it('collapses bare-CR line endings too (legacy \\r-only JSON: HTML treats CR as whitespace like LF) — asserted on the RAW children, not the whitespace-normalizing text matcher', () => {
+    const model = new Model({ title: 'line one\rline two' });
+    render(<SurveyLocStringViewer model={model.locTitle} />);
+    const text = screen.getByText(/line one/);
+    expect(text.props.children).toBe('line one line two');
+  });
+
   it('preserves hard newlines for a multiline string (description: serializer type "text" → allowLineBreaks true)', () => {
     const model = new Model({
       title: 't',
@@ -96,6 +104,23 @@ describe('SurveyLocStringViewer — onStringChanged subscription', () => {
     const baseline = model.locTitle.onStringChanged.length;
     const view = render(<SurveyLocStringViewer model={model.locTitle} />);
     expect(model.locTitle.onStringChanged.length).toBe(baseline + 1);
+    view.unmount();
+    expect(model.locTitle.onStringChanged.length).toBe(baseline);
+  });
+
+  it('survives a StrictMode remount cycle with a balanced listener count and live reactivity (React 19 dev double-mount)', () => {
+    const model = new Model({ title: 'Strict' });
+    const baseline = model.locTitle.onStringChanged.length;
+    const view = render(
+      <React.StrictMode>
+        <SurveyLocStringViewer model={model.locTitle} />
+      </React.StrictMode>
+    );
+    expect(model.locTitle.onStringChanged.length).toBe(baseline + 1);
+    act(() => {
+      model.title = 'Strict v2';
+    });
+    expect(screen.getByText('Strict v2')).toBeTruthy();
     view.unmount();
     expect(model.locTitle.onStringChanged.length).toBe(baseline);
   });
@@ -158,7 +183,7 @@ describe('registration + SurveyElementBase.renderLocString dispatch', () => {
     expect(screen.getByText('Dispatched v2')).toBeTruthy();
   });
 
-  it('falls back to plain Text rendering when renderAs names an unregistered element', () => {
+  it('falls back to the NORMAL viewer when renderAs names an unregistered element (never blank)', () => {
     const owner = {
       getLocale: () => '',
       getMarkdownHtml: () => undefined as unknown as string,
@@ -171,5 +196,45 @@ describe('registration + SurveyElementBase.renderLocString dispatch', () => {
     expect(locStr.renderAs).toBe('not-a-registered-renderer');
     render(<>{SurveyElementBase.renderLocString(locStr)}</>);
     expect(screen.getByText('plain fallback')).toBeTruthy();
+  });
+
+  it('an hasHtml string on a custom-renderer miss STILL routes through SanitizedHtml — raw markup never renders as literal text (regression)', () => {
+    const owner = {
+      getLocale: () => '',
+      getMarkdownHtml: (text: string) => {
+        const html = text.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+        return html === text ? (undefined as unknown as string) : html;
+      },
+      getProcessedText: (text: string) => text,
+      getRenderer: () => 'not-a-registered-renderer',
+      getRendererContext: (locStr: unknown) => locStr,
+    };
+    const locStr = new LocalizableString(owner as never, true, 'richmiss');
+    locStr.text = 'has **bold** markup';
+    expect(locStr.renderAs).toBe('not-a-registered-renderer');
+    expect(locStr.hasHtml).toBe(true);
+    render(<>{SurveyElementBase.renderLocString(locStr)}</>);
+    expect(screen.getByText(/bold/)).toBeTruthy();
+    expect(screen.queryByText(/<b>/)).toBeNull();
+    expect(screen.queryByText(/\*\*/)).toBeNull();
+  });
+
+  it('the miss fallback SUBSCRIBES (it is the real viewer, not a static Text)', () => {
+    const owner = {
+      getLocale: () => '',
+      getMarkdownHtml: () => undefined as unknown as string,
+      getProcessedText: (text: string) => text,
+      getRenderer: () => 'not-a-registered-renderer',
+      getRendererContext: (locStr: unknown) => locStr,
+    };
+    const locStr = new LocalizableString(owner as never, false, 'live');
+    locStr.text = 'first value';
+    const baseline = locStr.onStringChanged.length;
+    render(<>{SurveyElementBase.renderLocString(locStr)}</>);
+    expect(locStr.onStringChanged.length).toBe(baseline + 1);
+    act(() => {
+      locStr.text = 'second value';
+    });
+    expect(screen.getByText('second value')).toBeTruthy();
   });
 });

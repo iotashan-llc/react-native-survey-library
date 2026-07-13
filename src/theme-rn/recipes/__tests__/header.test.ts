@@ -3,9 +3,13 @@
  * `default-theme/blocks/sd-title.scss` (`.sd-title.sd-container-modern__title`
  * + `.sd-header__text`), `mixins.scss` `survey_title`/`survey_description`
  * (lines 187-197), `variables.scss` surveytitle/surveydescription fallback
- * chains (lines 65-71), and `default.m600.scss:8` for the page padding —
- * RN IS the mobile context, so the m600 value is the fixture, not the
- * desktop one. Every metric is FORMULA-first from resolved tokens
+ * chains (lines 65-71), and `default.m600.scss`'s `--mobile` MODIFIER
+ * tier (lines 11-16: page padding calc(2 * base-unit); lines 32-38:
+ * `.sd-title.sd-container-modern__title { flex-direction: column }` +
+ * `.sd-header__text { min-width: 100% }`) — RN IS the mobile context, so
+ * the mobile-modifier rules are the fixture, not the base m600 tier
+ * (which still lays the header out as a desktop row with 24dp padding).
+ * Every metric is FORMULA-first from resolved tokens
  * (0.7-metrics-fixture.md rule), never a hardcoded literal.
  */
 import { resolveTheme } from '../../../theme-core/resolve';
@@ -17,11 +21,11 @@ const resolved = resolveTheme(undefined);
 describe('buildHeaderRecipe — formulas from resolved tokens', () => {
   const recipe = buildHeaderRecipe(resolved);
 
-  it('root: row layout, centered, gap calcSize(4)=32, padding calcSize(3)=24 (m600 fixture)', () => {
-    expect(recipe.fragments.root.flexDirection).toBe('row');
+  it('root: COLUMN layout (mobile modifier), centered, gap calcSize(4)=32, padding calcSize(2)=16 (mobile --sd-page-vertical-padding)', () => {
+    expect(recipe.fragments.root.flexDirection).toBe('column');
     expect(recipe.fragments.root.alignItems).toBe('center');
     expect(recipe.fragments.root.gap).toBe(32);
-    expect(recipe.fragments.root.padding).toBe(24);
+    expect(recipe.fragments.root.padding).toBe(16);
   });
 
   it('root: the upstream `box-shadow: 0px 2px 0px $primary` accent maps to a 2dp bottom border in primary', () => {
@@ -31,11 +35,12 @@ describe('buildHeaderRecipe — formulas from resolved tokens', () => {
     );
   });
 
-  it('textBlock: column, gap calcSize(1)=8, grows and shrinks (sd-header__text flex-grow: 1)', () => {
+  it('textBlock: column, gap calcSize(1)=8, grows and shrinks (sd-header__text flex-grow: 1), minWidth 100% (mobile modifier)', () => {
     expect(recipe.fragments.textBlock.flexDirection).toBe('column');
     expect(recipe.fragments.textBlock.gap).toBe(8);
     expect(recipe.fragments.textBlock.flexGrow).toBe(1);
     expect(recipe.fragments.textBlock.flexShrink).toBe(1);
+    expect(recipe.fragments.textBlock.minWidth).toBe('100%');
   });
 
   it('title: fontSize 2x base = 32, lineHeight 1.25x = 40, weight 700, color = $primary fallback (survey_title mixin + variables.scss:66-67)', () => {
@@ -87,6 +92,6 @@ describe('buildRecipes aggregation', () => {
   it('exposes the header recipe on the shared Recipes bag', async () => {
     const { buildRecipes } = await import('../index');
     const recipes = buildRecipes(resolved, { platform: { os: 'ios' } });
-    expect(recipes.header.fragments.root.flexDirection).toBe('row');
+    expect(recipes.header.fragments.root.flexDirection).toBe('column');
   });
 });

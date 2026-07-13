@@ -20,7 +20,7 @@
  *   ported — the reactive base + viewer subscriptions cover it).
  */
 import { render, screen, act } from '@testing-library/react-native';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 
 import { Model } from '../../core/facade';
 import '../../factories/register-all';
@@ -230,6 +230,96 @@ describe('SurveyHeader — reactivity (ported SurveyElementBase mechanism)', () 
     expect(model.hasActiveUISubscribers).toBe(true);
     view.unmount();
     expect(model.hasActiveUISubscribers).toBe(false);
+  });
+});
+
+describe('SurveyHeader — logo wrapper dispatch (upstream getElementWrapperComponentName/Data parity)', () => {
+  it('default path: the logo resolves through the factory under the core-provided "sv-logo-image" key with the survey as data', () => {
+    const model = new Model({ title: 't', logo: LOGO_URL });
+    expect(model.getElementWrapperComponentName(model, 'logo-image')).toBe(
+      'sv-logo-image'
+    );
+    expect(model.getElementWrapperComponentData(model, 'logo-image')).toBe(
+      model
+    );
+    render(<SurveyHeader survey={model} logoUriConfig={ALLOW_LOGO} />);
+    expect(screen.getByTestId('survey-logo-image')).toBeTruthy();
+  });
+
+  it('a host onElementWrapperComponentName override routes the logo to the custom registered element (host wrapper extension surface honored)', () => {
+    const received: unknown[] = [];
+    RNElementFactory.registerElement(
+      'custom-logo-probe',
+      (props: { data?: unknown }) => {
+        received.push(props.data);
+        return <Text testID="custom-logo-probe">custom logo</Text>;
+      }
+    );
+    const model = new Model({ title: 't', logo: LOGO_URL });
+    model.onElementWrapperComponentName.add((_, options) => {
+      if (options.reason === 'logo-image') {
+        options.componentName = 'custom-logo-probe';
+      }
+    });
+    render(<SurveyHeader survey={model} />);
+    expect(screen.getByTestId('custom-logo-probe')).toBeTruthy();
+    expect(screen.queryByTestId('survey-logo-image')).toBeNull();
+    // Identity asserts (deep-walking a SurveyModel in toEqual recurses
+    // into DOM-flavored getters and explodes off-platform); render COUNT
+    // is not the contract — the 0.4 base class re-renders once after
+    // mount by design (D4 reconcile).
+    expect(received.length).toBeGreaterThanOrEqual(1);
+    received.forEach((data) => expect(data).toBe(model));
+  });
+
+  it('a host onElementWrapperComponentData override reaches the custom element as its data prop (transformed data not silently dropped)', () => {
+    const received: unknown[] = [];
+    RNElementFactory.registerElement(
+      'custom-logo-data-probe',
+      (props: { data?: unknown }) => {
+        received.push(props.data);
+        return <Text testID="custom-logo-data-probe">wrapped</Text>;
+      }
+    );
+    const model = new Model({ title: 't', logo: LOGO_URL });
+    const transformed = { survey: model, badge: 'wrapped' };
+    model.onElementWrapperComponentName.add((_, options) => {
+      if (options.reason === 'logo-image') {
+        options.componentName = 'custom-logo-data-probe';
+      }
+    });
+    model.onElementWrapperComponentData.add((_, options) => {
+      if (options.reason === 'logo-image') {
+        options.data = transformed;
+      }
+    });
+    render(<SurveyHeader survey={model} />);
+    expect(screen.getByTestId('custom-logo-data-probe')).toBeTruthy();
+    expect(received.length).toBeGreaterThanOrEqual(1);
+    received.forEach((data) => expect(data).toBe(transformed));
+  });
+
+  it('fail-closed on a factory miss: an unregistered wrapper name renders NO logo (header itself survives) + one element-wrapper-missing diagnostic', () => {
+    const payloads: DiagnosticPayload[] = [];
+    setDiagnosticHandler((payload) => payloads.push(payload));
+    const model = new Model({ title: 'Still here', logo: LOGO_URL });
+    model.onElementWrapperComponentName.add((_, options) => {
+      if (options.reason === 'logo-image') {
+        options.componentName = 'never-registered-logo';
+      }
+    });
+    render(<SurveyHeader survey={model} logoUriConfig={ALLOW_LOGO} />);
+    expect(screen.getByText('Still here')).toBeTruthy();
+    expect(screen.queryByTestId('survey-logo')).toBeNull();
+    expect(screen.queryByTestId('survey-logo-image')).toBeNull();
+    const missing = payloads.filter(
+      (p) => p.code === 'element-wrapper-missing'
+    );
+    expect(missing).toHaveLength(1);
+    expect(missing[0]).toMatchObject({
+      componentName: 'never-registered-logo',
+      reason: 'logo-image',
+    });
   });
 });
 

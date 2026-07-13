@@ -456,4 +456,20 @@ export const API_SURFACE_WATCHLIST: readonly WatchedApiMember[] = [
     resolveHost: (sc) => sc.Model.prototype,
     reason: "LogoImage's resizeMode mapping.",
   },
+  {
+    id: 'Model.getElementWrapperComponentName',
+    member: 'getElementWrapperComponentName',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.Model.prototype,
+    reason:
+      "SurveyHeader's logo wrapper dispatch key (host extension surface).",
+  },
+  {
+    id: 'Model.getElementWrapperComponentData',
+    member: 'getElementWrapperComponentData',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.Model.prototype,
+    reason:
+      "SurveyHeader's logo wrapper data (host-transformable via onElementWrapperComponentData).",
+  },
 ];

@@ -32,10 +32,11 @@
 import * as React from 'react';
 import { View } from 'react-native';
 import type { Base, SurveyModel } from '../core/facade';
+import { RNElementFactory } from '../factories/ElementFactory';
 import { SurveyElementBase } from '../reactivity/SurveyElementBase';
 import { composeStyles } from '../theme-rn/recipes/types';
 import type { UriPolicyConfig } from '../security/uri-policy';
-import { LogoImage } from './LogoImage';
+import { reportDiagnostic } from '../diagnostics';
 
 export interface SurveyHeaderProps {
   survey: SurveyModel;
@@ -84,14 +85,68 @@ export class SurveyHeader extends SurveyElementBase<SurveyHeaderProps> {
     );
   }
 
+  /** Set during render on a wrapper-dispatch factory miss, reported from
+   * the commit lifecycles below (0.7's "no diagnostics during render"
+   * rule), deduped per componentName for this instance's lifetime. */
+  private pendingWrapperMiss:
+    { componentName: string; reason: string } | undefined;
+  private lastReportedWrapperMiss: string | undefined;
+
+  componentDidMount(): void {
+    super.componentDidMount();
+    this.flushWrapperMissDiagnostic();
+  }
+
+  componentDidUpdate(): void {
+    super.componentDidUpdate();
+    this.flushWrapperMissDiagnostic();
+  }
+
+  private flushWrapperMissDiagnostic(): void {
+    const miss = this.pendingWrapperMiss;
+    if (!miss || this.lastReportedWrapperMiss === miss.componentName) return;
+    this.lastReportedWrapperMiss = miss.componentName;
+    reportDiagnostic({
+      code: 'element-wrapper-missing',
+      componentName: miss.componentName,
+      reason: miss.reason,
+    });
+  }
+
+  /**
+   * Upstream parity (survey-header.tsx `renderLogoImage`): the logo slot
+   * dispatches through the survey's wrapper extension surface —
+   * `getElementWrapperComponentName`/`getElementWrapperComponentData`
+   * with reason `'logo-image'` (default key `sv-logo-image`, the
+   * descriptor table's element row; hosts may reroute name and transform
+   * data via `onElementWrapperComponentName`/`onElementWrapperComponentData`)
+   * — never a direct `LogoImage` instantiation. A factory MISS (host
+   * rerouted to an unregistered key) renders NOTHING, fail-closed: the
+   * default component must not be fed possibly-transformed wrapper data;
+   * the miss reports an `element-wrapper-missing` diagnostic from commit
+   * phase and the rest of the header survives (invariant 9).
+   */
   private renderLogo(isRendered: boolean): React.JSX.Element | null {
     if (!isRendered || !this.survey.renderedHasLogo) return null;
-    return (
-      <LogoImage data={this.survey} uriConfig={this.props.logoUriConfig} />
+    const componentName = this.survey.getElementWrapperComponentName(
+      this.survey,
+      'logo-image'
     );
+    const componentData = this.survey.getElementWrapperComponentData(
+      this.survey,
+      'logo-image'
+    );
+    const rendered = RNElementFactory.createElement(componentName, {
+      data: componentData,
+      uriConfig: this.props.logoUriConfig,
+    });
+    if (rendered) return rendered;
+    this.pendingWrapperMiss = { componentName, reason: 'logo-image' };
+    return null;
   }
 
   protected renderElement(): React.JSX.Element | null {
+    this.pendingWrapperMiss = undefined;
     const fragments = this.themeContext.recipes.header.fragments;
     const slots = this.themeContext.styles.header;
     return (

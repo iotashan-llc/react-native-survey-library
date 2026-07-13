@@ -4,10 +4,15 @@
  * (`.sd-title.sd-container-modern__title` container + `.sd-header__text`
  * column), `mixins.scss:187-197` (`survey_title`/`survey_description`
  * font formulas), `variables.scss:65-71` (surveytitle/surveydescription
- * fallback chains), `default.m600.scss:8` (page padding — RN IS the
- * mobile context, so the m600 `calc(3 * base-unit)` is the fixture; the
- * desktop `--sd-page-vertical-padding` is never defined for RN's form
- * factor). Every metric is FORMULA-first from resolved tokens
+ * fallback chains), and `default.m600.scss`'s `--mobile` MODIFIER tier —
+ * RN IS the mobile context (`.sd-root-modern--mobile`), so the fixture
+ * is the mobile rule set, NOT the base m600 tier (which still lays the
+ * header out as a desktop row with 24dp padding):
+ * - `--sd-page-vertical-padding: calc(2 * base-unit)` (m600.scss:11-16),
+ * - `.sd-title.sd-container-modern__title { flex-direction: column }`
+ *   (m600.scss:32-34),
+ * - `.sd-header__text { min-width: 100% }` (m600.scss:36-38).
+ * Every metric is FORMULA-first from resolved tokens
  * (0.7-metrics-fixture.md rule).
  *
  * Documented deltas:
@@ -112,12 +117,13 @@ export function buildHeaderRecipe(
   const fragments = StyleSheet.create({
     root: {
       // .sd-title.sd-container-modern__title: display flex + align-items
-      // center + gap calcSize(4) (sd-title.scss:13-19); padding from
-      // --sd-page-vertical-padding = calc(3 * base-unit) (m600 fixture).
-      flexDirection: 'row',
+      // center + gap calcSize(4) (sd-title.scss:13-19); the mobile
+      // modifier flips it to a COLUMN (m600.scss:32-34) and sets
+      // --sd-page-vertical-padding = calc(2 * base-unit) (m600.scss:15).
+      flexDirection: 'column',
       alignItems: 'center',
       gap: calcSize(resolved, 4),
-      padding: calcSize(resolved, 3),
+      padding: calcSize(resolved, 2),
       // box-shadow: 0px 2px 0px $primary (sd-title.scss:19) — see the
       // header docblock delta note.
       borderBottomWidth: 2,
@@ -129,12 +135,15 @@ export function buildHeaderRecipe(
     },
     textBlock: {
       // .sd-header__text: column, gap calcSize(1), flex-grow 1
-      // (sd-title.scss:30-34); flexShrink so a long title wraps instead of
-      // pushing the logo off-canvas (RN flexbox needs it explicit).
+      // (sd-title.scss:30-34); the mobile modifier adds min-width: 100%
+      // (m600.scss:36-38) so the text spans the full header width under
+      // the column layout; flexShrink so a long title wraps instead of
+      // overflowing (RN flexbox needs it explicit).
       flexDirection: 'column',
       gap: calcSize(resolved, 1),
       flexGrow: 1,
       flexShrink: 1,
+      minWidth: '100%',
     },
     title: {
       fontSize: titleFontSize,

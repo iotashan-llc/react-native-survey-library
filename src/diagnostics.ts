@@ -102,6 +102,20 @@ export interface ImageUriBlockedPayload {
   reason: string;
 }
 
+/** Emitted when a survey-core wrapper dispatch
+ * (`getElementWrapperComponentName`, upstream's host extension surface)
+ * names an element key `RNElementFactory` has no registration for — the
+ * slot renders NOTHING (fail-closed: never a guessed default component
+ * fed possibly-transformed wrapper data), the surrounding survey
+ * survives (invariant 9). `reason` is the core wrapper reason
+ * (`'logo-image'`, ...). Reported from commit lifecycles, deduped per
+ * componentName per host instance. */
+export interface ElementWrapperMissingPayload {
+  code: 'element-wrapper-missing';
+  componentName: string;
+  reason: string;
+}
+
 export type DiagnosticPayload =
   | UnsupportedQuestionTypePayload
   | CustomWidgetIgnoredPayload
@@ -109,7 +123,8 @@ export type DiagnosticPayload =
   | ThemeDiagnosticPayload
   | SanitizedHtmlDiagnosticPayload
   | SanitizedHtmlLinkPressDroppedPayload
-  | ImageUriBlockedPayload;
+  | ImageUriBlockedPayload
+  | ElementWrapperMissingPayload;
 
 export type DiagnosticHandler = (payload: DiagnosticPayload) => void;
 
