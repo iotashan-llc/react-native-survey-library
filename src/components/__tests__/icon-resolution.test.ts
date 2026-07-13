@@ -116,6 +116,56 @@ describe('resolveIconXml — consumer registrations', () => {
   });
 });
 
+describe('resolveIconXml — registry chronology (codex review major 2: SvgRegistry.icons is authoritative)', () => {
+  // Upstream truth (svgbundle.ts): EVERY registration path writes the
+  // processed icon into SvgRegistry.icons — global last-write-wins.
+  // SvgThemeSets is a side store only registerIcon touches; a stale
+  // theme-set entry must never shadow a later registry write.
+  afterEach(() => {
+    unregister('collide-a-1-5', 'collide-b-1-5', 'collide-c-1-5');
+  });
+
+  it('later v1 registerIcon beats an earlier v2 registration for the same id', () => {
+    SvgRegistry.registerIcon(
+      'collide-a-1-5',
+      '<svg viewBox="0 0 4 4"><path d="M0 0h1"/></svg>',
+      'v2'
+    );
+    SvgRegistry.registerIcon(
+      'collide-a-1-5',
+      '<svg viewBox="0 0 4 4"><path d="M0 0h2"/></svg>',
+      'v1'
+    );
+    expect(resolveIconXml('icon-collide-a-1-5').xml).toContain('M0 0h2');
+  });
+
+  it('later v2 registerIcon beats an earlier v1 registration for the same id', () => {
+    SvgRegistry.registerIcon(
+      'collide-b-1-5',
+      '<svg viewBox="0 0 4 4"><path d="M0 0h1"/></svg>',
+      'v1'
+    );
+    SvgRegistry.registerIcon(
+      'collide-b-1-5',
+      '<svg viewBox="0 0 4 4"><path d="M0 0h2"/></svg>',
+      'v2'
+    );
+    expect(resolveIconXml('icon-collide-b-1-5').xml).toContain('M0 0h2');
+  });
+
+  it('a registry-only registerIconFromSvg beats an earlier registerIcon (stale theme-set entry)', () => {
+    SvgRegistry.registerIcon(
+      'collide-c-1-5',
+      '<svg viewBox="0 0 4 4"><path d="M0 0h1"/></svg>'
+    );
+    SvgRegistry.registerIconFromSvg(
+      'collide-c-1-5',
+      '<svg viewBox="0 0 4 4"><path d="M0 0h2"/></svg>'
+    );
+    expect(resolveIconXml('icon-collide-c-1-5').xml).toContain('M0 0h2');
+  });
+});
+
 describe('resolveIconXml — misses', () => {
   afterEach(() => setDiagnosticHandler(undefined));
 

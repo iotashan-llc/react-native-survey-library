@@ -11,15 +11,22 @@
  * `chevrondown-24x24`) ride upstream logic, never duplicated here
  * (invariant 6 spirit).
  *
- * Raw-source lookup is consumer-first (matches the web renderer's
- * last-write-wins registry semantics):
- *   1. `SvgThemeSets` — raw strings stored by `SvgRegistry.registerIcon`.
+ * Raw-source lookup is consumer-first, with `SvgRegistry.icons` as the
+ * AUTHORITATIVE consumer source (codex review major 2): upstream writes
+ * every registration path's processed icon into `SvgRegistry.icons`
+ * (svgbundle.ts — `registerIconFromSvg`, `registerIcons`, `registerIcon`
+ * all funnel there), so it carries the global last-write-wins
+ * chronology. `SvgThemeSets` is a side store only `registerIcon`
+ * touches; a stale theme-set entry must never shadow a later registry
+ * write.
+ *   1. `SvgRegistry.icons` — `<symbol id="icon-x" …>`-wrapped strings;
+ *      losslessly unwrapped back to `<svg …>` (the exact inverse of
+ *      upstream `registerIconFromSvg`'s rewrap).
+ *   2. `SvgThemeSets` — residual raw source (only reachable when a host
+ *      populated the sets directly without going through the registry).
  *      Tried under the canonical key AND the `icon-`-prefixed original
  *      (upstream's `registerIcon` stores the UNPROCESSED id here while
  *      `registerIconFromSvg` normalizes it — verified v2.5.33).
- *   2. `SvgRegistry.icons` — `<symbol id="icon-x" …>`-wrapped strings;
- *      losslessly unwrapped back to `<svg …>` (the exact inverse of
- *      upstream `registerIconFromSvg`'s rewrap).
  *   3. Bundled V2 map (`src/core/icons.ts`).
  *
  * Trust tiers (0.9 content-origin framing): consumer-registered strings
@@ -76,13 +83,16 @@ function unwrapRegistrySymbol(stored: string): string | null {
 
 /** Consumer-registered raw markup for a canonical key, or null. */
 function lookupConsumerRaw(key: string): string | null {
+  // Registry FIRST — it is the only store every upstream registration
+  // path writes, so it alone preserves last-write-wins chronology
+  // (codex review major 2).
+  const stored = SvgRegistry.icons[key];
+  if (stored) return unwrapRegistrySymbol(stored) ?? stored;
   for (const setName of ['v2', 'v1']) {
     const set = SvgThemeSets[setName];
     const raw = set?.[key] ?? set?.[ICON_PREFIX + key];
     if (raw) return raw;
   }
-  const stored = SvgRegistry.icons[key];
-  if (stored) return unwrapRegistrySymbol(stored) ?? stored;
   return null;
 }
 

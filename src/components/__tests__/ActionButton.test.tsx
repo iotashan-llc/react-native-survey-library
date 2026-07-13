@@ -238,4 +238,42 @@ describe('ActionButton — icon integration + a11y', () => {
       expanded: false,
     });
   });
+
+  // Codex review major 3: `active` is the model's semantic
+  // selection/active flag (upstream itemActive styling); `pressed` is a
+  // transient pressed/dropdown-open visual — they must not be conflated.
+  it('maps action.active (not pressed) to accessibilityState.selected', () => {
+    const action = makeAction({ active: true });
+    render(<ActionButton action={action} testID="btn" />);
+    expect(screen.getByTestId('btn').props.accessibilityState.selected).toBe(
+      true
+    );
+  });
+
+  it('model pressed drives the pressed VISUAL but never accessibilityState.selected', () => {
+    const action = makeAction({ pressed: true });
+    render(
+      <SurveyThemeProvider>
+        <ActionButton action={action} variant="action" testID="btn" />
+      </SurveyThemeProvider>
+    );
+    expect(
+      screen.getByTestId('btn').props.accessibilityState.selected
+    ).toBeUndefined();
+    const pressedBg = flattenedContainerStyle('btn').backgroundColor;
+    act(() => {
+      action.pressed = false;
+    });
+    expect(flattenedContainerStyle('btn').backgroundColor).not.toEqual(
+      pressedBg
+    );
+  });
+
+  it('forwards ariaLabelledBy as accessibilityLabelledBy (Android nativeID relationship)', () => {
+    const action = makeAction({ ariaLabelledBy: 'label-element-id' });
+    render(<ActionButton action={action} testID="btn" />);
+    expect(screen.getByTestId('btn').props.accessibilityLabelledBy).toBe(
+      'label-element-id'
+    );
+  });
 });

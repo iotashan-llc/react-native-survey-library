@@ -80,11 +80,74 @@ function isHrefAttribute(name: string): boolean {
   return lower === 'href' || lower === 'xlink:href' || lower.endsWith(':href');
 }
 
+/**
+ * Exact local-fragment grammar (codex review, notes): `#` followed by an
+ * XML-Name-shaped id — not merely "starts with #", which would admit a
+ * bare `#`, embedded whitespace, or other junk the downstream parser
+ * might interpret creatively.
+ */
+const LOCAL_FRAGMENT_PATTERN = /^#[A-Za-z_][A-Za-z0-9_.:-]*$/;
+
+/**
+ * Conservative CSS-declaration-list grammar for `style` attributes
+ * (codex review minor 4): react-native-svg's own parser THROWS on a
+ * declaration without a `:`; every `;`-separated non-empty declaration
+ * must be `property: value` with a non-empty property. A style attribute
+ * failing this is dropped whole (fail-closed) with a diagnostic.
+ */
+function isValidStyleAttribute(value: string): boolean {
+  for (const declaration of value.split(';')) {
+    const trimmed = declaration.trim();
+    if (trimmed.length === 0) continue;
+    const colonIndex = trimmed.indexOf(':');
+    if (colonIndex <= 0) return false;
+  }
+  return true;
+}
+
+/**
+ * Resource bounds (codex review major 1 — mirrors the 0.9 HTML
+ * sanitizer's fail-closed posture): any exceeded bound rejects the WHOLE
+ * input (`icon-svg-invalid`), never a partially-processed tree. Sized
+ * for icons — generous multiples of every bundled icon, tiny fractions
+ * of a DoS payload. The depth cap doubles as the recursion-safety bound:
+ * both the filter walk and dom-serializer recurse per level, so depth ≤
+ * 32 keeps the stack flat where a 5000-deep `<g>` tree previously
+ * produced an uncaught RangeError.
+ */
+export const SVG_RESOURCE_BOUNDS = Object.freeze({
+  /** UTF-16 code units, checked BEFORE parsing. */
+  maxSourceLength: 64 * 1024,
+  maxElementCount: 512,
+  maxDepth: 32,
+  maxAttributesPerElement: 64,
+  maxAttributeValueLength: 32 * 1024,
+});
+
+/** Internal control-flow sentinel: a bound was exceeded — reject the whole input. */
+class BoundExceededError extends Error {}
+
+interface WalkBudget {
+  elementsSeen: number;
+}
+
 function sanitizeAttributes(
   element: Element,
   diagnostics: SvgSanitizeDiagnostic[]
 ): void {
-  for (const name of Object.keys(element.attribs)) {
+  const names = Object.keys(element.attribs);
+  if (names.length > SVG_RESOURCE_BOUNDS.maxAttributesPerElement) {
+    throw new BoundExceededError(
+      `attributes-per-element exceeded on <${element.tagName}> (${names.length} > ${SVG_RESOURCE_BOUNDS.maxAttributesPerElement})`
+    );
+  }
+  for (const name of names) {
+    const value = element.attribs[name] ?? '';
+    if (value.length > SVG_RESOURCE_BOUNDS.maxAttributeValueLength) {
+      throw new BoundExceededError(
+        `attribute-value length exceeded for "${name}" on <${element.tagName}>`
+      );
+    }
     const lower = name.toLowerCase();
     if (lower.startsWith('on')) {
       delete element.attribs[name];
@@ -95,14 +158,21 @@ function sanitizeAttributes(
       continue;
     }
     if (isHrefAttribute(name)) {
-      const value = element.attribs[name] ?? '';
-      if (!value.trim().startsWith('#')) {
+      if (!LOCAL_FRAGMENT_PATTERN.test(value.trim())) {
         delete element.attribs[name];
         diagnostics.push({
           code: 'icon-svg-sanitized',
-          detail: `dropped non-local "${name}" on <${element.tagName}> (only "#fragment" references are allowed)`,
+          detail: `dropped non-local "${name}" on <${element.tagName}> (only exact "#fragment" references are allowed)`,
         });
       }
+      continue;
+    }
+    if (lower === 'style' && !isValidStyleAttribute(value)) {
+      delete element.attribs[name];
+      diagnostics.push({
+        code: 'icon-svg-sanitized',
+        detail: `dropped malformed style attribute on <${element.tagName}> (each declaration must be "property: value")`,
+      });
     }
   }
 }
@@ -111,15 +181,31 @@ function sanitizeAttributes(
  * Depth-first in-place filter: keeps allowlisted elements (attributes
  * sanitized) and text nodes; drops every other node kind (disallowed
  * elements with a diagnostic; comments/CDATA/processing instructions
- * silently — they carry no rendering meaning for SvgXml).
+ * silently — they carry no rendering meaning for SvgXml). Depth and
+ * element-count budgets are enforced DURING the walk (throwing the
+ * internal bound sentinel) so a hostile tree can neither exhaust the
+ * stack nor burn unbounded CPU before rejection.
  */
 function sanitizeChildren(
   children: ChildNode[],
-  diagnostics: SvgSanitizeDiagnostic[]
+  diagnostics: SvgSanitizeDiagnostic[],
+  budget: WalkBudget,
+  depth: number
 ): ChildNode[] {
+  if (depth > SVG_RESOURCE_BOUNDS.maxDepth) {
+    throw new BoundExceededError(
+      `nesting depth exceeded (> ${SVG_RESOURCE_BOUNDS.maxDepth})`
+    );
+  }
   const kept: ChildNode[] = [];
   for (const child of children) {
     if (isTag(child)) {
+      budget.elementsSeen += 1;
+      if (budget.elementsSeen > SVG_RESOURCE_BOUNDS.maxElementCount) {
+        throw new BoundExceededError(
+          `element count exceeded (> ${SVG_RESOURCE_BOUNDS.maxElementCount})`
+        );
+      }
       if (!ALLOWED_ELEMENTS.has(child.tagName.toLowerCase())) {
         diagnostics.push({
           code: 'icon-svg-sanitized',
@@ -128,7 +214,12 @@ function sanitizeChildren(
         continue;
       }
       sanitizeAttributes(child, diagnostics);
-      child.children = sanitizeChildren(child.children, diagnostics);
+      child.children = sanitizeChildren(
+        child.children,
+        diagnostics,
+        budget,
+        depth + 1
+      );
       kept.push(child);
       continue;
     }
@@ -142,11 +233,16 @@ function sanitizeChildren(
 const CACHE_CAP = 512;
 const cache = new Map<string, SanitizeSvgResult>();
 
-export function sanitizeIconSvg(raw: string): SanitizeSvgResult {
-  const cached = cache.get(raw);
-  if (cached) return cached;
-
+function sanitizeIconSvgUncached(raw: string): SanitizeSvgResult {
   const diagnostics: SvgSanitizeDiagnostic[] = [];
+  if (raw.length > SVG_RESOURCE_BOUNDS.maxSourceLength) {
+    diagnostics.push({
+      code: 'icon-svg-invalid',
+      detail: `source length exceeded (${raw.length} > ${SVG_RESOURCE_BOUNDS.maxSourceLength})`,
+    });
+    return { xml: null, diagnostics };
+  }
+
   const document = parseDocument(raw, { xmlMode: true });
   const elementRoots = document.children.filter(isTag);
   const root = elementRoots[0];
@@ -167,12 +263,44 @@ export function sanitizeIconSvg(raw: string): SanitizeSvgResult {
               .join('>, <')}>`,
     });
   } else {
+    const budget: WalkBudget = { elementsSeen: 1 };
     sanitizeAttributes(root, diagnostics);
-    root.children = sanitizeChildren(root.children, diagnostics);
+    root.children = sanitizeChildren(root.children, diagnostics, budget, 1);
     xml = render(root, { xmlMode: true });
   }
+  return { xml, diagnostics };
+}
 
-  const result: SanitizeSvgResult = { xml, diagnostics };
+/**
+ * NEVER throws (RNIcon's never-throw contract, codex review major 1): a
+ * bound violation or any unexpected parse/filter/serialize failure
+ * returns `xml: null` with an `icon-svg-invalid` diagnostic instead of
+ * propagating.
+ */
+export function sanitizeIconSvg(raw: string): SanitizeSvgResult {
+  const cached = cache.get(raw);
+  if (cached) return cached;
+
+  let result: SanitizeSvgResult;
+  try {
+    result = sanitizeIconSvgUncached(raw);
+  } catch (error) {
+    result = {
+      xml: null,
+      diagnostics: [
+        {
+          code: 'icon-svg-invalid',
+          detail:
+            error instanceof BoundExceededError
+              ? `resource bound exceeded: ${error.message}`
+              : `sanitizer failure: ${String(
+                  error instanceof Error ? error.message : error
+                )}`,
+        },
+      ],
+    };
+  }
+
   if (cache.size >= CACHE_CAP) cache.clear();
   cache.set(raw, result);
   return result;

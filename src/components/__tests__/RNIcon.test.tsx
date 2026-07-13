@@ -91,6 +91,16 @@ describe('RNIcon — rendering', () => {
       });
     }).not.toThrow();
   });
+
+  it('returns onIconsChanged.length to its baseline after unmount (leak observable — codex review minor 5)', () => {
+    const baseline = SvgRegistry.onIconsChanged.length;
+    const { unmount } = render(
+      <RNIcon iconName="icon-chevrondown-24x24" testID="icon" />
+    );
+    expect(SvgRegistry.onIconsChanged.length).toBe(baseline + 1);
+    unmount();
+    expect(SvgRegistry.onIconsChanged.length).toBe(baseline);
+  });
 });
 
 describe('RNIcon — accessibility', () => {

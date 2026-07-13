@@ -459,4 +459,58 @@ export const API_SURFACE_WATCHLIST: readonly WatchedApiMember[] = [
     reason:
       "ActionButton's title rendering through the inherited renderLocString seam (1.6 upgrades it).",
   },
+  // Codex review minor 6: every directly-consumed Action member belongs
+  // on the watchlist — runtime kinds verified against installed v2.5.33.
+  {
+    id: 'Action.active',
+    member: 'active',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Action.prototype,
+    reason:
+      "ActionButton's accessibilityState.selected (semantic selection/active flag).",
+  },
+  {
+    id: 'Action.pressed',
+    member: 'pressed',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Action.prototype,
+    reason:
+      "ActionButton's pressed VISUAL input (ORed with native pressIn state; never surfaced as selection).",
+  },
+  {
+    id: 'Action.ariaChecked',
+    member: 'ariaChecked',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Action.prototype,
+    reason: "ActionButton's accessibilityState.checked.",
+  },
+  {
+    id: 'Action.ariaExpanded',
+    member: 'ariaExpanded',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Action.prototype,
+    reason: "ActionButton's accessibilityState.expanded.",
+  },
+  {
+    id: 'Action.ariaRole',
+    member: 'ariaRole',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Action.prototype,
+    reason: "ActionButton's accessibilityRole mapping.",
+  },
+  {
+    id: 'Action.ariaLabelledBy',
+    member: 'ariaLabelledBy',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Action.prototype,
+    reason:
+      "ActionButton's accessibilityLabelledBy (Android nativeID relationship).",
+  },
+  {
+    id: 'Action.disableTabStop',
+    member: 'disableTabStop',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Action.prototype,
+    reason: "ActionButton's Pressable focusable gate.",
+  },
 ];

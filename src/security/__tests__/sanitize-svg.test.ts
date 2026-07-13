@@ -103,3 +103,75 @@ describe('sanitizeIconSvg — allowlist pipeline', () => {
     expect(second).toBe(first);
   });
 });
+
+describe('sanitizeIconSvg — resource bounds + never-throw (codex review major 1)', () => {
+  it('a 5000-deep allowlisted <g> tree is rejected, NOT a RangeError', () => {
+    const deep =
+      '<svg viewBox="0 0 4 4">' +
+      '<g>'.repeat(5000) +
+      '<path d="M0 0h4"/>' +
+      '</g>'.repeat(5000) +
+      '</svg>';
+    let result: ReturnType<typeof sanitizeIconSvg> | undefined;
+    expect(() => {
+      result = sanitizeIconSvg(deep);
+    }).not.toThrow();
+    expect(result!.xml).toBeNull();
+    expect(result!.diagnostics.some((d) => d.code === 'icon-svg-invalid')).toBe(
+      true
+    );
+  });
+
+  it('rejects oversized source before parsing', () => {
+    const huge =
+      '<svg viewBox="0 0 4 4"><path d="M' +
+      '0 0h4 '.repeat(20000) +
+      '"/></svg>';
+    expect(huge.length).toBeGreaterThan(64 * 1024);
+    const result = sanitizeIconSvg(huge);
+    expect(result.xml).toBeNull();
+    expect(result.diagnostics.some((d) => d.code === 'icon-svg-invalid')).toBe(
+      true
+    );
+  });
+
+  it('rejects a pathological element count', () => {
+    const wide =
+      '<svg viewBox="0 0 4 4">' + '<path d="M0 0h1"/>'.repeat(600) + '</svg>';
+    const result = sanitizeIconSvg(wide);
+    expect(result.xml).toBeNull();
+    expect(result.diagnostics.some((d) => d.code === 'icon-svg-invalid')).toBe(
+      true
+    );
+  });
+});
+
+describe('sanitizeIconSvg — style validation + href grammar (codex review minor 4)', () => {
+  it('keeps a well-formed style attribute', () => {
+    const result = sanitizeIconSvg(
+      '<svg viewBox="0 0 4 4"><path d="M0 0h4" style="fill:red; stroke-width:2"/></svg>'
+    );
+    expect(result.xml).toContain('style="fill:red; stroke-width:2"');
+    expect(result.diagnostics).toHaveLength(0);
+  });
+
+  it('drops a malformed style attribute (declaration without ":" crashes react-native-svg\'s parser)', () => {
+    const result = sanitizeIconSvg(
+      '<svg viewBox="0 0 4 4"><path d="M0 0h4" style="color"/></svg>'
+    );
+    expect(result.xml).toContain('M0 0h4');
+    expect(result.xml).not.toContain('style=');
+    expect(
+      result.diagnostics.some((d) => d.code === 'icon-svg-sanitized')
+    ).toBe(true);
+  });
+
+  it('rejects fragment references outside the exact grammar (bare "#", embedded whitespace)', () => {
+    const result = sanitizeIconSvg(
+      '<svg viewBox="0 0 4 4"><use href="#"/><use href="#foo bar"/><use href="#ok-ref_1.x"/></svg>'
+    );
+    expect(result.xml).toContain('href="#ok-ref_1.x"');
+    expect(result.xml).not.toContain('href="#"');
+    expect(result.xml).not.toContain('foo bar');
+  });
+});

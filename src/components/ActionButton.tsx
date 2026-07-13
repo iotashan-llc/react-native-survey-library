@@ -263,11 +263,20 @@ export class ActionButton extends SurveyElementBase<
         accessible
         accessibilityRole={mapAccessibilityRole(action.ariaRole)}
         accessibilityLabel={action.getTooltip()}
+        accessibilityLabelledBy={action.ariaLabelledBy}
         accessibilityState={{
           disabled: action.disabled,
           checked: action.ariaChecked,
           expanded: action.ariaExpanded,
-          selected: action.pressed ? true : undefined,
+          // `active` is the model's SEMANTIC selection/active flag
+          // (upstream itemActive); `pressed` is a transient
+          // pressed/dropdown-open visual and must never surface as
+          // selection to assistive technology (codex review major 3).
+          // Visual active styling awaits an `active` fragment in the 0.7
+          // button-recipe fixture — owned by the ActionBar item task;
+          // inventing a mapping onto the pressed fragment here would
+          // misrepresent the fixture's locked legal states.
+          selected: action.active ? true : undefined,
         }}
         testID={this.props.testID}
       >
