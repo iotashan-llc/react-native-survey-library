@@ -55,6 +55,7 @@
  */
 import { Helpers } from '../core/facade';
 import type { Question } from '../core/facade';
+import { reportMaskedOnTypingDowngradedOnce } from '../diagnostics';
 
 /**
  * Which model surface a commit writes (and the draft reads).
@@ -75,6 +76,10 @@ export type DraftCommitKind = 'inputValue' | 'value';
 type TextLikeQuestion = Question & {
   inputValue?: string;
   updateRemainingCharacterCounter?: (newValue: string) => void;
+  /** QuestionTextModel's mask discriminator; `"none"` = no mask. */
+  maskType?: string;
+  /** QuestionTextBase's per-question override: "default"|"onBlur"|"onTyping". */
+  textUpdateMode?: string;
 };
 
 export interface DraftCommitAdapterOptions {
@@ -152,6 +157,27 @@ export class DraftCommitAdapter {
     // Web updates the counter on every keystroke in both modes
     // (question_text.ts:748,763; question_comment.ts onInput).
     this.question.updateRemainingCharacterCounter?.(text);
+    if (this.hasActiveMask()) {
+      // Masked questions are blur-commit ONLY. Core already enforces this
+      // model-side on every platform (QuestionTextModel.
+      // getIsInputTextUpdate returns false whenever a mask is active —
+      // question_text.ts:619-621), so `isInputTextUpdate` below can never
+      // be true here today; this explicit gate makes the 1.9 contract
+      // independent of that core internal, and the once-per-question
+      // diagnostic tells a host that asked for onTyping WHY typing isn't
+      // committing live. Per-keystroke mask formatting (core's
+      // InputElementAdapter role: processInput + selection management) is
+      // 1.10's component concern.
+      if (this.isOnTypingRequested()) {
+        reportMaskedOnTypingDowngradedOnce(this.question, {
+          code: 'masked-on-typing-downgraded',
+          questionType: this.question.getType(),
+          name: this.question.name,
+          maskType: this.question.maskType ?? '',
+        });
+      }
+      return;
+    }
     if (this.question.isInputTextUpdate) {
       this.commit(text);
     }
@@ -238,6 +264,30 @@ export class DraftCommitAdapter {
         question.value = text;
       }
     }
+  }
+
+  private hasActiveMask(): boolean {
+    return (
+      this.kind === 'inputValue' &&
+      typeof this.question.maskType === 'string' &&
+      this.question.maskType !== 'none'
+    );
+  }
+
+  /**
+   * What the host ASKED for (as opposed to `isInputTextUpdate`, the
+   * effective mode after core's gates): the question-level override wins,
+   * else the survey default (question_textbase.ts:74-78 resolution order).
+   * Used only to decide whether the masked-downgrade diagnostic applies.
+   */
+  private isOnTypingRequested(): boolean {
+    const mode = this.question.textUpdateMode;
+    if (mode === 'onTyping') return true;
+    if (mode === 'onBlur') return false;
+    const survey = this.question.survey as {
+      isUpdateValueTextOnTyping?: boolean;
+    } | null;
+    return survey?.isUpdateValueTextOnTyping === true;
   }
 
   private readModelText(): unknown {
