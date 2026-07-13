@@ -90,6 +90,32 @@ export interface SanitizedHtmlLinkPressDroppedPayload {
   reason: string;
 }
 
+/** Emitted when a bare-`Image` consumer's URI fails the central URI
+ * policy (context `'image'`) and the image is dropped fail-closed
+ * (invariant 8). `source` names the renderer surface — `'survey-logo'`
+ * (task 1.6); later bare-Image ports (image question, imagepicker) add
+ * their own. Reported from commit lifecycles, deduped per URI. */
+export interface ImageUriBlockedPayload {
+  code: 'image-uri-blocked';
+  source: string;
+  uri: string;
+  reason: string;
+}
+
+/** Emitted when a survey-core wrapper dispatch
+ * (`getElementWrapperComponentName`, upstream's host extension surface)
+ * names an element key `RNElementFactory` has no registration for — the
+ * slot renders NOTHING (fail-closed: never a guessed default component
+ * fed possibly-transformed wrapper data), the surrounding survey
+ * survives (invariant 9). `reason` is the core wrapper reason
+ * (`'logo-image'`, ...). Reported from commit lifecycles, deduped per
+ * componentName per host instance. */
+export interface ElementWrapperMissingPayload {
+  code: 'element-wrapper-missing';
+  componentName: string;
+  reason: string;
+}
+
 /**
  * Emitted (once per question) by the 1.9 draft/commit adapter when a
  * masked text question requested per-keystroke commits (`textUpdateMode:
@@ -115,6 +141,8 @@ export type DiagnosticPayload =
   | ThemeDiagnosticPayload
   | SanitizedHtmlDiagnosticPayload
   | SanitizedHtmlLinkPressDroppedPayload
+  | ImageUriBlockedPayload
+  | ElementWrapperMissingPayload
   | MaskedOnTypingDowngradedPayload;
 
 export type DiagnosticHandler = (payload: DiagnosticPayload) => void;
