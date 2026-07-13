@@ -12,13 +12,15 @@
  * subscribe directly to the question model (title/description/errors/
  * comment/state all live on the SAME question object).
  */
-import { Text } from 'react-native';
+import { Text, StyleSheet } from 'react-native';
 import { act, render, screen, fireEvent } from '@testing-library/react-native';
 
-import { Model } from '../../core/facade';
+import { Model, SurveyError } from '../../core/facade';
 import type { Question } from '../../core/facade';
 import { QuestionChrome } from '../QuestionChrome';
 import { SurveyThemeProvider } from '../../theme-rn/provider';
+import { buildQuestionChromeRecipe } from '../../theme-rn/recipes/questionChrome';
+import { resolveTheme } from '../../theme-core/resolve';
 
 function createQuestion(name: string, type = 'text'): Question {
   // `showQuestionNumbers` defaults to `"off"` (survey.ts Serializer
@@ -282,6 +284,172 @@ describe('QuestionChrome', () => {
       question.state = 'collapsed';
       render(<QuestionChrome question={question} />);
       expect(screen.queryByTestId('q-comment-collapsed-comment')).toBeNull();
+    });
+
+    it('question swap resets the draft — the old draft is never shown by, nor committed into, the new question (codex review critical)', () => {
+      const qa = createChoiceQuestion('qa');
+      qa.showCommentArea = true;
+      qa.comment = 'alpha';
+      const qb = createChoiceQuestion('qb');
+      qb.showCommentArea = true;
+      qb.comment = 'beta';
+      const { rerender } = render(<QuestionChrome question={qa} />);
+      // Uncommitted draft typed into A (default onBlur mode: model untouched)
+      fireEvent.changeText(screen.getByTestId('qa-comment'), 'typed-into-a');
+      rerender(<QuestionChrome question={qb} />);
+      const input = screen.getByTestId('qb-comment');
+      expect(input.props.value).toBe('beta');
+      fireEvent(input, 'blur');
+      expect(qb.comment).toBe('beta');
+      expect(qa.comment).toBe('alpha');
+    });
+
+    it('commits on every keystroke when the survey textUpdateMode is "onTyping" (core onCommentInput / isInputTextUpdate path)', () => {
+      const model = new Model({
+        textUpdateMode: 'onTyping',
+        elements: [{ type: 'checkbox', name: 'q-typing', choices: ['a'] }],
+      });
+      const question = model.getQuestionByName('q-typing') as Question;
+      question.showCommentArea = true;
+      expect(question.isInputTextUpdate).toBe(true);
+      render(<QuestionChrome question={question} />);
+      fireEvent.changeText(
+        screen.getByTestId('q-typing-comment'),
+        'live-typed'
+      );
+      expect(question.comment).toBe('live-typed');
+    });
+  });
+
+  describe('titleLocation left (codex review major 3)', () => {
+    it('lays the header and content out in a row when titleLocation is "left"', () => {
+      const question = createQuestion('q-left');
+      question.title = 'Left Title';
+      question.titleLocation = 'left';
+      render(
+        <QuestionChrome question={question}>
+          <Text>left child</Text>
+        </QuestionChrome>
+      );
+      expect(question.hasTitleOnLeft).toBe(true);
+      const row = screen.getByTestId('q-left-left-row');
+      expect(StyleSheet.flatten(row.props.style).flexDirection).toBe('row');
+      expect(screen.getByText('Left Title')).toBeTruthy();
+      expect(screen.getByText('left child')).toBeTruthy();
+    });
+
+    it('non-left locations do not create the row wrapper', () => {
+      const question = createQuestion('q-not-left');
+      question.title = 'Top Title';
+      render(
+        <QuestionChrome question={question}>
+          <Text>top child</Text>
+        </QuestionChrome>
+      );
+      expect(screen.queryByTestId('q-not-left-left-row')).toBeNull();
+    });
+  });
+
+  describe('error tones (codex review major 4; sd-error.scss:26-38)', () => {
+    function toneRecipe() {
+      return buildQuestionChromeRecipe(resolveTheme(undefined), {
+        platform: { os: 'ios' },
+      });
+    }
+    function addToneError(
+      question: Question,
+      text: string,
+      tone?: 'warning' | 'info'
+    ): void {
+      const error = new SurveyError(text);
+      if (tone) error.notificationType = tone;
+      question.addError(error);
+    }
+
+    it('warning-only errors render the yellow warning tone (panel background + item color)', () => {
+      const question = createQuestion('q-warn');
+      question.title = 'Warn';
+      addToneError(question, 'careful now', 'warning');
+      expect(question.currentNotificationType).toBe('warning');
+      render(<QuestionChrome question={question} />);
+      const fragments = toneRecipe().fragments;
+      const panel = StyleSheet.flatten(
+        screen.getByTestId('q-warn-errors-above').props.style
+      );
+      expect(panel.backgroundColor).toBe(
+        fragments.errorPanelWarning.backgroundColor
+      );
+      const item = StyleSheet.flatten(
+        screen.getByText('careful now').props.style
+      );
+      expect(item.color).toBe(fragments.errorItemWarning.color);
+      // and the warning tone is DISTINCT from the red error tone
+      expect(panel.backgroundColor).not.toBe(
+        fragments.errorPanel.backgroundColor
+      );
+    });
+
+    it('info-only errors render the blue info tone', () => {
+      const question = createQuestion('q-info');
+      question.title = 'Info';
+      addToneError(question, 'fyi note', 'info');
+      expect(question.currentNotificationType).toBe('info');
+      render(<QuestionChrome question={question} />);
+      const fragments = toneRecipe().fragments;
+      const panel = StyleSheet.flatten(
+        screen.getByTestId('q-info-errors-above').props.style
+      );
+      expect(panel.backgroundColor).toBe(
+        fragments.errorPanelInfo.backgroundColor
+      );
+      const item = StyleSheet.flatten(screen.getByText('fyi note').props.style);
+      expect(item.color).toBe(fragments.errorItemInfo.color);
+    });
+
+    it('mixed severities render only the highest-severity type with its tone — upstream currentNotificationType policy (renderedErrors is filtered to one type by core)', () => {
+      const question = createQuestion('q-mixed');
+      question.title = 'Mixed';
+      addToneError(question, 'careful now', 'warning');
+      addToneError(question, 'hard failure');
+      expect(question.currentNotificationType).toBe('error');
+      render(<QuestionChrome question={question} />);
+      expect(screen.getByText('hard failure')).toBeTruthy();
+      expect(screen.queryByText('careful now')).toBeNull();
+      const fragments = toneRecipe().fragments;
+      const panel = StyleSheet.flatten(
+        screen.getByTestId('q-mixed-errors-above').props.style
+      );
+      expect(panel.backgroundColor).toBe(fragments.errorPanel.backgroundColor);
+    });
+  });
+
+  describe('description location styling (codex review minor 5; sd-description.scss:13-19)', () => {
+    it('under-title description gets the header margin; under-input gets the padding-top — distinct fragments', () => {
+      const q1 = createQuestion('q-desc-style-title');
+      q1.title = 'Spacing Title';
+      q1.description = 'under title text';
+      const r1 = render(<QuestionChrome question={q1} />);
+      const s1 = StyleSheet.flatten(
+        r1.getByText('under title text').props.style
+      );
+      // .sd-element__header .sd-description margin-top:
+      // 0.25 * --sd-base-vertical-padding (4*baseUnit regular tier) - 0.5*baseUnit = 0.5*baseUnit
+      expect(s1.marginTop).toBe(4);
+      expect(s1.paddingTop).toBeUndefined();
+      r1.unmount();
+
+      const q2 = createQuestion('q-desc-style-input');
+      q2.title = 'Spacing Input';
+      q2.description = 'under input text';
+      q2.descriptionLocation = 'underInput';
+      const r2 = render(<QuestionChrome question={q2} />);
+      const s2 = StyleSheet.flatten(
+        r2.getByText('under input text').props.style
+      );
+      // .sd-question__description--under-input padding-top:
+      // 0.375 * --sd-base-vertical-padding = 1.5*baseUnit
+      expect(s2.paddingTop).toBe(12);
+      expect(s2.marginTop).toBeUndefined();
     });
   });
 

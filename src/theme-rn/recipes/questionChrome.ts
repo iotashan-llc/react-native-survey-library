@@ -42,16 +42,34 @@ import type { BuildContext } from './types';
 
 export interface QuestionChromeRecipe {
   fragments: {
-    /** `.sd-description` — question description (under-title or under-input; same style either way, only placement differs). */
+    /** `.sd-description` — question description base (both placements). */
     description: TextStyle;
-    /** `.sd-error` base — shared by above/below placement. */
+    /** `.sd-element__header .sd-description` — under-title spacing: `0.25 * --sd-base-vertical-padding - 0.5*baseUnit` = calcSize(0.5) at the regular (>=600) tier. */
+    descriptionUnderTitle: TextStyle;
+    /** `.sd-question__description--under-input` — `padding-top: 0.375 * --sd-base-vertical-padding` = calcSize(1.5) at the regular tier. */
+    descriptionUnderInput: TextStyle;
+    /** `.sd-error` base — red error tone, shared by above/below placement. */
     errorPanel: ViewStyle;
     /** `.sd-element__erbox--above-element` / `.sd-question--title-top>.sd-question__erbox--above-question` spacing. */
     errorPanelAbove: ViewStyle;
     /** `.sd-question__erbox--below-question` spacing. */
     errorPanelBelow: ViewStyle;
-    /** `.sd-error__item` — one error/warning message line. */
+    /** `.sd-error--warning` panel tone (sd-error.scss:26-32). */
+    errorPanelWarning: ViewStyle;
+    /** `.sd-error--info` panel tone (sd-error.scss:34-38). */
+    errorPanelInfo: ViewStyle;
+    /** `.sd-error__item` — one message line, red error tone. */
     errorItem: TextStyle;
+    /** `.sd-error--warning .sd-error__item` item color. */
+    errorItemWarning: TextStyle;
+    /** `.sd-error--info .sd-error__item` item color. */
+    errorItemInfo: TextStyle;
+    /** `.sd-question--left` — header+content row (`flex-direction: row; column-gap: calcSize(3)`). */
+    titleLeftRow: ViewStyle;
+    /** `.sd-question__header--location--left` — `margin-top: calcSize(1.5)`. */
+    headerLeft: ViewStyle;
+    /** `.sd-question__content--left` — `flex: 1`. */
+    contentLeft: ViewStyle;
     /** `.sd-question__comment-area` container. */
     commentArea: ViewStyle;
     /** `.sd-question__comment-area` text (the `commentText` caption). */
@@ -79,6 +97,17 @@ export function buildQuestionChromeRecipe(
         sink
       ).css,
     },
+    // --sd-base-vertical-padding = 4*baseUnit at the regular (>=600) tier
+    // (default.m600.scss:7; the 2*baseUnit value on :14 is the --mobile
+    // override — narrow-tier variants are deferred with the rest of the
+    // chrome's narrow handling). Formulas below are pre-multiplied:
+    // 0.25*4 - 0.5 = 0.5; 0.375*4 = 1.5.
+    descriptionUnderTitle: {
+      marginTop: calcSize(resolved, 0.5),
+    },
+    descriptionUnderInput: {
+      paddingTop: calcSize(resolved, 1.5),
+    },
     errorPanel: {
       paddingVertical: calcSize(resolved, 1),
       paddingHorizontal: calcSize(resolved, 1.5),
@@ -96,11 +125,54 @@ export function buildQuestionChromeRecipe(
     errorPanelBelow: {
       marginTop: calcSize(resolved, 1),
     },
+    // Tone panels/items use the SAME semantic tokens upstream's SCSS names
+    // (sd-error.scss:26-38); the registry carries their upstream fallback
+    // chains (--sjs-special-yellow-light / --sjs-secondary-backcolor /
+    // --sjs-special-blue(-light)), so themed overrides of either the
+    // semantic var or its fallback flow through resolveColorVar.
+    errorPanelWarning: {
+      backgroundColor: resolveColorVar(
+        resolved,
+        '--sjs-semantic-yellow-background-10',
+        sink
+      ).css,
+    },
+    errorPanelInfo: {
+      backgroundColor: resolveColorVar(
+        resolved,
+        '--sjs-semantic-blue-background-10',
+        sink
+      ).css,
+    },
     errorItem: {
       color: resolveColorVar(resolved, '--sjs-special-red', sink).css,
       fontSize: calcFontSize(resolved, 0.75),
       lineHeight: calcLineHeight(resolved, 1),
       fontWeight: '600',
+    },
+    errorItemWarning: {
+      color: resolveColorVar(
+        resolved,
+        '--sjs-semantic-yellow-background-500',
+        sink
+      ).css,
+    },
+    errorItemInfo: {
+      color: resolveColorVar(
+        resolved,
+        '--sjs-semantic-blue-background-500',
+        sink
+      ).css,
+    },
+    titleLeftRow: {
+      flexDirection: 'row',
+      columnGap: calcSize(resolved, 3),
+    },
+    headerLeft: {
+      marginTop: calcSize(resolved, 1.5),
+    },
+    contentLeft: {
+      flex: 1,
     },
     commentArea: {
       marginTop: calcSize(resolved, 2),

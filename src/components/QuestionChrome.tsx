@@ -36,8 +36,16 @@
  *
  * The comment ("Other" comment textarea comes later, task 1.12+) area
  * here is the question-level `showCommentArea` slot: a plain `TextInput`
- * wired to `question.comment` via a local draft + simple onBlur commit
- * (the full `textUpdateMode`-aware draft/commit adapter is task 1.9).
+ * holding a local draft, committed through CORE'S OWN comment event pair —
+ * `onChangeText` forwards to `question.onCommentInput()` (which commits
+ * per keystroke ONLY when `isInputTextUpdate`, i.e. survey
+ * `textUpdateMode: 'onTyping'` — question.ts:1295-1300) and `onBlur`
+ * forwards to `question.onCommentChange()` (always commits —
+ * question.ts:1301-1305). Driving core's handlers rather than re-deriving
+ * the mode keeps parity by construction; the 1.9 draft/commit adapter is
+ * for VALUE-carrying inputs (it writes `question.value`) and is
+ * deliberately not wired to this `question.comment` surface (codex review
+ * round 2, major 2).
  */
 import * as React from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
@@ -68,6 +76,8 @@ export interface QuestionChromeProps extends QuestionElementBaseProps {
 
 interface QuestionChromeState extends SurveyElementBaseState {
   commentDraft: string;
+  /** The question the draft belongs to — `getDerivedStateFromProps` resets the draft when the question prop is retargeted (codex review critical: constructor-only init let a NEW question render, and commit, the OLD question's draft). */
+  draftQuestion?: Question;
 }
 
 type RequiredMarkPosition = 'start' | 'before' | 'after' | 'none';
@@ -106,7 +116,28 @@ export class QuestionChrome extends QuestionElementBase<
     this.state = {
       ...this.state,
       commentDraft: props.question?.comment ?? '',
+      draftQuestion: props.question,
     };
+  }
+
+  /**
+   * Question-swap draft reset (codex review critical): runs BEFORE the
+   * swap render, so the new question can never even transiently show —
+   * let alone blur-commit — the old question's uncommitted draft. Same-
+   * question renders (typing, model notifications) return null and leave
+   * the draft alone.
+   */
+  static getDerivedStateFromProps(
+    props: QuestionChromeProps,
+    state: QuestionChromeState
+  ): Partial<QuestionChromeState> | null {
+    if (props.question !== state.draftQuestion) {
+      return {
+        draftQuestion: props.question,
+        commentDraft: props.question?.comment ?? '',
+      };
+    }
+    return null;
   }
 
   protected getStateElement(): Base | null {
@@ -136,12 +167,24 @@ export class QuestionChrome extends QuestionElementBase<
 
   private handleCommentChange = (text: string): void => {
     this.setState({ commentDraft: text } as QuestionChromeState);
+    // Core's own per-keystroke path: `onCommentInput` commits ONLY when
+    // `isInputTextUpdate` (survey `textUpdateMode: 'onTyping'` and the
+    // question is text-valued — question.ts:1295-1300, 2705-2707). Under
+    // the default onBlur mode this is a no-op, exactly like upstream's
+    // DOM `input` listener.
+    this.questionBase.onCommentInput({ target: { value: text } });
   };
 
   private handleCommentBlur = (): void => {
     const question = this.questionBase;
-    if (question.comment !== this.state.commentDraft) {
-      question.comment = this.state.commentDraft;
+    // Core's `change` path — always commits (and normalizes: whitespace-
+    // only trims to ''; question.ts:1301-1305, 2379-2386). Sync the draft
+    // to whatever the model actually kept, mirroring upstream's
+    // `event.target.value = this.comment` writeback.
+    question.onCommentChange({ target: { value: this.state.commentDraft } });
+    const committed = question.comment ?? '';
+    if (committed !== this.state.commentDraft) {
+      this.setState({ commentDraft: committed } as QuestionChromeState);
     }
   };
 
@@ -212,17 +255,39 @@ export class QuestionChrome extends QuestionElementBase<
               question,
               recipes.questionChrome,
               overrides.questionChrome,
+              'underInput',
               'description-under-input'
             )
           : null}
       </View>
     ) : null;
 
+    // titleLocation "left" (codex review major 3): header and content
+    // share a row (`.sd-question--left` flex row + column-gap; content
+    // takes the remaining width per `.sd-question__content--left`).
+    // `titleWidth` (parent-column sizing) is a panel-layout concern that
+    // lands with 1.4's composition work.
+    const body = question.hasTitleOnLeft ? (
+      <View
+        testID={`${question.name}-left-row`}
+        style={recipes.questionChrome.fragments.titleLeftRow}
+      >
+        {headerTop}
+        <View style={recipes.questionChrome.fragments.contentLeft}>
+          {content}
+        </View>
+      </View>
+    ) : (
+      <>
+        {headerTop}
+        {content}
+      </>
+    );
+
     return (
       <View testID={this.props.testID ?? `${question.name}-chrome`}>
         {errorsAbove}
-        {headerTop}
-        {content}
+        {body}
         {headerBottom}
         {errorsBelow}
       </View>
@@ -314,12 +379,19 @@ export class QuestionChrome extends QuestionElementBase<
           question,
           chromeRecipe,
           chromeOverrides,
+          'underTitle',
           'description-under-title'
         )
       : null;
 
     return (
-      <View>
+      <View
+        style={
+          question.hasTitleOnLeft
+            ? chromeRecipe.fragments.headerLeft
+            : undefined
+        }
+      >
         {headerInner}
         {descriptionUnderTitle}
       </View>
@@ -330,11 +402,19 @@ export class QuestionChrome extends QuestionElementBase<
     question: Question,
     chromeRecipe: QuestionChromeRecipe,
     chromeOverrides: QuestionChromeStyleOverrides | undefined,
+    location: 'underTitle' | 'underInput',
     key: string
   ): React.JSX.Element {
+    // Location-specific spacing (codex review minor 5, sd-description.scss:
+    // 13-19): header descriptions get the header margin-top, under-input
+    // descriptions the padding-top — distinct fragments, shared base.
+    const locationFragment =
+      location === 'underTitle'
+        ? chromeRecipe.fragments.descriptionUnderTitle
+        : chromeRecipe.fragments.descriptionUnderInput;
     return this.renderLocString(
       question.locDescription,
-      composeStyles(chromeRecipe.fragments.description, {
+      composeStyles([chromeRecipe.fragments.description, locationFragment], {
         override: chromeOverrides?.description,
       }),
       key
@@ -347,25 +427,37 @@ export class QuestionChrome extends QuestionElementBase<
     chromeOverrides: QuestionChromeStyleOverrides | undefined,
     position: 'above' | 'below'
   ): React.JSX.Element {
+    const f = chromeRecipe.fragments;
     const panelVariant =
-      position === 'above'
-        ? chromeRecipe.fragments.errorPanelAbove
-        : chromeRecipe.fragments.errorPanelBelow;
+      position === 'above' ? f.errorPanelAbove : f.errorPanelBelow;
+    // Tone policy = upstream's (codex review major 4): the PANEL tone
+    // follows `currentNotificationType` (highest severity among visible
+    // errors; error > warning > info), and core's `calcRenderedErrors`
+    // already filters `renderedErrors` to exactly that type — the panel
+    // is homogeneous by construction, so per-error tones cannot diverge
+    // (survey-element.ts:793-816; sd-error.scss:26-38).
+    const tone = question.currentNotificationType;
+    const panelFragments = [f.errorPanel, panelVariant];
+    const itemFragments = [f.errorItem];
+    if (tone === 'warning') {
+      panelFragments.push(f.errorPanelWarning);
+      itemFragments.push(f.errorItemWarning);
+    } else if (tone === 'info') {
+      panelFragments.push(f.errorPanelInfo);
+      itemFragments.push(f.errorItemInfo);
+    }
     return (
       <View
         testID={`${question.name}-errors-${position}`}
         accessibilityRole="alert"
-        style={composeStyles(
-          [chromeRecipe.fragments.errorPanel, panelVariant],
-          {
-            override: chromeOverrides?.errorPanel,
-          }
-        )}
+        style={composeStyles(panelFragments, {
+          override: chromeOverrides?.errorPanel,
+        })}
       >
         {question.renderedErrors.map((error, index) =>
           this.renderLocString(
             error.locText,
-            composeStyles(chromeRecipe.fragments.errorItem, {
+            composeStyles(itemFragments, {
               override: chromeOverrides?.errorItem,
             }),
             `error-${position}-${index}`
