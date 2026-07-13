@@ -31,7 +31,13 @@ describe('test rails', () => {
 
 describe('index.tsx: registrar wiring (design: docs/design/0.5-factories.md)', () => {
   it('importing the package root registers the supported descriptor rows into both factories', () => {
-    expect(RNQuestionFactory.getAllTypes()).toEqual(['empty']);
+    expect(RNQuestionFactory.getAllTypes()).toEqual([
+      'boolean',
+      'empty',
+      'expression',
+      'sv-boolean-checkbox',
+      'sv-boolean-radio',
+    ]);
     expect(RNElementFactory.getAllTypes()).toEqual([
       'survey-header',
       'sv-logo-image',
