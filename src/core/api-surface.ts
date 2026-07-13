@@ -327,6 +327,10 @@ export const API_SURFACE_WATCHLIST: readonly WatchedApiMember[] = [
   // TS field declarations with NO runtime descriptor on the prototype OR
   // a fresh instance (verified against 2.5.33), so reflection would
   // report a false 'missing'; the Survey behavioral suites own them.
+  // Same story for `SurveyModel.focusingQuestionInfo` (the private bare
+  // field read by the afterRenderPage-parity branch) — its paired
+  // METHOD `focusQuestionInfo` IS a real prototype member and is pinned
+  // below.
   // ------------------------------------------------------------------
   {
     id: 'SurveyModel.applyTheme',
@@ -343,6 +347,14 @@ export const API_SURFACE_WATCHLIST: readonly WatchedApiMember[] = [
     resolveHost: (sc) => sc.SurveyModel.prototype,
     reason:
       "The page-change render-complete call that re-enters the scroll funnel (design 1.2-lifecycle-bridge, 'Sequencing').",
+  },
+  {
+    id: 'SurveyModel.focusQuestionInfo',
+    member: 'focusQuestionInfo',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.SurveyModel.prototype,
+    reason:
+      'Core afterRenderPage parity (survey.ts:5514-5519): a pending focusQuestion wins over the page-change scroll. Private in the typings; real prototype method (verified 2.5.33) — SurveyRoot calls it via cast.',
   },
   {
     id: 'SurveyModel.state',

@@ -163,12 +163,27 @@ class SurveyRoot extends SurveyElementBase<SurveyRootProps> {
     // The render-complete call that drives the page-change scroll (1.2
     // design, "Sequencing"): re-enters the core funnel, which the bridge
     // intercepts. Only meaningful while the survey is presenting pages.
+    // Core afterRenderPage parity (survey.ts:5514-5519): a pending
+    // `focusingQuestionInfo` (set by `focusQuestion`) routes to
+    // `focusQuestionInfo()` and SUPPRESSES the page-change scroll —
+    // either/or, never both. Both members are private in the typings but
+    // real at runtime (`focusQuestionInfo` is a prototype method, pinned
+    // by the api-surface gate; `focusingQuestionInfo` is a bare field —
+    // see the gate's not-listable note).
     const page = survey.activePage;
     if (page !== this.lastActivePage) {
       this.lastActivePage = page;
       const state = survey.state;
       if (page && (state === 'running' || state === 'starting')) {
-        survey.scrollToTopOnPageChange();
+        const focusable = survey as unknown as {
+          focusingQuestionInfo?: unknown;
+          focusQuestionInfo(): void;
+        };
+        if (focusable.focusingQuestionInfo) {
+          focusable.focusQuestionInfo();
+        } else {
+          survey.scrollToTopOnPageChange();
+        }
       }
     }
   }

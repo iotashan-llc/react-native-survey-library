@@ -2,7 +2,9 @@
  * `<Survey>` lifecycle-bridge wiring (design: docs/design/1.1-survey-root.md,
  * "Bridge wiring"; 1.2 design "Sequencing" — 1.1 owns install/uninstall on
  * mount/model-swap/unmount, ScrollView host registration, and the
- * render-complete call that drives `scrollToTopOnPageChange`).
+ * render-complete call mirroring core afterRenderPage: a pending
+ * `focusingQuestionInfo` -> `focusQuestionInfo()`, else
+ * `scrollToTopOnPageChange` — either/or, never both).
  *
  * The bridge and registry modules are MOCKED — these tests pin 1.1's
  * call-site contract against the 1.2 API skeleton, not the bridge's own
@@ -163,6 +165,28 @@ describe('<Survey> page-change render-complete call', () => {
       model.nextPage();
     });
     expect(spy).toHaveBeenCalled();
+  });
+
+  it('routes render-complete to focusQuestionInfo INSTEAD of scrolling when a focus is pending (core afterRenderPage parity, survey.ts:5514-5519)', () => {
+    const model = new Model(JSON_A);
+    type FocusInternals = {
+      focusingQuestionInfo?: unknown;
+      focusQuestionInfo(): void;
+    };
+    const internals = model as unknown as FocusInternals;
+    const scrollSpy = jest
+      .spyOn(model, 'scrollToTopOnPageChange')
+      .mockImplementation(() => undefined);
+    const focusSpy = jest
+      .spyOn(internals, 'focusQuestionInfo')
+      .mockImplementation(() => undefined);
+    render(<Survey model={model} />);
+    internals.focusingQuestionInfo = { question: undefined, onError: false };
+    act(() => {
+      model.nextPage();
+    });
+    expect(focusSpy).toHaveBeenCalled();
+    expect(scrollSpy).not.toHaveBeenCalled();
   });
 
   it('does not call scrollToTopOnPageChange when the survey leaves the running state', () => {
