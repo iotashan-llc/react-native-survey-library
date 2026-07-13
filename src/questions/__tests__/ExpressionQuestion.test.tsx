@@ -17,7 +17,7 @@
 import { act, render, screen } from '@testing-library/react-native';
 
 import { Model } from '../../core/facade';
-import type { Question } from '../../core/facade';
+import type { Question, QuestionExpressionModel } from '../../core/facade';
 import { ExpressionQuestion } from '../ExpressionQuestion';
 
 function createExpressionQuestion(
@@ -59,6 +59,43 @@ describe('ExpressionQuestion', () => {
       model.setValue('a', 10);
     });
     expect(screen.getByText('11')).toBeTruthy();
+  });
+
+  it('currency displayStyle: renders the formatted value and re-renders when currency/format mutate (real Model)', () => {
+    // QuestionExpressionModel.onPropertyValueChanged routes
+    // format/currency/displayStyle writes through updateFormatedValue()
+    // (question_expression.ts, v2.5.33) — the rendered text must follow.
+    const model = new Model({
+      elements: [
+        { type: 'text', name: 'price' },
+        {
+          type: 'expression',
+          name: 'total',
+          expression: '{price} * 2',
+          displayStyle: 'currency',
+        },
+      ],
+    });
+    const question = model.getQuestionByName(
+      'total'
+    ) as QuestionExpressionModel;
+    render(<ExpressionQuestion question={question} creator={{}} />);
+
+    act(() => {
+      model.setValue('price', 5);
+    });
+    expect(screen.getByText('$10.00')).toBeTruthy();
+
+    act(() => {
+      question.currency = 'EUR';
+    });
+    expect(screen.queryByText('$10.00')).toBeNull();
+    expect(screen.getByText('€10.00')).toBeTruthy();
+
+    act(() => {
+      question.format = 'Total: {0}';
+    });
+    expect(screen.getByText('Total: €10.00')).toBeTruthy();
   });
 
   it('does not render at all when canRender() is false (no creator)', () => {

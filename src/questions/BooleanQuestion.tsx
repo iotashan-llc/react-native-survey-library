@@ -77,7 +77,18 @@ const styles = StyleSheet.create({
   },
 });
 
-/** Shared helper: never reach into `question.booleanValue`/`.value` from a fixed decorator/label recipe fragment without going through this — keeps the "same item recipe" contract obvious across checkbox and radio. */
+/**
+ * Shared helper: never reach into `question.booleanValue`/`.value` from a
+ * fixed decorator/label recipe fragment without going through this — keeps
+ * the "same item recipe" contract obvious across checkbox and radio.
+ *
+ * Scope note: this feeds the STYLE recipe only. `readOnly` here is
+ * `isReadOnlyStyle` (`isReadOnly && !isPreview`, survey-element.ts) —
+ * design mode deliberately does NOT flip it (Creator still paints items
+ * "enabled"). Interaction gating and `accessibilityState.disabled` must
+ * instead follow `isInputReadOnly` (`isReadOnly || isDesignMode`,
+ * question.ts) or design mode announces enabled while rejecting input.
+ */
 function baseItemState(
   question: QuestionBooleanModel
 ): Omit<ItemStateInput, 'checked'> {
@@ -171,14 +182,16 @@ export class BooleanCheckboxQuestion extends QuestionElementBase<QuestionElement
       ...baseItemState(question),
     };
     const selected = selectItemStyles(recipes.item, input, mode, 'checkbox');
+    const inputDisabled = question.isInputReadOnly;
     return (
       <Pressable
         testID={`sv-boolean-checkbox-${question.name}`}
         accessibilityRole="checkbox"
         accessibilityState={{
           checked: question.isIndeterminate ? 'mixed' : checked,
-          disabled: input.readOnly,
+          disabled: inputDisabled,
         }}
+        disabled={inputDisabled}
         onPress={this.handleToggle}
         style={[styles.checkboxRow, ...selected.container]}
       >
@@ -213,12 +226,14 @@ export class BooleanRadioQuestion extends QuestionElementBase<QuestionElementBas
       ...baseItemState(question),
     };
     const selected = selectItemStyles(recipes.item, input, mode, 'radio');
+    const inputDisabled = question.isInputReadOnly;
     return (
       <Pressable
         key={key}
         testID={`sv-boolean-radio-${question.name}-${key}`}
         accessibilityRole="radio"
-        accessibilityState={{ checked, disabled: input.readOnly }}
+        accessibilityState={{ checked, disabled: inputDisabled }}
+        disabled={inputDisabled}
         onPress={() => {
           if (question.isInputReadOnly) return;
           question.value = value;

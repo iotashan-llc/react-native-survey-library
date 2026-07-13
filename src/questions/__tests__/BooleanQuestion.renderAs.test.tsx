@@ -81,11 +81,29 @@ describe('BooleanCheckboxQuestion (renderAs "checkbox")', () => {
     expect(question.booleanValue).toBe(false);
   });
 
-  it('does not toggle when read-only', () => {
+  it('does not toggle when read-only, and announces disabled', () => {
     const { question } = createBooleanQuestion('qc3', 'checkbox');
     question.readOnly = true;
     render(<BooleanCheckboxQuestion question={question} creator={{}} />);
     const box = screen.getByTestId('sv-boolean-checkbox-qc3');
+    expect(box.props.accessibilityState?.disabled).toBe(true);
+    fireEvent.press(box);
+    expect(question.booleanValue).toBeNull();
+  });
+
+  it('design mode: announces disabled and rejects presses even though isReadOnlyStyle stays false (isInputReadOnly is the interaction gate)', () => {
+    // Regression: design mode flips `isInputReadOnly` (= isReadOnly ||
+    // isDesignMode, question.ts) WITHOUT flipping the style getter
+    // (`isReadOnlyStyle` = isReadOnly && !isPreview, survey-element.ts) —
+    // so a11y/interaction disabling must follow isInputReadOnly, never the
+    // style state, or design mode announces enabled while rejecting input.
+    const { model, question } = createBooleanQuestion('qc4', 'checkbox');
+    model.setDesignMode(true);
+    expect(question.isInputReadOnly).toBe(true);
+    expect(question.isReadOnlyStyle).toBe(false);
+    render(<BooleanCheckboxQuestion question={question} creator={{}} />);
+    const box = screen.getByTestId('sv-boolean-checkbox-qc4');
+    expect(box.props.accessibilityState?.disabled).toBe(true);
     fireEvent.press(box);
     expect(question.booleanValue).toBeNull();
   });
@@ -117,6 +135,28 @@ describe('BooleanRadioQuestion (renderAs "radio")', () => {
       screen.getByTestId('sv-boolean-radio-qr1-true').props.accessibilityState
         ?.checked
     ).toBe(false);
+  });
+
+  it('read-only: items announce disabled and presses do not change value', () => {
+    const { question } = createBooleanQuestion('qr3', 'radio');
+    question.readOnly = true;
+    render(<BooleanRadioQuestion question={question} creator={{}} />);
+    const trueItem = screen.getByTestId('sv-boolean-radio-qr3-true');
+    expect(trueItem.props.accessibilityState?.disabled).toBe(true);
+    fireEvent.press(trueItem);
+    expect(question.value).toBeUndefined();
+  });
+
+  it('design mode: items announce disabled and reject presses even though isReadOnlyStyle stays false (same regression as checkbox)', () => {
+    const { model, question } = createBooleanQuestion('qr4', 'radio');
+    model.setDesignMode(true);
+    expect(question.isInputReadOnly).toBe(true);
+    expect(question.isReadOnlyStyle).toBe(false);
+    render(<BooleanRadioQuestion question={question} creator={{}} />);
+    const trueItem = screen.getByTestId('sv-boolean-radio-qr4-true');
+    expect(trueItem.props.accessibilityState?.disabled).toBe(true);
+    fireEvent.press(trueItem);
+    expect(question.value).toBeUndefined();
   });
 
   it('pressing the "true" item sets value to getValueTrue() and re-renders selection', () => {
