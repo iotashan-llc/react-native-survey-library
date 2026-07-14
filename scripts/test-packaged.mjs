@@ -90,9 +90,17 @@ function writeReactNativeStub(consumerDir) {
       '// the react-native symbols any package-root-reachable module imports\n' +
       '// as VALUES (not `import type`) — currently View/Text (components,\n' +
       '// reactivity), StyleSheet (theme-rn recipes), I18nManager/Platform\n' +
-      '// (theme-rn provider).\n' +
+      '// (theme-rn provider), Image (1.6 LogoImage), Pressable (1.5\n' +
+      '// ActionButton), Switch (1.13 boolean), Linking (security URL policy).\n' +
       "export const View = 'View';\n" +
       "export const Text = 'Text';\n" +
+      "export const Image = 'Image';\n" +
+      "export const Pressable = 'Pressable';\n" +
+      "export const Switch = 'Switch';\n" +
+      'export const Linking = {\n' +
+      '  canOpenURL: async () => false,\n' +
+      '  openURL: async () => {},\n' +
+      '};\n' +
       'export const StyleSheet = {\n' +
       '  create: (styles) => styles,\n' +
       '  flatten: (style) => style,\n' +
@@ -177,12 +185,12 @@ console.log('7c: UNEXPECTED SUCCESS');
   {
     id: '7d',
     description:
-      "registrar side effect survives packaging: import('<pkg>') registers exactly the M0 supported descriptor-table keys " +
+      "registrar side effect survives packaging: import('<pkg>') registers exactly the supported descriptor-table keys " +
       '(design: docs/design/0.5-factories.md, "Registration & packaging" — must track src/factories/descriptors.ts as milestones land)',
     script: `${RN_PREAMBLE}
 const pkg = await import(${JSON.stringify(PKG_NAME)});
-const expectedQuestionTypes = JSON.stringify(['empty']);
-const expectedElementTypes = JSON.stringify([]);
+const expectedQuestionTypes = JSON.stringify(['boolean', 'empty', 'expression', 'sv-boolean-checkbox', 'sv-boolean-radio']);
+const expectedElementTypes = JSON.stringify(['survey-header', 'sv-logo-image', 'sv-string-viewer']);
 const actualQuestionTypes = JSON.stringify(pkg.RNQuestionFactory.getAllTypes());
 const actualElementTypes = JSON.stringify(pkg.RNElementFactory.getAllTypes());
 if (actualQuestionTypes !== expectedQuestionTypes) {
