@@ -350,7 +350,50 @@ export const API_SURFACE_WATCHLIST: readonly WatchedApiMember[] = [
     expectedKind: 'method',
     resolveHost: (sc) => sc.Question.prototype,
     reason:
-      'Focus-intent completion parity: the bridge fires it after a landed native focus (web drives this from a DOM focus-bubble handler).',
+      'Focus-event ownership contract: components fire it from their native input onFocus (ElementHandle.focusFirst contract; web drives this from a DOM focus-bubble handler).',
+  },
+  {
+    id: 'Question.inputId',
+    member: 'inputId',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Question.prototype,
+    reason:
+      "Focus-intent discrimination depends on the panel-expand caller passing id: q.inputId (distinct from question.id) — the bridge treats only elementId === question.id as focus intent (design 1.2-lifecycle-bridge, 'Focus-intent discrimination').",
+  },
+  {
+    id: 'Question.page',
+    member: 'page',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Question.prototype,
+    reason:
+      "Registry owning-page fallback: resolveScrollTarget reads `.page` off an unregistered question to fall back to its registered page handle (design 1.2-lifecycle-bridge, 'Lookup order').",
+  },
+  {
+    id: 'PanelModel.page',
+    member: 'page',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.PanelModel.prototype,
+    reason:
+      'Registry owning-page fallback for registered panels (same lookup order as Question.page).',
+  },
+  {
+    id: 'SurveyModel.focusQuestionInfo',
+    member: 'focusQuestionInfo',
+    // PRIVATE in the TS declarations (called via cast) but a plain
+    // prototype method at runtime — this row is the drift gate for that
+    // documented private-API dependency (review round 2 #3).
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.SurveyModel.prototype,
+    reason:
+      "1.1's render-complete seam mirrors afterRenderPage (survey.ts:5514-5519): while focusingQuestionInfo is parked it calls focusQuestionInfo() to execute the cross-page focus (design 1.2-lifecycle-bridge, 'Cross-page focus').",
+  },
+  {
+    id: 'SurveyModel.scrollToTopOnPageChange',
+    member: 'scrollToTopOnPageChange',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.SurveyModel.prototype,
+    reason:
+      "The other branch of 1.1's render-complete seam: no parked focus → scrollToTopOnPageChange() re-enters the funnel with the page shape.",
   },
   {
     id: 'settings.environment',
@@ -360,6 +403,6 @@ export const API_SURFACE_WATCHLIST: readonly WatchedApiMember[] = [
     expectedKind: 'data',
     resolveHost: (sc) => sc.settings,
     reason:
-      "The shim's 1.2 amendment stubs it so core's unguarded destructures survive (design 1.2-lifecycle-bridge, piece 3).",
+      "The shim's 1.2 amendment stubs it so destructures of the environment object itself survive (NARROW contract — DOM-only field dereferences stay unsupported; design 1.2-lifecycle-bridge, piece 3).",
   },
 ];

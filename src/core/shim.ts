@@ -49,11 +49,22 @@ function noop(): void {}
  * 1.2 amendment (design: docs/design/1.2-lifecycle-bridge.md, piece 3):
  * when survey-core's `settings` singleton is PASSED IN, additionally
  * stubs `settings.environment` — an object whose mount fields are all
- * `undefined` — so core's unguarded destructures (`scrollElementToTop`,
- * survey.ts:5872, plus dom-utils/dragdrop/popup readers) survive instead
- * of throwing "Cannot read properties of undefined". Downstream reads
- * are optional-chained (`surveyRootElement?.querySelector` skips), so
- * undefined fields are the SSR-safe values. The parameter keeps this
+ * `undefined`.
+ *
+ * NARROW CONTRACT (review round 2 #6): the stub protects EXACTLY the
+ * destructures of the environment OBJECT ITSELF — the scroll funnel's
+ * `const { rootElement } = settings.environment` (survey.ts:5872,
+ * downstream optional-chained: `surveyRootElement?.querySelector`
+ * skips) and dom-utils' `const { root } = settings.environment`
+ * (getElement with a non-string argument never touches `root`). It does
+ * NOT make DOM-only paths safe: drag-drop dereferences
+ * `settings.environment.root.documentElement`
+ * (dragdrop/dom-adapter.ts) and popup mounting calls
+ * `getElement(settings.environment.popupMountContainer).appendChild`
+ * (popup-view-model.ts) — both still throw on the undefined fields and
+ * remain UNSUPPORTED (this renderer never enters them: no DnD, native
+ * popups instead of DOM popups; negative tripwires in
+ * environment-stub.test.ts pin that reality). The parameter keeps this
  * module import-free: the FACADE (the one module allowed to import
  * survey-core) passes `settings` after survey-core evaluates; the
  * self-invocation below stays global-only, which is why the `/shim`

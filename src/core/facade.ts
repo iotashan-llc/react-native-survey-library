@@ -23,8 +23,10 @@ export * from 'survey-core';
 // with survey-core now evaluated, hand its `settings` singleton back to
 // the shim so it can stub `settings.environment` (defense-in-depth
 // behind the lifecycle bridge — the bridge cancels the scroll funnel
-// before core's unguarded destructure, this stub makes any OTHER reader
-// non-fatal). Import statements above are hoisted ahead of this call in
+// before core's unguarded destructure; the stub's NARROW contract makes
+// destructures of the environment object itself survivable — DOM-only
+// paths that dereference its undefined fields stay unsupported, see
+// shim.ts). Import statements above are hoisted ahead of this call in
 // every module system this library ships under (ESM order and Babel's
 // CJS interop alike), so the shim's global patches still precede
 // survey-core's require-time code, and this statement runs strictly

@@ -107,9 +107,7 @@ export interface SanitizedHtmlLinkPressDroppedPayload {
 export interface LifecycleDiagnosticPayload {
   code: 'lifecycle-diagnostic';
   lifecycleCode:
-    | 'target-unregistered'
-    | 'no-scroll-host'
-    | 'allow-override-ignored';
+    'target-unregistered' | 'no-scroll-host' | 'allow-override-ignored';
   elementName: string | undefined;
   elementType: string | undefined;
 }

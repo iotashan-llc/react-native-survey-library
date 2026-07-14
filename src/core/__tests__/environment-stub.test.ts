@@ -8,7 +8,8 @@
 // shim and survey-core); shim.ts itself keeps its zero-imports invariant
 // (0.3), so the `/shim` subpath alone deliberately does NOT stub — that
 // boundary is locked by src/core/__tests__/shim.test.ts.
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { withRnShapedGlobals } from '../../../test-utils/rn-globals';
 
 type SurveyCoreModule = typeof import('survey-core');
@@ -82,17 +83,25 @@ describe('core/facade — settings.environment stub (1.2 amendment to 0.3)', () 
     });
   });
 
-  it('sweep (test plan #8): the installed survey-core bundle has NO truthiness gates on settings.environment', () => {
+  it('sweep (test plan #8): BOTH installed survey-core artifacts (cjs + fesm mjs) have NO truthiness gates on settings.environment', () => {
     // The design's risk note: code that truthiness-checks
     // `settings.environment` (rather than destructuring/reading fields)
     // would take the "environment exists" branch once the stub lands.
     // Lock the "known readers destructure rather than gate" claim with
-    // evidence against the actually-installed bundle.
+    // evidence against the actually-installed artifacts — BOTH of them
+    // (review round 2): Metro/jest resolve the CJS `main`
+    // (survey.core.js), while ESM bundlers resolve the `module`/`import`
+    // entry (fesm/survey-core.mjs). A gate appearing in either would
+    // change behavior for some consumer.
     // Resolving the installed bundle's PATH is the entire point of this
     // sweep (static evidence against the artifact itself) — nothing is
     // imported/evaluated, so the facade contract isn't in play.
     // eslint-disable-next-line no-restricted-syntax
-    const bundleSource = readFileSync(require.resolve('survey-core'), 'utf8');
+    const cjsPath = require.resolve('survey-core');
+    const fesmPath = join(dirname(cjsPath), 'fesm', 'survey-core.mjs');
+    // Loud failure if the package layout ever renames the ESM artifact
+    // (rather than a silently-empty sweep).
+    expect(existsSync(fesmPath)).toBe(true);
 
     const gatePatterns = [
       /if\s*\(\s*!?\s*settings\.environment\s*\)/g,
@@ -102,15 +111,55 @@ describe('core/facade — settings.environment stub (1.2 amendment to 0.3)', () 
       // Ternary gate — but NOT optional chaining (`settings.environment?.x`).
       /settings\.environment\s*\?(?!\.)/g,
     ];
-    const hits = gatePatterns.flatMap(
-      (pattern) => bundleSource.match(pattern) ?? []
-    );
-    expect(hits).toEqual([]);
+    for (const artifactPath of [cjsPath, fesmPath]) {
+      const bundleSource = readFileSync(artifactPath, 'utf8');
+      const hits = gatePatterns.flatMap(
+        (pattern) => bundleSource.match(pattern) ?? []
+      );
+      expect(hits).toEqual([]);
 
-    // Sanity: the member-read sites this sweep protects do exist (the
-    // sweep isn't green because the file failed to load or the symbol
-    // was renamed).
-    const memberReads = bundleSource.match(/settings\.environment\./g) ?? [];
-    expect(memberReads.length).toBeGreaterThanOrEqual(5);
+      // Sanity: the member-read sites this sweep protects do exist (the
+      // sweep isn't green because the file failed to load or the symbol
+      // was renamed).
+      const memberReads = bundleSource.match(/settings\.environment\./g) ?? [];
+      expect(memberReads.length).toBeGreaterThanOrEqual(5);
+    }
+  });
+
+  it('negative tripwire (review round 2 #6): the stub does NOT make DOM-only paths safe — drag-drop and popup mounting still throw', () => {
+    withRnShapedGlobals(() => {
+      const facade = require('../facade') as SurveyCoreModule;
+      const env = facade.settings.environment as unknown as Record<
+        string,
+        unknown
+      >;
+
+      // dragdrop/dom-adapter.ts (`rootElement` getter):
+      //   settings.environment.root.documentElement
+      // `root` is undefined in the stub — the dereference throws. If this
+      // tripwire ever goes green-by-fake (someone "fixes" the stub with a
+      // fake root object), the drag-drop DOM path would silently
+      // half-work; reconsider the whole contract instead.
+      expect(() => {
+        return (env.root as { documentElement: unknown }).documentElement;
+      }).toThrow(TypeError);
+
+      // popup-view-model.ts (initializePopupContainer):
+      //   getElement(settings.environment.popupMountContainer).appendChild(...)
+      // getElement (dom-utils.ts, exported by survey-core) returns a
+      // non-string argument as-is — undefined — so the .appendChild call
+      // throws. Same reconsider-the-contract rule as above.
+      const getElement = (
+        facade as unknown as {
+          getElement: (element: unknown) => {
+            appendChild: (n: unknown) => void;
+          };
+        }
+      ).getElement;
+      expect(typeof getElement).toBe('function');
+      expect(() => {
+        getElement(env.popupMountContainer).appendChild(null);
+      }).toThrow(TypeError);
+    });
   });
 });

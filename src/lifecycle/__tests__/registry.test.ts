@@ -155,6 +155,54 @@ describe('lifecycle/registry', () => {
     expect(diagnostics).toEqual([]);
   });
 
+  it('same-survey fromJSON() rebuild: old deregisters cannot remove new handles; stale instances do not resolve; clear still empties everything', () => {
+    // Review round 2 #9: SurveyModel.fromJSON() on the SAME survey
+    // instance recreates every page/question model. React unmount order
+    // is not guaranteed, so the OLD tree's captured deregister functions
+    // may run AFTER the new tree registered — instance keying must make
+    // that harmless.
+    const { model, q1 } = makeModel();
+    const registry = createLifecycleRegistry();
+    const oldHandle = makeHandle();
+    const oldDeregister = registry.registerElement(q1, oldHandle);
+    registry.registerScrollHost(makeHost());
+
+    model.fromJSON(MODEL_JSON);
+    const q1Rebuilt = model.getQuestionByName('q1') as Question;
+    expect(q1Rebuilt).toBeTruthy();
+    expect(q1Rebuilt).not.toBe(q1); // fromJSON recreated the instance
+
+    // New tree mounts and registers the rebuilt instance…
+    const newHandle = makeHandle();
+    registry.registerElement(q1Rebuilt, newHandle);
+    // …then the OLD tree unmounts late: must not touch the new handle.
+    oldDeregister();
+    expect(registry.getHandle(q1Rebuilt)).toBe(newHandle);
+    expect(registry.resolveScrollTarget(q1Rebuilt)).toMatchObject({
+      element: q1Rebuilt,
+      handle: newHandle,
+      viaPageFallback: false,
+    });
+
+    // A transient request still holding the STALE instance must not
+    // resolve to the rebuilt handle (its own registration is gone, and
+    // its owning page is the stale page object — also unregistered).
+    const staleResolution = registry.resolveScrollTarget(q1);
+    expect(staleResolution).toBeNull();
+    expect(
+      diagnostics.filter(
+        (p) =>
+          p.code === 'lifecycle-diagnostic' &&
+          p.lifecycleCode === 'target-unregistered'
+      )
+    ).toHaveLength(1);
+
+    // Uninstall path still empties the rebuilt registry.
+    registry.clear();
+    expect(registry.getHandle(q1Rebuilt)).toBeUndefined();
+    expect(registry.getScrollHost()).toBeUndefined();
+  });
+
   it('clear drops element handles and the scroll host', () => {
     const { q1 } = makeModel();
     const registry = createLifecycleRegistry();
