@@ -179,7 +179,13 @@ describe('registerAll (module side effect)', () => {
     // exercises the exported function directly without double-counting.
     registerAll();
 
-    expect(RNQuestionFactory.getAllTypes()).toEqual(['empty']);
+    expect(RNQuestionFactory.getAllTypes()).toEqual([
+      'boolean',
+      'empty',
+      'expression',
+      'sv-boolean-checkbox',
+      'sv-boolean-radio',
+    ]);
     expect(RNElementFactory.getAllTypes()).toEqual([
       'panel',
       'survey-header',

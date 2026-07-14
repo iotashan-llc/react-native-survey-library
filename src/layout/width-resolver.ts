@@ -14,13 +14,23 @@
  * Supported grammar (D2; DIFFERENCES.md carries the consumer-facing
  * table): `""` | `auto` | bare number (= px, core's own convention) |
  * `<n>px` | `<n>%` | `calc(expr)` | `min(...)`/`max(...)` (n-ary,
- * nestable inside calc). CSS calc type rules enforced: `+`/`-` need
- * same-type operands, `*` needs a plain-number operand, `/` needs a
- * plain non-zero number divisor. Any other unit →
- * `layout/unsupported-width-unit`; anything else unparseable →
- * `layout/invalid-width`. A failed value drops ONLY its own property
- * (element degrades to share-the-space flexGrow behavior); nothing here
- * ever throws (invariant 9 spirit).
+ * nestable inside calc). Numbers are CSS number tokens: optional sign,
+ * decimal, optional scientific exponent (`+10px`, `1e2px` — core really
+ * emits these through Helpers.isNumber).
+ *
+ * Arithmetic model (deliberately NOT full CSS Values 4 typed math —
+ * design D2): the restricted calc rules every core emission fits —
+ * `+`/`-` need same-type operands, `*` needs a plain-number operand,
+ * `/` needs a plain non-zero number divisor. One documented divergence
+ * from web: bare numbers coerce to px in VALUE positions (top level and
+ * min()/max() arguments) to salvage core's own CSS-invalid bare-number
+ * emissions (`min(100%, 250)` — web's CSS engine discards that whole
+ * declaration; here it means 250dp, so `min(1, 300px)` is 1dp).
+ *
+ * Any other unit → `layout/unsupported-width-unit`; anything else
+ * unparseable → `layout/invalid-width`. A failed value drops ONLY its
+ * own property (element degrades to share-the-space flexGrow behavior);
+ * nothing here ever throws (invariant 9 spirit).
  */
 
 export type WidthDiagnosticCode =
@@ -81,11 +91,18 @@ export interface RowWidthContext {
   /** Measured row View content width, dp. */
   rowWidth: number;
   /**
-   * The inter-element gutter g (dp; theme token, 1.4 supplies it).
-   * DOM parity (design, "Row semantics"): a multi-element row widens
-   * itself by g (negative margin) and pads each element by g, so `%`
-   * resolves against rowWidth + g there — single-element rows resolve
-   * against rowWidth alone.
+   * The row's effective horizontal expansion g (dp). NOT one universal
+   * theme token — the value is CONTEXT-DEPENDENT (page vs nested-panel
+   * vs compact vs panel-as-page rows; design, "g is NOT one universal
+   * token"); 1.4 computes it per row from context + theme tokens.
+   * DOM parity: a multi-element row widens itself by g (negative
+   * margin) and pads each element by g, so `%` resolves against
+   * rowWidth + g there — single-element rows resolve against rowWidth
+   * alone. The returned `percentBase` is ALSO the width 1.4 must give
+   * the row's inner Yoga container (`width: percentBase`,
+   * `marginStart: -g`, child wrappers `paddingStart: g`) — children
+   * resolved against rowWidth + g inside a rowWidth container would
+   * wrap where web keeps one line.
    */
   gutter?: number;
 }
@@ -131,29 +148,51 @@ function tokenize(input: string): Token[] {
       i++;
       continue;
     }
-    if (
-      ch === '(' ||
-      ch === ')' ||
-      ch === ',' ||
-      ch === '+' ||
-      ch === '-' ||
-      ch === '*' ||
-      ch === '/'
-    ) {
+    if (ch === '(' || ch === ')' || ch === ',' || ch === '*' || ch === '/') {
       tokens.push({ t: 'punct', ch });
       i++;
       continue;
     }
-    const numMatch = /^(?:\d+\.?\d*|\.\d+)/.exec(input.slice(i));
-    if (numMatch) {
-      i += numMatch[0].length;
+    // CSS <number-token> mantissa + optional scientific exponent. The
+    // exponent regex requires a digit after [eE], so `10em`'s "e" is
+    // never consumed as an exponent — it stays part of the (unsupported)
+    // unit. Core really emits signed/exponent forms: Helpers.isNumber
+    // accepts "+10"/"1e2" and getRenderedWidthFromWidth px-suffixes the
+    // ORIGINAL text → "+10px"/"1e2px".
+    const cssNumber = /^(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?/;
+    const readNumber = (sign: 1 | -1, mantissa: string) => {
       let unit: string | null = null;
       const unitMatch = /^(%|[a-zA-Z]+)/.exec(input.slice(i));
       if (unitMatch) {
         unit = unitMatch[0];
         i += unit.length;
       }
-      tokens.push({ t: 'number', v: parseFloat(numMatch[0]), unit });
+      tokens.push({ t: 'number', v: sign * parseFloat(mantissa), unit });
+    };
+    if (ch === '+' || ch === '-') {
+      // A sign folds into the following number ONLY where a binary
+      // operator is impossible (start of input, after '(' or ',' or
+      // another operator) — so tight binary arithmetic like
+      // `calc(50%+100px)` keeps tokenizing as an operator. This mirrors
+      // CSS's own lexer, which folds signs into number tokens and is
+      // exactly why the spec requires whitespace around binary +/-.
+      const prev = tokens[tokens.length - 1];
+      const signCanStartNumber =
+        !prev || (prev.t === 'punct' && prev.ch !== ')');
+      const m = signCanStartNumber ? cssNumber.exec(input.slice(i + 1)) : null;
+      if (!m) {
+        tokens.push({ t: 'punct', ch });
+        i++;
+        continue;
+      }
+      i += 1 + m[0].length;
+      readNumber(ch === '-' ? -1 : 1, m[0]);
+      continue;
+    }
+    const numMatch = cssNumber.exec(input.slice(i));
+    if (numMatch) {
+      i += numMatch[0].length;
+      readNumber(1, numMatch[0]);
       continue;
     }
     const identMatch = /^[a-zA-Z][a-zA-Z-]*/.exec(input.slice(i));
@@ -353,8 +392,12 @@ class Parser {
       this.expectPunct(')');
       return inner;
     }
-    // min()/max(): n-ary; each arg is a full sum. Bare-number args coerce
-    // to px (core emits `min(100%, 250)` for a user-set numeric minWidth).
+    // min()/max(): n-ary; each arg is a full sum. Bare-number (`num`)
+    // args coerce to px — the documented divergence from web (module
+    // docblock): web discards `min(100%, 250)` wholesale as a CSS type
+    // error; we salvage it as 250dp because core itself emits that form
+    // for a user-set numeric minWidth. Consequence: `min(1, 300px)` is
+    // 1dp here, not a dropped declaration.
     const args: number[] = [];
     for (;;) {
       const arg = this.parseSum();
