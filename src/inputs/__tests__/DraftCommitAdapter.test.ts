@@ -636,3 +636,71 @@ describe('DraftCommitAdapter — construction & kind detection', () => {
     adapter.dispose();
   });
 });
+
+describe('DraftCommitAdapter — transformCommitText (pre-commit guard seam)', () => {
+  // The component-level policy hook 1.10 uses for the date/time fallback
+  // types: web's native inputs guarantee value-or-empty ("" on badInput),
+  // and for `month` core's own correctValueType THROWS on unparseable
+  // text — so invalid text must be transformed (or skipped) before it
+  // reaches the model. The transform runs on every commit ATTEMPT (the
+  // equality guard applies to its OUTPUT); the draft is never transformed.
+
+  it('the transformed text commits; the draft keeps what was typed', () => {
+    const { question } = textSurvey();
+    const adapter = new DraftCommitAdapter({
+      question,
+      transformCommitText: (text, trigger) =>
+        trigger === 'blur' ? text.toUpperCase() : text,
+    });
+    adapter.handleFocus();
+    adapter.handleChangeText('abc');
+    adapter.handleBlur();
+    expect(question.value).toBe('ABC');
+    adapter.dispose();
+  });
+
+  it('returning undefined skips the commit entirely (no write, no notification, draft intact)', () => {
+    const { model, question } = textSurvey({ textUpdateMode: 'onTyping' });
+    const changed = countValueChanged(model);
+    const adapter = new DraftCommitAdapter({
+      question,
+      transformCommitText: (text) => (text === 'bad' ? undefined : text),
+    });
+    adapter.handleFocus();
+    adapter.handleChangeText('ok');
+    expect(question.value).toBe('ok');
+    adapter.handleChangeText('bad');
+    expect(question.value).toBe('ok'); // skipped
+    expect(adapter.renderedValue).toBe('bad'); // draft untouched
+    expect(changed.count()).toBe(1);
+    adapter.dispose();
+  });
+
+  it('distinguishes typing / submit / blur triggers', () => {
+    const { question } = textSurvey({ textUpdateMode: 'onTyping' });
+    const seen: string[] = [];
+    const adapter = new DraftCommitAdapter({
+      question,
+      transformCommitText: (text, trigger) => {
+        seen.push(trigger);
+        return text;
+      },
+    });
+    adapter.handleFocus();
+    adapter.handleChangeText('a'); // typing
+    adapter.handleSubmitEditing(); // submit
+    adapter.handleBlur(); // blur
+    expect(seen).toEqual(['typing', 'submit', 'blur']);
+    adapter.dispose();
+  });
+
+  it('no transform option: behavior unchanged', () => {
+    const { question } = textSurvey();
+    const adapter = new DraftCommitAdapter({ question });
+    adapter.handleFocus();
+    adapter.handleChangeText('plain');
+    adapter.handleBlur();
+    expect(question.value).toBe('plain');
+    adapter.dispose();
+  });
+});

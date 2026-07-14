@@ -337,6 +337,294 @@ describe('TextQuestion: masked typing (per-keystroke formatting + caret)', () =>
   });
 });
 
+describe('TextQuestion: masked maxLength (post-format cap at the native boundary)', () => {
+  // Web parity: InputElementAdapter.setInputValue truncates the FORMATTED
+  // value (mask/input_element_adapter.ts:8-12). RN's native `maxLength`
+  // prop caps the RAW edit before `processInput` can restore literals and
+  // placeholders past it — so masked questions drop the native prop and
+  // apply the cap after formatting instead.
+  function maskedMaxLenSurvey() {
+    return textSurvey(
+      {},
+      {
+        maskType: 'pattern',
+        maskSettings: { pattern: '999-999' },
+        maxLength: 5,
+      }
+    );
+  }
+
+  it('native maxLength prop is omitted for masked questions (the JS cap governs)', () => {
+    const { question } = maskedMaxLenSurvey();
+    renderQuestion(question);
+    expect(getInput().props.maxLength).toBeUndefined();
+  });
+
+  it('unmasked questions keep the native maxLength prop', () => {
+    const { question } = textSurvey({}, { maxLength: 5 });
+    renderQuestion(question);
+    expect(getInput().props.maxLength).toBe(5);
+  });
+
+  it('typing: the formatted draft is truncated to maxLength', () => {
+    const { question } = maskedMaxLenSurvey();
+    renderQuestion(question);
+    fireEvent(getInput(), 'focus');
+    // "1" formats to "1__-___" (7 chars) — capped to 5.
+    fireEvent.changeText(getInput(), '1');
+    expect(getInput().props.value).toBe('1__-_');
+  });
+
+  it('deletion: the reformatted draft stays capped', () => {
+    const { question } = maskedMaxLenSurvey();
+    renderQuestion(question);
+    fireEvent(getInput(), 'focus');
+    fireEvent.changeText(getInput(), '1');
+    expect(getInput().props.value).toBe('1__-_');
+    fireEvent(getInput(), 'selectionChange', {
+      nativeEvent: { selection: { start: 1, end: 1 } },
+    });
+    // Backspace over the "1": raw text "__-_"; the mask reformats to the
+    // empty masked value ("___-___", 7 chars) — capped again.
+    fireEvent.changeText(getInput(), '__-_');
+    expect(getInput().props.value).toBe('___-_');
+  });
+});
+
+describe('TextQuestion: masked selection control is one-shot (IME safety)', () => {
+  // RN has no composition events (`onTextInput` is gone from RN 0.86's
+  // API), so the input must never stay permanently selection-controlled:
+  // the caret is forced for exactly one frame after a reformat, then
+  // released back to the native layer on the next selection event.
+  it('a reformatting edit forces the caret once; the next native selection event releases control', () => {
+    const { question } = textSurvey(
+      {},
+      { maskType: 'pattern', maskSettings: { pattern: '999-999' } }
+    );
+    renderQuestion(question);
+    fireEvent(getInput(), 'focus');
+    fireEvent.changeText(getInput(), '1'); // formats to "1__-___", caret 1
+    expect(getInput().props.selection).toEqual({ start: 1, end: 1 });
+
+    // Native applies the controlled selection and reports it back.
+    fireEvent(getInput(), 'selectionChange', {
+      nativeEvent: { selection: { start: 1, end: 1 } },
+    });
+    expect(getInput().props.selection).toBeUndefined();
+  });
+
+  it('an edit the mask accepts verbatim never forces the caret at all', () => {
+    const { question } = textSurvey({}, { maskType: 'numeric' });
+    renderQuestion(question);
+    fireEvent(getInput(), 'focus');
+    fireEvent.changeText(getInput(), '1'); // numeric mask: "1" -> "1"
+    expect(getInput().props.value).toBe('1');
+    expect(getInput().props.selection).toBeUndefined();
+  });
+});
+
+describe('TextQuestion: date/time fallback validation (RN has no DOM badInput)', () => {
+  // Web's native date/time inputs guarantee value-or-empty: unparseable
+  // text reads as "" with validity.badInput set, and core surfaces
+  // "Invalid input" from it (question_text.ts:457-459, 764-765). The RN
+  // plain-text fallback reproduces that contract component-side: invalid
+  // text commits as empty, and for core's isDateInputType set
+  // (date/datetime-local) the error routes through core's own PUBLIC
+  // onKeyUp -> dateValidationMessage seam. time/month/week have no such
+  // core seam — discarded input emits a structured diagnostic instead
+  // (documented divergence).
+
+  it('date: unparseable text at blur -> empty value + core "Invalid input" error at validation', () => {
+    const { model, question } = textSurvey({}, { inputType: 'date' });
+    renderQuestion(question);
+    fireEvent(getInput(), 'focus');
+    fireEvent.changeText(getInput(), 'not-a-date');
+    fireEvent(getInput(), 'blur');
+
+    expect(question.isEmpty()).toBe(true); // web parity: badInput reads as ""
+    act(() => {
+      model.validate();
+    });
+    expect(question.errors.map((e) => e.text)).toEqual([
+      question.invalidInputErrorText,
+    ]);
+  });
+
+  it('date: a valid date commits and validates clean', () => {
+    const { model, question } = textSurvey({}, { inputType: 'date' });
+    renderQuestion(question);
+    fireEvent(getInput(), 'focus');
+    fireEvent.changeText(getInput(), '2024-01-15');
+    fireEvent(getInput(), 'blur');
+
+    expect(question.value).toBe('2024-01-15');
+    act(() => {
+      model.validate();
+    });
+    expect(question.errors).toHaveLength(0);
+  });
+
+  it('date: garbage replacing a previously valid value clears it', () => {
+    const { model, question } = textSurvey({}, { inputType: 'date' });
+    renderQuestion(question);
+    fireEvent(getInput(), 'focus');
+    fireEvent.changeText(getInput(), '2024-01-15');
+    fireEvent(getInput(), 'blur');
+    expect(question.value).toBe('2024-01-15');
+
+    fireEvent(getInput(), 'focus');
+    fireEvent.changeText(getInput(), 'garbage');
+    fireEvent(getInput(), 'blur');
+    expect(question.isEmpty()).toBe(true);
+    act(() => {
+      model.validate();
+    });
+    expect(question.errors.map((e) => e.text)).toEqual([
+      question.invalidInputErrorText,
+    ]);
+  });
+
+  it('date: the error clears once valid text replaces the garbage', () => {
+    const { model, question } = textSurvey({}, { inputType: 'date' });
+    renderQuestion(question);
+    fireEvent(getInput(), 'focus');
+    fireEvent.changeText(getInput(), 'garbage');
+    fireEvent(getInput(), 'blur');
+    act(() => {
+      model.validate();
+    });
+    expect(question.errors).toHaveLength(1);
+
+    fireEvent(getInput(), 'focus');
+    fireEvent.changeText(getInput(), '2024-01-15');
+    fireEvent(getInput(), 'blur');
+    act(() => {
+      model.validate();
+    });
+    expect(question.errors).toHaveLength(0);
+    expect(question.value).toBe('2024-01-15');
+  });
+
+  it('datetime-local: same seam; "T" and space separators both accepted', () => {
+    const { model, question } = textSurvey({}, { inputType: 'datetime-local' });
+    renderQuestion(question);
+    fireEvent(getInput(), 'focus');
+    fireEvent.changeText(getInput(), 'next tuesday');
+    fireEvent(getInput(), 'blur');
+    expect(question.isEmpty()).toBe(true);
+    act(() => {
+      model.validate();
+    });
+    expect(question.errors.map((e) => e.text)).toEqual([
+      question.invalidInputErrorText,
+    ]);
+
+    fireEvent(getInput(), 'focus');
+    fireEvent.changeText(getInput(), '2024-01-15 10:30');
+    fireEvent(getInput(), 'blur');
+    expect(question.value).toBe('2024-01-15 10:30');
+    act(() => {
+      model.validate();
+    });
+    expect(question.errors).toHaveLength(0);
+  });
+
+  it('month: unparseable text must NOT commit (core correctValueType would throw "Invalid time value")', () => {
+    const { question } = textSurvey({}, { inputType: 'month' });
+    renderQuestion(question);
+    fireEvent(getInput(), 'focus');
+    fireEvent.changeText(getInput(), 'garbage');
+    expect(() => fireEvent(getInput(), 'blur')).not.toThrow();
+    expect(question.isEmpty()).toBe(true);
+  });
+
+  it('month: a valid month commits through core (which normalizes it)', () => {
+    const { question } = textSurvey({}, { inputType: 'month' });
+    renderQuestion(question);
+    fireEvent(getInput(), 'focus');
+    fireEvent.changeText(getInput(), '2024-03');
+    fireEvent(getInput(), 'blur');
+    expect(question.value).toBe('2024-03');
+  });
+
+  it('time/month/week: a discarded invalid commit emits the structured diagnostic once per question (no core error surface)', () => {
+    const seen: { code: string; inputType?: string; name?: string }[] = [];
+    setDiagnosticHandler((p) => seen.push(p as (typeof seen)[number]));
+    const { model, question } = textSurvey({}, { inputType: 'time' });
+    renderQuestion(question);
+    fireEvent(getInput(), 'focus');
+    fireEvent.changeText(getInput(), 'noon');
+    fireEvent(getInput(), 'blur');
+
+    expect(question.isEmpty()).toBe(true);
+    act(() => {
+      model.validate();
+    });
+    expect(question.errors).toHaveLength(0); // documented divergence
+
+    const diags = seen.filter(
+      (p) => p.code === 'datetime-fallback-invalid-discarded'
+    );
+    expect(diags).toHaveLength(1);
+    expect(diags[0]).toMatchObject({ inputType: 'time', name: 'q1' });
+
+    // Once per question: a second discarded commit does not re-emit.
+    fireEvent(getInput(), 'focus');
+    fireEvent.changeText(getInput(), 'midnight');
+    fireEvent(getInput(), 'blur');
+    expect(
+      seen.filter((p) => p.code === 'datetime-fallback-invalid-discarded')
+    ).toHaveLength(1);
+  });
+
+  it('week: a valid ISO week commits; garbage discards', () => {
+    const { question } = textSurvey({}, { inputType: 'week' });
+    renderQuestion(question);
+    fireEvent(getInput(), 'focus');
+    fireEvent.changeText(getInput(), '2024-W29');
+    fireEvent(getInput(), 'blur');
+    expect(question.value).toBe('2024-W29');
+
+    fireEvent(getInput(), 'focus');
+    fireEvent.changeText(getInput(), 'week nine');
+    fireEvent(getInput(), 'blur');
+    expect(question.isEmpty()).toBe(true);
+  });
+
+  it('onTyping datetime-local: partial text never commits mid-typing (and never wipes the draft); the completed string commits live', () => {
+    const { question } = textSurvey(
+      { textUpdateMode: 'onTyping' },
+      { inputType: 'datetime-local' }
+    );
+    renderQuestion(question);
+    fireEvent(getInput(), 'focus');
+    fireEvent.changeText(getInput(), '2024-01-15T10:3'); // partial: invalid
+    expect(question.isEmpty()).toBe(true); // commit skipped, not ""-committed
+    expect(getInput().props.value).toBe('2024-01-15T10:3'); // draft intact
+
+    fireEvent.changeText(getInput(), '2024-01-15T10:30');
+    expect(question.value).toBe('2024-01-15T10:30'); // committed live
+  });
+
+  it('a masked question with a date-ish inputType is exempt (the mask owns the text shape)', () => {
+    const { question } = textSurvey(
+      {},
+      {
+        inputType: 'date',
+        maskType: 'pattern',
+        maskSettings: { pattern: '99/99' },
+      }
+    );
+    renderQuestion(question);
+    fireEvent(getInput(), 'focus');
+    fireEvent.changeText(getInput(), '12/34');
+    fireEvent(getInput(), 'blur');
+    // "12/34" is not a valid HTML date string, but the mask pipeline owns
+    // the value here — nothing gets discarded.
+    expect(question.isEmpty()).toBe(false);
+  });
+});
+
 describe('TextQuestion: question swap', () => {
   it('swapping the question prop disposes the old adapter and binds a fresh one to the new question', () => {
     const { question: q1 } = textSurvey({}, { name: 'q1' });

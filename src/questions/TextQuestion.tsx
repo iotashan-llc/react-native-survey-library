@@ -46,6 +46,11 @@ import type { SurveyElementBaseState } from '../reactivity/SurveyElementBase';
 import { DraftCommitAdapter } from '../inputs/DraftCommitAdapter';
 import { applyMaskedEdit } from './maskEditing';
 import type { MaskSelection, MaskLike } from './maskEditing';
+import {
+  isDateTimeFallbackType,
+  isDateTimeFallbackTextValid,
+} from './dateTimeFallback';
+import { reportDateTimeFallbackInvalidDiscardedOnce } from '../diagnostics';
 import { mapInputTypeToRNProps, mapAutoComplete } from './inputTypeMapping';
 import { composeStyles } from '../theme-rn/recipes/types';
 import { selectInputStyles } from '../theme-rn/recipes/input';
@@ -99,6 +104,36 @@ export class TextQuestion extends QuestionElementBase<
       // adapter's dedicated re-render seam (design: 1.9-draft-commit.md
       // "Draft change notifications").
       onRenderedValueChange: () => this.forceUpdate(),
+      // Pre-commit guard for the date/time plain-text fallback types
+      // (dateTimeFallback.ts). Web's native widgets guarantee
+      // value-or-empty ("" on badInput) — and for `month`, core's own
+      // `correctValueType` THROWS on unparseable text (question_text.ts:
+      // 668-685; `datetime-local` does too under settings.storeUtcDates),
+      // so invalid text must never reach the model:
+      // - typing: SKIP the commit (an in-progress partial like "2024-0"
+      //   isn't an error yet, and a ""-commit would let the model-sync
+      //   pass wipe the user's draft mid-edit under onTyping);
+      // - blur/submit: commit "" (web parity — the DOM reads "" while
+      //   badInput), with the once-per-question diagnostic for the types
+      //   that get no core error surface (time/month/week; see
+      //   syncDateValidationMessage for why date/datetime-local do).
+      transformCommitText: (text, trigger) => {
+        const q = question as unknown as QuestionTextModel;
+        const inputType = q.inputType || 'text';
+        if (!isDateTimeFallbackType(inputType)) return text;
+        if (this.hasActiveMask(q)) return text; // the mask owns the text shape
+        if (isDateTimeFallbackTextValid(inputType, text)) return text;
+        if (trigger === 'typing') return undefined;
+        if (inputType !== 'date' && inputType !== 'datetime-local') {
+          reportDateTimeFallbackInvalidDiscardedOnce(question, {
+            code: 'datetime-fallback-invalid-discarded',
+            questionType: question.getType(),
+            name: question.name,
+            inputType,
+          });
+        }
+        return '';
+      },
     });
   }
 
@@ -146,19 +181,38 @@ export class TextQuestion extends QuestionElementBase<
         mask,
         prevValue,
         this.lastKnownSelection,
-        text
+        text,
+        // Web's post-format display-length cap (InputElementAdapter.
+        // setInputValue) — the native maxLength prop is OMITTED for
+        // masked inputs (see renderElement), so this is the only cap.
+        this.resolveMaxLength(question)
       );
       this.lastKnownSelection = {
         start: result.caretPosition,
         end: result.caretPosition,
       };
-      this.setState({ controlledSelection: this.lastKnownSelection });
+      if (result.value !== text) {
+        // The mask reshaped the edit — restore the caret core computed,
+        // for exactly ONE frame (released again in handleSelectionChange).
+        // When the mask accepted the native edit verbatim there is
+        // nothing to restore, and leaving `selection` untouched keeps the
+        // input native-owned: RN 0.86 exposes no composition events
+        // (web's keyCode-229/compositionupdate guards have no analog), so
+        // never fighting the native caret outside an actual reformat is
+        // the closest available IME-composition guard. Documented in
+        // docs/DIFFERENCES.md.
+        this.setState({ controlledSelection: this.lastKnownSelection });
+      }
       // Blur-commit-only for masked questions is the ADAPTER's contract
       // (hasActiveMask() there, independent of this component) — this
       // call only supplies the properly mask-shaped draft; it never
       // re-decides commit timing.
       this.adapter.handleChangeText(result.value);
     } else {
+      // Stamped BEFORE the adapter runs: a VALID onTyping commit (truthy
+      // setNewValue) then clears the message core-side; an INVALID one is
+      // skipped by the commit guard and leaves it set.
+      this.syncDateValidationMessage(question, text);
       this.adapter.handleChangeText(text);
     }
   };
@@ -170,7 +224,57 @@ export class TextQuestion extends QuestionElementBase<
       start: event.nativeEvent.selection.start,
       end: event.nativeEvent.selection.end,
     };
+    // One-shot release of the masked caret restoration: as soon as the
+    // native layer reports ANY selection after a forced frame, control
+    // returns to it. The input is never left permanently
+    // selection-controlled (IME safety — see handleChangeText).
+    if (this.state.controlledSelection) {
+      this.setState({ controlledSelection: undefined });
+    }
   };
+
+  /** `getMaxLength()` returns null when unlimited. */
+  private resolveMaxLength(question: QuestionTextModel): number | undefined {
+    const raw = question.getMaxLength();
+    return typeof raw === 'number' && raw > 0 ? raw : undefined;
+  }
+
+  /**
+   * The RN replacement for the browser-computed `validationMessage` web
+   * feeds core through `onKeyUp` (question_text.ts:749-766): for core's
+   * `isDateInputType` set (`date`/`datetime-local` only —
+   * question_text.ts:570-572) the format verdict on what the user TYPED
+   * is stamped into `dateValidationMessage` through that same PUBLIC
+   * handler, and core's own `onCheckForErrors` then surfaces it as a
+   * validation error (question_text.ts:496-498). The synthetic event's
+   * `target.value` is the SETTLED model text, never the draft: core's
+   * internal `updateValueOnEvent` equality-guards against the model, so
+   * this call can never commit anything — commits stay the adapter's job
+   * (invariant 3). `time`/`month`/`week` have no core seam
+   * (`isDateInputType` excludes them; `updateDateValidationMessage`
+   * no-ops): their invalid input is discarded by the adapter's commit
+   * guard with a structured diagnostic instead. Masked questions are
+   * exempt — the mask owns the text shape.
+   */
+  private syncDateValidationMessage(
+    question: QuestionTextModel,
+    typedText: string
+  ): void {
+    const inputType = question.inputType || 'text';
+    if (inputType !== 'date' && inputType !== 'datetime-local') return;
+    if (this.hasActiveMask(question)) return;
+    const valid = isDateTimeFallbackTextValid(inputType, typedText);
+    const modelValue = question.inputValue as unknown;
+    const settled =
+      modelValue === undefined || modelValue === null ? '' : String(modelValue);
+    question.onKeyUp({
+      keyCode: 0,
+      target: {
+        value: settled,
+        validationMessage: valid ? '' : question.invalidInputErrorText,
+      },
+    });
+  }
 
   private handleFocus = (): void => {
     this.adapter.handleFocus();
@@ -189,14 +293,26 @@ export class TextQuestion extends QuestionElementBase<
   };
 
   private handleBlur = (): void => {
+    const question = this.questionBase as unknown as QuestionTextModel;
+    const typedText = this.adapter.renderedValue;
     this.adapter.handleBlur();
+    // Stamped AFTER the adapter: core's own onBlurCore clears
+    // dateValidationMessage (the adapter's synthetic blur event carries
+    // no validationMessage) and a truthy commit clears it via setNewValue
+    // — the RN-side verdict on what was typed must land last to survive
+    // until validation runs.
+    this.syncDateValidationMessage(question, typedText);
     this.lastKnownSelection = null;
     this.setState({ controlledSelection: undefined });
     this.forceUpdate();
   };
 
   private handleSubmitEditing = (): void => {
+    const question = this.questionBase as unknown as QuestionTextModel;
+    const typedText = this.adapter.renderedValue;
     this.adapter.handleSubmitEditing();
+    // Same post-commit ordering rationale as handleBlur.
+    this.syncDateValidationMessage(question, typedText);
   };
 
   private setInputRef = (
@@ -239,11 +355,8 @@ export class TextQuestion extends QuestionElementBase<
     const focused = this.adapter.isEditing;
     const editable = !this.isDisplayMode && !preview;
 
-    const rawMaxLength = question.getMaxLength();
-    const maxLength =
-      typeof rawMaxLength === 'number' && rawMaxLength > 0
-        ? rawMaxLength
-        : undefined;
+    const maxLength = this.resolveMaxLength(question);
+    const hasMask = this.hasActiveMask(question);
     const counterText = maxLength
       ? question.characterCounter?.remainingCharacterCounter
       : undefined;
@@ -280,7 +393,12 @@ export class TextQuestion extends QuestionElementBase<
           selection={this.state.controlledSelection}
           editable={editable}
           placeholder={question.renderedPlaceholder}
-          maxLength={maxLength}
+          // Masked: the native prop caps the RAW edit BEFORE the mask can
+          // restore literals/placeholders (blocking legitimate mid-string
+          // edits); web instead truncates the FORMATTED value
+          // (InputElementAdapter.setInputValue) — applyMaskedEdit applies
+          // that same post-format cap in handleChangeText.
+          maxLength={hasMask ? undefined : maxLength}
           style={composeStyles(style, { override: overrides.input?.control })}
           {...rnProps}
           {...autoCompleteProps}
