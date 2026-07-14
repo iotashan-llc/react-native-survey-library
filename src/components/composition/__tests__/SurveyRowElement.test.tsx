@@ -6,11 +6,12 @@
  * percentBase, rounded at the style edge via
  * `PixelRatio.roundToNearestPixel` (1.3 design, D3).
  */
-import { render, screen } from '@testing-library/react-native';
+import { render, screen, within } from '@testing-library/react-native';
 import { PixelRatio, StyleSheet } from 'react-native';
+import { act } from 'react';
 
 import '../../../factories/register-all';
-import { Model } from '../../../core/facade';
+import { Model, SurveyError } from '../../../core/facade';
 import type { Question, SurveyModel } from '../../../core/facade';
 import { setDiagnosticHandler } from '../../../diagnostics';
 import type { DiagnosticPayload } from '../../../diagnostics';
@@ -67,6 +68,89 @@ describe('SurveyRowElement — dispatch', () => {
       />
     );
     expect(screen.getByTestId('unsupported-question-panel')).toBeTruthy();
+  });
+});
+
+describe('SurveyRowElement — QuestionChrome at the dispatch boundary (M1 dispatcher contract)', () => {
+  it('a row-dispatched question renders INSIDE QuestionChrome: title chrome and the error panel are present', () => {
+    const { model, question } = firstQuestion({
+      elements: [{ type: 'empty', name: 'qc', title: 'Chrome Title' }],
+    });
+    question.addError(new SurveyError('boom'));
+    render(
+      <SurveyRowElement
+        element={question}
+        survey={model}
+        creator={{}}
+        percentBase={800}
+        gutterStart={0}
+        index={0}
+      />
+    );
+    const chrome = screen.getByTestId('qc-chrome');
+    expect(within(chrome).getByText('Chrome Title')).toBeTruthy();
+    // Default questionErrorLocation is 'top' — the panel renders above.
+    expect(within(chrome).getByTestId('qc-errors-above')).toBeTruthy();
+    expect(within(chrome).getByText('boom')).toBeTruthy();
+  });
+
+  it('the unsupported fallback is wrapped in chrome too (title chrome renders around the fallback panel)', () => {
+    const { model, question } = firstQuestion({
+      elements: [{ type: 'text', name: 'q-text', title: 'Text Title' }],
+    });
+    render(
+      <SurveyRowElement
+        element={question}
+        survey={model}
+        creator={{}}
+        percentBase={800}
+        gutterStart={0}
+        index={0}
+      />
+    );
+    const chrome = screen.getByTestId('q-text-chrome');
+    // The chrome header slot (the fallback panel echoes the title text
+    // too, so target the header's testID rather than the text).
+    expect(within(chrome).getByTestId('q-text-title')).toBeTruthy();
+    expect(
+      within(chrome).getByTestId('unsupported-question-panel')
+    ).toBeTruthy();
+  });
+
+  it('chrome + wrapper both subscribe to the SAME question without an update loop (model-scoped guard): a title mutation re-renders once, cleanly', () => {
+    const { model, question } = firstQuestion({
+      elements: [{ type: 'empty', name: 'q-loop', title: 'Before' }],
+    });
+    render(
+      <SurveyRowElement
+        element={question}
+        survey={model}
+        creator={{}}
+        percentBase={800}
+        gutterStart={0}
+        index={0}
+      />
+    );
+    expect(screen.getByText('Before')).toBeTruthy();
+    // An update loop between the two subscribers would blow React's
+    // maximum update depth inside this act() (throw or console.error,
+    // depending on the React version's escalation path) — observe BOTH
+    // channels; the content checks prove both layers re-rendered.
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      act(() => {
+        question.title = 'After';
+      });
+      const depthErrors = errorSpy.mock.calls.filter((callArgs) =>
+        callArgs.some((arg) => String(arg).includes('Maximum update depth'))
+      );
+      expect(depthErrors).toHaveLength(0);
+    } finally {
+      errorSpy.mockRestore();
+    }
+    expect(screen.queryByText('Before')).toBeNull();
+    expect(screen.getByText('After')).toBeTruthy();
+    expect(screen.getByTestId('sv-row-element-q-loop')).toBeTruthy();
   });
 });
 

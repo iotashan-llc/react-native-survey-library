@@ -87,20 +87,46 @@ describe('row recipe — fragment shapes', () => {
     expect(variants.inner.rowFirst.marginTop).toBe(0);
   });
 
-  it('rowMultiple fragment: wrap + rowGap + the DOM gutter technique (marginStart -g; % base widening is the resolver caller contract)', () => {
+  it('rowFirstAfterHeader fragment: page calcSize(3)=24 (`.sd-page__title/.sd-page__description ~ .sd-row.sd-page__row:not(--compact)`); inner keeps --sd-base-vertical-padding (32 / narrow 16, the `~ .sd-page__row.sd-row--compact` rule)', () => {
+    const { variants } = defaultRecipe();
+    expect(variants.page.rowFirstAfterHeader.marginTop).toBe(24);
+    expect(variants.pageNarrow.rowFirstAfterHeader.marginTop).toBe(24);
+    expect(variants.inner.rowFirstAfterHeader.marginTop).toBe(32);
+    expect(variants.innerNarrow.rowFirstAfterHeader.marginTop).toBe(16);
+  });
+
+  it('rowMultiple fragment (non-narrow): wrap + rowGap + the DOM gutter technique (marginStart -g; % base widening is the resolver caller contract)', () => {
     const { variants } = defaultRecipe();
     expect(variants.page.rowMultiple.flexWrap).toBe('wrap');
     expect(variants.page.rowMultiple.rowGap).toBe(16);
     expect(variants.page.rowMultiple.marginStart).toBe(-16);
     expect(variants.inner.rowMultiple.marginStart).toBe(-40);
-    expect(variants.innerNarrow.rowMultiple.marginStart).toBe(-24);
+    expect(variants.page.stacked).toBe(false);
+    expect(variants.inner.stacked).toBe(false);
   });
 
-  it('elementWrapperMultiple fragment: logical paddingStart g (`.sd-row--multiple > div { padding-left: g }`)', () => {
+  it('narrow variants STACK: rowMultiple collapses to a column (no wrap, no negative margin) with the variant rowGap between stacked children', () => {
+    const { variants } = defaultRecipe();
+    for (const variant of [variants.pageNarrow, variants.innerNarrow]) {
+      expect(variant.stacked).toBe(true);
+      expect(variant.rowMultiple.flexDirection).toBe('column');
+      expect(variant.rowMultiple.marginStart).toBeUndefined();
+      expect(variant.rowMultiple.flexWrap).toBeUndefined();
+    }
+    expect(variants.pageNarrow.rowMultiple.rowGap).toBe(16);
+    expect(variants.innerNarrow.rowMultiple.rowGap).toBe(16);
+  });
+
+  it('elementWrapperMultiple fragment: logical paddingStart g (`.sd-row--multiple > div { padding-left: g }`); stacked narrow variants carry NO gutter padding (full-width children)', () => {
     const { variants } = defaultRecipe();
     expect(variants.page.elementWrapperMultiple.paddingStart).toBe(16);
     expect(variants.inner.elementWrapperMultiple.paddingStart).toBe(40);
-    expect(variants.innerNarrow.elementWrapperMultiple.paddingStart).toBe(24);
+    expect(
+      variants.pageNarrow.elementWrapperMultiple.paddingStart
+    ).toBeUndefined();
+    expect(
+      variants.innerNarrow.elementWrapperMultiple.paddingStart
+    ).toBeUndefined();
   });
 });
 

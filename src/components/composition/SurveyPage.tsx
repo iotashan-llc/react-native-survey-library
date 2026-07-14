@@ -13,6 +13,7 @@
 import * as React from 'react';
 import { View } from 'react-native';
 import type { PageModel, PanelModelBase } from '../../core/facade';
+import { SurveyDirectionRoot } from './SurveyDirectionRoot';
 import { SurveyPanelBase } from './SurveyPanelBase';
 import type { SurveyPanelBaseProps } from './SurveyPanelBase';
 
@@ -30,26 +31,40 @@ export class SurveyPage extends SurveyPanelBase<SurveyPageProps> {
   }
 
   protected renderElement(): React.JSX.Element {
+    // `SurveyDirectionRoot` at the composition root (A7): every
+    // descendant's logical start/end style resolves against the theme
+    // mode's direction — the 1.1 survey shell mounts pages and gets RTL
+    // for free without knowing the primitive exists.
     return (
-      <View testID="sv-page">
-        {this.renderHeader()}
-        {this.renderRows()}
-      </View>
+      <SurveyDirectionRoot>
+        <View testID="sv-page">
+          {this.renderHeader()}
+          {this.renderRows()}
+        </View>
+      </SurveyDirectionRoot>
     );
+  }
+
+  private get showDescription(): boolean {
+    return (
+      (this.page as unknown as { _showDescription?: boolean })
+        ._showDescription === true
+    );
+  }
+
+  protected hasHeaderBeforeRows(): boolean {
+    return this.page.hasTitle || this.showDescription;
   }
 
   private renderHeader(): React.ReactNode {
     const page = this.page;
-    const showDescription =
-      (page as unknown as { _showDescription?: boolean })._showDescription ===
-      true;
-    if (!page.hasTitle && !showDescription) return null;
+    if (!this.hasHeaderBeforeRows()) return null;
     return (
-      <View>
+      <View testID="sv-page-header">
         {page.hasTitle
           ? this.renderLocString(page.locTitle, undefined, 'title')
           : null}
-        {showDescription
+        {this.showDescription
           ? this.renderLocString(page.locDescription, undefined, 'description')
           : null}
       </View>

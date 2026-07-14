@@ -28,7 +28,11 @@
  * rule) use the page metrics when the survey is non-compact;
  * panel-inner rows and compact (panelless) page rows use
  * `--sd-base-padding` metrics (sd-row.scss `.sd-row--compact`).
- * `narrow` comes from the theme context's select-time mode.
+ * `narrow` comes from the theme context's select-time mode — narrow
+ * variants are STACKED: multi-element rows collapse to a column of
+ * full-width children (recipe `stacked`; the resolver/gutter geometry is
+ * skipped — see DIFFERENCES.md "Narrow-mode multi-element rows stack
+ * explicitly").
  */
 import * as React from 'react';
 import { StyleSheet, View } from 'react-native';
@@ -53,6 +57,17 @@ export interface SurveyRowProps {
   creator: unknown;
   /** Row position within its container (first row drops the marginTop). */
   index: number;
+  /**
+   * True when the owning container rendered a page header (title and/or
+   * description) directly above the rows. The FIRST row then takes the
+   * header-adjacent margin instead of the first-of-type zeroing
+   * (sd-row.scss `.sd-page__title/.sd-page__description ~ .sd-row...`
+   * — calcSize(3) for non-compact page rows; compact rows keep
+   * `--sd-base-vertical-padding` via the inner variant). Only
+   * `SurveyPage` sets this; panel headers have their own content-box
+   * spacing.
+   */
+  afterHeader?: boolean;
 }
 
 interface SurveyRowState extends SurveyElementBaseState {
@@ -112,35 +127,48 @@ export class SurveyRow extends SurveyElementBase<
       mode.narrow
     );
     const isMultiple = this.row.visibleElements.length > 1;
+    // Narrow variants collapse multi rows to a vertical stack of
+    // full-width children (recipe `stacked`; see DIFFERENCES.md) — the
+    // rowMultiple fragment turns the content box into a column and the
+    // gutter/resolver geometry is skipped entirely.
+    const stacked = isMultiple && variant.stacked;
     const isFirst = this.props.index === 0;
+    const firstStyle = this.props.afterHeader
+      ? variant.rowFirstAfterHeader
+      : variant.rowFirst;
 
     return (
       <View
         testID="sv-row"
-        style={[variant.row, isFirst && variant.rowFirst]}
+        style={[variant.row, isFirst && firstStyle]}
         onLayout={this.handleLayout}
       >
         <View
           testID="sv-row-content"
           style={[styles.content, isMultiple && variant.rowMultiple]}
         >
-          {this.renderRowElements(isMultiple ? variant.gutter : 0)}
+          {this.renderRowElements(
+            isMultiple && !stacked ? variant.gutter : 0,
+            stacked
+          )}
         </View>
       </View>
     );
   }
 
-  private renderRowElements(gutter: number): React.ReactNode {
+  private renderRowElements(gutter: number, stacked: boolean): React.ReactNode {
     const { rowWidth } = this.state;
     if (rowWidth === null) {
       // One-frame defer until measured (1.3 design D3).
       return null;
     }
     const { survey, creator } = this.props;
-    const { percentBase, isMultiple } = resolveRowWidths(this.row, {
-      rowWidth,
-      gutter,
-    });
+    // Stacked rows bypass the resolver: every child owns its full line
+    // (the DOM's narrow end state), so there is no percent base to widen
+    // and no gutter to distribute.
+    const { percentBase, isMultiple } = stacked
+      ? { percentBase: rowWidth, isMultiple: false }
+      : resolveRowWidths(this.row, { rowWidth, gutter });
     return this.row.visibleElements.map((element, index) => {
       const key =
         (element as { id?: string; name?: string }).id ??
@@ -154,6 +182,7 @@ export class SurveyRow extends SurveyElementBase<
           creator={creator}
           percentBase={percentBase}
           gutterStart={isMultiple ? gutter : 0}
+          stacked={stacked}
           index={index}
         />
       );

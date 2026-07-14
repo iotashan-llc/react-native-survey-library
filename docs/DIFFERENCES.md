@@ -263,6 +263,20 @@ Core disallows animations headless (the renderer never calls
 fade/slide transitions do not occur. Rows appear and disappear
 immediately on visibility/membership changes.
 
+### Narrow-mode multi-element rows stack explicitly
+
+On the web, side-by-side questions collapse to one-per-line on narrow
+screens *emergently*: each element's `min-width: min(100%, var(--min-width))`
+forces `flex-wrap` onto its own line, and `flex-grow: 1` fills it. That
+path needs CSS `min()`/percentages resolved at layout time, which the
+all-numeric RN width resolver deliberately does not have. Instead,
+narrow mode (the theme provider's `narrow` prop, driven by the survey
+root's own width measurement) is an explicit switch: multi-element rows
+render as a vertical stack of full-width children separated by the
+row-gap metric. While stacked, per-element `width`/`minWidth`/`maxWidth`
+are not consulted — a web element whose explicit `max-width` would have
+kept it narrower than its line renders full-width here.
+
 ## Icons (task 1.5)
 
 Web renders icons as `<svg><use xlink:href="#icon-x"/></svg>` against a

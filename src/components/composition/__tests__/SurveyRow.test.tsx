@@ -14,6 +14,7 @@ import { act } from 'react';
 import '../../../factories/register-all';
 import { Model } from '../../../core/facade';
 import type { SurveyModel } from '../../../core/facade';
+import { SurveyThemeProvider } from '../../../theme-rn/provider';
 import { SurveyRow } from '../SurveyRow';
 
 interface RowModelLike {
@@ -287,6 +288,138 @@ describe('SurveyRow — four-context gutter table (1.3 design, review round 1)',
     expect(content.marginStart).toBe(-16);
     expect(flat('sv-row-element-sa').flexBasis).toBe(round(816 / 2));
     expect(flat('sv-row-element-sb').paddingStart).toBe(16);
+  });
+});
+
+function nestedPanelRow(): { model: SurveyModel; row: RowModelLike } {
+  const model = new Model({
+    elements: [
+      {
+        type: 'panel',
+        name: 'np',
+        elements: [
+          { type: 'empty', name: 'na' },
+          { type: 'empty', name: 'nb', startWithNewLine: false },
+        ],
+      },
+    ],
+  });
+  const panel = model.getPanelByName('np') as unknown as {
+    visibleRows: RowModelLike[];
+  };
+  return { model, row: panel.visibleRows[0]! };
+}
+
+describe('SurveyRow — nested-panel gutter context (four-context table, fourth row)', () => {
+  it('panel-inner two-up at 800: content marginStart -40, elements paddingStart 40, % base rowWidth + 40 (--sd-base-padding)', () => {
+    const { model, row } = nestedPanelRow();
+    render(
+      <SurveyRow row={row as never} survey={model} creator={{}} index={0} />
+    );
+    layoutRow(800);
+    const content = flat('sv-row-content');
+    expect(content.marginStart).toBe(-40);
+    expect(flat('sv-row-element-na').flexBasis).toBe(round(840 / 2));
+    expect(flat('sv-row-element-nb').flexBasis).toBe(round(840 / 2));
+    expect(flat('sv-row-element-na').paddingStart).toBe(40);
+    expect(flat('sv-row-element-nb').paddingStart).toBe(40);
+  });
+});
+
+describe('SurveyRow — narrow mode STACKS multi-element rows (select-time collapse)', () => {
+  it('page two-up under narrow: content collapses to a column (rowGap 16, no negative margin, no wrap); children are full-width (no resolver basis, no gutter padding)', () => {
+    const { model, row } = firstRow(THREE_UP);
+    render(
+      <SurveyThemeProvider narrow>
+        <SurveyRow row={row as never} survey={model} creator={{}} index={0} />
+      </SurveyThemeProvider>
+    );
+    layoutRow(360);
+    const content = flat('sv-row-content');
+    expect(content.flexDirection).toBe('column');
+    expect(content.marginStart).toBeUndefined();
+    expect(content.flexWrap).toBeUndefined();
+    expect(content.rowGap).toBe(16);
+    for (const name of ['q1', 'q2', 'q3']) {
+      const style = flat(`sv-row-element-${name}`);
+      expect(style.flexBasis).toBeUndefined();
+      expect(style.flexGrow).toBeUndefined();
+      expect(style.paddingStart).toBeUndefined();
+    }
+  });
+
+  it('nested-panel two-up under narrow: innerNarrow stacking (column, rowGap 16, no gutter geometry)', () => {
+    const { model, row } = nestedPanelRow();
+    render(
+      <SurveyThemeProvider narrow>
+        <SurveyRow row={row as never} survey={model} creator={{}} index={0} />
+      </SurveyThemeProvider>
+    );
+    layoutRow(360);
+    const content = flat('sv-row-content');
+    expect(content.flexDirection).toBe('column');
+    expect(content.marginStart).toBeUndefined();
+    expect(content.rowGap).toBe(16);
+    expect(flat('sv-row-element-na').flexBasis).toBeUndefined();
+    expect(flat('sv-row-element-nb').paddingStart).toBeUndefined();
+  });
+
+  it('single-element row under narrow still resolves numerically (full-width basis from the resolver)', () => {
+    const { model, row } = firstRow({
+      elements: [{ type: 'empty', name: 'solo' }],
+    });
+    render(
+      <SurveyThemeProvider narrow>
+        <SurveyRow row={row as never} survey={model} creator={{}} index={0} />
+      </SurveyThemeProvider>
+    );
+    layoutRow(360);
+    expect(flat('sv-row-element-solo').flexBasis).toBe(round(360));
+  });
+});
+
+describe('SurveyRow — header-adjacent first-row spacing (sd-row.scss `.sd-page__title/.sd-page__description ~`)', () => {
+  it('afterHeader + index 0 on a non-compact page row: marginTop calcSize(3)=24 (beats first-of-type zeroing)', () => {
+    const { model, row } = firstRow(THREE_UP);
+    render(
+      <SurveyRow
+        row={row as never}
+        survey={model}
+        creator={{}}
+        index={0}
+        afterHeader
+      />
+    );
+    expect(flat('sv-row').marginTop).toBe(24);
+  });
+
+  it('afterHeader + index 0 on a COMPACT page row: keeps --sd-base-vertical-padding 32 (the `~ .sd-page__row.sd-row--compact` rule)', () => {
+    const { model, row } = firstRow(THREE_UP);
+    (model as unknown as { isCompact: boolean }).isCompact = true;
+    render(
+      <SurveyRow
+        row={row as never}
+        survey={model}
+        creator={{}}
+        index={0}
+        afterHeader
+      />
+    );
+    expect(flat('sv-row').marginTop).toBe(32);
+  });
+
+  it('afterHeader does NOT change non-first rows (row-follows-row rhythm wins, calcSize(2)=16)', () => {
+    const { model, row } = firstRow(THREE_UP);
+    render(
+      <SurveyRow
+        row={row as never}
+        survey={model}
+        creator={{}}
+        index={1}
+        afterHeader
+      />
+    );
+    expect(flat('sv-row').marginTop).toBe(16);
   });
 });
 

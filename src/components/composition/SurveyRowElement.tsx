@@ -27,7 +27,12 @@
  * `RNQuestionFactory` under `isDefaultRendering() ? getTemplate() :
  * getComponentName()` (the manifest construction gate's own derivation),
  * with a miss falling through to the non-throwing `UnsupportedQuestion`
- * fallback (invariant 9).
+ * fallback (invariant 9). Both question outcomes render inside
+ * `<QuestionChrome>` — the M1 dispatcher contract (title/description/
+ * errors/comment/collapse chrome; upstream's `SurveyQuestion` wraps every
+ * question the same way). Chrome and this wrapper both subscribe to the
+ * same question model; the reactive base's model-scoped guard keeps the
+ * pair loop-free.
  */
 import * as React from 'react';
 import { PixelRatio, View } from 'react-native';
@@ -41,6 +46,7 @@ import type {
 } from '../../layout/width-resolver';
 import { reportLayoutDiagnosticOnce } from '../../diagnostics';
 import { SurveyElementBase } from '../../reactivity/SurveyElementBase';
+import { QuestionChrome } from '../QuestionChrome';
 import { createUnsupportedQuestion } from '../UnsupportedQuestion';
 
 /**
@@ -68,6 +74,14 @@ export interface SurveyRowElementProps {
   percentBase: number;
   /** Multi-row gutter g (dp); 0 in single-element rows. */
   gutterStart: number;
+  /**
+   * Narrow-mode stacked row (recipe `stacked`): the wrapper skips the
+   * width resolver entirely — the child owns its full line (the column
+   * content box stretches it), so `rootStyle`'s flex numbers would be
+   * meaningless (flexBasis would resolve against the VERTICAL main axis).
+   * Indent paddings still apply; the gutter never does (gutterStart is 0).
+   */
+  stacked?: boolean;
   index: number;
 }
 
@@ -138,11 +152,18 @@ export class SurveyRowElement extends SurveyElementBase<SurveyRowElementProps> {
 
   protected renderElement(): React.JSX.Element {
     const model = this.model;
-    const { percentBase, gutterStart } = this.props;
+    const { percentBase, gutterStart, stacked } = this.props;
 
-    const resolution = resolveWidthStyle(model.rootStyle, { percentBase });
-    this.pendingDiagnostics = resolution.diagnostics;
-    const widthStyle = roundLengths(resolution.style);
+    let widthStyle: ResolvedWidthStyle | undefined;
+    if (stacked) {
+      // Stacked (narrow) rows: full-width child, no resolver pass — see
+      // the `stacked` prop doc.
+      this.pendingDiagnostics = [];
+    } else {
+      const resolution = resolveWidthStyle(model.rootStyle, { percentBase });
+      this.pendingDiagnostics = resolution.diagnostics;
+      widthStyle = roundLengths(resolution.style);
+    }
 
     const paddingStart = gutterStart + indentDp(model.paddingLeft);
     const paddingEnd = indentDp(model.paddingRight);
@@ -182,9 +203,19 @@ export class SurveyRowElement extends SurveyElementBase<SurveyRowElementProps> {
         : (model.getComponentName?.() ?? model.getType());
 
     const questionProps = { question: element as Question, creator };
-    return (
+    const inner =
       RNQuestionFactory.createQuestion(dispatchKey, questionProps) ??
-      createUnsupportedQuestion(questionProps, { dispatchKey })
+      createUnsupportedQuestion(questionProps, { dispatchKey });
+    // The M1 dispatcher contract (QuestionChrome file doc): every
+    // dispatched question — factory hit AND unsupported fallback — renders
+    // inside `<QuestionChrome>` (title/description/errors/comment/
+    // collapse). Chrome subscribes to the same question model this
+    // wrapper does; the reactive base's model-scoped guard makes the
+    // double subscription loop-free (asserted in this component's tests).
+    return (
+      <QuestionChrome question={element as Question} creator={creator}>
+        {inner}
+      </QuestionChrome>
     );
   }
 }

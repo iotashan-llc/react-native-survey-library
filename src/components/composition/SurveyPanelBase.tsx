@@ -72,9 +72,21 @@ export abstract class SurveyPanelBase<
     );
   }
 
+  /**
+   * True when the concrete container renders a header directly above its
+   * rows — `SurveyPage` overrides this so the first row takes the
+   * header-adjacent margin (sd-row.scss `.sd-page__title/
+   * .sd-page__description ~ .sd-row...`). Panels keep the default: their
+   * header spacing is the panel content box's own concern.
+   */
+  protected hasHeaderBeforeRows(): boolean {
+    return false;
+  }
+
   protected renderRows(): React.ReactNode {
     const rows = (this.panelBase as unknown as { visibleRows: RowLikeModel[] })
       .visibleRows;
+    const afterHeader = this.hasHeaderBeforeRows();
     return rows.map((row, index) => (
       <SurveyRow
         key={row.id ?? String(index)}
@@ -82,6 +94,7 @@ export abstract class SurveyPanelBase<
         survey={this.survey}
         creator={this.creator}
         index={index}
+        afterHeader={afterHeader}
       />
     ));
   }

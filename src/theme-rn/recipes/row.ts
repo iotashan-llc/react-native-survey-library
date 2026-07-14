@@ -36,6 +36,15 @@
  * lookup (the "legal states only" enumeration precedent from the item
  * recipe: page/pageNarrow/inner/innerNarrow are the four legal tuples).
  *
+ * Narrow variants are STACKED (`stacked: true`): multi-element rows
+ * collapse to a column of full-width children separated by the variant
+ * rowGap. The DOM ends up in the same state emergently — each element's
+ * `min-width: min(100%, var(--min-width))` forces `flex-wrap` onto one
+ * line per element and `flex-grow: 1` fills each line — but that path
+ * needs CSS `min()`/`%` at layout time; the RN resolver is all-numeric,
+ * so the collapse is an explicit mode instead (see DIFFERENCES.md,
+ * "Narrow-mode multi-element rows stack explicitly").
+ *
  * Not carried (documented): `.sd-row--enter/--leave` animations (the
  * renderer never calls `enableOnElementRerenderedEvent()`, so core's row
  * animations are disallowed headless — 1.3 design "verified upstream
@@ -55,14 +64,45 @@ export interface RowVariantStyles {
   row: ViewStyle;
   /** First-row override: marginTop 0 (`.sd-row:first-of-type`). */
   rowFirst: ViewStyle;
-  /** Multi-element add-on: wrap + rowGap + `marginStart: -gutter`. */
+  /**
+   * First-row override when the container rendered a page header directly
+   * above the rows: `.sd-page__title/.sd-page__description ~
+   * .sd-row.sd-page__row:not(.sd-row--compact)` -> `calcSize(3)`; the
+   * compact sibling rule keeps `--sd-base-vertical-padding` (which the
+   * inner variants carry, since compact page rows select `inner`).
+   * Beats `:first-of-type`'s zeroing exactly as the SCSS specificity does.
+   */
+  rowFirstAfterHeader: ViewStyle;
+  /**
+   * Multi-element add-on. Non-stacked: wrap + rowGap + `marginStart:
+   * -gutter`. Stacked (narrow): `flexDirection: 'column'` + rowGap —
+   * children stack full-width; no widening, no wrap.
+   */
   rowMultiple: ViewStyle;
-  /** Per-element wrapper add-on for multi rows: `paddingStart: gutter`. */
+  /**
+   * Per-element wrapper add-on for multi rows: `paddingStart: gutter`.
+   * Empty for stacked variants (a stacked child owns its full line — the
+   * DOM's wrapped line nets to full content width because the row's
+   * `-g` margin cancels the element's `g` padding).
+   */
   elementWrapperMultiple: ViewStyle;
-  /** The gutter g in dp — ALSO the width resolver's `gutter` input. */
+  /**
+   * The gutter g in dp — ALSO the width resolver's `gutter` input. For
+   * stacked variants this stays the SCSS-derived metric for reference,
+   * but the component never feeds it to the resolver while stacking.
+   */
   gutter: number;
-  /** Vertical gap between wrapped lines (dp). */
+  /** Vertical gap between wrapped lines / stacked children (dp). */
   rowGap: number;
+  /**
+   * Narrow variants collapse multi-element rows into a vertical stack of
+   * full-width children. The DOM reaches the same end state EMERGENTLY on
+   * narrow screens (each element's `min-width: min(100%, 300px)` forces
+   * `flex-wrap` onto one line per element, and `flex-grow: 1` fills each
+   * line); RN's resolver produces all-numeric widths, so the collapse is
+   * an explicit select-time mode instead (see DIFFERENCES.md).
+   */
+  stacked: boolean;
 }
 
 export type RowVariantContext = 'page' | 'inner';
@@ -79,7 +119,9 @@ export interface RowRecipe {
 function buildVariant(
   gutter: number,
   rowGap: number,
-  marginTop: number
+  marginTop: number,
+  afterHeaderMarginTop: number,
+  stacked: boolean
 ): RowVariantStyles {
   const fragments = StyleSheet.create({
     row: {
@@ -90,22 +132,34 @@ function buildVariant(
     rowFirst: {
       marginTop: 0,
     },
-    rowMultiple: {
-      flexWrap: 'wrap',
-      rowGap,
-      marginStart: -gutter,
+    rowFirstAfterHeader: {
+      marginTop: afterHeaderMarginTop,
     },
-    elementWrapperMultiple: {
-      paddingStart: gutter,
-    },
+    rowMultiple: stacked
+      ? {
+          flexDirection: 'column',
+          rowGap,
+        }
+      : {
+          flexWrap: 'wrap',
+          rowGap,
+          marginStart: -gutter,
+        },
+    elementWrapperMultiple: stacked
+      ? {}
+      : {
+          paddingStart: gutter,
+        },
   });
   return {
     row: fragments.row,
     rowFirst: fragments.rowFirst,
+    rowFirstAfterHeader: fragments.rowFirstAfterHeader,
     rowMultiple: fragments.rowMultiple,
     elementWrapperMultiple: fragments.elementWrapperMultiple,
     gutter,
     rowGap,
+    stacked,
   };
 }
 
@@ -116,23 +170,48 @@ export function buildRowRecipe(
   // Page rows: gutter/rowGap/marginTop all calcSize(2) — base-unit-derived,
   // identical in narrow mode (sd-row.scss `.sd-page__row` rules).
   const pageMetric = calcSize(resolved, 2);
+  // Header-adjacent first page row: calcSize(3) (sd-row.scss
+  // `.sd-page__title/.sd-page__description ~ .sd-row.sd-page__row:not(
+  // .sd-row--compact)`), base-unit-derived, identical in narrow mode.
+  const afterHeaderMetric = calcSize(resolved, 3);
   // Inner rows: --sd-base-padding / --sd-base-vertical-padding
-  // (default.m600.scss:6-7; narrow overrides :13-14).
+  // (default.m600.scss:6-7; narrow overrides :13-14). Their after-header
+  // margin stays --sd-base-vertical-padding (the `~ .sd-page__row
+  // .sd-row--compact` rule) — same value as the base marginTop.
   const basePadding = calcSize(resolved, 5);
   const baseVertical = calcSize(resolved, 4);
   const basePaddingNarrow = calcSize(resolved, 3);
   const baseVerticalNarrow = calcSize(resolved, 2);
 
-  const page = buildVariant(pageMetric, pageMetric, pageMetric);
   return {
     variants: {
-      page,
-      pageNarrow: buildVariant(pageMetric, pageMetric, pageMetric),
-      inner: buildVariant(basePadding, baseVertical, baseVertical),
+      page: buildVariant(
+        pageMetric,
+        pageMetric,
+        pageMetric,
+        afterHeaderMetric,
+        false
+      ),
+      pageNarrow: buildVariant(
+        pageMetric,
+        pageMetric,
+        pageMetric,
+        afterHeaderMetric,
+        true
+      ),
+      inner: buildVariant(
+        basePadding,
+        baseVertical,
+        baseVertical,
+        baseVertical,
+        false
+      ),
       innerNarrow: buildVariant(
         basePaddingNarrow,
         baseVerticalNarrow,
-        baseVerticalNarrow
+        baseVerticalNarrow,
+        baseVerticalNarrow,
+        true
       ),
     },
   };

@@ -451,17 +451,19 @@ exports[`curated recipe golden snapshots ContrastLight: recipes build to a stabl
         "rowFirst": {
           "marginTop": 0,
         },
+        "rowFirstAfterHeader": {
+          "marginTop": 32,
+        },
         "rowGap": 32,
         "rowMultiple": {
           "flexWrap": "wrap",
           "marginStart": -40,
           "rowGap": 32,
         },
+        "stacked": false,
       },
       "innerNarrow": {
-        "elementWrapperMultiple": {
-          "paddingStart": 24,
-        },
+        "elementWrapperMultiple": {},
         "gutter": 24,
         "row": {
           "alignSelf": "stretch",
@@ -471,12 +473,15 @@ exports[`curated recipe golden snapshots ContrastLight: recipes build to a stabl
         "rowFirst": {
           "marginTop": 0,
         },
+        "rowFirstAfterHeader": {
+          "marginTop": 16,
+        },
         "rowGap": 16,
         "rowMultiple": {
-          "flexWrap": "wrap",
-          "marginStart": -24,
+          "flexDirection": "column",
           "rowGap": 16,
         },
+        "stacked": true,
       },
       "page": {
         "elementWrapperMultiple": {
@@ -491,17 +496,19 @@ exports[`curated recipe golden snapshots ContrastLight: recipes build to a stabl
         "rowFirst": {
           "marginTop": 0,
         },
+        "rowFirstAfterHeader": {
+          "marginTop": 24,
+        },
         "rowGap": 16,
         "rowMultiple": {
           "flexWrap": "wrap",
           "marginStart": -16,
           "rowGap": 16,
         },
+        "stacked": false,
       },
       "pageNarrow": {
-        "elementWrapperMultiple": {
-          "paddingStart": 16,
-        },
+        "elementWrapperMultiple": {},
         "gutter": 16,
         "row": {
           "alignSelf": "stretch",
@@ -511,12 +518,15 @@ exports[`curated recipe golden snapshots ContrastLight: recipes build to a stabl
         "rowFirst": {
           "marginTop": 0,
         },
+        "rowFirstAfterHeader": {
+          "marginTop": 24,
+        },
         "rowGap": 16,
         "rowMultiple": {
-          "flexWrap": "wrap",
-          "marginStart": -16,
+          "flexDirection": "column",
           "rowGap": 16,
         },
+        "stacked": true,
       },
     },
   },
@@ -995,17 +1005,19 @@ exports[`curated recipe golden snapshots DefaultLight: recipes build to a stable
         "rowFirst": {
           "marginTop": 0,
         },
+        "rowFirstAfterHeader": {
+          "marginTop": 32,
+        },
         "rowGap": 32,
         "rowMultiple": {
           "flexWrap": "wrap",
           "marginStart": -40,
           "rowGap": 32,
         },
+        "stacked": false,
       },
       "innerNarrow": {
-        "elementWrapperMultiple": {
-          "paddingStart": 24,
-        },
+        "elementWrapperMultiple": {},
         "gutter": 24,
         "row": {
           "alignSelf": "stretch",
@@ -1015,12 +1027,15 @@ exports[`curated recipe golden snapshots DefaultLight: recipes build to a stable
         "rowFirst": {
           "marginTop": 0,
         },
+        "rowFirstAfterHeader": {
+          "marginTop": 16,
+        },
         "rowGap": 16,
         "rowMultiple": {
-          "flexWrap": "wrap",
-          "marginStart": -24,
+          "flexDirection": "column",
           "rowGap": 16,
         },
+        "stacked": true,
       },
       "page": {
         "elementWrapperMultiple": {
@@ -1035,17 +1050,19 @@ exports[`curated recipe golden snapshots DefaultLight: recipes build to a stable
         "rowFirst": {
           "marginTop": 0,
         },
+        "rowFirstAfterHeader": {
+          "marginTop": 24,
+        },
         "rowGap": 16,
         "rowMultiple": {
           "flexWrap": "wrap",
           "marginStart": -16,
           "rowGap": 16,
         },
+        "stacked": false,
       },
       "pageNarrow": {
-        "elementWrapperMultiple": {
-          "paddingStart": 16,
-        },
+        "elementWrapperMultiple": {},
         "gutter": 16,
         "row": {
           "alignSelf": "stretch",
@@ -1055,12 +1072,15 @@ exports[`curated recipe golden snapshots DefaultLight: recipes build to a stable
         "rowFirst": {
           "marginTop": 0,
         },
+        "rowFirstAfterHeader": {
+          "marginTop": 24,
+        },
         "rowGap": 16,
         "rowMultiple": {
-          "flexWrap": "wrap",
-          "marginStart": -16,
+          "flexDirection": "column",
           "rowGap": 16,
         },
+        "stacked": true,
       },
     },
   },
@@ -1603,17 +1623,19 @@ exports[`curated recipe golden snapshots LayeredDark: recipes build to a stable 
         "rowFirst": {
           "marginTop": 0,
         },
+        "rowFirstAfterHeader": {
+          "marginTop": 32,
+        },
         "rowGap": 32,
         "rowMultiple": {
           "flexWrap": "wrap",
           "marginStart": -40,
           "rowGap": 32,
         },
+        "stacked": false,
       },
       "innerNarrow": {
-        "elementWrapperMultiple": {
-          "paddingStart": 24,
-        },
+        "elementWrapperMultiple": {},
         "gutter": 24,
         "row": {
           "alignSelf": "stretch",
@@ -1623,12 +1645,15 @@ exports[`curated recipe golden snapshots LayeredDark: recipes build to a stable 
         "rowFirst": {
           "marginTop": 0,
         },
+        "rowFirstAfterHeader": {
+          "marginTop": 16,
+        },
         "rowGap": 16,
         "rowMultiple": {
-          "flexWrap": "wrap",
-          "marginStart": -24,
+          "flexDirection": "column",
           "rowGap": 16,
         },
+        "stacked": true,
       },
       "page": {
         "elementWrapperMultiple": {
@@ -1643,17 +1668,19 @@ exports[`curated recipe golden snapshots LayeredDark: recipes build to a stable 
         "rowFirst": {
           "marginTop": 0,
         },
+        "rowFirstAfterHeader": {
+          "marginTop": 24,
+        },
         "rowGap": 16,
         "rowMultiple": {
           "flexWrap": "wrap",
           "marginStart": -16,
           "rowGap": 16,
         },
+        "stacked": false,
       },
       "pageNarrow": {
-        "elementWrapperMultiple": {
-          "paddingStart": 16,
-        },
+        "elementWrapperMultiple": {},
         "gutter": 16,
         "row": {
           "alignSelf": "stretch",
@@ -1663,12 +1690,15 @@ exports[`curated recipe golden snapshots LayeredDark: recipes build to a stable 
         "rowFirst": {
           "marginTop": 0,
         },
+        "rowFirstAfterHeader": {
+          "marginTop": 24,
+        },
         "rowGap": 16,
         "rowMultiple": {
-          "flexWrap": "wrap",
-          "marginStart": -16,
+          "flexDirection": "column",
           "rowGap": 16,
         },
+        "stacked": true,
       },
     },
   },
@@ -2147,17 +2177,19 @@ exports[`curated recipe golden snapshots SharpDark: recipes build to a stable sn
         "rowFirst": {
           "marginTop": 0,
         },
+        "rowFirstAfterHeader": {
+          "marginTop": 32,
+        },
         "rowGap": 32,
         "rowMultiple": {
           "flexWrap": "wrap",
           "marginStart": -40,
           "rowGap": 32,
         },
+        "stacked": false,
       },
       "innerNarrow": {
-        "elementWrapperMultiple": {
-          "paddingStart": 24,
-        },
+        "elementWrapperMultiple": {},
         "gutter": 24,
         "row": {
           "alignSelf": "stretch",
@@ -2167,12 +2199,15 @@ exports[`curated recipe golden snapshots SharpDark: recipes build to a stable sn
         "rowFirst": {
           "marginTop": 0,
         },
+        "rowFirstAfterHeader": {
+          "marginTop": 16,
+        },
         "rowGap": 16,
         "rowMultiple": {
-          "flexWrap": "wrap",
-          "marginStart": -24,
+          "flexDirection": "column",
           "rowGap": 16,
         },
+        "stacked": true,
       },
       "page": {
         "elementWrapperMultiple": {
@@ -2187,17 +2222,19 @@ exports[`curated recipe golden snapshots SharpDark: recipes build to a stable sn
         "rowFirst": {
           "marginTop": 0,
         },
+        "rowFirstAfterHeader": {
+          "marginTop": 24,
+        },
         "rowGap": 16,
         "rowMultiple": {
           "flexWrap": "wrap",
           "marginStart": -16,
           "rowGap": 16,
         },
+        "stacked": false,
       },
       "pageNarrow": {
-        "elementWrapperMultiple": {
-          "paddingStart": 16,
-        },
+        "elementWrapperMultiple": {},
         "gutter": 16,
         "row": {
           "alignSelf": "stretch",
@@ -2207,12 +2244,15 @@ exports[`curated recipe golden snapshots SharpDark: recipes build to a stable sn
         "rowFirst": {
           "marginTop": 0,
         },
+        "rowFirstAfterHeader": {
+          "marginTop": 24,
+        },
         "rowGap": 16,
         "rowMultiple": {
-          "flexWrap": "wrap",
-          "marginStart": -16,
+          "flexDirection": "column",
           "rowGap": 16,
         },
+        "stacked": true,
       },
     },
   },
@@ -2739,17 +2779,19 @@ exports[`curated recipe golden snapshots ThreeDimensionalLight: recipes build to
         "rowFirst": {
           "marginTop": 0,
         },
+        "rowFirstAfterHeader": {
+          "marginTop": 32,
+        },
         "rowGap": 32,
         "rowMultiple": {
           "flexWrap": "wrap",
           "marginStart": -40,
           "rowGap": 32,
         },
+        "stacked": false,
       },
       "innerNarrow": {
-        "elementWrapperMultiple": {
-          "paddingStart": 24,
-        },
+        "elementWrapperMultiple": {},
         "gutter": 24,
         "row": {
           "alignSelf": "stretch",
@@ -2759,12 +2801,15 @@ exports[`curated recipe golden snapshots ThreeDimensionalLight: recipes build to
         "rowFirst": {
           "marginTop": 0,
         },
+        "rowFirstAfterHeader": {
+          "marginTop": 16,
+        },
         "rowGap": 16,
         "rowMultiple": {
-          "flexWrap": "wrap",
-          "marginStart": -24,
+          "flexDirection": "column",
           "rowGap": 16,
         },
+        "stacked": true,
       },
       "page": {
         "elementWrapperMultiple": {
@@ -2779,17 +2824,19 @@ exports[`curated recipe golden snapshots ThreeDimensionalLight: recipes build to
         "rowFirst": {
           "marginTop": 0,
         },
+        "rowFirstAfterHeader": {
+          "marginTop": 24,
+        },
         "rowGap": 16,
         "rowMultiple": {
           "flexWrap": "wrap",
           "marginStart": -16,
           "rowGap": 16,
         },
+        "stacked": false,
       },
       "pageNarrow": {
-        "elementWrapperMultiple": {
-          "paddingStart": 16,
-        },
+        "elementWrapperMultiple": {},
         "gutter": 16,
         "row": {
           "alignSelf": "stretch",
@@ -2799,12 +2846,15 @@ exports[`curated recipe golden snapshots ThreeDimensionalLight: recipes build to
         "rowFirst": {
           "marginTop": 0,
         },
+        "rowFirstAfterHeader": {
+          "marginTop": 24,
+        },
         "rowGap": 16,
         "rowMultiple": {
-          "flexWrap": "wrap",
-          "marginStart": -16,
+          "flexDirection": "column",
           "rowGap": 16,
         },
+        "stacked": true,
       },
     },
   },

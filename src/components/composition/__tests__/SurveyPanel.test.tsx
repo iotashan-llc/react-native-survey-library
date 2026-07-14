@@ -13,6 +13,7 @@ import { act } from 'react';
 import '../../../factories/register-all';
 import { Model } from '../../../core/facade';
 import type { PanelModel, SurveyModel } from '../../../core/facade';
+import { SurveyThemeProvider } from '../../../theme-rn/provider';
 import { SurveyPanel } from '../SurveyPanel';
 
 function panelFixture(panelJson: Record<string, unknown>): {
@@ -71,6 +72,38 @@ describe('SurveyPanel — rows', () => {
       unknown
     >;
     expect(secondRow.marginTop).toBe(32);
+  });
+});
+
+describe('SurveyPanel — narrow mode (panel-level stacking integration)', () => {
+  it('a two-up panel row under the narrow provider stacks to a column with the innerNarrow rowGap 16', () => {
+    const { model, panel } = panelFixture({
+      type: 'panel',
+      name: 'p-narrow',
+      elements: [
+        { type: 'empty', name: 'nq1' },
+        { type: 'empty', name: 'nq2', startWithNewLine: false },
+      ],
+    });
+    render(
+      <SurveyThemeProvider narrow>
+        <SurveyPanel element={panel} survey={model} creator={{}} />
+      </SurveyThemeProvider>
+    );
+    fireEvent(screen.getAllByTestId('sv-row')[0]!, 'layout', {
+      nativeEvent: { layout: { x: 0, y: 0, width: 360, height: 0 } },
+    });
+    const content = StyleSheet.flatten(
+      screen.getByTestId('sv-row-content').props.style
+    ) as Record<string, unknown>;
+    expect(content.flexDirection).toBe('column');
+    expect(content.rowGap).toBe(16);
+    expect(content.marginStart).toBeUndefined();
+    const element = StyleSheet.flatten(
+      screen.getByTestId('sv-row-element-nq1').props.style
+    ) as Record<string, unknown>;
+    expect(element.flexBasis).toBeUndefined();
+    expect(element.paddingStart).toBeUndefined();
   });
 });
 
