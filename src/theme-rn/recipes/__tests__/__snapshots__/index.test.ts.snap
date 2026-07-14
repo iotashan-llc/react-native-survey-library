@@ -369,6 +369,90 @@ exports[`curated recipe golden snapshots ContrastLight: recipes build to a stabl
       },
     },
   },
+  "row": {
+    "variants": {
+      "inner": {
+        "elementWrapperMultiple": {
+          "paddingStart": 40,
+        },
+        "gutter": 40,
+        "row": {
+          "alignSelf": "stretch",
+          "flexDirection": "row",
+          "marginTop": 32,
+        },
+        "rowFirst": {
+          "marginTop": 0,
+        },
+        "rowGap": 32,
+        "rowMultiple": {
+          "flexWrap": "wrap",
+          "marginStart": -40,
+          "rowGap": 32,
+        },
+      },
+      "innerNarrow": {
+        "elementWrapperMultiple": {
+          "paddingStart": 24,
+        },
+        "gutter": 24,
+        "row": {
+          "alignSelf": "stretch",
+          "flexDirection": "row",
+          "marginTop": 16,
+        },
+        "rowFirst": {
+          "marginTop": 0,
+        },
+        "rowGap": 16,
+        "rowMultiple": {
+          "flexWrap": "wrap",
+          "marginStart": -24,
+          "rowGap": 16,
+        },
+      },
+      "page": {
+        "elementWrapperMultiple": {
+          "paddingStart": 16,
+        },
+        "gutter": 16,
+        "row": {
+          "alignSelf": "stretch",
+          "flexDirection": "row",
+          "marginTop": 16,
+        },
+        "rowFirst": {
+          "marginTop": 0,
+        },
+        "rowGap": 16,
+        "rowMultiple": {
+          "flexWrap": "wrap",
+          "marginStart": -16,
+          "rowGap": 16,
+        },
+      },
+      "pageNarrow": {
+        "elementWrapperMultiple": {
+          "paddingStart": 16,
+        },
+        "gutter": 16,
+        "row": {
+          "alignSelf": "stretch",
+          "flexDirection": "row",
+          "marginTop": 16,
+        },
+        "rowFirst": {
+          "marginTop": 0,
+        },
+        "rowGap": 16,
+        "rowMultiple": {
+          "flexWrap": "wrap",
+          "marginStart": -16,
+          "rowGap": 16,
+        },
+      },
+    },
+  },
   "unsupportedQuestion": {
     "fragments": {
       "errorAccentBar": {
@@ -759,6 +843,90 @@ exports[`curated recipe golden snapshots DefaultLight: recipes build to a stable
         "fontSize": 16,
         "fontWeight": "600",
         "lineHeight": 24,
+      },
+    },
+  },
+  "row": {
+    "variants": {
+      "inner": {
+        "elementWrapperMultiple": {
+          "paddingStart": 40,
+        },
+        "gutter": 40,
+        "row": {
+          "alignSelf": "stretch",
+          "flexDirection": "row",
+          "marginTop": 32,
+        },
+        "rowFirst": {
+          "marginTop": 0,
+        },
+        "rowGap": 32,
+        "rowMultiple": {
+          "flexWrap": "wrap",
+          "marginStart": -40,
+          "rowGap": 32,
+        },
+      },
+      "innerNarrow": {
+        "elementWrapperMultiple": {
+          "paddingStart": 24,
+        },
+        "gutter": 24,
+        "row": {
+          "alignSelf": "stretch",
+          "flexDirection": "row",
+          "marginTop": 16,
+        },
+        "rowFirst": {
+          "marginTop": 0,
+        },
+        "rowGap": 16,
+        "rowMultiple": {
+          "flexWrap": "wrap",
+          "marginStart": -24,
+          "rowGap": 16,
+        },
+      },
+      "page": {
+        "elementWrapperMultiple": {
+          "paddingStart": 16,
+        },
+        "gutter": 16,
+        "row": {
+          "alignSelf": "stretch",
+          "flexDirection": "row",
+          "marginTop": 16,
+        },
+        "rowFirst": {
+          "marginTop": 0,
+        },
+        "rowGap": 16,
+        "rowMultiple": {
+          "flexWrap": "wrap",
+          "marginStart": -16,
+          "rowGap": 16,
+        },
+      },
+      "pageNarrow": {
+        "elementWrapperMultiple": {
+          "paddingStart": 16,
+        },
+        "gutter": 16,
+        "row": {
+          "alignSelf": "stretch",
+          "flexDirection": "row",
+          "marginTop": 16,
+        },
+        "rowFirst": {
+          "marginTop": 0,
+        },
+        "rowGap": 16,
+        "rowMultiple": {
+          "flexWrap": "wrap",
+          "marginStart": -16,
+          "rowGap": 16,
+        },
       },
     },
   },
@@ -1219,6 +1387,90 @@ exports[`curated recipe golden snapshots LayeredDark: recipes build to a stable 
       },
     },
   },
+  "row": {
+    "variants": {
+      "inner": {
+        "elementWrapperMultiple": {
+          "paddingStart": 40,
+        },
+        "gutter": 40,
+        "row": {
+          "alignSelf": "stretch",
+          "flexDirection": "row",
+          "marginTop": 32,
+        },
+        "rowFirst": {
+          "marginTop": 0,
+        },
+        "rowGap": 32,
+        "rowMultiple": {
+          "flexWrap": "wrap",
+          "marginStart": -40,
+          "rowGap": 32,
+        },
+      },
+      "innerNarrow": {
+        "elementWrapperMultiple": {
+          "paddingStart": 24,
+        },
+        "gutter": 24,
+        "row": {
+          "alignSelf": "stretch",
+          "flexDirection": "row",
+          "marginTop": 16,
+        },
+        "rowFirst": {
+          "marginTop": 0,
+        },
+        "rowGap": 16,
+        "rowMultiple": {
+          "flexWrap": "wrap",
+          "marginStart": -24,
+          "rowGap": 16,
+        },
+      },
+      "page": {
+        "elementWrapperMultiple": {
+          "paddingStart": 16,
+        },
+        "gutter": 16,
+        "row": {
+          "alignSelf": "stretch",
+          "flexDirection": "row",
+          "marginTop": 16,
+        },
+        "rowFirst": {
+          "marginTop": 0,
+        },
+        "rowGap": 16,
+        "rowMultiple": {
+          "flexWrap": "wrap",
+          "marginStart": -16,
+          "rowGap": 16,
+        },
+      },
+      "pageNarrow": {
+        "elementWrapperMultiple": {
+          "paddingStart": 16,
+        },
+        "gutter": 16,
+        "row": {
+          "alignSelf": "stretch",
+          "flexDirection": "row",
+          "marginTop": 16,
+        },
+        "rowFirst": {
+          "marginTop": 0,
+        },
+        "rowGap": 16,
+        "rowMultiple": {
+          "flexWrap": "wrap",
+          "marginStart": -16,
+          "rowGap": 16,
+        },
+      },
+    },
+  },
   "unsupportedQuestion": {
     "fragments": {
       "errorAccentBar": {
@@ -1609,6 +1861,90 @@ exports[`curated recipe golden snapshots SharpDark: recipes build to a stable sn
         "fontSize": 16,
         "fontWeight": "600",
         "lineHeight": 24,
+      },
+    },
+  },
+  "row": {
+    "variants": {
+      "inner": {
+        "elementWrapperMultiple": {
+          "paddingStart": 40,
+        },
+        "gutter": 40,
+        "row": {
+          "alignSelf": "stretch",
+          "flexDirection": "row",
+          "marginTop": 32,
+        },
+        "rowFirst": {
+          "marginTop": 0,
+        },
+        "rowGap": 32,
+        "rowMultiple": {
+          "flexWrap": "wrap",
+          "marginStart": -40,
+          "rowGap": 32,
+        },
+      },
+      "innerNarrow": {
+        "elementWrapperMultiple": {
+          "paddingStart": 24,
+        },
+        "gutter": 24,
+        "row": {
+          "alignSelf": "stretch",
+          "flexDirection": "row",
+          "marginTop": 16,
+        },
+        "rowFirst": {
+          "marginTop": 0,
+        },
+        "rowGap": 16,
+        "rowMultiple": {
+          "flexWrap": "wrap",
+          "marginStart": -24,
+          "rowGap": 16,
+        },
+      },
+      "page": {
+        "elementWrapperMultiple": {
+          "paddingStart": 16,
+        },
+        "gutter": 16,
+        "row": {
+          "alignSelf": "stretch",
+          "flexDirection": "row",
+          "marginTop": 16,
+        },
+        "rowFirst": {
+          "marginTop": 0,
+        },
+        "rowGap": 16,
+        "rowMultiple": {
+          "flexWrap": "wrap",
+          "marginStart": -16,
+          "rowGap": 16,
+        },
+      },
+      "pageNarrow": {
+        "elementWrapperMultiple": {
+          "paddingStart": 16,
+        },
+        "gutter": 16,
+        "row": {
+          "alignSelf": "stretch",
+          "flexDirection": "row",
+          "marginTop": 16,
+        },
+        "rowFirst": {
+          "marginTop": 0,
+        },
+        "rowGap": 16,
+        "rowMultiple": {
+          "flexWrap": "wrap",
+          "marginStart": -16,
+          "rowGap": 16,
+        },
       },
     },
   },
@@ -2050,6 +2386,90 @@ exports[`curated recipe golden snapshots ThreeDimensionalLight: recipes build to
         "fontSize": 16,
         "fontWeight": "600",
         "lineHeight": 24,
+      },
+    },
+  },
+  "row": {
+    "variants": {
+      "inner": {
+        "elementWrapperMultiple": {
+          "paddingStart": 40,
+        },
+        "gutter": 40,
+        "row": {
+          "alignSelf": "stretch",
+          "flexDirection": "row",
+          "marginTop": 32,
+        },
+        "rowFirst": {
+          "marginTop": 0,
+        },
+        "rowGap": 32,
+        "rowMultiple": {
+          "flexWrap": "wrap",
+          "marginStart": -40,
+          "rowGap": 32,
+        },
+      },
+      "innerNarrow": {
+        "elementWrapperMultiple": {
+          "paddingStart": 24,
+        },
+        "gutter": 24,
+        "row": {
+          "alignSelf": "stretch",
+          "flexDirection": "row",
+          "marginTop": 16,
+        },
+        "rowFirst": {
+          "marginTop": 0,
+        },
+        "rowGap": 16,
+        "rowMultiple": {
+          "flexWrap": "wrap",
+          "marginStart": -24,
+          "rowGap": 16,
+        },
+      },
+      "page": {
+        "elementWrapperMultiple": {
+          "paddingStart": 16,
+        },
+        "gutter": 16,
+        "row": {
+          "alignSelf": "stretch",
+          "flexDirection": "row",
+          "marginTop": 16,
+        },
+        "rowFirst": {
+          "marginTop": 0,
+        },
+        "rowGap": 16,
+        "rowMultiple": {
+          "flexWrap": "wrap",
+          "marginStart": -16,
+          "rowGap": 16,
+        },
+      },
+      "pageNarrow": {
+        "elementWrapperMultiple": {
+          "paddingStart": 16,
+        },
+        "gutter": 16,
+        "row": {
+          "alignSelf": "stretch",
+          "flexDirection": "row",
+          "marginTop": 16,
+        },
+        "rowFirst": {
+          "marginTop": 0,
+        },
+        "rowGap": 16,
+        "rowMultiple": {
+          "flexWrap": "wrap",
+          "marginStart": -16,
+          "rowGap": 16,
+        },
       },
     },
   },

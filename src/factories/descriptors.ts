@@ -29,6 +29,8 @@ import { EmptyQuestion } from '../components/EmptyQuestion';
 import { SurveyLocStringViewer } from '../components/LocStringViewer';
 import { SurveyHeader } from '../components/SurveyHeader';
 import { LogoImage } from '../components/LogoImage';
+import { SurveyPage } from '../components/composition/SurveyPage';
+import { SurveyPanel } from '../components/composition/SurveyPanel';
 
 export type DescriptorRoute = 'template' | 'renderer' | 'element';
 
@@ -96,6 +98,27 @@ export const DESCRIPTOR_TABLE: readonly Descriptor[] = [
     dispatchKey: 'sv-logo-image',
     route: 'element',
     component: () => LogoImage,
+    milestone: 'M1',
+  },
+
+  // M1, task 1.4 — composition element rows. `sv-page` mirrors upstream's
+  // ReactElementFactory key (page.tsx registers "sv-page"); `panel` is the
+  // key `SurveyRowElement` dispatches when a row element `isPanel`
+  // (upstream: `element.getTemplate()` -> "panel" in the element factory).
+  {
+    status: 'supported',
+    questionType: 'sv-page',
+    dispatchKey: 'sv-page',
+    route: 'element',
+    component: () => SurveyPage,
+    milestone: 'M1',
+  },
+  {
+    status: 'supported',
+    questionType: 'panel',
+    dispatchKey: 'panel',
+    route: 'element',
+    component: () => SurveyPanel,
     milestone: 'M1',
   },
   {

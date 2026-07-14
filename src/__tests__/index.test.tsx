@@ -26,8 +26,10 @@ describe('index.tsx: registrar wiring (design: docs/design/0.5-factories.md)', (
   it('importing the package root registers the supported descriptor rows into both factories', () => {
     expect(RNQuestionFactory.getAllTypes()).toEqual(['empty']);
     expect(RNElementFactory.getAllTypes()).toEqual([
+      'panel',
       'survey-header',
       'sv-logo-image',
+      'sv-page',
       'sv-string-viewer',
     ]);
   });

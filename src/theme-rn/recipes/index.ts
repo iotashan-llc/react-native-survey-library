@@ -18,6 +18,7 @@ import {
   type UnsupportedQuestionRecipe,
 } from './unsupportedQuestion';
 import { buildHeaderRecipe, type HeaderRecipe } from './header';
+import { buildRowRecipe, type RowRecipe } from './row';
 
 export interface Recipes {
   item: ItemRecipe;
@@ -27,6 +28,8 @@ export interface Recipes {
   unsupportedQuestion: UnsupportedQuestionRecipe;
   /** Basic survey header (task 1.6). */
   header: HeaderRecipe;
+  /** Row/element composition geometry (task 1.4). */
+  row: RowRecipe;
 }
 
 export function buildRecipes(
@@ -40,6 +43,7 @@ export function buildRecipes(
     questionTitle: buildQuestionTitleRecipe(resolved, buildCtx),
     unsupportedQuestion: buildUnsupportedQuestionRecipe(resolved, buildCtx),
     header: buildHeaderRecipe(resolved, buildCtx),
+    row: buildRowRecipe(resolved, buildCtx),
   };
 }
 
@@ -50,3 +54,4 @@ export * from './button';
 export * from './questionTitle';
 export * from './unsupportedQuestion';
 export * from './header';
+export * from './row';

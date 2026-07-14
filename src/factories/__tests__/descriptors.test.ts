@@ -14,23 +14,27 @@ function byKey(dispatchKey: string): Descriptor {
   return row;
 }
 
-describe('DESCRIPTOR_TABLE (M0 + task 1.6)', () => {
-  it('has exactly the M0 rows (empty, custom, composite) plus the 1.6 element rows', () => {
+describe('DESCRIPTOR_TABLE (M0 + tasks 1.4/1.6)', () => {
+  it('has exactly the M0 rows (empty, custom, composite) plus the 1.4/1.6 element rows', () => {
     expect(DESCRIPTOR_TABLE.map((r) => r.dispatchKey).sort()).toEqual([
       'composite',
       'custom',
       'empty',
+      'panel',
       'survey-header',
       'sv-logo-image',
+      'sv-page',
       'sv-string-viewer',
     ]);
   });
 
-  it('the 1.6 rows are supported/element rows (RNElementFactory keyspace) with resolvable component thunks', () => {
+  it('the 1.4/1.6 rows are supported/element rows (RNElementFactory keyspace) with resolvable component thunks', () => {
     for (const key of [
       'sv-string-viewer',
       'survey-header',
       'sv-logo-image',
+      'sv-page',
+      'panel',
     ] as const) {
       const row = byKey(key);
       expect(row.status).toBe('supported');

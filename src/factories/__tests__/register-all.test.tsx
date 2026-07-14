@@ -181,8 +181,10 @@ describe('registerAll (module side effect)', () => {
 
     expect(RNQuestionFactory.getAllTypes()).toEqual(['empty']);
     expect(RNElementFactory.getAllTypes()).toEqual([
+      'panel',
       'survey-header',
       'sv-logo-image',
+      'sv-page',
       'sv-string-viewer',
     ]);
   });
