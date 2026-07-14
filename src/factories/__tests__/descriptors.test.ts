@@ -5,8 +5,12 @@
  * components; a dispatch miss on either falls through to the fallback +
  * diagnostic until task 2.11 lands their adapters). M1 rows added by
  * tasks 1.6 (element routes: sv-string-viewer, survey-header,
- * sv-logo-image), 1.13 (boolean: template + checkbox/radio renderer
- * routes) and 1.15 (expression: template).
+ * sv-logo-image), 1.11 (comment), 1.12 (checkbox, radiogroup), 1.13
+ * (boolean: template + checkbox/radio renderer routes) and 1.15
+ * (expression: template). The 1.11/1.12 rows are supported/template with
+ * dispatchKey === questionType (no `renderAs` override — `getTemplate()`
+ * returns the type name unmodified, verified against a live fixture in
+ * manifest.test.ts's construction gate).
  */
 import { DESCRIPTOR_TABLE } from '../descriptors';
 import type { Descriptor } from '../descriptors';
@@ -17,14 +21,17 @@ function byKey(dispatchKey: string): Descriptor {
   return row;
 }
 
-describe('DESCRIPTOR_TABLE (M0 + M1 rows: 1.6 elements, boolean, expression)', () => {
+describe('DESCRIPTOR_TABLE (M0 + M1)', () => {
   it('has exactly the expected dispatch keys', () => {
     expect(DESCRIPTOR_TABLE.map((r) => r.dispatchKey).sort()).toEqual([
       'boolean',
+      'checkbox',
+      'comment',
       'composite',
       'custom',
       'empty',
       'expression',
+      'radiogroup',
       'survey-header',
       'sv-boolean-checkbox',
       'sv-boolean-radio',
@@ -111,5 +118,17 @@ describe('DESCRIPTOR_TABLE (M0 + M1 rows: 1.6 elements, boolean, expression)', (
     if (row.status !== 'supported') throw new Error('unreachable');
     expect(typeof row.component()).toBe('function');
     expect(row.milestone).toBe('M1');
+  });
+
+  it('"comment"/"checkbox"/"radiogroup" (task 1.11/1.12) are supported/template rows with resolvable component thunks, dispatchKey === questionType', () => {
+    for (const key of ['comment', 'checkbox', 'radiogroup'] as const) {
+      const row = byKey(key);
+      expect(row.status).toBe('supported');
+      expect(row.route).toBe('template');
+      expect(row.questionType).toBe(key);
+      if (row.status !== 'supported') throw new Error('unreachable');
+      expect(typeof row.component()).toBe('function');
+      expect(row.milestone).toBe('M1');
+    }
   });
 });

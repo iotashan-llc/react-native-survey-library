@@ -181,8 +181,11 @@ describe('registerAll (module side effect)', () => {
 
     expect(RNQuestionFactory.getAllTypes()).toEqual([
       'boolean',
+      'checkbox',
+      'comment',
       'empty',
       'expression',
+      'radiogroup',
       'sv-boolean-checkbox',
       'sv-boolean-radio',
     ]);

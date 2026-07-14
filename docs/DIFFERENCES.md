@@ -323,3 +323,68 @@ diagnostic seam) when a survey or question requested
 `textUpdateMode: "onTyping"` on a masked question. Per-keystroke mask
 formatting of the visible text (the web `InputElementAdapter` role)
 arrives with the text question component (task 1.10).
+
+## Comment / radiogroup / checkbox questions (tasks 1.11, 1.12)
+
+### `acceptCarriageReturn:false` filters newlines from typed text instead of intercepting the keypress
+
+Web prevents the Enter keydown at the DOM level (`event.preventDefault()`
+in `QuestionCommentModel.onKeyDown`), so a newline never enters the
+`<textarea>` buffer. RN's `TextInput` has no equivalent way to intercept
+a keypress and stop it from mutating the text buffer for a multiline
+field. This library reaches the same end state — no newline ever
+visible or committed — by stripping `\r`/`\n`/`\r\n` from the typed text
+inside `onChangeText` before it reaches the draft/commit adapter. The
+observable difference is only during composition on some IME keyboards
+where a newline could theoretically flash before being stripped; the
+committed value and the settled draft are identical to web.
+
+### No resize handle for the comment area
+
+Web's `allowResizeComment`/`Question.allowResize` renders a
+user-draggable resize handle on the `<textarea>`. RN has no native
+equivalent gesture primitive wired for this in v1, so the comment
+question always sizes itself the same way regardless of
+`allowResize`/`resizeStyle` (only `autoGrow` — content-driven growth via
+`onContentSizeChange` — is honored).
+
+### Read-only text never renders as plain text (`isReadOnlyRenderDiv` not ported)
+
+Web can optionally render a read-only text/comment question as a plain
+`<div>` instead of a disabled `<textarea>`/`<input>`
+(`settings.readOnly.textRenderMode === "div"`). This library always
+renders the same `TextInput`/item controls with `editable={false}`,
+styled via the read-only recipe fragment, regardless of that setting.
+
+### Choice items render without a dedicated icon primitive (v1)
+
+The checked-state checkmark (checkbox) and filled dot (radiogroup) are
+drawn as plain native glyphs (a `✓` `Text` / a small filled `View`)
+sized and colored from the item recipe's `iconSize`/`iconFills` tokens,
+rather than through a shared icon primitive — task 1.5's `RNIcon`
+had not landed when this task shipped. Swapping in a real icon
+component later is a presentation-only change; no model or state
+contract depends on the glyph shape.
+
+### Columns are a flat N-column flex-wrap grid, not upstream's column-item redistribution
+
+Web's `colCount > 1` layout (`getColumnsWithColumnItemFlow`/
+`getColumnsWithRowItemFlow`) redistributes items into column-major or
+row-major buckets with per-column DOM containers. This library's v1
+implementation is a simple flex-wrap grid: each item gets a
+`${100 / colCount}%`-wide container inside a `flexWrap: 'wrap'` row.
+Visually equivalent item ordering for small choice lists; upstream's
+exact column-balancing algorithm is not reproduced.
+
+### "Other" item free text uses its own draft/commit adapter, not the primary text adapter
+
+The checkbox/radiogroup "Other (describe)" comment field commits through
+`question.otherValue` — a different model surface than the primary
+`value`/`inputValue` the task-1.9 `DraftCommitAdapter` is scoped to, and
+one whose backing store is mode-dependent (the `comment` property when
+`storeOthersAsComment` is true — the default — or the `otherValue`
+property plus the value itself when false). A sibling adapter
+(`OtherCommentDraftAdapter`) mirrors the same draft/commit timing
+(`isInputTextUpdate` gates per-keystroke commit; blur always commits)
+and subscribes to both backing properties so external writes stay live
+in either mode — functionally equivalent to web, implemented separately.
