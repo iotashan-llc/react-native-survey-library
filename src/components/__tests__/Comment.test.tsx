@@ -6,10 +6,14 @@
  * project convention (see UnsupportedQuestion.test.tsx).
  */
 import { render, screen, fireEvent, act } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 
 import { Model } from '../../core/facade';
 import type { Question } from '../../core/facade';
 import { Comment } from '../Comment';
+import { QuestionChrome } from '../QuestionChrome';
+import { resolveTheme } from '../../theme-core/resolve';
+import { buildInputRecipe } from '../../theme-rn/recipes/input';
 
 function createComment(
   props: Record<string, unknown> = {},
@@ -21,6 +25,32 @@ function createComment(
   const question = model.getQuestionByName(name) as Question | null;
   if (!question) throw new Error('fixture question missing');
   return question;
+}
+
+/**
+ * Sizing constants derived from the DEFAULT theme's own input recipe (not
+ * hardcoded pixels): RN heights are border-box — a fixed/min height
+ * INCLUDES the padding — so N content lines need
+ * `N * lineHeight + top+bottom padding` (codex PR-18 review minor 4).
+ */
+function defaultInputMetrics(): {
+  lineHeight: number;
+  verticalPadding: number;
+} {
+  const base = StyleSheet.flatten(
+    buildInputRecipe(resolveTheme(undefined), { platform: { os: 'ios' } })
+      .fragments.base
+  ) as { lineHeight?: number; paddingVertical?: number };
+  return {
+    lineHeight: base.lineHeight ?? 0,
+    verticalPadding: (base.paddingVertical ?? 0) * 2,
+  };
+}
+
+function flatInputStyle(): Record<string, unknown> {
+  return StyleSheet.flatten(
+    screen.getByTestId('comment-input').props.style as never
+  ) as Record<string, unknown>;
 }
 
 describe('Comment', () => {
@@ -100,16 +130,42 @@ describe('Comment', () => {
     expect(input.props.editable).toBe(false);
   });
 
-  it('autosize: onContentSizeChange grows the input height when autoGrow is enabled', () => {
+  it('autosize: onContentSizeChange grows the input height when autoGrow is enabled (content height + recipe vertical padding)', () => {
+    const { verticalPadding } = defaultInputMetrics();
     const question = createComment({ autoGrow: true });
     render(<Comment question={question} creator={{}} />);
     const input = screen.getByTestId('comment-input');
     fireEvent(input, 'contentSizeChange', {
-      nativeEvent: { contentSize: { width: 300, height: 120 } },
+      nativeEvent: { contentSize: { width: 300, height: 300 } },
     });
-    expect(input.props.style).toEqual(
-      expect.arrayContaining([expect.objectContaining({ height: 120 })])
-    );
+    // RN height is border-box: the reported CONTENT height needs the
+    // recipe's vertical padding added on top.
+    expect(flatInputStyle().height).toBe(300 + verticalPadding);
+  });
+
+  it('default rows (4): minHeight reserves 4 content lines PLUS the recipe vertical padding', () => {
+    const { lineHeight, verticalPadding } = defaultInputMetrics();
+    const question = createComment();
+    render(<Comment question={question} creator={{}} />);
+    expect(flatInputStyle().minHeight).toBe(4 * lineHeight + verticalPadding);
+  });
+
+  it('rows: N drives the minimum height (N lines + padding)', () => {
+    const { lineHeight, verticalPadding } = defaultInputMetrics();
+    const question = createComment({ rows: 2 });
+    render(<Comment question={question} creator={{}} />);
+    expect(flatInputStyle().minHeight).toBe(2 * lineHeight + verticalPadding);
+  });
+
+  it('autosize never shrinks below the rows minimum (below-minimum content event clamps)', () => {
+    const { lineHeight, verticalPadding } = defaultInputMetrics();
+    const question = createComment({ autoGrow: true });
+    render(<Comment question={question} creator={{}} />);
+    const input = screen.getByTestId('comment-input');
+    fireEvent(input, 'contentSizeChange', {
+      nativeEvent: { contentSize: { width: 300, height: 10 } },
+    });
+    expect(flatInputStyle().height).toBe(4 * lineHeight + verticalPadding);
   });
 
   it('calls question.focusIn() on native focus (bridge contract)', () => {
@@ -119,5 +175,37 @@ describe('Comment', () => {
     const input = screen.getByTestId('comment-input');
     fireEvent(input, 'focus');
     expect(focusInSpy).toHaveBeenCalled();
+  });
+
+  /**
+   * 1.7 boundary guard (codex PR-18 review, missed-surface 1): the merged
+   * `QuestionChrome` ALSO subscribes to the question via
+   * `getStateElement()`. Two observers of one model are safe by design —
+   * the 0.4 D2 render guard lives ON the model and each observer has its
+   * own callback identity — but this test locks the composed behavior the
+   * 1.1/1.4 dispatcher will ship: typing + blur inside chrome commits
+   * exactly ONCE, and focusIn fires exactly ONCE (the leaf owns it;
+   * chrome never calls focusIn).
+   */
+  it('inside QuestionChrome: one commit per blur and one focusIn per focus (no double-subscription side effects)', () => {
+    const question = createComment();
+    const model = question.survey as unknown as Model;
+    let valueChangedCount = 0;
+    model.onValueChanged.add(() => {
+      valueChangedCount += 1;
+    });
+    const focusInSpy = jest.spyOn(question, 'focusIn');
+    render(
+      <QuestionChrome question={question} creator={{}}>
+        <Comment question={question} creator={{}} />
+      </QuestionChrome>
+    );
+    const input = screen.getByTestId('comment-input');
+    fireEvent(input, 'focus');
+    fireEvent.changeText(input, 'typed under chrome');
+    fireEvent(input, 'blur');
+    expect(question.value).toBe('typed under chrome');
+    expect(valueChangedCount).toBe(1);
+    expect(focusInSpy).toHaveBeenCalledTimes(1);
   });
 });

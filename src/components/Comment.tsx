@@ -9,16 +9,23 @@
  * `CharacterCounterComponent`.
  *
  * Scope: the question BODY only (the multiline control + counter) — title/
- * description/required/error chrome is task 1.7's `SurveyQuestion`
- * wrapper (not yet landed on this branch) and stays out of this
- * component's responsibility, mirroring upstream's own split between
- * `SurveyQuestion` (chrome, owns the model subscription upstream) and
- * `SurveyQuestionComment` (body). Divergence, documented: upstream's body
- * component does NOT itself subscribe to the model — the chrome wrapper
- * re-renders it. No chrome wrapper exists yet on this branch, and this
- * component is dispatched directly by the descriptor-table registrar, so
- * `getStateElement()` is overridden here to own its own subscription
- * (self-sufficient, same shape 1.7 will eventually wrap).
+ * description/required/error chrome is task 1.7's `QuestionChrome`
+ * wrapper and stays out of this component's responsibility, mirroring
+ * upstream's own split between `SurveyQuestion` (chrome, owns the model
+ * subscription upstream) and `SurveyQuestionComment` (body).
+ *
+ * 1.7 HANDOFF CONTRACT (codex PR-18 review, missed-surface 1): this
+ * component overrides `getStateElement()` to own its own subscription so
+ * it is self-sufficient when dispatched bare (no dispatcher composes
+ * `QuestionChrome` around dispatched questions yet — that is 1.1/1.4).
+ * When chrome wraps it, BOTH layers subscribe to the same question —
+ * safe by design (the 0.4 D2 render guard lives ON the model; callbacks
+ * are per-instance) and locked by the "inside QuestionChrome" test, but
+ * redundant: the 1.1/1.4 dispatcher task may drop this override and let
+ * chrome's subscription drive re-renders (upstream's shape). `focusIn()`
+ * ownership stays HERE either way — `QuestionChrome` deliberately never
+ * calls it (web drives it from a DOM focus-bubble handler; the RN analog
+ * is the leaf input's own onFocus).
  *
  * RN-specific divergences from web (documented, intentional; DIFFERENCES
  * candidates):
@@ -148,14 +155,29 @@ export class Comment extends QuestionElementBase<CommentProps, CommentState> {
       mode
     );
 
+    // RN heights are BORDER-BOX — a fixed/min height includes the base
+    // fragment's vertical padding (codex PR-18 review minor 4) — so
+    // reserving `rows` content lines needs `rows * lineHeight` PLUS the
+    // effective top+bottom padding, and the content height reported by
+    // onContentSizeChange (a content-box measure) needs the same padding
+    // added back before it becomes the input's height.
     const rows = question.rows > 0 ? question.rows : 4;
-    const lineHeight =
-      (recipes.input.fragments.base as { lineHeight?: number }).lineHeight ??
-      20;
-    const minHeight = rows * lineHeight;
+    const base = recipes.input.fragments.base as {
+      lineHeight?: number;
+      paddingVertical?: number;
+      paddingTop?: number;
+      paddingBottom?: number;
+    };
+    const lineHeight = base.lineHeight ?? 20;
+    const verticalPadding =
+      base.paddingTop !== undefined || base.paddingBottom !== undefined
+        ? (base.paddingTop ?? base.paddingVertical ?? 0) +
+          (base.paddingBottom ?? base.paddingVertical ?? 0)
+        : (base.paddingVertical ?? 0) * 2;
+    const minHeight = rows * lineHeight + verticalPadding;
     const autoGrowHeight =
       question.renderedAutoGrow && this.state.contentHeight
-        ? Math.max(this.state.contentHeight, minHeight)
+        ? Math.max(this.state.contentHeight + verticalPadding, minHeight)
         : undefined;
 
     return (
