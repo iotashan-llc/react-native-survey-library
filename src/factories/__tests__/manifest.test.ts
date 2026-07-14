@@ -56,7 +56,7 @@ describe('manifest: model-type inventory', () => {
     }
   });
 
-  it('"empty" is classified supported/M0; "text"/"boolean" are classified planned with a milestone', () => {
+  it('"empty" is classified supported/M0; "text"/"rating" are classified planned with a milestone', () => {
     expect(MODEL_TYPE_CLASSIFICATION.empty).toMatchObject({
       status: 'supported',
       milestone: 'M0',
@@ -65,7 +65,7 @@ describe('manifest: model-type inventory', () => {
       status: 'planned',
       milestone: 'M1',
     });
-    expect(MODEL_TYPE_CLASSIFICATION.boolean).toMatchObject({
+    expect(MODEL_TYPE_CLASSIFICATION.rating).toMatchObject({
       status: 'planned',
       milestone: 'M1',
     });
