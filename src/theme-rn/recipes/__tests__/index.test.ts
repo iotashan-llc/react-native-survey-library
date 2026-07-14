@@ -19,6 +19,7 @@ import {
   buildButtonRecipe,
   buildQuestionTitleRecipe,
   buildUnsupportedQuestionRecipe,
+  buildQuestionChromeRecipe,
   selectItemStyles,
   selectInputStyles,
   selectButtonStyles,
@@ -291,6 +292,7 @@ describe('per-recipe build budget — < 5ms EACH, warmed (design test plan #1; c
       'unsupportedQuestion',
       () => buildUnsupportedQuestionRecipe(resolved, ctx),
     ],
+    ['questionChrome', () => buildQuestionChromeRecipe(resolved, ctx)],
   ];
 
   it.each(cases)('%s builds in under 5ms', (_name, build) => {

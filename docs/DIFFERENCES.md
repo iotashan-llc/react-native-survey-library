@@ -133,6 +133,59 @@ the defaults are generous (256KB source, 5000 nodes, 512KB of text,
 etc.). If legitimate content is hitting a bound, treat it as a signal to
 simplify the HTML rather than expecting the same rendering as web.
 
+## Element/row widths (task 1.3)
+
+Web hands survey-core's computed width strings (`SurveyElement.rootStyle`:
+`flexBasis`/`minWidth`/`maxWidth` as CSS text) straight to the browser's
+CSS engine. React Native has no CSS engine, so this library evaluates
+those strings itself (`src/layout/width-resolver.ts`) against the
+measured row width and gives Yoga plain numbers.
+
+### Supported width grammar (everything survey-core itself emits)
+
+| Form | Example | Notes |
+|---|---|---|
+| empty / `auto` | `""`, `"auto"` | constraint omitted |
+| bare number | `"250"`, `250` | treated as px (survey-core's own convention) |
+| px | `"300px"` | 1 CSS px = 1 dp |
+| percent | `"33.333333%"` | resolves against the measured row width (plus the inter-element gutter on multi-element rows, matching web's gutter geometry) |
+| `calc()` | `"calc((100% - 300px)/2)"` | `+ - * /` arithmetic with nested parens (the restricted calc type rules: `+`/`-` same-type, `*`/`/` need a plain number) |
+| `min()` / `max()` | `"min(100%, 300px)"` | n-ary, nestable inside `calc()` |
+
+Numbers are CSS number tokens — signed and scientific forms parse
+(`"+10px"`, `"-10px"`, `"1e2px"`; survey-core emits these for numeric
+user widths like `"+10"` or `"1e2"`). Two deliberate deviations from a
+browser's CSS engine, both to honor survey-core's own conventions:
+
+- **Bare numbers mean px even inside `min()`/`max()`** — survey-core
+  emits `min(100%, 250)` for a numeric user `minWidth`, which a browser
+  discards as a type error; this library reads it as 250dp. (So
+  `min(1, 300px)` is 1dp here, where web would drop the constraint.)
+- **Hex/locale-decimal numerics are NOT parsed** — survey-core's
+  numeric check also lets `"0x10"` / `"10,5"` through (emitting
+  `"0x10px"` / `"10,5px"`); those degrade per-property with a
+  diagnostic, same as any invalid value.
+
+Because widths resolve against a *measured* container, a row's children
+render one frame after the row's first `onLayout` (imperceptible in
+practice; web computes the same values in its layout pass instead).
+
+### Unsupported units degrade per-property, never crash
+
+Any other CSS unit in a user-set `width`/`minWidth`/`maxWidth` — `em`,
+`rem`, `vw`, `vh`, `pt`, `ch`, viewport/font-relative units in general —
+and any unparseable value (web lets the browser silently discard those)
+produce structured diagnostic data (`layout/unsupported-width-unit` /
+`layout/invalid-width`, returned by the resolver; the row renderer —
+task 1.4 — forwards them, deduplicated, through the standard
+diagnostics seam) and drop just that one constraint: the element falls
+back to sharing the row like an unsized element. All other constraints
+on the same element keep working.
+
+**Workaround:** express element widths in `px`, `%`, or the `calc()`/
+`min()`/`max()` combinations of those — the only forms survey-core's own
+row math ever generates.
+
 ## Icons (task 1.5)
 
 Web renders icons as `<svg><use xlink:href="#icon-x"/></svg>` against a
