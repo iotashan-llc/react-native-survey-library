@@ -90,9 +90,19 @@ function writeReactNativeStub(consumerDir) {
       '// the react-native symbols any package-root-reachable module imports\n' +
       '// as VALUES (not `import type`) — currently View/Text (components,\n' +
       '// reactivity), StyleSheet (theme-rn recipes), I18nManager/Platform\n' +
-      '// (theme-rn provider).\n' +
+      '// (theme-rn provider), Image (1.6 LogoImage), Pressable (1.5\n' +
+      '// ActionButton), Switch (1.13 boolean), TextInput (1.7 chrome),\n' +
+      '// Linking (security URL policy).\n' +
       "export const View = 'View';\n" +
       "export const Text = 'Text';\n" +
+      "export const Image = 'Image';\n" +
+      "export const Pressable = 'Pressable';\n" +
+      "export const Switch = 'Switch';\n" +
+      "export const TextInput = 'TextInput';\n" +
+      'export const Linking = {\n' +
+      '  canOpenURL: async () => false,\n' +
+      '  openURL: async () => {},\n' +
+      '};\n' +
       'export const StyleSheet = {\n' +
       '  create: (styles) => styles,\n' +
       '  flatten: (style) => style,\n' +
@@ -177,12 +187,12 @@ console.log('7c: UNEXPECTED SUCCESS');
   {
     id: '7d',
     description:
-      "registrar side effect survives packaging: import('<pkg>') registers exactly the M0 supported descriptor-table keys " +
+      "registrar side effect survives packaging: import('<pkg>') registers exactly the supported descriptor-table keys " +
       '(design: docs/design/0.5-factories.md, "Registration & packaging" — must track src/factories/descriptors.ts as milestones land)',
     script: `${RN_PREAMBLE}
 const pkg = await import(${JSON.stringify(PKG_NAME)});
-const expectedQuestionTypes = JSON.stringify(['empty']);
-const expectedElementTypes = JSON.stringify([]);
+const expectedQuestionTypes = JSON.stringify(['boolean', 'empty', 'expression', 'sv-boolean-checkbox', 'sv-boolean-radio']);
+const expectedElementTypes = JSON.stringify(['survey-header', 'sv-logo-image', 'sv-string-viewer']);
 const actualQuestionTypes = JSON.stringify(pkg.RNQuestionFactory.getAllTypes());
 const actualElementTypes = JSON.stringify(pkg.RNElementFactory.getAllTypes());
 if (actualQuestionTypes !== expectedQuestionTypes) {
@@ -227,6 +237,50 @@ if (typeof pkg.spacing !== 'function' || pkg.spacing(8, 1.5) !== 12) {
   throw new Error('spacing helper missing or wrong');
 }
 console.log('7e: OK');
+`,
+    expectSuccess: true,
+  },
+  {
+    id: '7f',
+    description:
+      "lifecycle bridge survives packaging: import('<pkg>') exposes the 1.2 API and the packed facade " +
+      'chain applies the settings.environment stub (design: docs/design/1.2-lifecycle-bridge.md, ' +
+      'piece 3 + test plan #8 "packaged-entry assertion")',
+    script: `${RN_PREAMBLE}
+const pkg = await import(${JSON.stringify(PKG_NAME)});
+for (const name of ['createLifecycleRegistry', 'installLifecycleBridge']) {
+  if (typeof pkg[name] !== 'function') {
+    throw new Error(name + ' is not exported from the package root');
+  }
+}
+if (!pkg.LifecycleContext || typeof pkg.LifecycleContext !== 'object') {
+  throw new Error('LifecycleContext is not exported from the package root');
+}
+const sc = await import('survey-core');
+const env = sc.settings.environment;
+if (!env) {
+  throw new Error('settings.environment stub missing after renderer import');
+}
+if (env.rootElement !== undefined || env.root !== undefined) {
+  throw new Error('settings.environment stub fields must be undefined');
+}
+const model = new sc.Model({
+  pages: [
+    {
+      name: 'page1',
+      elements: [{ type: 'text', name: 'q1', isRequired: true }],
+    },
+  ],
+});
+// The A15 headline through the PACKED artifact: invalid required submit
+// must not throw the settings.environment TypeError.
+if (model.completeLastPage() !== false) {
+  throw new Error('expected completeLastPage() to fail validation');
+}
+if (model.state !== 'running') {
+  throw new Error('expected survey still running, got ' + model.state);
+}
+console.log('7f: OK');
 `,
     expectSuccess: true,
   },

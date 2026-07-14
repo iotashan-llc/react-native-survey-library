@@ -90,6 +90,28 @@ export interface SanitizedHtmlLinkPressDroppedPayload {
   reason: string;
 }
 
+/**
+ * Native lifecycle bridge diagnostics (design:
+ * docs/design/1.2-lifecycle-bridge.md — registry lookup fallbacks). All
+ * non-throwing no-op paths, surfaced dev-only, deduped by the emitting
+ * module:
+ * - `target-unregistered` — scroll request for a model with no registered
+ *   handle and no page fallback (once per model instance).
+ * - `no-scroll-host` — a scroll request arrived before/without the Survey
+ *   root registering its ScrollView host (once per survey instance).
+ * - `allow-override-ignored` — a consumer `onScrollToTop` handler tried to
+ *   reassign `options.allow` after the bridge locked it false; the write
+ *   was ignored (once per install). Scroll ownership is the bridge's —
+ *   consumers suppress the native scroll via the `onScrollRequest` seam.
+ */
+export interface LifecycleDiagnosticPayload {
+  code: 'lifecycle-diagnostic';
+  lifecycleCode:
+    'target-unregistered' | 'no-scroll-host' | 'allow-override-ignored';
+  elementName: string | undefined;
+  elementType: string | undefined;
+}
+
 /** Emitted (once per resolved key — dedupe owned by
  * `components/icon-resolution.ts`) when an icon name resolves to no raw
  * SVG in any source (consumer registries, bundled V2 set). The component
@@ -167,6 +189,7 @@ export type DiagnosticPayload =
   | ThemeDiagnosticPayload
   | SanitizedHtmlDiagnosticPayload
   | SanitizedHtmlLinkPressDroppedPayload
+  | LifecycleDiagnosticPayload
   | UnknownIconPayload
   | IconSvgDiagnosticPayload
   | ImageUriBlockedPayload

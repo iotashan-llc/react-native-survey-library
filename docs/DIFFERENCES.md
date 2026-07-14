@@ -133,6 +133,47 @@ the defaults are generous (256KB source, 5000 nodes, 512KB of text,
 etc.). If legitimate content is hitting a bound, treat it as a signal to
 simplify the HTML rather than expecting the same rendering as web.
 
+## Scrolling & focus (task 1.2 — native lifecycle bridge)
+
+Web scrolls/focuses through the DOM (`scrollIntoView`, element focus).
+This library intercepts survey-core's single scroll/focus funnel
+(`onScrollToTop`) and drives the registered ScrollView + native inputs
+instead (`docs/design/1.2-lifecycle-bridge.md`).
+
+### `onScrollToTop`'s `allow` is locked `false` — consumers cannot re-allow
+
+On web a consumer handler may set `options.allow = true/false` to steer
+core's own DOM scrolling. Here the bridge owns scrolling: `allow` is
+locked `false` for the whole dispatch (a reassignment is ignored and
+surfaces the `allow-override-ignored` diagnostic). The event stays fully
+observable.
+
+**Workaround:** to suppress or customize the native scroll, use the
+renderer-level scroll event (`<Survey>`'s `onScrollToElement` prop, task
+1.1 — built on the bridge's `onScrollRequest` seam; returning `false`
+suppresses the native scroll only, focus still completes).
+
+### `Question.focus(onError, scrollIfVisible: true)` force-scroll is lost
+
+Web forwards `scrollIfVisible: true` down to `scrollIntoView`, forcing a
+scroll even when the question is already visible. The fired
+`ScrollToTopEvent` does not carry that flag, so the bridge always skips
+the scroll when the target is fully visible in the viewport. The focus
+itself still completes — only the redundant scroll motion differs.
+
+**Workaround:** none; if upstream adds the flag to the event, the bridge
+will honor it.
+
+### `question.focusIn()` fires from the native input's `onFocus`
+
+Web fires `focusIn` (→ `onFocusInQuestion`, `lastActiveQuestion`) from a
+DOM focus-bubble listener on the survey root. Here each input component
+fires `question.focusIn()` from its own `onFocus` handler (the
+`ElementHandle.focusFirst` ownership contract) — same event timing
+semantics (fires when focus actually lands, once per focus), different
+mechanism. Consumers observing `onFocusInQuestion` see equivalent
+behavior.
+
 ## Element/row widths (task 1.3)
 
 Web hands survey-core's computed width strings (`SurveyElement.rootStyle`:

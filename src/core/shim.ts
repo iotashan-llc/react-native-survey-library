@@ -27,14 +27,53 @@
 
 type PatchableGlobal = Record<string, unknown>;
 
+/**
+ * The shape of survey-core's `settings` singleton this shim cares about
+ * (structural — declared locally so this module keeps its zero-imports
+ * invariant).
+ */
+interface SurveyCoreSettingsLike {
+  environment?: unknown;
+}
+
 function noop(): void {}
 
 /**
- * Applies the survey-core environment shim to `global`. Idempotent: safe
- * to call more than once, and never overrides a global that already
- * exists (patches only what's missing).
+ * Applies the survey-core environment shim. Idempotent: safe to call
+ * more than once, and never overrides anything that already exists
+ * (patches only what's missing).
+ *
+ * Global patches (no argument needed): a no-op `addEventListener`/
+ * `removeEventListener` pair on `global` — see the module banner.
+ *
+ * 1.2 amendment (design: docs/design/1.2-lifecycle-bridge.md, piece 3):
+ * when survey-core's `settings` singleton is PASSED IN, additionally
+ * stubs `settings.environment` — an object whose mount fields are all
+ * `undefined`.
+ *
+ * NARROW CONTRACT (review round 2 #6): the stub protects EXACTLY the
+ * destructures of the environment OBJECT ITSELF — the scroll funnel's
+ * `const { rootElement } = settings.environment` (survey.ts:5872,
+ * downstream optional-chained: `surveyRootElement?.querySelector`
+ * skips) and dom-utils' `const { root } = settings.environment`
+ * (getElement with a non-string argument never touches `root`). It does
+ * NOT make DOM-only paths safe: drag-drop dereferences
+ * `settings.environment.root.documentElement`
+ * (dragdrop/dom-adapter.ts) and popup mounting calls
+ * `getElement(settings.environment.popupMountContainer).appendChild`
+ * (popup-view-model.ts) — both still throw on the undefined fields and
+ * remain UNSUPPORTED (this renderer never enters them: no DnD, native
+ * popups instead of DOM popups; negative tripwires in
+ * environment-stub.test.ts pin that reality). The parameter keeps this
+ * module import-free: the FACADE (the one module allowed to import
+ * survey-core) passes `settings` after survey-core evaluates; the
+ * self-invocation below stays global-only, which is why the `/shim`
+ * subpath remains zero-core-import for consumers who import survey-core
+ * before the renderer.
  */
-export function applySurveyCoreShims(): void {
+export function applySurveyCoreShims(
+  surveyCoreSettings?: SurveyCoreSettingsLike
+): void {
   const target = globalThis as unknown as PatchableGlobal;
 
   if (typeof target.addEventListener !== 'function') {
@@ -42,6 +81,20 @@ export function applySurveyCoreShims(): void {
   }
   if (typeof target.removeEventListener !== 'function') {
     target.removeEventListener = noop;
+  }
+
+  if (surveyCoreSettings) {
+    // `??=`: a consumer-supplied environment (set before the facade
+    // evaluated) is never clobbered. Never define `document` (0.3
+    // invariant unchanged — its absence routes survey-core into its
+    // SSR-safe paths).
+    surveyCoreSettings.environment ??= {
+      root: undefined,
+      rootElement: undefined,
+      popupMountContainer: undefined,
+      svgMountContainer: undefined,
+      stylesSheetsMountContainer: undefined,
+    };
   }
 }
 
