@@ -183,12 +183,16 @@ describe('registerAll (module side effect)', () => {
       'boolean',
       'empty',
       'expression',
+      'rating',
       'sv-boolean-checkbox',
       'sv-boolean-radio',
     ]);
     expect(RNElementFactory.getAllTypes()).toEqual([
       'survey-header',
       'sv-logo-image',
+      'sv-rating-item',
+      'sv-rating-item-smiley',
+      'sv-rating-item-star',
       'sv-string-viewer',
     ]);
   });

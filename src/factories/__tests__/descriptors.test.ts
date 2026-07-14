@@ -25,10 +25,14 @@ describe('DESCRIPTOR_TABLE (M0 + M1 rows: 1.6 elements, boolean, expression)', (
       'custom',
       'empty',
       'expression',
+      'rating',
       'survey-header',
       'sv-boolean-checkbox',
       'sv-boolean-radio',
       'sv-logo-image',
+      'sv-rating-item',
+      'sv-rating-item-smiley',
+      'sv-rating-item-star',
       'sv-string-viewer',
     ]);
   });

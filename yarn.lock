@@ -2288,6 +2288,7 @@ __metadata:
     "@native-html/render": ~1.0.3
     react: "*"
     react-native: "*"
+    react-native-svg: ">=15.0.0 <16.0.0"
     survey-core: ">=2.5.32 <2.6.0"
   languageName: unknown
   linkType: soft

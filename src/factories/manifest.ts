@@ -135,7 +135,15 @@ export const MODEL_TYPE_CLASSIFICATION: Readonly<
       expectedRoute: 'template',
     },
   },
-  rating: { status: 'planned', milestone: 'M1', reason: 'task 1.14' },
+  rating: {
+    status: 'supported',
+    milestone: 'M1',
+    reason: 'task 1.14',
+    runtimeRenderable: {
+      expectedTemplate: 'rating',
+      expectedRoute: 'template',
+    },
+  },
 
   // Phase 2 — v0.2 (M2).
   dropdown: { status: 'planned', milestone: 'M2', reason: 'task 2.3' },

@@ -666,4 +666,188 @@ export const API_SURFACE_WATCHLIST: readonly WatchedApiMember[] = [
     reason:
       "SurveyHeader's logo wrapper data (host-transformable via onElementWrapperComponentData).",
   },
+  {
+    id: 'Model.navigationBar',
+    member: 'navigationBar',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Model.prototype,
+    reason:
+      'SurveyNavigation (task 1.8) maps navigationBar.visibleActions onto ActionButton, per invariant 6 (visibility consumed, never re-derived).',
+  },
+  {
+    id: 'ActionContainer.visibleActions',
+    member: 'visibleActions',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.ActionContainer.prototype,
+    reason:
+      'SurveyNavigation (task 1.8) subscribes navigationBar for add/remove reactivity and renders exactly this filtered list.',
+  },
+  {
+    id: 'BaseAction.id',
+    member: 'id',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.BaseAction.prototype,
+    reason:
+      "SurveyNavigation (task 1.8) keys each ActionButton and maps the Complete button's variant (sd-btn--action) off this id.",
+  },
+  {
+    id: 'Model.showProgressBar',
+    member: 'showProgressBar',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Model.prototype,
+    reason: "SurveyProgressBar's (task 1.8) render gate.",
+  },
+  {
+    id: 'Model.progressValue',
+    member: 'progressValue',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Model.prototype,
+    reason: "SurveyProgressBar's (task 1.8) fill-width percentage.",
+  },
+  {
+    id: 'Model.progressText',
+    member: 'progressText',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Model.prototype,
+    reason: "SurveyProgressBar's (task 1.8) label text.",
+  },
+  {
+    id: 'Model.progressBarAriaLabel',
+    member: 'progressBarAriaLabel',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Model.prototype,
+    reason: "SurveyProgressBar's (task 1.8) accessibilityLabel.",
+  },
+  {
+    id: 'Model.state',
+    member: 'state',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Model.prototype,
+    reason: "SurveyStateFrame's (task 1.8) state dispatch switch.",
+  },
+  {
+    id: 'Model.showCompletedPage',
+    member: 'showCompletedPage',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Model.prototype,
+    reason:
+      "SurveyStateFrame's (task 1.8) completed-render gate (upstream's own).",
+  },
+  {
+    id: 'Model.processedCompletedHtml',
+    member: 'processedCompletedHtml',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Model.prototype,
+    reason:
+      'SurveyStateFrame (task 1.8): fed to SanitizedHtml, author JSON sink.',
+  },
+  {
+    id: 'Model.processedCompletedBeforeHtml',
+    member: 'processedCompletedBeforeHtml',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Model.prototype,
+    reason: 'SurveyStateFrame (task 1.8): fed to SanitizedHtml.',
+  },
+  {
+    id: 'Model.processedLoadingHtml',
+    member: 'processedLoadingHtml',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Model.prototype,
+    reason: 'SurveyStateFrame (task 1.8): fed to SanitizedHtml.',
+  },
+  {
+    id: 'Model.locEmptySurveyText',
+    member: 'locEmptySurveyText',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Model.prototype,
+    reason:
+      "SurveyStateFrame's (task 1.8) empty-state text, routed through the reactive locstring viewer (task 1.6 seam).",
+  },
+  {
+    id: 'Question.isReadOnlyStyle',
+    member: 'isReadOnlyStyle',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Question.prototype,
+    reason:
+      "RatingQuestion's (task 1.14) baseRatingState -- STYLE readOnly variant (isReadOnlyStyle), distinct from interaction gating (isInputReadOnly); same split BooleanQuestion documents.",
+  },
+  {
+    id: 'Question.isPreviewStyle',
+    member: 'isPreviewStyle',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Question.prototype,
+    reason: "RatingQuestion's (task 1.14) baseRatingState preview variant.",
+  },
+  {
+    id: 'QuestionRatingModel.itemComponent',
+    member: 'itemComponent',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.QuestionRatingModel.prototype,
+    reason:
+      'RatingQuestion (task 1.14) dispatches per-item rendering through RNElementFactory under this key.',
+  },
+  {
+    id: 'QuestionRatingModel.renderedRateItems',
+    member: 'renderedRateItems',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.QuestionRatingModel.prototype,
+    reason: 'RatingQuestion (task 1.14) iterates this to render items.',
+  },
+  {
+    id: 'QuestionRatingModel.hasMinLabel',
+    member: 'hasMinLabel',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.QuestionRatingModel.prototype,
+    reason: 'RatingQuestion (task 1.14) min-label render gate.',
+  },
+  {
+    id: 'QuestionRatingModel.hasMaxLabel',
+    member: 'hasMaxLabel',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.QuestionRatingModel.prototype,
+    reason: 'RatingQuestion (task 1.14) max-label render gate.',
+  },
+  {
+    id: 'QuestionRatingModel.locMinRateDescription',
+    member: 'locMinRateDescription',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.QuestionRatingModel.prototype,
+    reason: 'RatingQuestion (task 1.14) flanking min-description locstring.',
+  },
+  {
+    id: 'QuestionRatingModel.locMaxRateDescription',
+    member: 'locMaxRateDescription',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.QuestionRatingModel.prototype,
+    reason: 'RatingQuestion (task 1.14) flanking max-description locstring.',
+  },
+  {
+    id: 'QuestionRatingModel.setValueFromClick',
+    member: 'setValueFromClick',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.QuestionRatingModel.prototype,
+    reason:
+      'RatingQuestion (task 1.14) item-press handler -- consumed as-is (toggle-to-clear + readOnly guard, invariant 6).',
+  },
+  {
+    id: 'QuestionRatingModel.itemStarIcon',
+    member: 'itemStarIcon',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.QuestionRatingModel.prototype,
+    reason: "RatingStarItem's (task 1.14) unfilled icon name.",
+  },
+  {
+    id: 'QuestionRatingModel.itemStarIconAlt',
+    member: 'itemStarIconAlt',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.QuestionRatingModel.prototype,
+    reason: "RatingStarItem's (task 1.14) filled icon name.",
+  },
+  {
+    id: 'QuestionRatingModel.getItemSmileyIconName',
+    member: 'getItemSmileyIconName',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.QuestionRatingModel.prototype,
+    reason: "RatingSmileyItem's (task 1.14) icon-name resolution.",
+  },
 ];

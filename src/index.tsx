@@ -36,6 +36,17 @@ export type { SurveyHeaderProps } from './components/SurveyHeader';
 export { LogoImage } from './components/LogoImage';
 export type { LogoImageProps } from './components/LogoImage';
 
+// Task 1.8 — navigation bar, percentage progress bar, and the completed/
+// completedBefore/loading/empty survey-state frame. Standalone exports:
+// the 1.1 `<Survey>` shell (unmerged branch) is expected to mount these
+// directly.
+export { SurveyNavigation } from './components/SurveyNavigation';
+export type { SurveyNavigationProps } from './components/SurveyNavigation';
+export { SurveyProgressBar } from './components/SurveyProgressBar';
+export type { SurveyProgressBarProps } from './components/SurveyProgressBar';
+export { SurveyStateFrame } from './components/SurveyStateFrame';
+export type { SurveyStateFrameProps } from './components/SurveyStateFrame';
+
 // theme-core (design: docs/design/0.6-theme-core.md) — the pure
 // ITheme -> tokens resolver plus its standalone helpers. theme-rn (0.7)
 // consumes ResolvedTheme; hosts may also call resolveTheme directly.
@@ -87,6 +98,10 @@ export type {
   UnsupportedQuestionStyleOverrides,
   ActionButtonStyleOverrides,
   HeaderStyleOverrides,
+  NavigationStyleOverrides,
+  ProgressStyleOverrides,
+  SurveyStateStyleOverrides,
+  RatingStyleOverrides,
 } from './theme-rn/overrides';
 export type { NormalizedBackground } from './theme-rn/background';
 
