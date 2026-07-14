@@ -56,6 +56,27 @@ describe('evaluateWidthExpression — plain values', () => {
   it('whitespace around a plain value is tolerated', () => {
     expect(dp(evaluateWidthExpression('  300px  ', 800))).toBe(300);
   });
+
+  it('signed numbers parse (core emits them: isNumber("+10") → "+10px")', () => {
+    expect(dp(evaluateWidthExpression('+10px', 800))).toBe(10);
+    expect(dp(evaluateWidthExpression('+10', 800))).toBe(10);
+    // raw evaluation is unclamped — used-value clamping (negative → 0)
+    // happens in resolveWidthStyle
+    expect(dp(evaluateWidthExpression('-10px', 800))).toBe(-10);
+  });
+
+  it('exponent-form numbers parse (core emits them: isNumber("1e2") → "1e2px")', () => {
+    expect(dp(evaluateWidthExpression('1e2px', 800))).toBe(100);
+    expect(dp(evaluateWidthExpression('1e+2px', 800))).toBe(100);
+    expect(dp(evaluateWidthExpression('1E2px', 800))).toBe(100);
+    expect(dp(evaluateWidthExpression('1e2', 800))).toBe(100);
+    expect(dp(evaluateWidthExpression('2.5e1%', 800))).toBe(200);
+  });
+
+  it('signed/exponent forms work inside calc()', () => {
+    expect(dp(evaluateWidthExpression('calc(100% - 1e1px)', 800))).toBe(790);
+    expect(dp(evaluateWidthExpression('calc(+10px + 5px)', 800))).toBe(15);
+  });
 });
 
 describe('evaluateWidthExpression — calc()', () => {
@@ -117,6 +138,16 @@ describe('evaluateWidthExpression — min()/max()', () => {
     // user minWidth "250" reaches rootStyle as min(100%, 250)
     expect(dp(evaluateWidthExpression('min(100%, 250)', 800))).toBe(250);
   });
+
+  it('bare-number args coerce to px — a DOCUMENTED divergence from web', () => {
+    // Web's CSS engine discards min(100%, 250) (and any min() mixing a
+    // dimensionless number with a length) as a type error, dropping the
+    // whole declaration. This resolver instead coerces bare numbers to
+    // px in value positions to salvage core's own bare-number minWidth
+    // emission (design: docs/design/1.3-width-resolver.md, D2). The
+    // consequence is locked here on purpose:
+    expect(dp(evaluateWidthExpression('min(1, 300px)', 800))).toBe(1);
+  });
 });
 
 describe('evaluateWidthExpression — invalid input degrades, never throws', () => {
@@ -158,6 +189,15 @@ describe('evaluateWidthExpression — invalid input degrades, never throws', () 
   it('non-finite numbers are invalid', () => {
     invalid(NaN, 'layout/invalid-width');
     invalid(Infinity, 'layout/invalid-width');
+  });
+
+  it('upstream-only numeric-looking emissions are classified degradations', () => {
+    // Helpers.isNumber accepts hex and comma-decimal strings, so core
+    // emits "0x10px" / "10,5px" for user widths "0x10" / "10,5"
+    // (verified live). These are deliberate degradation cases, NOT
+    // supported grammar (design: docs/design/1.3-width-resolver.md, D2).
+    invalid('0x10px', 'layout/unsupported-width-unit'); // "x" reads as a unit
+    invalid('10,5px', 'layout/invalid-width'); // trailing content after 10
   });
 });
 
@@ -249,6 +289,15 @@ describe('resolveWidthStyle — rootStyle translation', () => {
     const { style, diagnostics } = resolveWidthStyle(
       { flexGrow: 1, flexShrink: 1, flexBasis: 'calc(100% - 300px)' },
       { percentBase: 200 }
+    );
+    expect(style.flexBasis).toBe(0);
+    expect(diagnostics).toEqual([]);
+  });
+
+  it('a negative user width ("-10" → "-10px") clamps to 0, no diagnostic', () => {
+    const { style, diagnostics } = resolveWidthStyle(
+      { flexGrow: 1, flexShrink: 1, flexBasis: '-10px' },
+      { percentBase: 800 }
     );
     expect(style.flexBasis).toBe(0);
     expect(diagnostics).toEqual([]);

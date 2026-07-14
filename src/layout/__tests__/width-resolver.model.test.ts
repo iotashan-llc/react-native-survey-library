@@ -115,6 +115,48 @@ describe('user width passthrough edge cases', () => {
     expect(res.elements[0]?.style.flexBasis).toBe(250);
   });
 
+  it('signed and exponent-form numeric widths (Helpers.isNumber accepts them) resolve', () => {
+    const survey = new SurveyModel({
+      elements: [
+        { type: 'text', name: 'p1', width: '+10' },
+        { type: 'text', name: 'p2', startWithNewLine: false, width: '1e2' },
+        { type: 'text', name: 'p3', startWithNewLine: false },
+      ],
+    });
+    expect((q(survey, 'p1') as any).renderWidth).toBe('+10px');
+    expect((q(survey, 'p2') as any).renderWidth).toBe('1e2px');
+    const res = resolveRowWidths(firstRow(survey), {
+      rowWidth: 800,
+      gutter: 0,
+    });
+    expect(res.elements[0]?.style.flexBasis).toBe(10);
+    expect(res.elements[1]?.style.flexBasis).toBe(100);
+    // the unsized sibling's calc folds both forms in
+    expect((q(survey, 'p3') as any).renderWidth).toBe(
+      'calc(100% - +10px - 1e2px)'
+    );
+    expect(res.elements[2]?.style.flexBasis).toBe(690);
+    expect(res.elements.flatMap((e) => e.diagnostics)).toEqual([]);
+  });
+
+  it('hex-form width "0x10" emits "0x10px" → classified degradation', () => {
+    const survey = new SurveyModel({
+      elements: [
+        { type: 'text', name: 'h1', width: '0x10' },
+        { type: 'text', name: 'h2', startWithNewLine: false },
+      ],
+    });
+    expect((q(survey, 'h1') as any).renderWidth).toBe('0x10px');
+    const res = resolveRowWidths(firstRow(survey), {
+      rowWidth: 800,
+      gutter: 0,
+    });
+    expect('flexBasis' in (res.elements[0]?.style ?? {})).toBe(false);
+    expect(res.elements[0]?.diagnostics[0]?.code).toBe(
+      'layout/unsupported-width-unit'
+    );
+  });
+
   it('garbage width passes through core verbatim → diagnostic + dropped basis', () => {
     const survey = new SurveyModel({
       elements: [
@@ -166,6 +208,83 @@ describe('single-element row', () => {
       percentBase: 250,
     });
     expect(narrow.style.minWidth).toBe(250);
+  });
+});
+
+describe('rootStyle invalidation surface — headless mutations (design: "1.4 consumer contract")', () => {
+  // rootStyle is NOT construction-only. These lock the mutation paths
+  // the 1.4 row consumer must observe; each re-resolves synchronously.
+  const twoUp = () =>
+    new SurveyModel({
+      elements: [
+        { type: 'text', name: 'm1' },
+        { type: 'text', name: 'm2', startWithNewLine: false },
+      ],
+    });
+
+  it('width change re-runs the whole row math', () => {
+    const survey = twoUp();
+    expect((q(survey, 'm1') as any).renderWidth).toBe('50%');
+    (q(survey, 'm1') as any).width = '300px';
+    expect((q(survey, 'm1') as any).renderWidth).toBe('300px');
+    expect((q(survey, 'm2') as any).renderWidth).toBe('calc(100% - 300px)');
+    const res = resolveRowWidths(firstRow(survey), {
+      rowWidth: 800,
+      gutter: 0,
+    });
+    expect(res.elements[0]?.style.flexBasis).toBe(300);
+    expect(res.elements[1]?.style.flexBasis).toBe(500);
+  });
+
+  it('visibility change rebuilds visibleElements and re-splits', () => {
+    const survey = new SurveyModel({
+      elements: [
+        { type: 'text', name: 'v1' },
+        { type: 'text', name: 'v2', startWithNewLine: false },
+        { type: 'text', name: 'v3', startWithNewLine: false },
+      ],
+    });
+    expect((q(survey, 'v1') as any).renderWidth).toBe('33.333333%');
+    q(survey, 'v2').visible = false;
+    expect((q(survey, 'v1') as any).renderWidth).toBe('50%');
+    const res = resolveRowWidths(firstRow(survey), {
+      rowWidth: 800,
+      gutter: 0,
+    });
+    expect(res.elements).toHaveLength(2); // visibleElements dropped v2
+    expect(res.elements[0]?.style.flexBasis).toBe(400);
+  });
+
+  it('element removal re-splits the survivors', () => {
+    const survey = twoUp();
+    survey.pages[0]!.removeElement(q(survey, 'm2'));
+    expect((q(survey, 'm1') as any).renderWidth).toBe('100%');
+    const res = resolveRowWidths(firstRow(survey), {
+      rowWidth: 800,
+      gutter: 0,
+    });
+    expect(res.isMultiple).toBe(false);
+    expect(res.elements).toHaveLength(1);
+  });
+
+  it('grid column width mutation recalculates rootStyle recursively', () => {
+    const survey = new SurveyModel({
+      gridLayoutEnabled: true,
+      elements: [
+        { type: 'text', name: 'g1' },
+        { type: 'text', name: 'g2', startWithNewLine: false },
+      ],
+    });
+    const page: any = survey.pages[0];
+    // trigger column generation, then mutate a column width
+    expect(
+      resolveRowWidths(firstRow(survey), { rowWidth: 800 }).elements[0]?.style
+        .flexBasis
+    ).toBe(400); // 50% of 800
+    page.gridLayoutColumns[0].width = 30;
+    const res = resolveRowWidths(firstRow(survey), { rowWidth: 800 });
+    expect(res.elements[0]?.style.flexBasis).toBeCloseTo(240, 6); // 30%
+    expect(res.elements[1]?.style.flexBasis).toBeCloseTo(560, 6); // 70%
   });
 });
 
