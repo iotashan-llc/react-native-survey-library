@@ -1,11 +1,13 @@
 /**
  * Task 1.12 — radiogroup question. Sibling of `Checkbox` — same scope,
- * bridge/recipe usage, and v1 simplifications (see that file's header);
- * the only real difference is the click contract: radiogroup's
- * `clickItemHandler(item)` is single-arg (select-only; the base
- * `selectItem` — question_baseselect.ts:929 — always sets
- * `renderedValue = item.value`, no toggle-off), vs. checkbox's two-arg
- * toggle form.
+ * bridge/recipe usage, v1 simplifications, AND 1.7 handoff contract (see
+ * that file's header and `Comment`'s: the `getStateElement()`
+ * self-subscription is redundant-but-safe under `QuestionChrome` and may
+ * be delegated by the 1.1/1.4 dispatcher task); the only real difference
+ * is the click contract: radiogroup's `clickItemHandler(item)` is
+ * single-arg (select-only; the base `selectItem` —
+ * question_baseselect.ts:929 — always sets `renderedValue = item.value`,
+ * no toggle-off), vs. checkbox's two-arg toggle form.
  */
 import * as React from 'react';
 import { View } from 'react-native';

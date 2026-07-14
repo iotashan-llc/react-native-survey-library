@@ -379,9 +379,12 @@ exact column-balancing algorithm is not reproduced.
 ### "Other" item free text uses its own draft/commit adapter, not the primary text adapter
 
 The checkbox/radiogroup "Other (describe)" comment field commits through
-`question.otherValue` (backed by `question.comment`), a different model
-surface than the primary `value`/`inputValue` the task-1.9
-`DraftCommitAdapter` is scoped to. A sibling adapter
+`question.otherValue` — a different model surface than the primary
+`value`/`inputValue` the task-1.9 `DraftCommitAdapter` is scoped to, and
+one whose backing store is mode-dependent (the `comment` property when
+`storeOthersAsComment` is true — the default — or the `otherValue`
+property plus the value itself when false). A sibling adapter
 (`OtherCommentDraftAdapter`) mirrors the same draft/commit timing
-(`isInputTextUpdate` gates per-keystroke commit; blur always commits) —
-functionally equivalent, implemented separately.
+(`isInputTextUpdate` gates per-keystroke commit; blur always commits)
+and subscribes to both backing properties so external writes stay live
+in either mode — functionally equivalent to web, implemented separately.

@@ -3,9 +3,12 @@
  * item recipe + bridge; docs/design/0.5-factories.md, descriptor table).
  * Upstream analog: `SurveyQuestionSelectbase` (survey-react-ui
  * reactquestion_selectbase.tsx) dispatched for the `checkbox` type via
- * `question.itemComponent`. Scope note: same body-only split as
- * `Comment` (see that file's header) — title/description/error chrome is
- * 1.7's concern.
+ * `question.itemComponent`. Scope note: same body-only split AND the
+ * same 1.7 handoff contract as `Comment` (see that file's header): the
+ * `getStateElement()` self-subscription here is redundant-but-safe under
+ * `QuestionChrome` (0.4 D2 model-scoped render guard; locked by the
+ * "inside QuestionChrome" test) and may be delegated by the 1.1/1.4
+ * dispatcher task.
  *
  * Selection goes through `question.clickItemHandler(item, checked)` /
  * `question.isItemSelected(item)` — core's own select/deselect/selectAll/
