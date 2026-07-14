@@ -15,6 +15,16 @@
  * through the 0.7 bridge's `getItemVariant` — this component never
  * re-derives select-item state from raw booleans.
  *
+ * Enablement is `question.getItemEnabled(item)` (codex PR-18 review
+ * major 2) — the same public seam web binds to its DOM `disabled`
+ * attribute (reactquestion_checkbox.tsx:64, reactquestion_radiogroup.tsx:
+ * 82; core: `!isDisabledAttr && item.isEnabled`,
+ * question_baseselect.ts:2468). LOAD-BEARING: core's own
+ * `clickItemHandler`/`selectItem` checks only `isReadOnlyAttr` and does
+ * NOT reject a disabled item — without this gate a disabled choice would
+ * still mutate the answer (verified empirically against v2.5.33). It
+ * gates the Pressable AND the "other" comment input's editability.
+ *
  * No RNIcon dependency (task 1.5 not yet landed on this branch): the
  * checked decorator is a plain native glyph (checkmark Text / filled-dot
  * View) sized/colored from the item recipe's `iconSize`/`iconFills` —
@@ -43,6 +53,7 @@ export interface ChoiceItemRowProps {
   question: Question & {
     isItemSelected(item: ItemValue): boolean;
     getItemClass(item: ItemValue): string;
+    getItemEnabled(item: ItemValue): boolean;
     otherItem?: ItemValue;
   };
   item: ItemValue;
@@ -76,8 +87,8 @@ export function ChoiceItemRow(props: ChoiceItemRowProps): React.JSX.Element {
   const preview = itemVariant.variant.preview ?? false;
   const error = itemVariant.variant.error ?? false;
   const allowHover = itemVariant.variant.hover ?? false;
-  const isEnabled = item.isEnabled !== false;
-  const pressDisabled = readOnly || preview || !isEnabled;
+  const itemEnabled = question.getItemEnabled(item);
+  const pressDisabled = readOnly || preview || !itemEnabled;
 
   const isOther = !!question.otherItem && item === question.otherItem;
   const showComment =
@@ -108,7 +119,32 @@ export function ChoiceItemRow(props: ChoiceItemRowProps): React.JSX.Element {
         onBlur={() => setFocused(false)}
         accessibilityRole={shape === 'radio' ? 'radio' : 'checkbox'}
         accessibilityState={{ checked, disabled: pressDisabled }}
-        style={styles.pressableRow}
+        // The recipe's CONTAINER slot lands here (codex PR-18 review
+        // major 3): selectItemStyles returns container/decorator as
+        // separate slots, and the container carries the theme's row
+        // padding/gap; the A12 item.container override composes last.
+        // The structural row direction stays as the base layer.
+        style={({ pressed }) => [
+          styles.pressableRow,
+          ...composeStyles(
+            selectItemStyles(
+              recipes.item,
+              {
+                checked,
+                pressed,
+                focused,
+                readOnly,
+                preview,
+                error,
+                allowHover,
+                addOn,
+              },
+              mode,
+              shape
+            ).container,
+            { override: overrides.item?.container }
+          ),
+        ]}
         testID={props.testID}
       >
         {({ pressed }) => {
@@ -174,7 +210,7 @@ export function ChoiceItemRow(props: ChoiceItemRowProps): React.JSX.Element {
           <TextInput
             testID={props.otherInputTestID}
             value={adapterRef.current?.renderedValue ?? ''}
-            editable={!readOnly}
+            editable={!readOnly && itemEnabled}
             onChangeText={(text) => adapterRef.current?.handleChangeText(text)}
             onBlur={() => adapterRef.current?.handleBlur()}
             style={composeStyles(recipes.input.fragments.base, {

@@ -91,4 +91,39 @@ describe('Radiogroup', () => {
     });
     expect(question.value).toBe('c');
   });
+
+  /**
+   * Enablement via `question.getItemEnabled(item)` (codex PR-18 review
+   * major 2) — see the matching Checkbox suite for the full rationale
+   * (core's clickItemHandler does not itself reject a disabled item).
+   */
+  it('disabled choice (enableIf false): press does not mutate the value', () => {
+    const question = createRadiogroup({
+      choices: [{ value: 'a' }, { value: 'b', enableIf: 'false' }],
+    });
+    render(<Radiogroup question={question} creator={{}} />);
+    fireEvent.press(screen.getByText('b'));
+    expect(question.value).toBeFalsy();
+    expect(question.getItemEnabled(question.visibleChoices[1]!)).toBe(false);
+  });
+
+  it('disabled question (readOnlyCallback — the core seam parent containers drive): press blocked and Other input not editable', () => {
+    const question = createRadiogroup({ showOtherItem: true });
+    render(<Radiogroup question={question} creator={{}} />);
+    fireEvent.press(screen.getByText('Other (describe)'));
+    expect(screen.getByTestId('radiogroup-other-input').props.editable).toBe(
+      true
+    );
+    act(() => {
+      (
+        question as unknown as { readOnlyCallback: () => boolean }
+      ).readOnlyCallback = () => true;
+      question.titleLocation = 'top';
+    });
+    fireEvent.press(screen.getByText('a'));
+    expect(question.value).toBe('other');
+    expect(screen.getByTestId('radiogroup-other-input').props.editable).toBe(
+      false
+    );
+  });
 });
