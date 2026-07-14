@@ -91,12 +91,14 @@ function writeReactNativeStub(consumerDir) {
       '// as VALUES (not `import type`) — currently View/Text (components,\n' +
       '// reactivity), StyleSheet (theme-rn recipes), I18nManager/Platform\n' +
       '// (theme-rn provider), Image (1.6 LogoImage), Pressable (1.5\n' +
-      '// ActionButton), Switch (1.13 boolean), Linking (security URL policy).\n' +
+      '// ActionButton), Switch (1.13 boolean), TextInput (1.7 chrome),\n' +
+      '// Linking (security URL policy).\n' +
       "export const View = 'View';\n" +
       "export const Text = 'Text';\n" +
       "export const Image = 'Image';\n" +
       "export const Pressable = 'Pressable';\n" +
       "export const Switch = 'Switch';\n" +
+      "export const TextInput = 'TextInput';\n" +
       'export const Linking = {\n' +
       '  canOpenURL: async () => false,\n' +
       '  openURL: async () => {},\n' +
