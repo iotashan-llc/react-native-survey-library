@@ -186,6 +186,48 @@ on the same element keep working.
 `min()`/`max()` combinations of those — the only forms survey-core's own
 row math ever generates.
 
+## Page/panel/row composition (task 1.4)
+
+### Lazy rendering is not supported
+
+`survey.lazyRendering` (and `lazyRenderingFirstBatchSize`) is driven by
+DOM scroll observation (`ScrollableContainer`/IntersectionObserver on
+web); there is no RN equivalent wired, so rows always render eagerly
+and no skeleton placeholders exist. Surveys that enable it still work —
+the flag simply has no effect.
+
+### `afterRender*` events never fire
+
+The web renderer calls `survey.afterRenderSurvey/afterRenderPage/
+afterRenderQuestion` with live DOM nodes during render lifecycles. This
+renderer never does (there are no DOM nodes, and the render-phase side
+effects violate React 19 contracts). Hosts that used `onAfterRender*`
+events for styling should use theme JSON; for focus/scroll behavior see
+the next item.
+
+### Scroll/focus-to-element goes through `onScrollToTop` (until the 1.2 bridge lands)
+
+survey-core schedules internal scroll-to-element timers on
+`panel.expand()`, dynamic element adds (`addNewQuestion`/`addElement`
+with focus), and page changes. On React Native those timers reach
+`settings.environment.rootElement` — which does not exist — and throw
+asynchronously. The native lifecycle bridge (task 1.2) intercepts these
+centrally; until it lands, hosts driving those model APIs at runtime
+must cancel the scroll themselves:
+
+```ts
+survey.onScrollToTop.add((_, options) => {
+  options.cancel = true; // then scroll your own ScrollView if desired
+});
+```
+
+### Row enter/leave animations are not carried
+
+Core disallows animations headless (the renderer never calls
+`enableOnElementRerenderedEvent()`), so `.sd-row--enter/--leave`
+fade/slide transitions do not occur. Rows appear and disappear
+immediately on visibility/membership changes.
+
 ## Icons (task 1.5)
 
 Web renders icons as `<svg><use xlink:href="#icon-x"/></svg>` against a

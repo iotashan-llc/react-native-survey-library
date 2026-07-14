@@ -202,6 +202,28 @@ describe('SurveyRow — reactive contract: every rootStyle-recalculating path (1
     expect(after).toBe(flat('sv-row-element-g1').flexBasis as number);
   });
 
+  it('element removal: deleting one element of a two-up row re-splits the survivor to the full bare width', () => {
+    const { model, row } = firstRow({
+      elements: [
+        { type: 'empty', name: 'ra' },
+        { type: 'empty', name: 'rb', startWithNewLine: false },
+      ],
+    });
+    render(
+      <SurveyRow row={row as never} survey={model} creator={{}} index={0} />
+    );
+    layoutRow(800);
+    expect(flat('sv-row-element-ra').flexBasis).toBe(round(816 / 2));
+
+    act(() => {
+      const rb = model.getQuestionByName('rb');
+      model.currentPage.removeElement(rb as never);
+    });
+    expect(screen.queryByTestId('sv-row-element-rb')).toBeNull();
+    expect(flat('sv-row-element-ra').flexBasis).toBe(round(800));
+    expect(flat('sv-row-element-ra').paddingStart).toBeUndefined();
+  });
+
   it('container width change: a later onLayout with a new width re-resolves against the new percentBase', () => {
     const { model, row } = firstRow(THREE_UP);
     render(
@@ -212,6 +234,59 @@ describe('SurveyRow — reactive contract: every rootStyle-recalculating path (1
 
     layoutRow(1000);
     expect(flat('sv-row-element-q1').flexBasis).toBe(round(1016 * 0.33333333));
+  });
+});
+
+describe('SurveyRow — four-context gutter table (1.3 design, review round 1)', () => {
+  it('compact page row: % resolves against rowWidth + --sd-base-padding (40), inner metrics replace the page ones', () => {
+    const { model, row } = firstRow({
+      elements: [
+        { type: 'empty', name: 'ca' },
+        { type: 'empty', name: 'cb', startWithNewLine: false },
+      ],
+    });
+    (model as unknown as { isCompact: boolean }).isCompact = true;
+    render(
+      <SurveyRow row={row as never} survey={model} creator={{}} index={0} />
+    );
+    layoutRow(800);
+    const content = flat('sv-row-content');
+    expect(content.marginStart).toBe(-40);
+    expect(flat('sv-row-element-ca').flexBasis).toBe(round(840 / 2));
+    expect(flat('sv-row-element-cb').paddingStart).toBe(40);
+  });
+
+  it('panel-as-page row (singlePage mode): keeps the PAGE gutter 16 (showPanelAsPage, `.sd-panel--as-page` exemption from the inner rule)', () => {
+    const model = new Model({
+      pages: [
+        {
+          name: 'pg1',
+          elements: [
+            { type: 'empty', name: 'sa' },
+            { type: 'empty', name: 'sb', startWithNewLine: false },
+          ],
+        },
+        { name: 'pg2', elements: [{ type: 'empty', name: 'sc' }] },
+      ],
+    });
+    model.questionsOnPageMode = 'singlePage';
+    const single = model.visiblePages[0] as unknown as {
+      visibleRows: Array<{ visibleElements: ReadonlyArray<object> }>;
+    };
+    const asPagePanel = single.visibleRows[0]!.visibleElements[0] as {
+      showPanelAsPage?: boolean;
+      visibleRows: RowModelLike[];
+    };
+    expect(asPagePanel.showPanelAsPage).toBe(true);
+    const row = asPagePanel.visibleRows[0]!;
+    render(
+      <SurveyRow row={row as never} survey={model} creator={{}} index={0} />
+    );
+    layoutRow(800);
+    const content = flat('sv-row-content');
+    expect(content.marginStart).toBe(-16);
+    expect(flat('sv-row-element-sa').flexBasis).toBe(round(816 / 2));
+    expect(flat('sv-row-element-sb').paddingStart).toBe(16);
   });
 });
 

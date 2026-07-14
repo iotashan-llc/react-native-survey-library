@@ -23,9 +23,11 @@
  *   row enter/leave animations (core disallows animations headless — the
  *   renderer never calls `enableOnElementRerenderedEvent()`).
  *
- * Row context: page-level rows (`row.panel.isPage`, non-compact survey)
- * use the page metrics; panel-inner rows and compact (panelless) page
- * rows use `--sd-base-padding` metrics (sd-row.scss `.sd-row--compact`).
+ * Row context: page-level rows (`row.panel.isPage`) and as-page panel
+ * rows (`row.panel.showPanelAsPage`, the `.sd-panel--as-page` model
+ * rule) use the page metrics when the survey is non-compact;
+ * panel-inner rows and compact (panelless) page rows use
+ * `--sd-base-padding` metrics (sd-row.scss `.sd-row--compact`).
  * `narrow` comes from the theme context's select-time mode.
  */
 import * as React from 'react';
@@ -42,7 +44,7 @@ import { SurveyRowElement } from './SurveyRowElement';
 /** Structural row surface (accepts a live QuestionRowModel). */
 interface RowModelLike {
   visibleElements: ReadonlyArray<object>;
-  panel?: { isPage?: boolean };
+  panel?: { isPage?: boolean; showPanelAsPage?: boolean };
 }
 
 export interface SurveyRowProps {
@@ -87,11 +89,19 @@ export class SurveyRow extends SurveyElementBase<
   };
 
   private get variantContext(): RowVariantContext {
-    const isPageRow = this.row.panel?.isPage === true;
+    // Page-context rows: the container is a real page OR an as-page
+    // panel (`showPanelAsPage` — core's own `.sd-panel--as-page` css
+    // driver, true for pages demoted to panels by singlePage mode).
+    // sd-row.scss's inner-gutter rule is scoped to
+    // `.sd-panel:not(.sd-panel--as-page)`, so as-page rows keep the
+    // base page metrics (1.3 design, four-context gutter table).
+    const container = this.row.panel;
+    const isPageContext =
+      container?.isPage === true || container?.showPanelAsPage === true;
     const isCompact =
       (this.props.survey as unknown as { isCompact?: boolean }).isCompact ===
       true;
-    return isPageRow && !isCompact ? 'page' : 'inner';
+    return isPageContext && !isCompact ? 'page' : 'inner';
   }
 
   protected renderElement(): React.JSX.Element {
