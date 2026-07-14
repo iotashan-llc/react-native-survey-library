@@ -48,6 +48,16 @@ export interface UnsupportedQuestionStyleOverrides {
   errorAccentBar?: StyleProp<ViewStyle>;
 }
 
+/** `QuestionChrome` (task 1.7) — title/description/errors/comment wrapper. */
+export interface QuestionChromeStyleOverrides {
+  description?: StyleProp<TextStyle>;
+  errorPanel?: StyleProp<ViewStyle>;
+  errorItem?: StyleProp<TextStyle>;
+  commentArea?: StyleProp<ViewStyle>;
+  commentLabel?: StyleProp<TextStyle>;
+  commentInput?: StyleProp<TextStyle>;
+}
+
 /** Task 1.5 (`ActionButton`): the Pressable container, the icon, and the title text. */
 export interface ActionButtonStyleOverrides {
   container?: StyleProp<ViewStyle>;
@@ -72,6 +82,7 @@ export interface SurveyComponentStyles {
   button?: ButtonStyleOverrides;
   questionTitle?: QuestionTitleStyleOverrides;
   unsupportedQuestion?: UnsupportedQuestionStyleOverrides;
+  questionChrome?: QuestionChromeStyleOverrides;
   actionButton?: ActionButtonStyleOverrides;
   header?: HeaderStyleOverrides;
 }
