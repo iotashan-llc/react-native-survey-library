@@ -246,21 +246,15 @@ effects violate React 19 contracts). Hosts that used `onAfterRender*`
 events for styling should use theme JSON; for focus/scroll behavior see
 the next item.
 
-### Scroll/focus-to-element goes through `onScrollToTop` (until the 1.2 bridge lands)
+### Expand/add scroll-to-element rides the lifecycle bridge
 
 survey-core schedules internal scroll-to-element timers on
 `panel.expand()`, dynamic element adds (`addNewQuestion`/`addElement`
-with focus), and page changes. On React Native those timers reach
-`settings.environment.rootElement` — which does not exist — and throw
-asynchronously. The native lifecycle bridge (task 1.2) intercepts these
-centrally; until it lands, hosts driving those model APIs at runtime
-must cancel the scroll themselves:
-
-```ts
-survey.onScrollToTop.add((_, options) => {
-  options.cancel = true; // then scroll your own ScrollView if desired
-});
-```
+with focus), and page changes. All of them funnel through
+`onScrollToTop`, which the native lifecycle bridge intercepts (see the
+"Scrolling & focus" section above). Without a bridge-registered
+ScrollView the request is safely inert — the facade's environment stub
+keeps core's DOM scroll path from throwing, and nothing scrolls.
 
 ### Row enter/leave animations are not carried
 

@@ -20,10 +20,11 @@ function panelFixture(panelJson: Record<string, unknown>): {
   panel: PanelModel;
 } {
   const model = new Model({ elements: [panelJson] });
-  // `panel.expand()` schedules survey-core's scroll-to-panel timer, which
-  // dereferences `settings.environment.rootElement` (absent on RN).
-  // Cancelling through onScrollToTop is the supported seam — the 1.2
-  // native lifecycle bridge owns this interception at runtime.
+  // `panel.expand()` schedules survey-core's scroll-to-panel timer.
+  // Cancelling through onScrollToTop keeps it out of these
+  // component-scoped tests — at runtime the 1.2 lifecycle bridge owns
+  // this interception (and the facade's environment stub keeps the
+  // un-bridged path from touching DOM APIs).
   model.onScrollToTop.add((_, options) => {
     options.cancel = true;
   });
