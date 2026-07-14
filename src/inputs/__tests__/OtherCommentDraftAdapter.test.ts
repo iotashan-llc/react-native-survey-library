@@ -16,11 +16,15 @@ import { Model } from '../../core/facade';
 import type { QuestionCheckboxModel } from '../../core/facade';
 import { OtherCommentDraftAdapter } from '../OtherCommentDraftAdapter';
 
-function checkboxWithOther(questionProps: Record<string, unknown> = {}): {
+function checkboxWithOther(
+  questionProps: Record<string, unknown> = {},
+  surveyProps: Record<string, unknown> = {}
+): {
   model: Model;
   question: QuestionCheckboxModel;
 } {
   const model = new Model({
+    ...surveyProps,
     elements: [
       {
         type: 'checkbox',
@@ -104,5 +108,81 @@ describe('OtherCommentDraftAdapter', () => {
     question.otherValue = 'after dispose';
     expect(onChange).not.toHaveBeenCalled();
     expect(adapter.renderedValue).toBe('');
+  });
+
+  /**
+   * `getStoreOthersAsComment()` matrix (codex PR-18 review major 1):
+   * core stores the other text in the `comment` property when
+   * storeOthersAsComment is TRUE (the default), but in the `otherValue`
+   * property — with the text ALSO replacing the "other" slot inside
+   * `question.value` — when FALSE (question_baseselect.ts:412-438,
+   * 507-509: `getCommentPropertyValue(otherItem)` returns "comment" vs
+   * "otherValue"). The adapter must stay live in BOTH modes.
+   */
+  describe.each([
+    ['storeOthersAsComment: true (default)', { storeOthersAsComment: true }],
+    ['storeOthersAsComment: false', { storeOthersAsComment: false }],
+  ])('%s', (_label, surveyProps) => {
+    it('initializes renderedValue from a preset otherValue', () => {
+      const { question } = checkboxWithOther({}, surveyProps);
+      question.otherValue = 'preset';
+      const adapter = new OtherCommentDraftAdapter({ question });
+      expect(adapter.renderedValue).toBe('preset');
+    });
+
+    it('external otherValue writes sync into the draft (adapter never goes stale)', () => {
+      const { question } = checkboxWithOther({}, surveyProps);
+      const onChange = jest.fn();
+      const adapter = new OtherCommentDraftAdapter({
+        question,
+        onRenderedValueChange: onChange,
+      });
+      question.otherValue = 'from outside';
+      expect(adapter.renderedValue).toBe('from outside');
+      expect(onChange).toHaveBeenCalled();
+    });
+
+    it('onBlur mode (default): typing stays draft-only; blur commits', () => {
+      const { question } = checkboxWithOther({}, surveyProps);
+      const adapter = new OtherCommentDraftAdapter({ question });
+      adapter.handleChangeText('typed');
+      expect(question.otherValue).toBeFalsy();
+      expect(adapter.renderedValue).toBe('typed');
+      adapter.handleBlur();
+      expect(question.otherValue).toBe('typed');
+    });
+
+    it('onTyping mode (survey-level): commits per keystroke', () => {
+      // Text deliberately NOT colliding with a real choice value: in
+      // storeOthersAsComment:false mode the committed text lands inside
+      // question.value, and core collapses a value that matches an
+      // existing choice onto that choice (renderedValueFromDataCore) —
+      // web behaves identically through onOtherValueInput.
+      const { model, question } = checkboxWithOther({}, surveyProps);
+      (model as unknown as { textUpdateMode: string }).textUpdateMode =
+        'onTyping';
+      const adapter = new OtherCommentDraftAdapter({ question });
+      adapter.handleChangeText('z');
+      expect(question.otherValue).toBe('z');
+    });
+  });
+
+  it('storeOthersAsComment:false — a commit lands in question.value (other slot replaced by the text), never a "-Comment" data key', () => {
+    const { model, question } = checkboxWithOther(
+      {},
+      { storeOthersAsComment: false }
+    );
+    const adapter = new OtherCommentDraftAdapter({ question });
+    adapter.handleChangeText('custom text');
+    adapter.handleBlur();
+    expect(question.otherValue).toBe('custom text');
+    expect(Array.from(question.value as unknown[])).toContain('custom text');
+    // The comment DATA slot stays empty — the text lives in the value
+    // itself in this mode (question.comment's getter mirrors otherValue
+    // via the selectbase getQuestionComment override, so assert the data
+    // layer, not the getter).
+    expect(
+      (model.data as Record<string, unknown>)['q1-Comment']
+    ).toBeUndefined();
   });
 });

@@ -4,7 +4,7 @@
  * field). Sibling to 1.9's `DraftCommitAdapter` (docs/design/
  * 1.9-draft-commit.md) — same draft/commit shape, deliberately NOT reused
  * as a `DraftCommitAdapter` `kind` because the model surface differs
- * (`question.otherValue`, backed by the `comment` property — see
+ * (`question.otherValue`, whose backing store is mode-dependent — see
  * verified upstream facts below) and 1.9's adapter is scoped to `value`/
  * `inputValue` only.
  *
@@ -21,11 +21,19 @@
  *   RN mirror is `handleBlur` (web's `<textarea>` `onChange` fires via
  *   `TextAreaModel.onTextAreaBlur`, which calls `onTextAreaChange` FIRST;
  *   see utils/text-area.ts:100-104).
- * - `question.otherValue` getter/setter (question_baseselect.ts:412-434)
- *   is backed by `question.comment` (a `setPropertyValue("comment", …)`
- *   write — question.ts:1894-1899), so subscribing to the `"comment"`
- *   property name via `registerFunctionOnPropertiesValueChanged` mirrors
- *   1.9's `"value"` subscription for the primary adapter.
+ * - `question.otherValue`'s storage is MODE-DEPENDENT (codex PR-18 review
+ *   major 1; question_baseselect.ts:412-438, 507-509): when
+ *   `getStoreOthersAsComment()` is true (the default), the getter/setter
+ *   are backed by the `comment` property (`setPropertyValue("comment",…)`
+ *   — question.ts:1894-1899); when FALSE, they are backed by the
+ *   `otherValue` property (`otherValueCore`), with the text ALSO replacing
+ *   the "other" slot inside `question.value`. Core's own text area
+ *   subscribes to exactly one name via `getCommentPropertyValue(otherItem)`
+ *   ("comment" vs "otherValue"), but that mode can change at RUNTIME
+ *   (survey-level `storeOthersAsComment` is a live property), so this
+ *   adapter subscribes to BOTH names — `syncFromModel` is predicate-guarded
+ *   and reads `question.otherValue` (the mode-folding getter), making the
+ *   extra subscription a harmless no-op in whichever mode is inactive.
  */
 import { Helpers } from '../core/facade';
 import type { Question } from '../core/facade';
@@ -43,6 +51,14 @@ export interface OtherCommentDraftAdapterOptions {
 
 let nextSubscriptionId = 0;
 
+/**
+ * Both possible backing stores for `otherValue` (see header): "comment"
+ * when getStoreOthersAsComment() is true, "otherValue" when false. The
+ * mode is live-switchable, so both are subscribed for the adapter's
+ * lifetime and unregistered together.
+ */
+const SUBSCRIBED_NAMES = ['comment', 'otherValue'];
+
 export class OtherCommentDraftAdapter {
   private readonly question: OtherValueQuestion;
   private readonly onRenderedValueChange: (() => void) | undefined;
@@ -56,7 +72,7 @@ export class OtherCommentDraftAdapter {
     this.subscriptionKey = `__rnOtherCommentDraft${++nextSubscriptionId}`;
     this.draft = this.formatValue(this.question.otherValue);
     this.question.registerFunctionOnPropertiesValueChanged(
-      ['comment'],
+      SUBSCRIBED_NAMES,
       this.syncFromModel,
       this.subscriptionKey
     );
@@ -85,7 +101,7 @@ export class OtherCommentDraftAdapter {
     if (this.disposed) return;
     this.disposed = true;
     this.question.unRegisterFunctionOnPropertiesValueChanged(
-      ['comment'],
+      SUBSCRIBED_NAMES,
       this.subscriptionKey
     );
   }
