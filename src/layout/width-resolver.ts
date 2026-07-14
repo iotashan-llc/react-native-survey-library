@@ -148,13 +148,7 @@ function tokenize(input: string): Token[] {
       i++;
       continue;
     }
-    if (
-      ch === '(' ||
-      ch === ')' ||
-      ch === ',' ||
-      ch === '*' ||
-      ch === '/'
-    ) {
+    if (ch === '(' || ch === ')' || ch === ',' || ch === '*' || ch === '/') {
       tokens.push({ t: 'punct', ch });
       i++;
       continue;
