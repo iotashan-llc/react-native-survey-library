@@ -17,7 +17,7 @@
  * neither cheap nor meaningful). Hosts should hoist the object rather
  * than inline a fresh literal per render.
  */
-import type { StyleProp, ViewStyle, TextStyle } from 'react-native';
+import type { StyleProp, ViewStyle, TextStyle, ImageStyle } from 'react-native';
 
 export interface ItemStyleOverrides {
   container?: StyleProp<ViewStyle>;
@@ -58,6 +58,23 @@ export interface QuestionChromeStyleOverrides {
   commentInput?: StyleProp<TextStyle>;
 }
 
+/** Task 1.5 (`ActionButton`): the Pressable container, the icon, and the title text. */
+export interface ActionButtonStyleOverrides {
+  container?: StyleProp<ViewStyle>;
+  icon?: StyleProp<ViewStyle>;
+  title?: StyleProp<TextStyle>;
+}
+
+/** Basic survey header slots (task 1.6). */
+export interface HeaderStyleOverrides {
+  root?: StyleProp<ViewStyle>;
+  titleBlock?: StyleProp<ViewStyle>;
+  title?: StyleProp<TextStyle>;
+  description?: StyleProp<TextStyle>;
+  logo?: StyleProp<ViewStyle>;
+  logoImage?: StyleProp<ImageStyle>;
+}
+
 /** Per-component slot overrides distributed via `SurveyThemeProvider`'s `styles` prop and `SurveyThemeContext`'s `styles` field. */
 export interface SurveyComponentStyles {
   item?: ItemStyleOverrides;
@@ -66,6 +83,8 @@ export interface SurveyComponentStyles {
   questionTitle?: QuestionTitleStyleOverrides;
   unsupportedQuestion?: UnsupportedQuestionStyleOverrides;
   questionChrome?: QuestionChromeStyleOverrides;
+  actionButton?: ActionButtonStyleOverrides;
+  header?: HeaderStyleOverrides;
 }
 
 /** Stable default so an omitted `styles` prop never churns the provider's memoized context value. */
