@@ -142,6 +142,27 @@ const NATIVE_HTML_RESTRICTED_SYNTAX = restrictedSyntaxSelectorsFor(
   NATIVE_HTML_IMPORT_MESSAGE
 );
 
+// Design: docs/design/1.5-icon-actionbutton.md, "Dependencies, boundaries,
+// gates" — `react-native-svg` (the icon-rendering capability peer) is
+// importable ONLY from `src/components/RNIcon.tsx`, which lazy-requires it
+// and feeds `SvgXml` exclusively resolved + trust-tier-sanitized markup.
+// Everywhere else renders icons through `<RNIcon>` — the same seam pattern
+// as the survey-core facade and @native-html/* rules above.
+const RNSVG_IMPORT_MESSAGE =
+  "Import 'react-native-svg' only from './components/RNIcon' (the icon adapter) — never directly. See docs/design/1.5-icon-actionbutton.md.";
+const RNSVG_SPECIFIER_PATTERN = '^react-native-svg(\\/.*)?$';
+const RNSVG_RESTRICTED_IMPORTS = {
+  paths: [{ name: 'react-native-svg', message: RNSVG_IMPORT_MESSAGE }],
+  patterns: [
+    { group: ['react-native-svg/*'], message: RNSVG_IMPORT_MESSAGE },
+  ],
+};
+const RNSVG_RESTRICTED_SYNTAX = restrictedSyntaxSelectorsFor(
+  RNSVG_SPECIFIER_PATTERN,
+  'react-native-svg',
+  RNSVG_IMPORT_MESSAGE
+);
+
 export default defineConfig([
   {
     extends: fixupConfigRules(compat.extends('@react-native', 'prettier')),
@@ -171,10 +192,12 @@ export default defineConfig([
           paths: [
             ...SURVEY_CORE_RESTRICTED_IMPORTS.paths,
             ...NATIVE_HTML_RESTRICTED_IMPORTS.paths,
+            ...RNSVG_RESTRICTED_IMPORTS.paths,
           ],
           patterns: [
             ...SURVEY_CORE_RESTRICTED_IMPORTS.patterns,
             ...NATIVE_HTML_RESTRICTED_IMPORTS.patterns,
+            ...RNSVG_RESTRICTED_IMPORTS.patterns,
           ],
         },
       ],
@@ -186,32 +209,92 @@ export default defineConfig([
         'error',
         ...SURVEY_CORE_RESTRICTED_SYNTAX,
         ...NATIVE_HTML_RESTRICTED_SYNTAX,
+        ...RNSVG_RESTRICTED_SYNTAX,
       ],
     },
   },
   {
     // `src/core/facade.ts` is the one place survey-core may be imported
-    // directly — re-narrow to JUST the native-html restriction here
-    // (still fully enforced; the facade has no business touching
-    // @native-html/* either).
+    // directly — re-narrow to the native-html + react-native-svg
+    // restrictions here (still fully enforced; the facade has no business
+    // touching either).
     files: ['src/core/facade.ts'],
     rules: {
-      'no-restricted-imports': ['error', NATIVE_HTML_RESTRICTED_IMPORTS],
-      'no-restricted-syntax': ['error', ...NATIVE_HTML_RESTRICTED_SYNTAX],
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            ...NATIVE_HTML_RESTRICTED_IMPORTS.paths,
+            ...RNSVG_RESTRICTED_IMPORTS.paths,
+          ],
+          patterns: [
+            ...NATIVE_HTML_RESTRICTED_IMPORTS.patterns,
+            ...RNSVG_RESTRICTED_IMPORTS.patterns,
+          ],
+        },
+      ],
+      'no-restricted-syntax': [
+        'error',
+        ...NATIVE_HTML_RESTRICTED_SYNTAX,
+        ...RNSVG_RESTRICTED_SYNTAX,
+      ],
     },
   },
   {
     // `<SanitizedHtml>` is the one place `@native-html/*` may be imported
-    // — re-narrow to JUST the survey-core restriction here (still fully
-    // enforced; the adapter still must go through the facade for any
-    // survey-core types it needs).
+    // — re-narrow to the survey-core + react-native-svg restrictions here
+    // (still fully enforced; the adapter still must go through the facade
+    // for any survey-core types it needs).
     files: [
       'src/components/SanitizedHtml.tsx',
       'src/components/__fixtures__/**',
     ],
     rules: {
-      'no-restricted-imports': ['error', SURVEY_CORE_RESTRICTED_IMPORTS],
-      'no-restricted-syntax': ['error', ...SURVEY_CORE_RESTRICTED_SYNTAX],
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            ...SURVEY_CORE_RESTRICTED_IMPORTS.paths,
+            ...RNSVG_RESTRICTED_IMPORTS.paths,
+          ],
+          patterns: [
+            ...SURVEY_CORE_RESTRICTED_IMPORTS.patterns,
+            ...RNSVG_RESTRICTED_IMPORTS.patterns,
+          ],
+        },
+      ],
+      'no-restricted-syntax': [
+        'error',
+        ...SURVEY_CORE_RESTRICTED_SYNTAX,
+        ...RNSVG_RESTRICTED_SYNTAX,
+      ],
+    },
+  },
+  {
+    // `<RNIcon>` is the one place `react-native-svg` may be imported
+    // (lazy-required; SvgXml only ever receives resolved + trust-tier-
+    // sanitized markup) — re-narrow to the survey-core + native-html
+    // restrictions here.
+    files: ['src/components/RNIcon.tsx'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            ...SURVEY_CORE_RESTRICTED_IMPORTS.paths,
+            ...NATIVE_HTML_RESTRICTED_IMPORTS.paths,
+          ],
+          patterns: [
+            ...SURVEY_CORE_RESTRICTED_IMPORTS.patterns,
+            ...NATIVE_HTML_RESTRICTED_IMPORTS.patterns,
+          ],
+        },
+      ],
+      'no-restricted-syntax': [
+        'error',
+        ...SURVEY_CORE_RESTRICTED_SYNTAX,
+        ...NATIVE_HTML_RESTRICTED_SYNTAX,
+      ],
     },
   },
   {
