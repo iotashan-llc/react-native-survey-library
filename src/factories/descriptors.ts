@@ -26,6 +26,7 @@
  */
 import type { ComponentType } from 'react';
 import { EmptyQuestion } from '../components/EmptyQuestion';
+import { TextQuestion } from '../questions/TextQuestion';
 
 export type DescriptorRoute = 'template' | 'renderer' | 'element';
 
@@ -63,6 +64,14 @@ export const DESCRIPTOR_TABLE: readonly Descriptor[] = [
     route: 'template',
     component: () => EmptyQuestion,
     milestone: 'M0',
+  },
+  {
+    status: 'supported',
+    questionType: 'text',
+    dispatchKey: 'text',
+    route: 'template',
+    component: () => TextQuestion,
+    milestone: 'M1',
   },
   {
     status: 'planned',

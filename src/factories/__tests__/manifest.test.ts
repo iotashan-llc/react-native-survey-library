@@ -56,13 +56,13 @@ describe('manifest: model-type inventory', () => {
     }
   });
 
-  it('"empty" is classified supported/M0; "text"/"checkbox" are classified planned with a milestone', () => {
+  it('"empty" and "text" are classified supported (M0/M1); "checkbox" is still classified planned with a milestone', () => {
     expect(MODEL_TYPE_CLASSIFICATION.empty).toMatchObject({
       status: 'supported',
       milestone: 'M0',
     });
     expect(MODEL_TYPE_CLASSIFICATION.text).toMatchObject({
-      status: 'planned',
+      status: 'supported',
       milestone: 'M1',
     });
     expect(MODEL_TYPE_CLASSIFICATION.checkbox).toMatchObject({
@@ -158,12 +158,16 @@ describe('manifest: classification/descriptor status consistency', () => {
   });
 
   it('detects a supported descriptor row whose model-type classification is not supported', () => {
+    // 'checkbox' is still classified 'planned' (task 1.12, not landed on
+    // this branch) — a supported descriptor row for it is the
+    // inconsistency this test wants ('text' can't be reused here anymore:
+    // task 1.10 landed it as genuinely supported on both sides).
     const descriptors: Descriptor[] = [
       ...DESCRIPTOR_TABLE,
       {
         status: 'supported',
-        questionType: 'text',
-        dispatchKey: 'text',
+        questionType: 'checkbox',
+        dispatchKey: 'checkbox',
         route: 'template',
         component: () => (() => null) as never,
         milestone: 'M1',
@@ -173,7 +177,7 @@ describe('manifest: classification/descriptor status consistency', () => {
       MODEL_TYPE_CLASSIFICATION,
       descriptors
     );
-    expect(violations.some((v) => v.includes('text'))).toBe(true);
+    expect(violations.some((v) => v.includes('checkbox'))).toBe(true);
   });
 
   it('detects a supported classification entry lacking runtimeRenderable safe-construction metadata', () => {

@@ -178,3 +178,50 @@ diagnostic seam) when a survey or question requested
 `textUpdateMode: "onTyping"` on a masked question. Per-keystroke mask
 formatting of the visible text (the web `InputElementAdapter` role)
 arrives with the text question component (task 1.10).
+
+## Text question rendering (task 1.10)
+
+The `text` question renders as a native `TextInput` for all 13
+`inputType`s survey-core allows (settings.ts `questions.inputTypes`).
+Web delegates each `inputType` to the browser's own `<input type=…>`
+widget; React Native has no such per-type widget set, so the mapping is
+explicit — and where no native affordance exists yet, the field falls
+back to plain text rather than approximating one.
+
+### Text input inputType fallbacks
+
+`text`, `email`, `url`, `tel`, `number`, and `password` get real native
+affordances (keyboard type, autofill hints, secure entry). The other
+seven — `date`, `datetime-local`, `time`, `month`, `week`, `color`, and
+`range` — render as plain text fields in v1: no native date/time
+picker, no color swatch, no slider. Core's own value-level validation
+(`onCheckForErrors`: date parsing, min/max/step checks) still runs at
+commit time regardless of which widget rendered the field — only the
+input affordance differs, never the data contract.
+
+**Migration path:** native date/time pickers are scheduled for M5 and
+`range` gets a real slider in task 4.4 (see
+`docs/IMPLEMENTATION-PLAN.md`); until then hosts needing a picker UX
+should use a custom question or collect the value as text.
+
+### `min`/`max`/`step` render no widget affordance
+
+Web's `<input type="number">` (and date/range types) surface
+`min`/`max`/`step` as browser-native UI: spinners that stop at the
+bounds, sliders with a fixed track, date pickers that grey out
+out-of-range dates. RN's `TextInput` has no equivalent attribute-level
+affordance, so `renderedMin`/`renderedMax`/`renderedStep` do not change
+what is rendered. The underlying VALUE validation is unaffected — core
+enforces min/max/step at commit time (`isValueLessMin`,
+`isValueGreaterMax`, `isStepNumberIncorrect`) exactly as on web, where
+that validation also runs independently of the browser affordance.
+
+### `autocomplete` tokens pass through on an exact allowlist
+
+`question.autocomplete` carries an HTML autocomplete token. RN's
+`TextInput.autoComplete` accepts its own (overlapping) vocabulary, so
+tokens are passed through only when RN recognizes them verbatim
+(`email`, `tel`, `given-name`, `cc-number`, `off`, …); unmapped tokens
+are dropped silently — the prop is omitted and RN/the OS fall back to
+their own autofill heuristics. No token is ever guessed or remapped to
+a "closest" RN value.

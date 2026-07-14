@@ -23,8 +23,8 @@ describe('test rails', () => {
 });
 
 describe('index.tsx: registrar wiring (design: docs/design/0.5-factories.md)', () => {
-  it('importing the package root registers the M0 descriptor rows into RNQuestionFactory', () => {
-    expect(RNQuestionFactory.getAllTypes()).toEqual(['empty']);
+  it('importing the package root registers the landed descriptor rows into RNQuestionFactory', () => {
+    expect(RNQuestionFactory.getAllTypes()).toEqual(['empty', 'text']);
     expect(RNElementFactory.getAllTypes()).toEqual([]);
   });
 
