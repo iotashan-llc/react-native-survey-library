@@ -7,6 +7,8 @@ import {
   RNElementFactory,
   UnsupportedQuestion,
   createUnsupportedQuestion,
+  RNIcon,
+  ActionButton,
 } from '../index';
 import { Model } from '../core/facade';
 import type { Question } from '../core/facade';
@@ -16,6 +18,11 @@ describe('test rails', () => {
     expect(LIBRARY_NAME).toBe('@iotashan-llc/react-native-survey-library');
   });
 
+  it('exports the 1.5 icon/action primitives from the package root', () => {
+    expect(RNIcon).toBeDefined();
+    expect(ActionButton).toBeDefined();
+  });
+
   it('renders react-native components', () => {
     render(<Text>hello survey</Text>);
     expect(screen.getByText('hello survey')).toBeOnTheScreen();
@@ -23,9 +30,20 @@ describe('test rails', () => {
 });
 
 describe('index.tsx: registrar wiring (design: docs/design/0.5-factories.md)', () => {
-  it('importing the package root registers the landed descriptor rows into RNQuestionFactory', () => {
-    expect(RNQuestionFactory.getAllTypes()).toEqual(['empty', 'text']);
-    expect(RNElementFactory.getAllTypes()).toEqual([]);
+  it('importing the package root registers the supported descriptor rows into both factories', () => {
+    expect(RNQuestionFactory.getAllTypes()).toEqual([
+      'boolean',
+      'empty',
+      'expression',
+      'sv-boolean-checkbox',
+      'sv-boolean-radio',
+      'text',
+    ]);
+    expect(RNElementFactory.getAllTypes()).toEqual([
+      'survey-header',
+      'sv-logo-image',
+      'sv-string-viewer',
+    ]);
   });
 
   it('re-exports the unsupported-fallback pieces, usable as the dispatcher combinator', () => {

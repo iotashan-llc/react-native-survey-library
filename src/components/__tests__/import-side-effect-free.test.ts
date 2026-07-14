@@ -34,6 +34,8 @@ describe('component modules are import-side-effect-free', () => {
   it.each([
     ['../EmptyQuestion'],
     ['../UnsupportedQuestion'],
+    ['../../questions/BooleanQuestion'],
+    ['../../questions/ExpressionQuestion'],
     ['../../questions/TextQuestion'],
   ])('importing %s registers nothing into either factory', (modulePath) => {
     const { questionTypes, elementTypes } =
@@ -46,6 +48,13 @@ describe('component modules are import-side-effect-free', () => {
     const { questionTypes } = factoryStateAfterImporting(
       '../../factories/register-all'
     );
-    expect(questionTypes).toEqual(['empty', 'text']);
+    expect(questionTypes).toEqual([
+      'boolean',
+      'empty',
+      'expression',
+      'sv-boolean-checkbox',
+      'sv-boolean-radio',
+      'text',
+    ]);
   });
 });

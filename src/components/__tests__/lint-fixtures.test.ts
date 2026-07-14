@@ -177,3 +177,86 @@ describe('ESLint enforcement — @native-html/* boundary (task 0.9)', () => {
     expect(nativeHtmlRestrictionMessages).toEqual([]);
   });
 });
+
+describe('ESLint enforcement — react-native-svg boundary (task 1.5)', () => {
+  // Design: docs/design/1.5-icon-actionbutton.md, "Dependencies,
+  // boundaries, gates" — `react-native-svg` is importable ONLY from the
+  // `<RNIcon>` component (which lazy-requires it and feeds SvgXml only
+  // resolved/sanitized markup). Same seam pattern as the survey-core
+  // facade and @native-html/* rules above.
+  const RNICON_FILENAME = join(REPO_ROOT, 'src', 'components', 'RNIcon.tsx');
+
+  const svgEscapeHatchCases: LintCase[] = [
+    {
+      name: 'static import',
+      code: "import { SvgXml } from 'react-native-svg';\nexport { SvgXml };\n",
+      filename: CONSUMER_FILENAME,
+    },
+    {
+      name: 'type-only import',
+      code: "import type { SvgProps } from 'react-native-svg';\nexport type T = SvgProps;\n",
+      filename: CONSUMER_FILENAME,
+    },
+    {
+      name: 're-export',
+      code: "export { SvgXml } from 'react-native-svg';\n",
+      filename: CONSUMER_FILENAME,
+    },
+    {
+      name: 'require',
+      code: "const svg = require('react-native-svg');\nexport default svg;\n",
+      filename: CONSUMER_FILENAME,
+    },
+    {
+      name: 'require.resolve',
+      code: "const resolved = require.resolve('react-native-svg');\nexport default resolved;\n",
+      filename: CONSUMER_FILENAME,
+    },
+    {
+      name: 'dynamic import',
+      code: "export const pending = import('react-native-svg');\n",
+      filename: CONSUMER_FILENAME,
+    },
+    {
+      name: 'static import from reactivity',
+      code: "import { SvgXml } from 'react-native-svg';\nexport { SvgXml };\n",
+      filename: join(REPO_ROOT, 'src', 'reactivity', 'some-consumer.ts'),
+    },
+  ];
+
+  const RESTRICTION_RULE_IDS = new Set([
+    'no-restricted-imports',
+    'no-restricted-syntax',
+  ]);
+
+  let results: LintResult[];
+
+  beforeAll(() => {
+    results = runEslintChecks([
+      ...svgEscapeHatchCases,
+      { name: 'rnicon', code: null, filename: RNICON_FILENAME },
+    ]);
+  });
+
+  it.each(svgEscapeHatchCases.map((c) => c.name))(
+    '%s outside RNIcon fails lint on the react-native-svg restriction specifically',
+    (name) => {
+      const result = results.find((r) => r.name === name);
+      expect(
+        result?.messages.some((message) =>
+          message.ruleId ? RESTRICTION_RULE_IDS.has(message.ruleId) : false
+        )
+      ).toBe(true);
+    }
+  );
+
+  it('RNIcon.tsx itself is not flagged by the react-native-svg restriction', () => {
+    const result = results.find((r) => r.name === 'rnicon');
+    const restrictionMessages = (result?.messages ?? []).filter(
+      (message) =>
+        message.ruleId === 'no-restricted-imports' ||
+        message.ruleId === 'no-restricted-syntax'
+    );
+    expect(restrictionMessages).toEqual([]);
+  });
+});

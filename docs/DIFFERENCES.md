@@ -133,6 +133,57 @@ the defaults are generous (256KB source, 5000 nodes, 512KB of text,
 etc.). If legitimate content is hitting a bound, treat it as a signal to
 simplify the HTML rather than expecting the same rendering as web.
 
+## Icons (task 1.5)
+
+Web renders icons as `<svg><use xlink:href="#icon-x"/></svg>` against a
+DOM sprite that `survey-react-ui` builds by registering the bundled
+`iconsV2` set into `SvgRegistry`. This library resolves the same icon
+names (including `settings.customIcons` remaps and every legacy/
+size-suffixed alias core's `getIconNameFromProxy` handles) to raw SVG
+markup and renders it through `react-native-svg`'s `SvgXml` via
+`<RNIcon>`. Name resolution and override precedence match web
+(consumer registrations beat bundled icons).
+
+### Consumer-registered icon SVG is sanitized
+
+Icons registered through `SvgRegistry.registerIcon`/`registerIcons` are
+parse-validated against an SVG-only allowlist before rendering: drawing
+primitives, gradient/clip/mask/pattern plumbing and `title`/`desc`/text
+survive; `image`, `foreignObject`, `script`, the `animate*` family and
+`on*` attributes are dropped (with structured diagnostics), and
+`href`/`xlink:href` survive only as local `#fragment` references. Web
+injects registered markup into the DOM sprite unmodified. Rationale:
+`SvgXml` supports `<Image href>`/`<Use href>` network fetches, which
+would bypass the library's URL policy (see the HTML section) if icon
+markup went in raw. The bundled `survey-core` icon set is trusted and
+rendered byte-identical.
+
+**Workaround:** none needed for normal vector icons (paths, shapes,
+gradients all pass). If a custom icon needs raster imagery, render it
+with your own component instead of the icon registry.
+
+### Icons registered after mount need `registerIcons()`
+
+Upstream's `SvgRegistry.registerIcon()` (singular) does not fire
+`onIconsChanged`, so an already-mounted icon won't re-resolve — the
+same staleness the web sprite has. Register icons before rendering the
+survey, or use `SvgRegistry.registerIcons({...})` (plural), which fires
+the change event and re-renders mounted `<RNIcon>`s.
+
+### Default icon size is 24, not 16
+
+Web's bare `createSvg` falls back to 16px when no size is provided;
+`<RNIcon>`'s default is 24 (matching `Action.iconSize`'s model
+default). Action-driven call sites always pass the model's `iconSize`,
+so this only affects direct `<RNIcon>` usage without a `size` prop.
+
+### CSS custom properties inside icon `style` attributes do not resolve
+
+A few core icons (e.g. `timercircle`) carry `style` attributes
+referencing CSS variables (`var(--sd-timer-…)`). React Native has no
+CSS-variable cascade, so those declarations are inert. Affected
+components own their RN-side styling when they land (timer panel task).
+
 ## Text input editing (task 1.9)
 
 Web renders text inputs uncontrolled: the DOM input owns in-progress
