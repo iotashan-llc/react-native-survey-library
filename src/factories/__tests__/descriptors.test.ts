@@ -4,11 +4,13 @@
  * (supported/template) and `custom`/`composite` (planned — no placeholder
  * components; a dispatch miss on either falls through to the fallback +
  * diagnostic until task 2.11 lands their adapters). M1 rows added by
- * tasks 1.11 (comment) / 1.12 (checkbox, radiogroup): supported/template,
- * dispatchKey === questionType (no `renderAs` override for any of the
- * three — `getTemplate()` returns the type name unmodified for all of
- * them, verified against a live fixture in manifest.test.ts's
- * construction gate).
+ * tasks 1.6 (element routes: sv-string-viewer, survey-header,
+ * sv-logo-image), 1.11 (comment), 1.12 (checkbox, radiogroup), 1.13
+ * (boolean: template + checkbox/radio renderer routes) and 1.15
+ * (expression: template). The 1.11/1.12 rows are supported/template with
+ * dispatchKey === questionType (no `renderAs` override — `getTemplate()`
+ * returns the type name unmodified, verified against a live fixture in
+ * manifest.test.ts's construction gate).
  */
 import { DESCRIPTOR_TABLE } from '../descriptors';
 import type { Descriptor } from '../descriptors';
@@ -20,15 +22,37 @@ function byKey(dispatchKey: string): Descriptor {
 }
 
 describe('DESCRIPTOR_TABLE (M0 + M1)', () => {
-  it('has exactly the M0 + M1 rows', () => {
+  it('has exactly the expected dispatch keys', () => {
     expect(DESCRIPTOR_TABLE.map((r) => r.dispatchKey).sort()).toEqual([
+      'boolean',
       'checkbox',
       'comment',
       'composite',
       'custom',
       'empty',
+      'expression',
       'radiogroup',
+      'survey-header',
+      'sv-boolean-checkbox',
+      'sv-boolean-radio',
+      'sv-logo-image',
+      'sv-string-viewer',
     ]);
+  });
+
+  it('the 1.6 rows are supported/element rows (RNElementFactory keyspace) with resolvable component thunks', () => {
+    for (const key of [
+      'sv-string-viewer',
+      'survey-header',
+      'sv-logo-image',
+    ] as const) {
+      const row = byKey(key);
+      expect(row.status).toBe('supported');
+      expect(row.route).toBe('element');
+      if (row.status !== 'supported') throw new Error('unreachable');
+      expect(typeof row.component()).toBe('function');
+      expect(row.milestone).toBe('M1');
+    }
   });
 
   it('"empty" is a supported/template row with a resolvable component thunk', () => {
@@ -60,6 +84,42 @@ describe('DESCRIPTOR_TABLE (M0 + M1)', () => {
     expect(new Set(keys).size).toBe(keys.length);
   });
 
+  it('"boolean" is a supported/template row (default renderAs -> getTemplate() route)', () => {
+    const row = byKey('boolean');
+    expect(row.status).toBe('supported');
+    expect(row.route).toBe('template');
+    expect(row.questionType).toBe('boolean');
+    if (row.status !== 'supported') throw new Error('unreachable');
+    expect(typeof row.component()).toBe('function');
+    expect(row.milestone).toBe('M1');
+  });
+
+  it('"sv-boolean-checkbox"/"sv-boolean-radio" are supported/renderer rows carrying the matching renderAs', () => {
+    for (const [key, renderAs] of [
+      ['sv-boolean-checkbox', 'checkbox'],
+      ['sv-boolean-radio', 'radio'],
+    ] as const) {
+      const row = byKey(key);
+      expect(row.status).toBe('supported');
+      expect(row.route).toBe('renderer');
+      expect(row.questionType).toBe('boolean');
+      if (row.status !== 'supported') throw new Error('unreachable');
+      expect(row.renderAs).toBe(renderAs);
+      expect(typeof row.component()).toBe('function');
+      expect(row.milestone).toBe('M1');
+    }
+  });
+
+  it('"expression" is a supported/template row', () => {
+    const row = byKey('expression');
+    expect(row.status).toBe('supported');
+    expect(row.route).toBe('template');
+    expect(row.questionType).toBe('expression');
+    if (row.status !== 'supported') throw new Error('unreachable');
+    expect(typeof row.component()).toBe('function');
+    expect(row.milestone).toBe('M1');
+  });
+
   it('"comment"/"checkbox"/"radiogroup" (task 1.11/1.12) are supported/template rows with resolvable component thunks, dispatchKey === questionType', () => {
     for (const key of ['comment', 'checkbox', 'radiogroup'] as const) {
       const row = byKey(key);
@@ -67,7 +127,6 @@ describe('DESCRIPTOR_TABLE (M0 + M1)', () => {
       expect(row.route).toBe('template');
       expect(row.questionType).toBe(key);
       if (row.status !== 'supported') throw new Error('unreachable');
-      expect(typeof row.component).toBe('function');
       expect(typeof row.component()).toBe('function');
       expect(row.milestone).toBe('M1');
     }

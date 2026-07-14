@@ -173,18 +173,26 @@ describe('register-all: applySupportedDescriptor', () => {
 });
 
 describe('registerAll (module side effect)', () => {
-  it('importing register-all.ts registers exactly the M0 + M1 supported descriptor rows into the shared singletons', () => {
+  it('importing register-all.ts registers exactly the supported descriptor rows into the shared singletons', () => {
     // registerAll() is idempotent (Map#set overwrites) — calling it
     // explicitly here (on top of the module's own import-time call)
     // exercises the exported function directly without double-counting.
     registerAll();
 
     expect(RNQuestionFactory.getAllTypes()).toEqual([
+      'boolean',
       'checkbox',
       'comment',
       'empty',
+      'expression',
       'radiogroup',
+      'sv-boolean-checkbox',
+      'sv-boolean-radio',
     ]);
-    expect(RNElementFactory.getAllTypes()).toEqual([]);
+    expect(RNElementFactory.getAllTypes()).toEqual([
+      'survey-header',
+      'sv-logo-image',
+      'sv-string-viewer',
+    ]);
   });
 });

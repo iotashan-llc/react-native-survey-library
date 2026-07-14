@@ -80,6 +80,43 @@ exports[`curated recipe golden snapshots ContrastLight: recipes build to a stabl
       },
     },
   },
+  "header": {
+    "fragments": {
+      "description": {
+        "color": "rgba(0, 0, 0, 1)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "fontWeight": "400",
+        "lineHeight": 24,
+      },
+      "logo": {},
+      "logoImage": {
+        "marginTop": 8,
+      },
+      "root": {
+        "alignItems": "center",
+        "borderBottomColor": "rgba(0, 0, 0, 1)",
+        "borderBottomWidth": 2,
+        "flexDirection": "column",
+        "gap": 32,
+        "padding": 16,
+      },
+      "textBlock": {
+        "flexDirection": "column",
+        "flexGrow": 1,
+        "flexShrink": 1,
+        "gap": 8,
+        "minWidth": "100%",
+      },
+      "title": {
+        "color": "rgba(0, 0, 0, 1)",
+        "fontFamily": undefined,
+        "fontSize": 32,
+        "fontWeight": "700",
+        "lineHeight": 40,
+      },
+    },
+  },
   "input": {
     "fragments": {
       "base": {
@@ -300,6 +337,73 @@ exports[`curated recipe golden snapshots ContrastLight: recipes build to a stabl
     },
     "iconSize": 16,
   },
+  "questionChrome": {
+    "fragments": {
+      "commentArea": {
+        "gap": 8,
+        "marginTop": 16,
+      },
+      "commentLabel": {
+        "color": "rgba(0, 0, 0, 1)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+      },
+      "contentLeft": {
+        "flex": 1,
+      },
+      "description": {
+        "color": "rgba(0, 0, 0, 1)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "fontWeight": "400",
+        "lineHeight": 24,
+      },
+      "descriptionUnderInput": {
+        "paddingTop": 12,
+      },
+      "descriptionUnderTitle": {
+        "marginTop": 4,
+      },
+      "errorItem": {
+        "color": "rgba(156, 2, 39, 1)",
+        "fontSize": 12,
+        "fontWeight": "600",
+        "lineHeight": 16,
+      },
+      "errorItemInfo": {
+        "color": "rgba(67, 127, 217, 1)",
+      },
+      "errorItemWarning": {
+        "color": "rgba(255, 152, 20, 1)",
+      },
+      "errorPanel": {
+        "backgroundColor": "rgba(229, 10, 62, 0.1)",
+        "borderRadius": 4,
+        "gap": 4,
+        "paddingHorizontal": 12,
+        "paddingVertical": 8,
+      },
+      "errorPanelAbove": {
+        "marginBottom": 8,
+      },
+      "errorPanelBelow": {
+        "marginTop": 8,
+      },
+      "errorPanelInfo": {
+        "backgroundColor": "rgba(67, 127, 217, 0.1)",
+      },
+      "errorPanelWarning": {
+        "backgroundColor": "rgba(255, 152, 20, 0.1)",
+      },
+      "headerLeft": {
+        "marginTop": 12,
+      },
+      "titleLeftRow": {
+        "columnGap": 24,
+        "flexDirection": "row",
+      },
+    },
+  },
   "questionTitle": {
     "fragments": {
       "collapsed": {
@@ -465,6 +569,43 @@ exports[`curated recipe golden snapshots DefaultLight: recipes build to a stable
         "flexGrow": 1,
         "paddingHorizontal": 32,
         "paddingVertical": 12,
+      },
+    },
+  },
+  "header": {
+    "fragments": {
+      "description": {
+        "color": "rgba(0, 0, 0, 0.45)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "fontWeight": "400",
+        "lineHeight": 24,
+      },
+      "logo": {},
+      "logoImage": {
+        "marginTop": 8,
+      },
+      "root": {
+        "alignItems": "center",
+        "borderBottomColor": "rgba(25, 179, 148, 1)",
+        "borderBottomWidth": 2,
+        "flexDirection": "column",
+        "gap": 32,
+        "padding": 16,
+      },
+      "textBlock": {
+        "flexDirection": "column",
+        "flexGrow": 1,
+        "flexShrink": 1,
+        "gap": 8,
+        "minWidth": "100%",
+      },
+      "title": {
+        "color": "rgba(25, 179, 148, 1)",
+        "fontFamily": undefined,
+        "fontSize": 32,
+        "fontWeight": "700",
+        "lineHeight": 40,
       },
     },
   },
@@ -655,6 +796,73 @@ exports[`curated recipe golden snapshots DefaultLight: recipes build to a stable
       "unchecked": "transparent",
     },
     "iconSize": 16,
+  },
+  "questionChrome": {
+    "fragments": {
+      "commentArea": {
+        "gap": 8,
+        "marginTop": 16,
+      },
+      "commentLabel": {
+        "color": "rgba(0, 0, 0, 0.91)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+      },
+      "contentLeft": {
+        "flex": 1,
+      },
+      "description": {
+        "color": "rgba(0, 0, 0, 0.45)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "fontWeight": "400",
+        "lineHeight": 24,
+      },
+      "descriptionUnderInput": {
+        "paddingTop": 12,
+      },
+      "descriptionUnderTitle": {
+        "marginTop": 4,
+      },
+      "errorItem": {
+        "color": "rgba(229, 10, 62, 1)",
+        "fontSize": 12,
+        "fontWeight": "600",
+        "lineHeight": 16,
+      },
+      "errorItemInfo": {
+        "color": "rgba(67, 127, 217, 1)",
+      },
+      "errorItemWarning": {
+        "color": "rgba(255, 152, 20, 1)",
+      },
+      "errorPanel": {
+        "backgroundColor": "rgba(229, 10, 62, 0.1)",
+        "borderRadius": 4,
+        "gap": 4,
+        "paddingHorizontal": 12,
+        "paddingVertical": 8,
+      },
+      "errorPanelAbove": {
+        "marginBottom": 8,
+      },
+      "errorPanelBelow": {
+        "marginTop": 8,
+      },
+      "errorPanelInfo": {
+        "backgroundColor": "rgba(67, 127, 217, 0.1)",
+      },
+      "errorPanelWarning": {
+        "backgroundColor": "rgba(255, 152, 20, 0.1)",
+      },
+      "headerLeft": {
+        "marginTop": 12,
+      },
+      "titleLeftRow": {
+        "columnGap": 24,
+        "flexDirection": "row",
+      },
+    },
   },
   "questionTitle": {
     "fragments": {
@@ -853,6 +1061,43 @@ exports[`curated recipe golden snapshots LayeredDark: recipes build to a stable 
         "flexGrow": 1,
         "paddingHorizontal": 32,
         "paddingVertical": 12,
+      },
+    },
+  },
+  "header": {
+    "fragments": {
+      "description": {
+        "color": "rgba(117, 120, 140, 1)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "fontWeight": "400",
+        "lineHeight": 24,
+      },
+      "logo": {},
+      "logoImage": {
+        "marginTop": 8,
+      },
+      "root": {
+        "alignItems": "center",
+        "borderBottomColor": "rgba(164, 127, 243, 1)",
+        "borderBottomWidth": 2,
+        "flexDirection": "column",
+        "gap": 32,
+        "padding": 16,
+      },
+      "textBlock": {
+        "flexDirection": "column",
+        "flexGrow": 1,
+        "flexShrink": 1,
+        "gap": 8,
+        "minWidth": "100%",
+      },
+      "title": {
+        "color": "rgba(164, 127, 243, 1)",
+        "fontFamily": undefined,
+        "fontSize": 32,
+        "fontWeight": "700",
+        "lineHeight": 40,
       },
     },
   },
@@ -1076,6 +1321,73 @@ exports[`curated recipe golden snapshots LayeredDark: recipes build to a stable 
     },
     "iconSize": 16,
   },
+  "questionChrome": {
+    "fragments": {
+      "commentArea": {
+        "gap": 8,
+        "marginTop": 16,
+      },
+      "commentLabel": {
+        "color": "rgba(213, 215, 238, 1)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+      },
+      "contentLeft": {
+        "flex": 1,
+      },
+      "description": {
+        "color": "rgba(117, 120, 140, 1)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "fontWeight": "400",
+        "lineHeight": 24,
+      },
+      "descriptionUnderInput": {
+        "paddingTop": 12,
+      },
+      "descriptionUnderTitle": {
+        "marginTop": 4,
+      },
+      "errorItem": {
+        "color": "rgba(254, 76, 108, 1)",
+        "fontSize": 12,
+        "fontWeight": "600",
+        "lineHeight": 16,
+      },
+      "errorItemInfo": {
+        "color": "rgba(91, 151, 242, 1)",
+      },
+      "errorItemWarning": {
+        "color": "rgba(255, 152, 20, 1)",
+      },
+      "errorPanel": {
+        "backgroundColor": "rgba(254, 76, 108, 0.1)",
+        "borderRadius": 4,
+        "gap": 4,
+        "paddingHorizontal": 12,
+        "paddingVertical": 8,
+      },
+      "errorPanelAbove": {
+        "marginBottom": 8,
+      },
+      "errorPanelBelow": {
+        "marginTop": 8,
+      },
+      "errorPanelInfo": {
+        "backgroundColor": "rgba(91, 151, 242, 0.1)",
+      },
+      "errorPanelWarning": {
+        "backgroundColor": "rgba(255, 152, 20, 0.1)",
+      },
+      "headerLeft": {
+        "marginTop": 12,
+      },
+      "titleLeftRow": {
+        "columnGap": 24,
+        "flexDirection": "row",
+      },
+    },
+  },
   "questionTitle": {
     "fragments": {
       "collapsed": {
@@ -1241,6 +1553,43 @@ exports[`curated recipe golden snapshots SharpDark: recipes build to a stable sn
         "flexGrow": 1,
         "paddingHorizontal": 32,
         "paddingVertical": 12,
+      },
+    },
+  },
+  "header": {
+    "fragments": {
+      "description": {
+        "color": "rgba(255, 255, 255, 0.5)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "fontWeight": "400",
+        "lineHeight": 24,
+      },
+      "logo": {},
+      "logoImage": {
+        "marginTop": 8,
+      },
+      "root": {
+        "alignItems": "center",
+        "borderBottomColor": "rgba(16, 226, 255, 1)",
+        "borderBottomWidth": 2,
+        "flexDirection": "column",
+        "gap": 32,
+        "padding": 16,
+      },
+      "textBlock": {
+        "flexDirection": "column",
+        "flexGrow": 1,
+        "flexShrink": 1,
+        "gap": 8,
+        "minWidth": "100%",
+      },
+      "title": {
+        "color": "rgba(16, 226, 255, 1)",
+        "fontFamily": undefined,
+        "fontSize": 32,
+        "fontWeight": "700",
+        "lineHeight": 40,
       },
     },
   },
@@ -1432,6 +1781,73 @@ exports[`curated recipe golden snapshots SharpDark: recipes build to a stable sn
     },
     "iconSize": 16,
   },
+  "questionChrome": {
+    "fragments": {
+      "commentArea": {
+        "gap": 8,
+        "marginTop": 16,
+      },
+      "commentLabel": {
+        "color": "rgba(255, 255, 255, 0.78)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+      },
+      "contentLeft": {
+        "flex": 1,
+      },
+      "description": {
+        "color": "rgba(255, 255, 255, 0.5)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "fontWeight": "400",
+        "lineHeight": 24,
+      },
+      "descriptionUnderInput": {
+        "paddingTop": 12,
+      },
+      "descriptionUnderTitle": {
+        "marginTop": 4,
+      },
+      "errorItem": {
+        "color": "rgba(254, 76, 108, 1)",
+        "fontSize": 12,
+        "fontWeight": "600",
+        "lineHeight": 16,
+      },
+      "errorItemInfo": {
+        "color": "rgba(91, 151, 242, 1)",
+      },
+      "errorItemWarning": {
+        "color": "rgba(255, 152, 20, 1)",
+      },
+      "errorPanel": {
+        "backgroundColor": "rgba(254, 76, 108, 0.1)",
+        "borderRadius": 4,
+        "gap": 4,
+        "paddingHorizontal": 12,
+        "paddingVertical": 8,
+      },
+      "errorPanelAbove": {
+        "marginBottom": 8,
+      },
+      "errorPanelBelow": {
+        "marginTop": 8,
+      },
+      "errorPanelInfo": {
+        "backgroundColor": "rgba(91, 151, 242, 0.1)",
+      },
+      "errorPanelWarning": {
+        "backgroundColor": "rgba(255, 152, 20, 0.1)",
+      },
+      "headerLeft": {
+        "marginTop": 12,
+      },
+      "titleLeftRow": {
+        "columnGap": 24,
+        "flexDirection": "row",
+      },
+    },
+  },
   "questionTitle": {
     "fragments": {
       "collapsed": {
@@ -1613,6 +2029,43 @@ exports[`curated recipe golden snapshots ThreeDimensionalLight: recipes build to
         "flexGrow": 1,
         "paddingHorizontal": 32,
         "paddingVertical": 12,
+      },
+    },
+  },
+  "header": {
+    "fragments": {
+      "description": {
+        "color": "rgba(0, 0, 0, 0.45)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "fontWeight": "400",
+        "lineHeight": 24,
+      },
+      "logo": {},
+      "logoImage": {
+        "marginTop": 8,
+      },
+      "root": {
+        "alignItems": "center",
+        "borderBottomColor": "rgba(217, 74, 100, 1)",
+        "borderBottomWidth": 2,
+        "flexDirection": "column",
+        "gap": 32,
+        "padding": 16,
+      },
+      "textBlock": {
+        "flexDirection": "column",
+        "flexGrow": 1,
+        "flexShrink": 1,
+        "gap": 8,
+        "minWidth": "100%",
+      },
+      "title": {
+        "color": "rgba(217, 74, 100, 1)",
+        "fontFamily": undefined,
+        "fontSize": 32,
+        "fontWeight": "700",
+        "lineHeight": 40,
       },
     },
   },
@@ -1835,6 +2288,73 @@ exports[`curated recipe golden snapshots ThreeDimensionalLight: recipes build to
       "unchecked": "transparent",
     },
     "iconSize": 16,
+  },
+  "questionChrome": {
+    "fragments": {
+      "commentArea": {
+        "gap": 8,
+        "marginTop": 16,
+      },
+      "commentLabel": {
+        "color": "rgba(0, 0, 0, 0.91)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+      },
+      "contentLeft": {
+        "flex": 1,
+      },
+      "description": {
+        "color": "rgba(0, 0, 0, 0.45)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "fontWeight": "400",
+        "lineHeight": 24,
+      },
+      "descriptionUnderInput": {
+        "paddingTop": 12,
+      },
+      "descriptionUnderTitle": {
+        "marginTop": 4,
+      },
+      "errorItem": {
+        "color": "rgba(229, 10, 62, 1)",
+        "fontSize": 12,
+        "fontWeight": "600",
+        "lineHeight": 16,
+      },
+      "errorItemInfo": {
+        "color": "rgba(67, 127, 217, 1)",
+      },
+      "errorItemWarning": {
+        "color": "rgba(255, 152, 20, 1)",
+      },
+      "errorPanel": {
+        "backgroundColor": "rgba(229, 10, 62, 0.1)",
+        "borderRadius": 4,
+        "gap": 4,
+        "paddingHorizontal": 12,
+        "paddingVertical": 8,
+      },
+      "errorPanelAbove": {
+        "marginBottom": 8,
+      },
+      "errorPanelBelow": {
+        "marginTop": 8,
+      },
+      "errorPanelInfo": {
+        "backgroundColor": "rgba(67, 127, 217, 0.1)",
+      },
+      "errorPanelWarning": {
+        "backgroundColor": "rgba(255, 152, 20, 0.1)",
+      },
+      "headerLeft": {
+        "marginTop": 12,
+      },
+      "titleLeftRow": {
+        "columnGap": 24,
+        "flexDirection": "row",
+      },
+    },
   },
   "questionTitle": {
     "fragments": {

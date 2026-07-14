@@ -133,6 +133,151 @@ the defaults are generous (256KB source, 5000 nodes, 512KB of text,
 etc.). If legitimate content is hitting a bound, treat it as a signal to
 simplify the HTML rather than expecting the same rendering as web.
 
+## Scrolling & focus (task 1.2 — native lifecycle bridge)
+
+Web scrolls/focuses through the DOM (`scrollIntoView`, element focus).
+This library intercepts survey-core's single scroll/focus funnel
+(`onScrollToTop`) and drives the registered ScrollView + native inputs
+instead (`docs/design/1.2-lifecycle-bridge.md`).
+
+### `onScrollToTop`'s `allow` is locked `false` — consumers cannot re-allow
+
+On web a consumer handler may set `options.allow = true/false` to steer
+core's own DOM scrolling. Here the bridge owns scrolling: `allow` is
+locked `false` for the whole dispatch (a reassignment is ignored and
+surfaces the `allow-override-ignored` diagnostic). The event stays fully
+observable.
+
+**Workaround:** to suppress or customize the native scroll, use the
+renderer-level scroll event (`<Survey>`'s `onScrollToElement` prop, task
+1.1 — built on the bridge's `onScrollRequest` seam; returning `false`
+suppresses the native scroll only, focus still completes).
+
+### `Question.focus(onError, scrollIfVisible: true)` force-scroll is lost
+
+Web forwards `scrollIfVisible: true` down to `scrollIntoView`, forcing a
+scroll even when the question is already visible. The fired
+`ScrollToTopEvent` does not carry that flag, so the bridge always skips
+the scroll when the target is fully visible in the viewport. The focus
+itself still completes — only the redundant scroll motion differs.
+
+**Workaround:** none; if upstream adds the flag to the event, the bridge
+will honor it.
+
+### `question.focusIn()` fires from the native input's `onFocus`
+
+Web fires `focusIn` (→ `onFocusInQuestion`, `lastActiveQuestion`) from a
+DOM focus-bubble listener on the survey root. Here each input component
+fires `question.focusIn()` from its own `onFocus` handler (the
+`ElementHandle.focusFirst` ownership contract) — same event timing
+semantics (fires when focus actually lands, once per focus), different
+mechanism. Consumers observing `onFocusInQuestion` see equivalent
+behavior.
+
+## Element/row widths (task 1.3)
+
+Web hands survey-core's computed width strings (`SurveyElement.rootStyle`:
+`flexBasis`/`minWidth`/`maxWidth` as CSS text) straight to the browser's
+CSS engine. React Native has no CSS engine, so this library evaluates
+those strings itself (`src/layout/width-resolver.ts`) against the
+measured row width and gives Yoga plain numbers.
+
+### Supported width grammar (everything survey-core itself emits)
+
+| Form | Example | Notes |
+|---|---|---|
+| empty / `auto` | `""`, `"auto"` | constraint omitted |
+| bare number | `"250"`, `250` | treated as px (survey-core's own convention) |
+| px | `"300px"` | 1 CSS px = 1 dp |
+| percent | `"33.333333%"` | resolves against the measured row width (plus the inter-element gutter on multi-element rows, matching web's gutter geometry) |
+| `calc()` | `"calc((100% - 300px)/2)"` | `+ - * /` arithmetic with nested parens (the restricted calc type rules: `+`/`-` same-type, `*`/`/` need a plain number) |
+| `min()` / `max()` | `"min(100%, 300px)"` | n-ary, nestable inside `calc()` |
+
+Numbers are CSS number tokens — signed and scientific forms parse
+(`"+10px"`, `"-10px"`, `"1e2px"`; survey-core emits these for numeric
+user widths like `"+10"` or `"1e2"`). Two deliberate deviations from a
+browser's CSS engine, both to honor survey-core's own conventions:
+
+- **Bare numbers mean px even inside `min()`/`max()`** — survey-core
+  emits `min(100%, 250)` for a numeric user `minWidth`, which a browser
+  discards as a type error; this library reads it as 250dp. (So
+  `min(1, 300px)` is 1dp here, where web would drop the constraint.)
+- **Hex/locale-decimal numerics are NOT parsed** — survey-core's
+  numeric check also lets `"0x10"` / `"10,5"` through (emitting
+  `"0x10px"` / `"10,5px"`); those degrade per-property with a
+  diagnostic, same as any invalid value.
+
+Because widths resolve against a *measured* container, a row's children
+render one frame after the row's first `onLayout` (imperceptible in
+practice; web computes the same values in its layout pass instead).
+
+### Unsupported units degrade per-property, never crash
+
+Any other CSS unit in a user-set `width`/`minWidth`/`maxWidth` — `em`,
+`rem`, `vw`, `vh`, `pt`, `ch`, viewport/font-relative units in general —
+and any unparseable value (web lets the browser silently discard those)
+produce structured diagnostic data (`layout/unsupported-width-unit` /
+`layout/invalid-width`, returned by the resolver; the row renderer —
+task 1.4 — forwards them, deduplicated, through the standard
+diagnostics seam) and drop just that one constraint: the element falls
+back to sharing the row like an unsized element. All other constraints
+on the same element keep working.
+
+**Workaround:** express element widths in `px`, `%`, or the `calc()`/
+`min()`/`max()` combinations of those — the only forms survey-core's own
+row math ever generates.
+
+## Icons (task 1.5)
+
+Web renders icons as `<svg><use xlink:href="#icon-x"/></svg>` against a
+DOM sprite that `survey-react-ui` builds by registering the bundled
+`iconsV2` set into `SvgRegistry`. This library resolves the same icon
+names (including `settings.customIcons` remaps and every legacy/
+size-suffixed alias core's `getIconNameFromProxy` handles) to raw SVG
+markup and renders it through `react-native-svg`'s `SvgXml` via
+`<RNIcon>`. Name resolution and override precedence match web
+(consumer registrations beat bundled icons).
+
+### Consumer-registered icon SVG is sanitized
+
+Icons registered through `SvgRegistry.registerIcon`/`registerIcons` are
+parse-validated against an SVG-only allowlist before rendering: drawing
+primitives, gradient/clip/mask/pattern plumbing and `title`/`desc`/text
+survive; `image`, `foreignObject`, `script`, the `animate*` family and
+`on*` attributes are dropped (with structured diagnostics), and
+`href`/`xlink:href` survive only as local `#fragment` references. Web
+injects registered markup into the DOM sprite unmodified. Rationale:
+`SvgXml` supports `<Image href>`/`<Use href>` network fetches, which
+would bypass the library's URL policy (see the HTML section) if icon
+markup went in raw. The bundled `survey-core` icon set is trusted and
+rendered byte-identical.
+
+**Workaround:** none needed for normal vector icons (paths, shapes,
+gradients all pass). If a custom icon needs raster imagery, render it
+with your own component instead of the icon registry.
+
+### Icons registered after mount need `registerIcons()`
+
+Upstream's `SvgRegistry.registerIcon()` (singular) does not fire
+`onIconsChanged`, so an already-mounted icon won't re-resolve — the
+same staleness the web sprite has. Register icons before rendering the
+survey, or use `SvgRegistry.registerIcons({...})` (plural), which fires
+the change event and re-renders mounted `<RNIcon>`s.
+
+### Default icon size is 24, not 16
+
+Web's bare `createSvg` falls back to 16px when no size is provided;
+`<RNIcon>`'s default is 24 (matching `Action.iconSize`'s model
+default). Action-driven call sites always pass the model's `iconSize`,
+so this only affects direct `<RNIcon>` usage without a `size` prop.
+
+### CSS custom properties inside icon `style` attributes do not resolve
+
+A few core icons (e.g. `timercircle`) carry `style` attributes
+referencing CSS variables (`var(--sd-timer-…)`). React Native has no
+CSS-variable cascade, so those declarations are inert. Affected
+components own their RN-side styling when they land (timer panel task).
+
 ## Text input editing (task 1.9)
 
 Web renders text inputs uncontrolled: the DOM input owns in-progress

@@ -91,6 +91,80 @@ export interface SanitizedHtmlLinkPressDroppedPayload {
 }
 
 /**
+ * Native lifecycle bridge diagnostics (design:
+ * docs/design/1.2-lifecycle-bridge.md — registry lookup fallbacks). All
+ * non-throwing no-op paths, surfaced dev-only, deduped by the emitting
+ * module:
+ * - `target-unregistered` — scroll request for a model with no registered
+ *   handle and no page fallback (once per model instance).
+ * - `no-scroll-host` — a scroll request arrived before/without the Survey
+ *   root registering its ScrollView host (once per survey instance).
+ * - `allow-override-ignored` — a consumer `onScrollToTop` handler tried to
+ *   reassign `options.allow` after the bridge locked it false; the write
+ *   was ignored (once per install). Scroll ownership is the bridge's —
+ *   consumers suppress the native scroll via the `onScrollRequest` seam.
+ */
+export interface LifecycleDiagnosticPayload {
+  code: 'lifecycle-diagnostic';
+  lifecycleCode:
+    'target-unregistered' | 'no-scroll-host' | 'allow-override-ignored';
+  elementName: string | undefined;
+  elementType: string | undefined;
+}
+
+/** Emitted (once per resolved key — dedupe owned by
+ * `components/icon-resolution.ts`) when an icon name resolves to no raw
+ * SVG in any source (consumer registries, bundled V2 set). The component
+ * renders null — never throws (design:
+ * docs/design/1.5-icon-actionbutton.md, invariant-9 spirit). */
+export interface UnknownIconPayload {
+  code: 'unknown-icon';
+  /** The name as passed to the component/Action model, pre-resolution. */
+  iconName: string;
+  /** The canonical unprefixed registry key it resolved to. */
+  resolvedKey: string;
+}
+
+/** Forwarded from `sanitizeIconSvg`'s returned diagnostics — once per raw
+ * string (the sanitize cache and this dedupe share that key). Same
+ * decoupling as `SanitizedHtmlDiagnosticPayload`: `sanitizeCode` is
+ * `SvgSanitizeDiagnosticCode` from `./security/sanitize-svg`, typed as
+ * `string` here so this shared module has no dependency on the security
+ * module's internals. */
+export interface IconSvgDiagnosticPayload {
+  code: 'icon-svg-diagnostic';
+  sanitizeCode: string;
+  iconKey: string;
+  detail: string;
+}
+
+/** Emitted when a bare-`Image` consumer's URI fails the central URI
+ * policy (context `'image'`) and the image is dropped fail-closed
+ * (invariant 8). `source` names the renderer surface — `'survey-logo'`
+ * (task 1.6); later bare-Image ports (image question, imagepicker) add
+ * their own. Reported from commit lifecycles, deduped per URI. */
+export interface ImageUriBlockedPayload {
+  code: 'image-uri-blocked';
+  source: string;
+  uri: string;
+  reason: string;
+}
+
+/** Emitted when a survey-core wrapper dispatch
+ * (`getElementWrapperComponentName`, upstream's host extension surface)
+ * names an element key `RNElementFactory` has no registration for — the
+ * slot renders NOTHING (fail-closed: never a guessed default component
+ * fed possibly-transformed wrapper data), the surrounding survey
+ * survives (invariant 9). `reason` is the core wrapper reason
+ * (`'logo-image'`, ...). Reported from commit lifecycles, deduped per
+ * componentName per host instance. */
+export interface ElementWrapperMissingPayload {
+  code: 'element-wrapper-missing';
+  componentName: string;
+  reason: string;
+}
+
+/**
  * Emitted (once per question) by the 1.9 draft/commit adapter when a
  * masked text question requested per-keystroke commits (`textUpdateMode:
  * "onTyping"`, survey- or question-level) but gets blur-commit instead.
@@ -115,6 +189,11 @@ export type DiagnosticPayload =
   | ThemeDiagnosticPayload
   | SanitizedHtmlDiagnosticPayload
   | SanitizedHtmlLinkPressDroppedPayload
+  | LifecycleDiagnosticPayload
+  | UnknownIconPayload
+  | IconSvgDiagnosticPayload
+  | ImageUriBlockedPayload
+  | ElementWrapperMissingPayload
   | MaskedOnTypingDowngradedPayload;
 
 export type DiagnosticHandler = (payload: DiagnosticPayload) => void;

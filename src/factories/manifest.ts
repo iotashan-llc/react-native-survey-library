@@ -107,11 +107,20 @@ export const MODEL_TYPE_CLASSIFICATION: Readonly<
   },
 
   // Phase 1 — v0.1 (M1).
-  expression: { status: 'planned', milestone: 'M1', reason: 'task 1.15' },
+  expression: {
+    status: 'supported',
+    milestone: 'M1',
+    reason: 'task 1.15',
+    runtimeRenderable: {
+      expectedTemplate: 'expression',
+      expectedRoute: 'template',
+    },
+  },
   text: { status: 'planned', milestone: 'M1', reason: 'task 1.10' },
   comment: {
     status: 'supported',
     milestone: 'M1',
+    reason: 'task 1.11',
     runtimeRenderable: {
       expectedTemplate: 'comment',
       expectedRoute: 'template',
@@ -120,6 +129,7 @@ export const MODEL_TYPE_CLASSIFICATION: Readonly<
   checkbox: {
     status: 'supported',
     milestone: 'M1',
+    reason: 'task 1.12',
     runtimeRenderable: {
       expectedTemplate: 'checkbox',
       expectedRoute: 'template',
@@ -129,13 +139,28 @@ export const MODEL_TYPE_CLASSIFICATION: Readonly<
   radiogroup: {
     status: 'supported',
     milestone: 'M1',
+    reason: 'task 1.12',
     runtimeRenderable: {
       expectedTemplate: 'radiogroup',
       expectedRoute: 'template',
       fixtureJson: { type: 'radiogroup', choices: ['a', 'b'] },
     },
   },
-  boolean: { status: 'planned', milestone: 'M1', reason: 'task 1.13' },
+  boolean: {
+    status: 'supported',
+    milestone: 'M1',
+    reason: 'task 1.13',
+    // Default fixture (`{ type: 'boolean' }`) exercises the default
+    // (switch) renderAs mode — the "checkbox"/"radio" renderer-route rows
+    // are covered by descriptors.test.ts / register-all's dual
+    // registration, not by this single-fixture construction gate (design:
+    // manifest.ts's `runtimeRenderable` covers ONE fixture per
+    // classification entry).
+    runtimeRenderable: {
+      expectedTemplate: 'boolean',
+      expectedRoute: 'template',
+    },
+  },
   rating: { status: 'planned', milestone: 'M1', reason: 'task 1.14' },
 
   // Phase 2 — v0.2 (M2).
