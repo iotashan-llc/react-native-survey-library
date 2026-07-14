@@ -22,8 +22,10 @@ import { installLifecycleBridge } from '../../lifecycle/bridge';
 import { createLifecycleRegistry } from '../../lifecycle/registry';
 import { LifecycleContext } from '../../lifecycle/LifecycleContext';
 import type {
+  LifecycleBridgeOptions,
   LifecycleRegistry,
   ScrollHostHandle,
+  ScrollRequestInfo,
 } from '../../lifecycle/types';
 
 jest.mock('../../lifecycle/bridge', () => ({
@@ -31,6 +33,7 @@ jest.mock('../../lifecycle/bridge', () => ({
 }));
 
 jest.mock('../../lifecycle/registry', () => ({
+  ...jest.requireActual('../../lifecycle/registry'),
   createLifecycleRegistry: jest.fn((): LifecycleRegistry => ({
     registerElement: jest.fn(() => () => undefined),
     registerScrollHost: jest.fn(() => () => undefined),
@@ -150,6 +153,65 @@ describe('<Survey> scroll host', () => {
     const handle = (registry.registerScrollHost as jest.Mock).mock
       .calls[0]![0] as ScrollHostHandle;
     await expect(handle.measureTarget({ current: null })).resolves.toBeNull();
+  });
+});
+
+describe('<Survey> onScrollToElement consult wiring (bridge onScrollRequest seam)', () => {
+  function lastOptions(): LifecycleBridgeOptions {
+    const call = mockInstall.mock.calls[mockInstall.mock.calls.length - 1]!;
+    return call[2] as LifecycleBridgeOptions;
+  }
+
+  function requestInfoFor(
+    model: InstanceType<typeof Model>
+  ): ScrollRequestInfo {
+    const question = model.getQuestionByName('q1');
+    return {
+      element: question,
+      question,
+      page: model.pages[0]!,
+      viaPageFallback: false,
+    } as unknown as ScrollRequestInfo;
+  }
+
+  it('consults the prop handler with the element name; no preventDefault -> scroll allowed (true)', () => {
+    const model = new Model(JSON_A);
+    const handler = jest.fn();
+    render(<Survey model={model} onScrollToElement={handler} />);
+    const consult = lastOptions().onScrollRequest;
+    expect(consult).toBeDefined();
+    const allowed = consult!(requestInfoFor(model));
+    expect(handler).toHaveBeenCalledTimes(1);
+    expect(handler.mock.calls[0]![0]).toMatchObject({ elementName: 'q1' });
+    expect(allowed).toBe(true);
+  });
+
+  it('preventDefault() suppresses the native scroll (returns false)', () => {
+    const model = new Model(JSON_A);
+    const handler = jest.fn((event: { preventDefault(): void }): void =>
+      event.preventDefault()
+    );
+    render(<Survey model={model} onScrollToElement={handler} />);
+    const allowed = lastOptions().onScrollRequest!(requestInfoFor(model));
+    expect(allowed).toBe(false);
+  });
+
+  it('consults the LATEST handler identity without reinstalling; absent handler allows the scroll', () => {
+    const model = new Model(JSON_A);
+    const first = jest.fn();
+    const second = jest.fn();
+    const { rerender } = render(
+      <Survey model={model} onScrollToElement={first} />
+    );
+    rerender(<Survey model={model} onScrollToElement={second} />);
+    expect(mockInstall).toHaveBeenCalledTimes(1); // no reinstall on prop swap
+    expect(lastOptions().onScrollRequest!(requestInfoFor(model))).toBe(true);
+    expect(first).not.toHaveBeenCalled();
+    expect(second).toHaveBeenCalledTimes(1);
+
+    rerender(<Survey model={model} />);
+    expect(lastOptions().onScrollRequest!(requestInfoFor(model))).toBe(true);
+    expect(second).toHaveBeenCalledTimes(1); // removed handler not consulted
   });
 });
 

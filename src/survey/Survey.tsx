@@ -38,16 +38,25 @@ import { RNElementFactory } from '../factories/ElementFactory';
 import { preflightSurveyJson } from '../security/json-preflight';
 import type { UriPolicyConfig } from '../security/uri-policy';
 import { reportDiagnostic } from '../diagnostics';
-import { createLifecycleRegistry } from '../lifecycle/registry';
+import {
+  createLifecycleRegistry,
+  readElementName,
+} from '../lifecycle/registry';
 import { installLifecycleBridge } from '../lifecycle/bridge';
 import { LifecycleContext } from '../lifecycle/LifecycleContext';
 import type { LifecycleContextValue } from '../lifecycle/LifecycleContext';
-import type { LifecycleRegistry, ScrollHostHandle } from '../lifecycle/types';
+import type {
+  LifecycleRegistry,
+  ScrollHostHandle,
+  ScrollRequestInfo,
+} from '../lifecycle/types';
 import { extractModelEventProps, wireModelEventProps } from './event-props';
 import type { ExtractedEventProps, SurveyModelEventProps } from './event-props';
 
-/** RN-level scroll-interception event (design note, "Bridge wiring"):
- * surfaced once the 1.2 bridge exposes its consult seam. */
+/** RN-level scroll-interception event (design note, "Bridge wiring"),
+ * delivered through the bridge's `onScrollRequest` consult seam.
+ * `preventDefault()` suppresses the NATIVE SCROLL ONLY — focus-intent
+ * completion still runs (pinned bridge semantics). */
 export interface SurveyScrollToElementEvent {
   elementName: string | undefined;
   preventDefault(): void;
@@ -97,6 +106,7 @@ const NARROW_BREAKPOINT = 600;
 interface SurveyRootProps {
   survey: SurveyModel;
   eventProps: ExtractedEventProps;
+  onScrollToElement?: (event: SurveyScrollToElementEvent) => void;
   onNarrowChange(narrow: boolean): void;
 }
 
@@ -138,10 +148,30 @@ class SurveyRoot extends SurveyElementBase<SurveyRootProps> {
     return this.props.survey;
   }
 
+  /** Bridge consult -> `onScrollToElement` prop (design note, "Bridge
+   * wiring"). Stable identity: installed once per model; reads the
+   * LATEST prop so handler swaps never reinstall the bridge. Returning
+   * `false` suppresses the native scroll only (focus still completes —
+   * bridge-pinned semantics). */
+  private readonly handleScrollRequest = (info: ScrollRequestInfo): boolean => {
+    const handler = this.props.onScrollToElement;
+    if (!handler) return true;
+    let suppressed = false;
+    handler({
+      elementName: readElementName(info.element),
+      preventDefault: () => {
+        suppressed = true;
+      },
+    });
+    return !suppressed;
+  };
+
   componentDidMount(): void {
     super.componentDidMount();
     const survey = this.props.survey;
-    this.uninstallBridge = installLifecycleBridge(survey, this.registry, {});
+    this.uninstallBridge = installLifecycleBridge(survey, this.registry, {
+      onScrollRequest: this.handleScrollRequest,
+    });
     this.deregisterScrollHost = this.registry.registerScrollHost(
       this.buildScrollHostHandle()
     );
@@ -334,13 +364,19 @@ type PropCondition = 'ok' | 'conflicting' | 'missing';
 
 export const Survey = React.forwardRef<SurveyRefHandle, SurveyProps>(
   function SurveyImpl(props, ref) {
-    // `onScrollToElement` stays inside `rest` deliberately —
-    // `extractModelEventProps` excludes it by name (it is the RN-level
-    // bridge-consult prop, not a model event). The bridge consult seam is
-    // pending on the 1.2 task (LifecycleBridgeOptions has no
-    // onScrollRequest yet — flagged); the prop contract is stable now,
-    // wiring lands with the seam.
-    const { json, model, theme, styles, uriPolicy, ...rest } = props;
+    // `onScrollToElement` is the RN-level bridge-consult prop, not a
+    // model event: it is destructured out here and routed to the bridge's
+    // `onScrollRequest` seam by `SurveyRoot` (`extractModelEventProps`
+    // also excludes it by name, defense in depth).
+    const {
+      json,
+      model,
+      theme,
+      styles,
+      uriPolicy,
+      onScrollToElement,
+      ...rest
+    } = props;
 
     const entryRef = React.useRef<ModelEntry | null>(null);
     const innerRef = React.useRef<SurveyRoot | null>(null);
@@ -499,6 +535,7 @@ export const Survey = React.forwardRef<SurveyRefHandle, SurveyProps>(
             ref={innerRef}
             survey={activeModel}
             eventProps={eventProps}
+            onScrollToElement={onScrollToElement}
             onNarrowChange={setNarrow}
           />
         ) : null}

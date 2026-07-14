@@ -11,13 +11,15 @@
  * contract (ESLint-enforced).
  */
 import * as React from 'react';
-import { Text } from 'react-native';
+import type { StyleProp, TextStyle } from 'react-native';
 import type {
   Base,
   IPropertyArrayValueChangedEvent,
   IPropertyValueChangedEvent,
   LocalizableString,
 } from '../core/facade';
+import { SurveyLocStringViewer } from '../components/LocStringViewer';
+import { RNElementFactory } from '../factories/ElementFactory';
 import { SurveyThemeContext } from '../theme-rn/provider';
 
 /**
@@ -96,20 +98,35 @@ export class SurveyElementBase<
   }
 
   /**
-   * Deferred to M1's LocalizableString renderer (task 1.3) — this is the
-   * abstract seam every later component port calls through, per the
-   * design's port map. Returns the fallback plain-text rendering until
-   * then.
+   * The seam every component port renders model strings through (task
+   * 1.6; upstream reactquestion_element.tsx:8-18): dispatches through
+   * `RNElementFactory` under `locStr.renderAs` (default
+   * `sv-string-viewer` — the descriptor table's element row; a string
+   * owner may name a custom renderer) with `renderAsData` as the model.
+   * A factory MISS (unregistered custom renderer) falls back to the
+   * NORMAL `SurveyLocStringViewer` instead of upstream's silent `null` —
+   * an unregistered renderer must never blank a survey string (invariant
+   * 9 spirit) AND must never bypass the viewer's `hasHtml` →
+   * `SanitizedHtml` route (invariant 8: a raw-`Text` fallback would
+   * render markup as literal text and skip the sanitizer).
    */
   public static renderLocString(
     locStr: LocalizableString,
     style?: unknown,
     key?: string
   ): React.JSX.Element {
+    const rendered = RNElementFactory.createElement(locStr.renderAs, {
+      model: locStr.renderAsData,
+      style,
+      key,
+    });
+    if (rendered) return rendered;
     return (
-      <Text style={style as never} key={key}>
-        {locStr.renderedHtml}
-      </Text>
+      <SurveyLocStringViewer
+        model={locStr}
+        style={style as StyleProp<TextStyle>}
+        key={key}
+      />
     );
   }
 

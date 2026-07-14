@@ -341,22 +341,6 @@ export const API_SURFACE_WATCHLIST: readonly WatchedApiMember[] = [
       "<Survey>'s theme prop keeps model-side derived state consistent (design 1.1-survey-root, 'Theme').",
   },
   {
-    id: 'SurveyModel.scrollToTopOnPageChange',
-    member: 'scrollToTopOnPageChange',
-    expectedKind: 'method',
-    resolveHost: (sc) => sc.SurveyModel.prototype,
-    reason:
-      "The page-change render-complete call that re-enters the scroll funnel (design 1.2-lifecycle-bridge, 'Sequencing').",
-  },
-  {
-    id: 'SurveyModel.focusQuestionInfo',
-    member: 'focusQuestionInfo',
-    expectedKind: 'method',
-    resolveHost: (sc) => sc.SurveyModel.prototype,
-    reason:
-      'Core afterRenderPage parity (survey.ts:5514-5519): a pending focusQuestion wins over the page-change scroll. Private in the typings; real prototype method (verified 2.5.33) — SurveyRoot calls it via cast.',
-  },
-  {
     id: 'SurveyModel.state',
     member: 'state',
     expectedKind: 'accessor',
@@ -411,12 +395,70 @@ export const API_SURFACE_WATCHLIST: readonly WatchedApiMember[] = [
       'json prop deep-equality change detection (upstream reactSurvey.tsx parity).',
   },
   {
+    id: 'SurveyModel.onScrollToTop',
+    member: 'onScrollToTop',
+    // Assigned in the SurveyModel constructor (`this.addEvent()`), so an
+    // OWN data property on each INSTANCE — probed on a minimal empty
+    // model, same pattern as the QuestionCustomWidget probe above.
+    expectedKind: 'data',
+    resolveHost: (sc) => new sc.Model(undefined),
+    reason:
+      'The lifecycle bridge subscribes the single scroll/focus funnel here (design 1.2-lifecycle-bridge, A15).',
+  },
+  // Task 1.5 (design: docs/design/1.5-icon-actionbutton.md) — RNIcon's
+  // resolution seams. Runtime kinds verified against the installed
+  // v2.5.33 package.
+  // The two module-LEVEL members resolve off the facade namespace, where
+  // babel's `export * from 'survey-core'` re-exports every binding as a
+  // GETTER — so their kind through the facade is 'accessor', regardless
+  // of the member's kind on survey-core's own exports object.
+  {
+    id: 'getIconNameFromProxy',
+    member: 'getIconNameFromProxy',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc,
+    reason:
+      "RNIcon's ONLY name-mapping path (settings.customIcons remap + renamedIcons legacy/size-suffix mapping) — components/icon-resolution.ts.",
+  },
+  {
+    id: 'SvgThemeSets',
+    member: 'SvgThemeSets',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc,
+    reason:
+      'Raw consumer icon strings stored by SvgRegistry.registerIcon — icon-resolution lookup path 1.',
+  },
+  {
+    id: 'settings.customIcons',
+    member: 'customIcons',
+    expectedKind: 'data',
+    resolveHost: (sc) => sc.settings,
+    reason:
+      'The icon-replacement remap getIconNameFromProxy consults; documented consumer surface for icon swaps.',
+  },
+  {
+    id: 'SvgIconRegistry.icons',
+    member: 'icons',
+    expectedKind: 'data',
+    resolveHost: (sc) => sc.SvgRegistry,
+    reason:
+      'Symbol-wrapped consumer registrations — icon-resolution lookup path 2 (unwrapped back to <svg>).',
+  },
+  {
+    id: 'SvgIconRegistry.onIconsChanged',
+    member: 'onIconsChanged',
+    expectedKind: 'data',
+    resolveHost: (sc) => sc.SvgRegistry,
+    reason:
+      "RNIcon's registry-liveness subscription (late registerIcons() calls re-render mounted icons).",
+  },
+  {
     id: 'EventBase.add',
     member: 'add',
     expectedKind: 'method',
     resolveHost: (sc) => sc.EventBase.prototype,
     reason:
-      "Event-prop wiring subscribes consumer handlers (design 1.1-survey-root, 'Event props').",
+      "Event-prop wiring subscribes consumer handlers (design 1.1-survey-root, 'Event props'); lifecycle bridge install subscribes onScrollToTop; RNIcon's onIconsChanged subscribe (componentDidMount).",
   },
   {
     id: 'EventBase.remove',
@@ -424,6 +466,353 @@ export const API_SURFACE_WATCHLIST: readonly WatchedApiMember[] = [
     expectedKind: 'method',
     resolveHost: (sc) => sc.EventBase.prototype,
     reason:
-      'Event-prop wiring unsubscribes on identity swap/model swap/unmount.',
+      "Event-prop wiring unsubscribes on identity swap/model swap/unmount; lifecycle bridge uninstall unsubscribes onScrollToTop; RNIcon's onIconsChanged unsubscribe (componentWillUnmount).",
+  },
+  {
+    id: 'Question.focusIn',
+    member: 'focusIn',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.Question.prototype,
+    reason:
+      'Focus-event ownership contract: components fire it from their native input onFocus (ElementHandle.focusFirst contract; web drives this from a DOM focus-bubble handler).',
+  },
+  {
+    id: 'Question.inputId',
+    member: 'inputId',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Question.prototype,
+    reason:
+      "Focus-intent discrimination depends on the panel-expand caller passing id: q.inputId (distinct from question.id) — the bridge treats only elementId === question.id as focus intent (design 1.2-lifecycle-bridge, 'Focus-intent discrimination').",
+  },
+  {
+    id: 'Question.page',
+    member: 'page',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Question.prototype,
+    reason:
+      "Registry owning-page fallback: resolveScrollTarget reads `.page` off an unregistered question to fall back to its registered page handle (design 1.2-lifecycle-bridge, 'Lookup order').",
+  },
+  {
+    id: 'PanelModel.page',
+    member: 'page',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.PanelModel.prototype,
+    reason:
+      'Registry owning-page fallback for registered panels (same lookup order as Question.page).',
+  },
+  {
+    id: 'SurveyModel.focusQuestionInfo',
+    member: 'focusQuestionInfo',
+    // PRIVATE in the TS declarations (called via cast) but a plain
+    // prototype method at runtime — this row is the drift gate for that
+    // documented private-API dependency (review round 2 #3).
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.SurveyModel.prototype,
+    reason:
+      "1.1's render-complete seam mirrors afterRenderPage (survey.ts:5514-5519): while focusingQuestionInfo is parked it calls focusQuestionInfo() to execute the cross-page focus (design 1.2-lifecycle-bridge, 'Cross-page focus').",
+  },
+  {
+    id: 'SurveyModel.scrollToTopOnPageChange',
+    member: 'scrollToTopOnPageChange',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.SurveyModel.prototype,
+    reason:
+      "The other branch of 1.1's render-complete seam: no parked focus → scrollToTopOnPageChange() re-enters the funnel with the page shape.",
+  },
+  {
+    id: 'settings.environment',
+    member: 'environment',
+    // A data field on the settings singleton — undefined in RN until the
+    // facade's 1.2 stub fills it (the key itself is always present).
+    expectedKind: 'data',
+    resolveHost: (sc) => sc.settings,
+    reason:
+      "The shim's 1.2 amendment stubs it so destructures of the environment object itself survive (NARROW contract — DOM-only field dereferences stay unsupported; design 1.2-lifecycle-bridge, piece 3).",
+  },
+  // Task 1.5 — the Action members ActionButton binds (accessor entries
+  // resolve through BaseAction.prototype via descriptorKind's prototype
+  // walk).
+  {
+    id: 'Action.doAction',
+    member: 'doAction',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.Action.prototype,
+    reason: "ActionButton's onPress path (DOM-shaped event shim).",
+  },
+  {
+    id: 'Action.doMouseDown',
+    member: 'doMouseDown',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.Action.prototype,
+    reason:
+      "ActionButton's onPressIn path (mouse-vs-keyboard focus-origin bookkeeping).",
+  },
+  {
+    id: 'Action.doFocus',
+    member: 'doFocus',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.Action.prototype,
+    reason: "ActionButton's onFocus path.",
+  },
+  {
+    id: 'Action.getTooltip',
+    member: 'getTooltip',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.Action.prototype,
+    reason:
+      "ActionButton's accessibilityLabel (tooltip || title — covers icon-only buttons).",
+  },
+  {
+    id: 'Action.hasTitle',
+    member: 'hasTitle',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Action.prototype,
+    reason:
+      'Model-owned show-title logic ActionButton consumes (never re-derives, invariant 6).',
+  },
+  {
+    id: 'Action.isVisible',
+    member: 'isVisible',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Action.prototype,
+    reason:
+      "ActionButton's canRender gate (visible && mode not in {popup, removed}).",
+  },
+  {
+    id: 'Action.disabled',
+    member: 'disabled',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Action.prototype,
+    reason:
+      "ActionButton's Pressable disabled + accessibilityState.disabled + recipe disabled input.",
+  },
+  {
+    id: 'Action.iconName',
+    member: 'iconName',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Action.prototype,
+    reason: "ActionButton's RNIcon dispatch.",
+  },
+  {
+    id: 'Action.iconSize',
+    member: 'iconSize',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Action.prototype,
+    reason: "ActionButton's RNIcon size (model default 24).",
+  },
+  {
+    id: 'Action.locTitle',
+    member: 'locTitle',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Action.prototype,
+    reason:
+      "ActionButton's title rendering through the inherited renderLocString seam (1.6 upgrades it).",
+  },
+  // Codex review minor 6: every directly-consumed Action member belongs
+  // on the watchlist — runtime kinds verified against installed v2.5.33.
+  {
+    id: 'Action.active',
+    member: 'active',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Action.prototype,
+    reason:
+      "ActionButton's accessibilityState.selected (semantic selection/active flag).",
+  },
+  {
+    id: 'Action.pressed',
+    member: 'pressed',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Action.prototype,
+    reason:
+      "ActionButton's pressed VISUAL input (ORed with native pressIn state; never surfaced as selection).",
+  },
+  {
+    id: 'Action.ariaChecked',
+    member: 'ariaChecked',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Action.prototype,
+    reason: "ActionButton's accessibilityState.checked.",
+  },
+  {
+    id: 'Action.ariaExpanded',
+    member: 'ariaExpanded',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Action.prototype,
+    reason: "ActionButton's accessibilityState.expanded.",
+  },
+  {
+    id: 'Action.ariaRole',
+    member: 'ariaRole',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Action.prototype,
+    reason: "ActionButton's accessibilityRole mapping.",
+  },
+  {
+    id: 'Action.ariaLabelledBy',
+    member: 'ariaLabelledBy',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Action.prototype,
+    reason:
+      "ActionButton's accessibilityLabelledBy (Android nativeID relationship).",
+  },
+  {
+    id: 'Action.disableTabStop',
+    member: 'disableTabStop',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Action.prototype,
+    reason: "ActionButton's Pressable focusable gate.",
+  },
+
+  // Task 1.6 — LocalizableString renderer + basic survey header.
+  {
+    id: 'LocalizableString.defaultRenderer',
+    member: 'defaultRenderer',
+    expectedKind: 'data',
+    // Static field on the class itself, not the prototype.
+    resolveHost: (sc) => sc.LocalizableString,
+    reason:
+      "The descriptor table's sv-string-viewer element row must stay equal to core's default renderer key (LocStringViewer.test).",
+  },
+  {
+    id: 'LocalizableString.onStringChanged',
+    member: 'onStringChanged',
+    expectedKind: 'data',
+    // Instance field (initializer, not on the prototype) — probe instance;
+    // the constructor only assigns fields (localizablestring.ts:66-69),
+    // side-effect-free with a null owner.
+    resolveHost: (sc) => new sc.LocalizableString(null as never),
+    reason:
+      "SurveyLocStringViewer's subscription lifecycle (components/LocStringViewer.tsx).",
+  },
+  {
+    id: 'LocalizableString.hasHtml',
+    member: 'hasHtml',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.LocalizableString.prototype,
+    reason: 'SurveyLocStringViewer branches plain-Text vs SanitizedHtml on it.',
+  },
+  {
+    id: 'LocalizableString.allowLineBreaks',
+    member: 'allowLineBreaks',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.LocalizableString.prototype,
+    reason:
+      "SurveyLocStringViewer's single-line newline collapsing (upstream --multiline parity).",
+  },
+  {
+    id: 'LocalizableString.renderAs',
+    member: 'renderAs',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.LocalizableString.prototype,
+    reason:
+      "SurveyElementBase.renderLocString's factory dispatch key (reactivity/SurveyElementBase.tsx).",
+  },
+  {
+    id: 'LocalizableString.renderAsData',
+    member: 'renderAsData',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.LocalizableString.prototype,
+    reason:
+      "SurveyElementBase.renderLocString's dispatched model prop (reactivity/SurveyElementBase.tsx).",
+  },
+  {
+    id: 'Model.renderedHasHeader',
+    member: 'renderedHasHeader',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Model.prototype,
+    reason: "SurveyHeader's render gate (components/SurveyHeader.tsx).",
+  },
+  {
+    id: 'Model.renderedHasTitle',
+    member: 'renderedHasTitle',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Model.prototype,
+    reason: "SurveyHeader's title-block gate.",
+  },
+  {
+    id: 'Model.renderedHasDescription',
+    member: 'renderedHasDescription',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Model.prototype,
+    reason: "SurveyHeader's description gate.",
+  },
+  {
+    id: 'Model.renderedHasLogo',
+    member: 'renderedHasLogo',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Model.prototype,
+    reason: "SurveyHeader's logo gate.",
+  },
+  {
+    id: 'Model.isLogoBefore',
+    member: 'isLogoBefore',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Model.prototype,
+    reason: 'SurveyHeader logo/text ordering.',
+  },
+  {
+    id: 'Model.isLogoAfter',
+    member: 'isLogoAfter',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Model.prototype,
+    reason: 'SurveyHeader logo/text ordering.',
+  },
+  {
+    id: 'Model.locTitle',
+    member: 'locTitle',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Model.prototype,
+    reason: 'SurveyHeader title rendering + LogoImage accessibilityLabel.',
+  },
+  {
+    id: 'Model.locDescription',
+    member: 'locDescription',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Model.prototype,
+    reason: 'SurveyHeader description rendering.',
+  },
+  {
+    id: 'Model.locLogo',
+    member: 'locLogo',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Model.prototype,
+    reason: "LogoImage's URI source (components/LogoImage.tsx).",
+  },
+  {
+    id: 'Model.renderedLogoWidth',
+    member: 'renderedLogoWidth',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Model.prototype,
+    reason: "LogoImage's numeric width.",
+  },
+  {
+    id: 'Model.renderedLogoHeight',
+    member: 'renderedLogoHeight',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Model.prototype,
+    reason: "LogoImage's numeric height.",
+  },
+  {
+    id: 'Model.logoFit',
+    member: 'logoFit',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Model.prototype,
+    reason: "LogoImage's resizeMode mapping.",
+  },
+  {
+    id: 'Model.getElementWrapperComponentName',
+    member: 'getElementWrapperComponentName',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.Model.prototype,
+    reason:
+      "SurveyHeader's logo wrapper dispatch key (host extension surface).",
+  },
+  {
+    id: 'Model.getElementWrapperComponentData',
+    member: 'getElementWrapperComponentData',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.Model.prototype,
+    reason:
+      "SurveyHeader's logo wrapper data (host-transformable via onElementWrapperComponentData).",
   },
 ];

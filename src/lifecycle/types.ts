@@ -17,6 +17,26 @@ import type { View } from 'react-native';
 import type { Base, PageModel, PanelModel, Question } from '../core/facade';
 
 /**
+ * Consumer-facing scroll consultation (design doc, piece 2 "Consumer
+ * parity" — the "1.1-level event prop that the bridge consults"). 1.1's
+ * `<Survey onScrollToElement>` prop is built on this seam.
+ */
+export interface ScrollRequestInfo {
+  /** The model whose handle the bridge resolved (page when falling back). */
+  element: Base;
+  /**
+   * The question the funnel entry carried, if any. NOTE: non-null does
+   * NOT imply focus intent — `panel.expand()` also fires with a question
+   * attached but is scroll-only; the bridge discriminates focus intent
+   * separately (caller shape: `elementId === question.id`).
+   */
+  question: Question | null;
+  page: PageModel | null;
+  /** True when the exact target was unregistered and its page matched. */
+  viaPageFallback: boolean;
+}
+
+/**
  * Models that may own a registered native container. Keyed by model
  * INSTANCE (never by name — names are not unique across pages/panels and
  * a model swap must not leak stale handles).
@@ -29,11 +49,22 @@ export type RegistrableElement = Question | PanelModel | PageModel;
  * - `containerRef` — the question/panel/page container `<View>`; the
  *   scroll host measures it to compute the scroll target.
  * - `focusFirst` — supplied by input-bearing components only
- *   (`TextInput.focus()` etc.). Returns whether focus actually landed;
- *   the bridge falls back to `a11yFocus` when absent or `false`.
+ *   (`TextInput.focus()` etc.). Returns whether focus was INITIATED
+ *   (the input exists and `.focus()` was called); the bridge falls back
+ *   to `a11yFocus` when absent or `false`.
+ *
+ *   FOCUS-EVENT OWNERSHIP CONTRACT: the bridge never calls
+ *   `question.focusIn()` — a synchronous return value cannot prove the
+ *   async native focus landed. The component that implements
+ *   `focusFirst` MUST fire `question.focusIn()` from its input's actual
+ *   `onFocus` handler (web parity: survey-react-ui drives focusIn from
+ *   the bubbling DOM focus event). Fire it from `onFocus` ONLY — never
+ *   from `focusFirst` itself — so programmatic focus (bridge-initiated)
+ *   and user taps both fire it exactly once per focus, with no
+ *   double-fire when the bridge initiates and the native event follows.
  * - `a11yFocus` — accessibility focus on the container
  *   (`AccessibilityInfo.setAccessibilityFocus`) so screen readers land on
- *   e.g. an errored non-input question.
+ *   e.g. an errored non-input question. Not an input focus: no focusIn.
  */
 export interface ElementHandle {
   containerRef: RefObject<View | null>;
@@ -129,4 +160,15 @@ export interface LifecycleBridgeOptions {
   scrollSettleMs?: number;
   /** Subtracted from the measured target y (sticky header room). Default 0. */
   topInset?: number;
+  /**
+   * Consulted before every native scroll (design doc, "Consumer
+   * parity"). Return `false` to suppress the NATIVE SCROLL ONLY —
+   * focus-intent completion STILL RUNS on suppression (focusFirst /
+   * a11yFocus initiation; `question.focusIn()` stays component-owned per
+   * the `ElementHandle.focusFirst` contract; pinned semantics: web's
+   * closest analog is "scroll suppressed but focus happens"). Return
+   * `true` (or omit the callback) for the normal scroll path. A throwing
+   * callback is contained (logged) and treated as `true`.
+   */
+  onScrollRequest?: (info: ScrollRequestInfo) => boolean;
 }
