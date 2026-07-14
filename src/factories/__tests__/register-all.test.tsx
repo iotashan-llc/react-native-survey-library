@@ -190,8 +190,10 @@ describe('registerAll (module side effect)', () => {
       'sv-boolean-radio',
     ]);
     expect(RNElementFactory.getAllTypes()).toEqual([
+      'panel',
       'survey-header',
       'sv-logo-image',
+      'sv-page',
       'sv-string-viewer',
     ]);
   });

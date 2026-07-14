@@ -182,6 +182,27 @@ export interface MaskedOnTypingDowngradedPayload {
   maskType: string;
 }
 
+/**
+ * Task 1.4's forwarding edge for the width resolver's pure-data
+ * diagnostics (design: docs/design/1.3-width-resolver.md, D4 — "1.4's row
+ * component forwards them post-commit through the seam with a new
+ * `layout-diagnostic` payload code added there, deduped per (element,
+ * offending value) at the forwarding edge"). `layoutCode`/`property` are
+ * `WidthDiagnosticCode`/`WidthProperty` from `./layout/width-resolver`,
+ * typed as `string` here (same decoupling rationale as
+ * `SanitizedHtmlDiagnosticPayload.sanitizeCode`).
+ */
+export interface LayoutDiagnosticPayload {
+  code: 'layout-diagnostic';
+  layoutCode: string;
+  property: string;
+  /** The offending raw width value, stringified verbatim. */
+  value: string;
+  elementName: string | undefined;
+  elementType: string;
+  message: string;
+}
+
 export type DiagnosticPayload =
   | UnsupportedQuestionTypePayload
   | CustomWidgetIgnoredPayload
@@ -194,7 +215,8 @@ export type DiagnosticPayload =
   | IconSvgDiagnosticPayload
   | ImageUriBlockedPayload
   | ElementWrapperMissingPayload
-  | MaskedOnTypingDowngradedPayload;
+  | MaskedOnTypingDowngradedPayload
+  | LayoutDiagnosticPayload;
 
 export type DiagnosticHandler = (payload: DiagnosticPayload) => void;
 
@@ -242,6 +264,31 @@ export function reportUnsupportedQuestionTypeOnce(
   }
   if (emittedKeys.has(payload.dispatchKey)) return;
   emittedKeys.add(payload.dispatchKey);
+  reportDiagnostic(payload);
+}
+
+/**
+ * Dedupe registry for `reportLayoutDiagnosticOnce` — keyed per ELEMENT
+ * (any survey element object: question or panel), with a composite
+ * `(layoutCode, property, value)` inner key. `property` participates
+ * because the SAME junk value can legitimately offend on two different
+ * properties (e.g. a user width echoed into a calc'd minWidth) and each
+ * is separately actionable.
+ */
+const layoutDiagnosticEmitted = new WeakMap<object, Set<string>>();
+
+export function reportLayoutDiagnosticOnce(
+  element: object,
+  payload: LayoutDiagnosticPayload
+): void {
+  let emittedKeys = layoutDiagnosticEmitted.get(element);
+  if (!emittedKeys) {
+    emittedKeys = new Set<string>();
+    layoutDiagnosticEmitted.set(element, emittedKeys);
+  }
+  const key = `${payload.layoutCode}|${payload.property}|${payload.value}`;
+  if (emittedKeys.has(key)) return;
+  emittedKeys.add(key);
   reportDiagnostic(payload);
 }
 

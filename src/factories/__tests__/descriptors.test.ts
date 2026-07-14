@@ -5,12 +5,9 @@
  * components; a dispatch miss on either falls through to the fallback +
  * diagnostic until task 2.11 lands their adapters). M1 rows added by
  * tasks 1.6 (element routes: sv-string-viewer, survey-header,
- * sv-logo-image), 1.11 (comment), 1.12 (checkbox, radiogroup), 1.13
- * (boolean: template + checkbox/radio renderer routes) and 1.15
- * (expression: template). The 1.11/1.12 rows are supported/template with
- * dispatchKey === questionType (no `renderAs` override — `getTemplate()`
- * returns the type name unmodified, verified against a live fixture in
- * manifest.test.ts's construction gate).
+ * sv-logo-image), 1.4 (composition element routes: sv-page, panel),
+ * 1.11 (comment), 1.12 (checkbox, radiogroup), 1.13 (boolean: template +
+ * checkbox/radio renderer routes) and 1.15 (expression: template).
  */
 import { DESCRIPTOR_TABLE } from '../descriptors';
 import type { Descriptor } from '../descriptors';
@@ -31,20 +28,24 @@ describe('DESCRIPTOR_TABLE (M0 + M1)', () => {
       'custom',
       'empty',
       'expression',
+      'panel',
       'radiogroup',
       'survey-header',
       'sv-boolean-checkbox',
       'sv-boolean-radio',
       'sv-logo-image',
+      'sv-page',
       'sv-string-viewer',
     ]);
   });
 
-  it('the 1.6 rows are supported/element rows (RNElementFactory keyspace) with resolvable component thunks', () => {
+  it('the 1.4/1.6 rows are supported/element rows (RNElementFactory keyspace) with resolvable component thunks', () => {
     for (const key of [
       'sv-string-viewer',
       'survey-header',
       'sv-logo-image',
+      'sv-page',
+      'panel',
     ] as const) {
       const row = byKey(key);
       expect(row.status).toBe('supported');

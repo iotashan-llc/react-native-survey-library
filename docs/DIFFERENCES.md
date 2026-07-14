@@ -227,6 +227,56 @@ on the same element keep working.
 `min()`/`max()` combinations of those — the only forms survey-core's own
 row math ever generates.
 
+## Page/panel/row composition (task 1.4)
+
+### Lazy rendering is not supported
+
+`survey.lazyRendering` (and `lazyRenderingFirstBatchSize`) is driven by
+DOM scroll observation (`ScrollableContainer`/IntersectionObserver on
+web); there is no RN equivalent wired, so rows always render eagerly
+and no skeleton placeholders exist. Surveys that enable it still work —
+the flag simply has no effect.
+
+### `afterRender*` events never fire
+
+The web renderer calls `survey.afterRenderSurvey/afterRenderPage/
+afterRenderQuestion` with live DOM nodes during render lifecycles. This
+renderer never does (there are no DOM nodes, and the render-phase side
+effects violate React 19 contracts). Hosts that used `onAfterRender*`
+events for styling should use theme JSON; for focus/scroll behavior see
+the next item.
+
+### Expand/add scroll-to-element rides the lifecycle bridge
+
+survey-core schedules internal scroll-to-element timers on
+`panel.expand()`, dynamic element adds (`addNewQuestion`/`addElement`
+with focus), and page changes. All of them funnel through
+`onScrollToTop`, which the native lifecycle bridge intercepts (see the
+"Scrolling & focus" section above). Without a bridge-registered
+ScrollView the request is safely inert — the facade's environment stub
+keeps core's DOM scroll path from throwing, and nothing scrolls.
+
+### Row enter/leave animations are not carried
+
+Core disallows animations headless (the renderer never calls
+`enableOnElementRerenderedEvent()`), so `.sd-row--enter/--leave`
+fade/slide transitions do not occur. Rows appear and disappear
+immediately on visibility/membership changes.
+
+### Narrow-mode multi-element rows stack explicitly
+
+On the web, side-by-side questions collapse to one-per-line on narrow
+screens *emergently*: each element's `min-width: min(100%, var(--min-width))`
+forces `flex-wrap` onto its own line, and `flex-grow: 1` fills it. That
+path needs CSS `min()`/percentages resolved at layout time, which the
+all-numeric RN width resolver deliberately does not have. Instead,
+narrow mode (the theme provider's `narrow` prop, driven by the survey
+root's own width measurement) is an explicit switch: multi-element rows
+render as a vertical stack of full-width children separated by the
+row-gap metric. While stacked, per-element `width`/`minWidth`/`maxWidth`
+are not consulted — a web element whose explicit `max-width` would have
+kept it narrower than its line renders full-width here.
+
 ## Icons (task 1.5)
 
 Web renders icons as `<svg><use xlink:href="#icon-x"/></svg>` against a
