@@ -573,3 +573,39 @@ property plus the value itself when false). A sibling adapter
 (`isInputTextUpdate` gates per-keystroke commit; blur always commits)
 and subscribes to both backing properties so external writes stay live
 in either mode — functionally equivalent to web, implemented separately.
+
+
+## Navigation / progress / rating (tasks 1.8, 1.14)
+
+### Only the percentage progress routes render (v1)
+
+`SurveyProgressBar` renders the EFFECTIVE percentage routes: `"questions"`,
+`"requiredQuestions"`, `"correctQuestions"` — and `"pages"` only under
+`settings.legacyProgressBarView` (mirroring the private
+`progressBarComponentName` conversion: under the default css type,
+`"pages"` routes to the ProgressButtons tree upstream) — the family upstream
+routes through its own percentage `SurveyProgress` component. The
+obsolete `"buttons"` value and the TOC/page-titles extension render a
+materially different component tree upstream (`ProgressButtons`) and
+are deferred: for those types the component renders nothing and reports
+a `progress-bar-type-unsupported` diagnostic (once per mounted bar)
+instead of showing a misleading percentage visual.
+
+### Progress text renders below the bar, not overlaid
+
+Upstream's visible progress label is a sibling of the bar (its in-bar
+copy is hidden by the default theme's CSS). The RN track is a
+height-limited, overflow-hidden View, so the label renders as a sibling
+BELOW the track — same information, stacked layout instead of a
+CSS-positioned overlay.
+
+### Rating required/invalid state is not exposed to assistive technology
+
+The rating item row exposes core's `radiogroup` role
+(`a11y_input_ariaRole`) and the question label
+(`a11y_input_ariaLabel`, falling back to `processedTitle`), and each
+item keeps `radio` + checked semantics. React Native has no
+`aria-required`/`aria-invalid` analog on Views, so
+`a11y_input_ariaRequired`/`a11y_input_ariaInvalid` are NOT mapped —
+required/invalid state reaches users through the rendered error text
+(question chrome), not platform accessibility state.

@@ -75,6 +75,35 @@ export interface HeaderStyleOverrides {
   logoImage?: StyleProp<ImageStyle>;
 }
 
+/** Nav button row slots (task 1.8: `SurveyNavigation`). */
+export interface NavigationStyleOverrides {
+  root?: StyleProp<ViewStyle>;
+}
+
+/** Percentage progress-bar slots (task 1.8: `SurveyProgressBar`). */
+export interface ProgressStyleOverrides {
+  track?: StyleProp<ViewStyle>;
+  bar?: StyleProp<ViewStyle>;
+  text?: StyleProp<TextStyle>;
+}
+
+/** Survey-state frame slots (task 1.8: `SurveyStateFrame` -- completed/completedBefore/loading/empty). */
+export interface SurveyStateStyleOverrides {
+  completed?: StyleProp<ViewStyle>;
+  completedBefore?: StyleProp<ViewStyle>;
+  loading?: StyleProp<ViewStyle>;
+  empty?: StyleProp<ViewStyle>;
+}
+
+/** Rating-question slots (task 1.14: `RatingQuestion` + item components). */
+export interface RatingStyleOverrides {
+  root?: StyleProp<ViewStyle>;
+  row?: StyleProp<ViewStyle>;
+  minMaxText?: StyleProp<TextStyle>;
+  pillItem?: StyleProp<TextStyle>;
+  smileyItem?: StyleProp<ViewStyle>;
+}
+
 /** Per-component slot overrides distributed via `SurveyThemeProvider`'s `styles` prop and `SurveyThemeContext`'s `styles` field. */
 export interface SurveyComponentStyles {
   item?: ItemStyleOverrides;
@@ -85,6 +114,10 @@ export interface SurveyComponentStyles {
   questionChrome?: QuestionChromeStyleOverrides;
   actionButton?: ActionButtonStyleOverrides;
   header?: HeaderStyleOverrides;
+  navigation?: NavigationStyleOverrides;
+  progress?: ProgressStyleOverrides;
+  surveyState?: SurveyStateStyleOverrides;
+  rating?: RatingStyleOverrides;
 }
 
 /** Stable default so an omitted `styles` prop never churns the provider's memoized context value. */

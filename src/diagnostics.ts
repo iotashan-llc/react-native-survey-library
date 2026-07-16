@@ -222,6 +222,24 @@ export interface LayoutDiagnosticPayload {
   message: string;
 }
 
+/**
+ * Task 1.8 (review round 1): `SurveyProgressBar` supports only the
+ * percentage `progressBarType` family; the buttons/TOC variants render a
+ * materially different component tree and are deferred. Rendering the
+ * percentage visual for them would be misleading, so the component
+ * returns null and reports this instead (invariant 9's spirit: honest,
+ * non-throwing degradation).
+ */
+export interface ProgressBarTypeUnsupportedPayload {
+  code: 'progress-bar-type-unsupported';
+  /** The authored `progressBarType`. */
+  progressBarType: string;
+  /** The EFFECTIVE upstream route after the pages->buttons conversion
+   * (private `progressBarComponentName`, survey.ts:2942-2949). */
+  effectiveType: string;
+  message: string;
+}
+
 export type DiagnosticPayload =
   | UnsupportedQuestionTypePayload
   | CustomWidgetIgnoredPayload
@@ -236,7 +254,8 @@ export type DiagnosticPayload =
   | ElementWrapperMissingPayload
   | MaskedOnTypingDowngradedPayload
   | DateTimeFallbackInvalidDiscardedPayload
-  | LayoutDiagnosticPayload;
+  | LayoutDiagnosticPayload
+  | ProgressBarTypeUnsupportedPayload;
 
 export type DiagnosticHandler = (payload: DiagnosticPayload) => void;
 

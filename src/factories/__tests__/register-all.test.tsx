@@ -186,6 +186,7 @@ describe('registerAll (module side effect)', () => {
       'empty',
       'expression',
       'radiogroup',
+      'rating',
       'sv-boolean-checkbox',
       'sv-boolean-radio',
       'text',
@@ -195,6 +196,9 @@ describe('registerAll (module side effect)', () => {
       'survey-header',
       'sv-logo-image',
       'sv-page',
+      'sv-rating-item',
+      'sv-rating-item-smiley',
+      'sv-rating-item-star',
       'sv-string-viewer',
     ]);
   });
