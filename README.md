@@ -53,6 +53,18 @@ export default function FeedbackScreen() {
 
 `json` is preflighted before model construction (URL policy below). Prefer owning the model? Pass `model={new Model(json)}` instead — host-owned models are treated as trusted and never disposed by the component.
 
+## Screenshots
+
+The bundled kitchen-sink example (iPad Pro 13" simulator) — same SurveyModel JSON you'd run on web, rendered natively:
+
+| Text inputs, masks, validation | Choice questions |
+|---|---|
+| ![Basics page: text inputTypes, pattern mask, required validation, character counter — Default Light theme](docs/screenshots/basics-light.png) | ![Choices page: radiogroup, checkbox with columns/Select All/Other, boolean renderAs variants](docs/screenshots/choices-light.png) |
+
+| Ratings & themes | Completion |
+|---|---|
+| ![Ratings page: number pills, SVG stars filled to position, smileys, custom rate values, expressions — Default Dark theme applied live](docs/screenshots/ratings-dark.png) | ![Completed state: sanitized completedHtml frame](docs/screenshots/completed-dark.png) |
+
 ## Supported in v0.1 (M1)
 
 Question types: `text` (all 13 inputTypes, input masks, character counter), `comment`, `boolean` (default/checkbox/radio renderAs), `checkbox`, `radiogroup`, `rating` (numbers/stars/smileys/custom rateValues), `expression` — plus panels, multi-element rows, pages, navigation (start/prev/next/preview/complete), percentage progress bar, survey header (title/description/logo), completed/loading/empty state frames, and the full theme JSON pipeline (validated across all 40 `survey-core/themes`; golden snapshots for the curated set).
