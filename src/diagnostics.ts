@@ -90,6 +90,28 @@ export interface SanitizedHtmlLinkPressDroppedPayload {
   reason: string;
 }
 
+/**
+ * Native lifecycle bridge diagnostics (design:
+ * docs/design/1.2-lifecycle-bridge.md — registry lookup fallbacks). All
+ * non-throwing no-op paths, surfaced dev-only, deduped by the emitting
+ * module:
+ * - `target-unregistered` — scroll request for a model with no registered
+ *   handle and no page fallback (once per model instance).
+ * - `no-scroll-host` — a scroll request arrived before/without the Survey
+ *   root registering its ScrollView host (once per survey instance).
+ * - `allow-override-ignored` — a consumer `onScrollToTop` handler tried to
+ *   reassign `options.allow` after the bridge locked it false; the write
+ *   was ignored (once per install). Scroll ownership is the bridge's —
+ *   consumers suppress the native scroll via the `onScrollRequest` seam.
+ */
+export interface LifecycleDiagnosticPayload {
+  code: 'lifecycle-diagnostic';
+  lifecycleCode:
+    'target-unregistered' | 'no-scroll-host' | 'allow-override-ignored';
+  elementName: string | undefined;
+  elementType: string | undefined;
+}
+
 /** Emitted (once per resolved key — dedupe owned by
  * `components/icon-resolution.ts`) when an icon name resolves to no raw
  * SVG in any source (consumer registries, bundled V2 set). The component
@@ -160,6 +182,27 @@ export interface MaskedOnTypingDowngradedPayload {
   maskType: string;
 }
 
+/**
+ * Task 1.4's forwarding edge for the width resolver's pure-data
+ * diagnostics (design: docs/design/1.3-width-resolver.md, D4 — "1.4's row
+ * component forwards them post-commit through the seam with a new
+ * `layout-diagnostic` payload code added there, deduped per (element,
+ * offending value) at the forwarding edge"). `layoutCode`/`property` are
+ * `WidthDiagnosticCode`/`WidthProperty` from `./layout/width-resolver`,
+ * typed as `string` here (same decoupling rationale as
+ * `SanitizedHtmlDiagnosticPayload.sanitizeCode`).
+ */
+export interface LayoutDiagnosticPayload {
+  code: 'layout-diagnostic';
+  layoutCode: string;
+  property: string;
+  /** The offending raw width value, stringified verbatim. */
+  value: string;
+  elementName: string | undefined;
+  elementType: string;
+  message: string;
+}
+
 export type DiagnosticPayload =
   | UnsupportedQuestionTypePayload
   | CustomWidgetIgnoredPayload
@@ -167,11 +210,13 @@ export type DiagnosticPayload =
   | ThemeDiagnosticPayload
   | SanitizedHtmlDiagnosticPayload
   | SanitizedHtmlLinkPressDroppedPayload
+  | LifecycleDiagnosticPayload
   | UnknownIconPayload
   | IconSvgDiagnosticPayload
   | ImageUriBlockedPayload
   | ElementWrapperMissingPayload
-  | MaskedOnTypingDowngradedPayload;
+  | MaskedOnTypingDowngradedPayload
+  | LayoutDiagnosticPayload;
 
 export type DiagnosticHandler = (payload: DiagnosticPayload) => void;
 
@@ -219,6 +264,31 @@ export function reportUnsupportedQuestionTypeOnce(
   }
   if (emittedKeys.has(payload.dispatchKey)) return;
   emittedKeys.add(payload.dispatchKey);
+  reportDiagnostic(payload);
+}
+
+/**
+ * Dedupe registry for `reportLayoutDiagnosticOnce` — keyed per ELEMENT
+ * (any survey element object: question or panel), with a composite
+ * `(layoutCode, property, value)` inner key. `property` participates
+ * because the SAME junk value can legitimately offend on two different
+ * properties (e.g. a user width echoed into a calc'd minWidth) and each
+ * is separately actionable.
+ */
+const layoutDiagnosticEmitted = new WeakMap<object, Set<string>>();
+
+export function reportLayoutDiagnosticOnce(
+  element: object,
+  payload: LayoutDiagnosticPayload
+): void {
+  let emittedKeys = layoutDiagnosticEmitted.get(element);
+  if (!emittedKeys) {
+    emittedKeys = new Set<string>();
+    layoutDiagnosticEmitted.set(element, emittedKeys);
+  }
+  const key = `${payload.layoutCode}|${payload.property}|${payload.value}`;
+  if (emittedKeys.has(key)) return;
+  emittedKeys.add(key);
   reportDiagnostic(payload);
 }
 

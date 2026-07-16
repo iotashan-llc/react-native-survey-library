@@ -40,7 +40,7 @@ describe('core/shim — applySurveyCoreShims', () => {
     });
   });
 
-  it('case 2: invalid required submission fails with the KNOWN settings.environment gap (documents the 1.2 dependency, not fixed by 0.3)', () => {
+  it('case 2: invalid required submission STILL fails through the shim-only path (the 1.2 fix lives in the facade, keeping /shim zero-core-import)', () => {
     withRnShapedGlobals(() => {
       const { Model } = requireShimmedSurveyCore();
 
@@ -53,11 +53,17 @@ describe('core/shim — applySurveyCoreShims', () => {
         ],
       });
 
-      // Known dependency (design ledger, task 1.2 / A15): scrollElementToTop
-      // (survey.ts:5872) destructures `settings.environment`, which is
-      // `undefined` in RN (no `document`) — "Cannot read properties of
-      // undefined (reading 'rootElement')". Asserted specifically so this
-      // tripwire can't be satisfied by an unrelated error.
+      // scrollElementToTop (survey.ts:5872) destructures
+      // `settings.environment`, which is `undefined` in RN (no
+      // `document`) — "Cannot read properties of undefined (reading
+      // 'rootElement')". Task 1.2 (A15) fixed this at the FACADE, which
+      // passes survey-core's `settings` back into
+      // `applySurveyCoreShims(settings)` (see environment-stub.test.ts);
+      // shim.ts alone deliberately does NOT stub it — its zero-imports
+      // invariant means it never touches survey-core, so the `/shim`
+      // subpath stays zero-core-import. This tripwire now locks THAT
+      // boundary. Asserted specifically so it can't be satisfied by an
+      // unrelated error.
       expect(() => model.completeLastPage()).toThrow(/rootElement/);
     });
   });

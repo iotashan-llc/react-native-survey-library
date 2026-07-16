@@ -56,7 +56,7 @@ describe('manifest: model-type inventory', () => {
     }
   });
 
-  it('"empty" is classified supported/M0; "text"/"checkbox" are classified planned with a milestone', () => {
+  it('"empty" is classified supported/M0; "text"/"rating" are classified planned with a milestone', () => {
     expect(MODEL_TYPE_CLASSIFICATION.empty).toMatchObject({
       status: 'supported',
       milestone: 'M0',
@@ -65,10 +65,20 @@ describe('manifest: model-type inventory', () => {
       status: 'planned',
       milestone: 'M1',
     });
-    expect(MODEL_TYPE_CLASSIFICATION.checkbox).toMatchObject({
+    expect(MODEL_TYPE_CLASSIFICATION.rating).toMatchObject({
       status: 'planned',
       milestone: 'M1',
     });
+  });
+
+  it('"comment"/"checkbox"/"radiogroup" (task 1.11/1.12) are classified supported/M1 with runtimeRenderable metadata', () => {
+    for (const key of ['comment', 'checkbox', 'radiogroup'] as const) {
+      expect(MODEL_TYPE_CLASSIFICATION[key]).toMatchObject({
+        status: 'supported',
+        milestone: 'M1',
+      });
+      expect(MODEL_TYPE_CLASSIFICATION[key]?.runtimeRenderable).toBeTruthy();
+    }
   });
 
   it('"textbase" and "nonvalue" are classified internal-base (creator-bearing abstract bases, never a standalone JSON type)', () => {

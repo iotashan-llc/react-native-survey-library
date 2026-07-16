@@ -358,6 +358,73 @@ exports[`curated recipe golden snapshots ContrastLight: recipes build to a stabl
       },
     },
   },
+  "questionChrome": {
+    "fragments": {
+      "commentArea": {
+        "gap": 8,
+        "marginTop": 16,
+      },
+      "commentLabel": {
+        "color": "rgba(0, 0, 0, 1)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+      },
+      "contentLeft": {
+        "flex": 1,
+      },
+      "description": {
+        "color": "rgba(0, 0, 0, 1)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "fontWeight": "400",
+        "lineHeight": 24,
+      },
+      "descriptionUnderInput": {
+        "paddingTop": 12,
+      },
+      "descriptionUnderTitle": {
+        "marginTop": 4,
+      },
+      "errorItem": {
+        "color": "rgba(156, 2, 39, 1)",
+        "fontSize": 12,
+        "fontWeight": "600",
+        "lineHeight": 16,
+      },
+      "errorItemInfo": {
+        "color": "rgba(67, 127, 217, 1)",
+      },
+      "errorItemWarning": {
+        "color": "rgba(255, 152, 20, 1)",
+      },
+      "errorPanel": {
+        "backgroundColor": "rgba(229, 10, 62, 0.1)",
+        "borderRadius": 4,
+        "gap": 4,
+        "paddingHorizontal": 12,
+        "paddingVertical": 8,
+      },
+      "errorPanelAbove": {
+        "marginBottom": 8,
+      },
+      "errorPanelBelow": {
+        "marginTop": 8,
+      },
+      "errorPanelInfo": {
+        "backgroundColor": "rgba(67, 127, 217, 0.1)",
+      },
+      "errorPanelWarning": {
+        "backgroundColor": "rgba(255, 152, 20, 0.1)",
+      },
+      "headerLeft": {
+        "marginTop": 12,
+      },
+      "titleLeftRow": {
+        "columnGap": 24,
+        "flexDirection": "row",
+      },
+    },
+  },
   "questionTitle": {
     "fragments": {
       "collapsed": {
@@ -628,6 +695,100 @@ exports[`curated recipe golden snapshots ContrastLight: recipes build to a stabl
       "unselected": "rgba(0, 0, 0, 1)",
     },
     "starIconSize": 48,
+  },
+  "row": {
+    "variants": {
+      "inner": {
+        "elementWrapperMultiple": {
+          "paddingStart": 40,
+        },
+        "gutter": 40,
+        "row": {
+          "alignSelf": "stretch",
+          "flexDirection": "row",
+          "marginTop": 32,
+        },
+        "rowFirst": {
+          "marginTop": 0,
+        },
+        "rowFirstAfterHeader": {
+          "marginTop": 32,
+        },
+        "rowGap": 32,
+        "rowMultiple": {
+          "flexWrap": "wrap",
+          "marginStart": -40,
+          "rowGap": 32,
+        },
+        "stacked": false,
+      },
+      "innerNarrow": {
+        "elementWrapperMultiple": {},
+        "gutter": 24,
+        "row": {
+          "alignSelf": "stretch",
+          "flexDirection": "row",
+          "marginTop": 16,
+        },
+        "rowFirst": {
+          "marginTop": 0,
+        },
+        "rowFirstAfterHeader": {
+          "marginTop": 16,
+        },
+        "rowGap": 16,
+        "rowMultiple": {
+          "flexDirection": "column",
+          "rowGap": 16,
+        },
+        "stacked": true,
+      },
+      "page": {
+        "elementWrapperMultiple": {
+          "paddingStart": 16,
+        },
+        "gutter": 16,
+        "row": {
+          "alignSelf": "stretch",
+          "flexDirection": "row",
+          "marginTop": 16,
+        },
+        "rowFirst": {
+          "marginTop": 0,
+        },
+        "rowFirstAfterHeader": {
+          "marginTop": 24,
+        },
+        "rowGap": 16,
+        "rowMultiple": {
+          "flexWrap": "wrap",
+          "marginStart": -16,
+          "rowGap": 16,
+        },
+        "stacked": false,
+      },
+      "pageNarrow": {
+        "elementWrapperMultiple": {},
+        "gutter": 16,
+        "row": {
+          "alignSelf": "stretch",
+          "flexDirection": "row",
+          "marginTop": 16,
+        },
+        "rowFirst": {
+          "marginTop": 0,
+        },
+        "rowFirstAfterHeader": {
+          "marginTop": 24,
+        },
+        "rowGap": 16,
+        "rowMultiple": {
+          "flexDirection": "column",
+          "rowGap": 16,
+        },
+        "stacked": true,
+      },
+    },
   },
   "unsupportedQuestion": {
     "fragments": {
@@ -1011,6 +1172,73 @@ exports[`curated recipe golden snapshots DefaultLight: recipes build to a stable
       },
     },
   },
+  "questionChrome": {
+    "fragments": {
+      "commentArea": {
+        "gap": 8,
+        "marginTop": 16,
+      },
+      "commentLabel": {
+        "color": "rgba(0, 0, 0, 0.91)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+      },
+      "contentLeft": {
+        "flex": 1,
+      },
+      "description": {
+        "color": "rgba(0, 0, 0, 0.45)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "fontWeight": "400",
+        "lineHeight": 24,
+      },
+      "descriptionUnderInput": {
+        "paddingTop": 12,
+      },
+      "descriptionUnderTitle": {
+        "marginTop": 4,
+      },
+      "errorItem": {
+        "color": "rgba(229, 10, 62, 1)",
+        "fontSize": 12,
+        "fontWeight": "600",
+        "lineHeight": 16,
+      },
+      "errorItemInfo": {
+        "color": "rgba(67, 127, 217, 1)",
+      },
+      "errorItemWarning": {
+        "color": "rgba(255, 152, 20, 1)",
+      },
+      "errorPanel": {
+        "backgroundColor": "rgba(229, 10, 62, 0.1)",
+        "borderRadius": 4,
+        "gap": 4,
+        "paddingHorizontal": 12,
+        "paddingVertical": 8,
+      },
+      "errorPanelAbove": {
+        "marginBottom": 8,
+      },
+      "errorPanelBelow": {
+        "marginTop": 8,
+      },
+      "errorPanelInfo": {
+        "backgroundColor": "rgba(67, 127, 217, 0.1)",
+      },
+      "errorPanelWarning": {
+        "backgroundColor": "rgba(255, 152, 20, 0.1)",
+      },
+      "headerLeft": {
+        "marginTop": 12,
+      },
+      "titleLeftRow": {
+        "columnGap": 24,
+        "flexDirection": "row",
+      },
+    },
+  },
   "questionTitle": {
     "fragments": {
       "collapsed": {
@@ -1281,6 +1509,100 @@ exports[`curated recipe golden snapshots DefaultLight: recipes build to a stable
       "unselected": "rgba(0, 0, 0, 0.16)",
     },
     "starIconSize": 48,
+  },
+  "row": {
+    "variants": {
+      "inner": {
+        "elementWrapperMultiple": {
+          "paddingStart": 40,
+        },
+        "gutter": 40,
+        "row": {
+          "alignSelf": "stretch",
+          "flexDirection": "row",
+          "marginTop": 32,
+        },
+        "rowFirst": {
+          "marginTop": 0,
+        },
+        "rowFirstAfterHeader": {
+          "marginTop": 32,
+        },
+        "rowGap": 32,
+        "rowMultiple": {
+          "flexWrap": "wrap",
+          "marginStart": -40,
+          "rowGap": 32,
+        },
+        "stacked": false,
+      },
+      "innerNarrow": {
+        "elementWrapperMultiple": {},
+        "gutter": 24,
+        "row": {
+          "alignSelf": "stretch",
+          "flexDirection": "row",
+          "marginTop": 16,
+        },
+        "rowFirst": {
+          "marginTop": 0,
+        },
+        "rowFirstAfterHeader": {
+          "marginTop": 16,
+        },
+        "rowGap": 16,
+        "rowMultiple": {
+          "flexDirection": "column",
+          "rowGap": 16,
+        },
+        "stacked": true,
+      },
+      "page": {
+        "elementWrapperMultiple": {
+          "paddingStart": 16,
+        },
+        "gutter": 16,
+        "row": {
+          "alignSelf": "stretch",
+          "flexDirection": "row",
+          "marginTop": 16,
+        },
+        "rowFirst": {
+          "marginTop": 0,
+        },
+        "rowFirstAfterHeader": {
+          "marginTop": 24,
+        },
+        "rowGap": 16,
+        "rowMultiple": {
+          "flexWrap": "wrap",
+          "marginStart": -16,
+          "rowGap": 16,
+        },
+        "stacked": false,
+      },
+      "pageNarrow": {
+        "elementWrapperMultiple": {},
+        "gutter": 16,
+        "row": {
+          "alignSelf": "stretch",
+          "flexDirection": "row",
+          "marginTop": 16,
+        },
+        "rowFirst": {
+          "marginTop": 0,
+        },
+        "rowFirstAfterHeader": {
+          "marginTop": 24,
+        },
+        "rowGap": 16,
+        "rowMultiple": {
+          "flexDirection": "column",
+          "rowGap": 16,
+        },
+        "stacked": true,
+      },
+    },
   },
   "unsupportedQuestion": {
     "fragments": {
@@ -1728,6 +2050,73 @@ exports[`curated recipe golden snapshots LayeredDark: recipes build to a stable 
       },
     },
   },
+  "questionChrome": {
+    "fragments": {
+      "commentArea": {
+        "gap": 8,
+        "marginTop": 16,
+      },
+      "commentLabel": {
+        "color": "rgba(213, 215, 238, 1)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+      },
+      "contentLeft": {
+        "flex": 1,
+      },
+      "description": {
+        "color": "rgba(117, 120, 140, 1)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "fontWeight": "400",
+        "lineHeight": 24,
+      },
+      "descriptionUnderInput": {
+        "paddingTop": 12,
+      },
+      "descriptionUnderTitle": {
+        "marginTop": 4,
+      },
+      "errorItem": {
+        "color": "rgba(254, 76, 108, 1)",
+        "fontSize": 12,
+        "fontWeight": "600",
+        "lineHeight": 16,
+      },
+      "errorItemInfo": {
+        "color": "rgba(91, 151, 242, 1)",
+      },
+      "errorItemWarning": {
+        "color": "rgba(255, 152, 20, 1)",
+      },
+      "errorPanel": {
+        "backgroundColor": "rgba(254, 76, 108, 0.1)",
+        "borderRadius": 4,
+        "gap": 4,
+        "paddingHorizontal": 12,
+        "paddingVertical": 8,
+      },
+      "errorPanelAbove": {
+        "marginBottom": 8,
+      },
+      "errorPanelBelow": {
+        "marginTop": 8,
+      },
+      "errorPanelInfo": {
+        "backgroundColor": "rgba(91, 151, 242, 0.1)",
+      },
+      "errorPanelWarning": {
+        "backgroundColor": "rgba(255, 152, 20, 0.1)",
+      },
+      "headerLeft": {
+        "marginTop": 12,
+      },
+      "titleLeftRow": {
+        "columnGap": 24,
+        "flexDirection": "row",
+      },
+    },
+  },
   "questionTitle": {
     "fragments": {
       "collapsed": {
@@ -2094,6 +2483,100 @@ exports[`curated recipe golden snapshots LayeredDark: recipes build to a stable 
       "unselected": "rgba(67, 69, 85, 1)",
     },
     "starIconSize": 48,
+  },
+  "row": {
+    "variants": {
+      "inner": {
+        "elementWrapperMultiple": {
+          "paddingStart": 40,
+        },
+        "gutter": 40,
+        "row": {
+          "alignSelf": "stretch",
+          "flexDirection": "row",
+          "marginTop": 32,
+        },
+        "rowFirst": {
+          "marginTop": 0,
+        },
+        "rowFirstAfterHeader": {
+          "marginTop": 32,
+        },
+        "rowGap": 32,
+        "rowMultiple": {
+          "flexWrap": "wrap",
+          "marginStart": -40,
+          "rowGap": 32,
+        },
+        "stacked": false,
+      },
+      "innerNarrow": {
+        "elementWrapperMultiple": {},
+        "gutter": 24,
+        "row": {
+          "alignSelf": "stretch",
+          "flexDirection": "row",
+          "marginTop": 16,
+        },
+        "rowFirst": {
+          "marginTop": 0,
+        },
+        "rowFirstAfterHeader": {
+          "marginTop": 16,
+        },
+        "rowGap": 16,
+        "rowMultiple": {
+          "flexDirection": "column",
+          "rowGap": 16,
+        },
+        "stacked": true,
+      },
+      "page": {
+        "elementWrapperMultiple": {
+          "paddingStart": 16,
+        },
+        "gutter": 16,
+        "row": {
+          "alignSelf": "stretch",
+          "flexDirection": "row",
+          "marginTop": 16,
+        },
+        "rowFirst": {
+          "marginTop": 0,
+        },
+        "rowFirstAfterHeader": {
+          "marginTop": 24,
+        },
+        "rowGap": 16,
+        "rowMultiple": {
+          "flexWrap": "wrap",
+          "marginStart": -16,
+          "rowGap": 16,
+        },
+        "stacked": false,
+      },
+      "pageNarrow": {
+        "elementWrapperMultiple": {},
+        "gutter": 16,
+        "row": {
+          "alignSelf": "stretch",
+          "flexDirection": "row",
+          "marginTop": 16,
+        },
+        "rowFirst": {
+          "marginTop": 0,
+        },
+        "rowFirstAfterHeader": {
+          "marginTop": 24,
+        },
+        "rowGap": 16,
+        "rowMultiple": {
+          "flexDirection": "column",
+          "rowGap": 16,
+        },
+        "stacked": true,
+      },
+    },
   },
   "unsupportedQuestion": {
     "fragments": {
@@ -2477,6 +2960,73 @@ exports[`curated recipe golden snapshots SharpDark: recipes build to a stable sn
       },
     },
   },
+  "questionChrome": {
+    "fragments": {
+      "commentArea": {
+        "gap": 8,
+        "marginTop": 16,
+      },
+      "commentLabel": {
+        "color": "rgba(255, 255, 255, 0.78)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+      },
+      "contentLeft": {
+        "flex": 1,
+      },
+      "description": {
+        "color": "rgba(255, 255, 255, 0.5)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "fontWeight": "400",
+        "lineHeight": 24,
+      },
+      "descriptionUnderInput": {
+        "paddingTop": 12,
+      },
+      "descriptionUnderTitle": {
+        "marginTop": 4,
+      },
+      "errorItem": {
+        "color": "rgba(254, 76, 108, 1)",
+        "fontSize": 12,
+        "fontWeight": "600",
+        "lineHeight": 16,
+      },
+      "errorItemInfo": {
+        "color": "rgba(91, 151, 242, 1)",
+      },
+      "errorItemWarning": {
+        "color": "rgba(255, 152, 20, 1)",
+      },
+      "errorPanel": {
+        "backgroundColor": "rgba(254, 76, 108, 0.1)",
+        "borderRadius": 4,
+        "gap": 4,
+        "paddingHorizontal": 12,
+        "paddingVertical": 8,
+      },
+      "errorPanelAbove": {
+        "marginBottom": 8,
+      },
+      "errorPanelBelow": {
+        "marginTop": 8,
+      },
+      "errorPanelInfo": {
+        "backgroundColor": "rgba(91, 151, 242, 0.1)",
+      },
+      "errorPanelWarning": {
+        "backgroundColor": "rgba(255, 152, 20, 0.1)",
+      },
+      "headerLeft": {
+        "marginTop": 12,
+      },
+      "titleLeftRow": {
+        "columnGap": 24,
+        "flexDirection": "row",
+      },
+    },
+  },
   "questionTitle": {
     "fragments": {
       "collapsed": {
@@ -2747,6 +3297,100 @@ exports[`curated recipe golden snapshots SharpDark: recipes build to a stable sn
       "unselected": "rgba(255, 255, 255, 0.22)",
     },
     "starIconSize": 48,
+  },
+  "row": {
+    "variants": {
+      "inner": {
+        "elementWrapperMultiple": {
+          "paddingStart": 40,
+        },
+        "gutter": 40,
+        "row": {
+          "alignSelf": "stretch",
+          "flexDirection": "row",
+          "marginTop": 32,
+        },
+        "rowFirst": {
+          "marginTop": 0,
+        },
+        "rowFirstAfterHeader": {
+          "marginTop": 32,
+        },
+        "rowGap": 32,
+        "rowMultiple": {
+          "flexWrap": "wrap",
+          "marginStart": -40,
+          "rowGap": 32,
+        },
+        "stacked": false,
+      },
+      "innerNarrow": {
+        "elementWrapperMultiple": {},
+        "gutter": 24,
+        "row": {
+          "alignSelf": "stretch",
+          "flexDirection": "row",
+          "marginTop": 16,
+        },
+        "rowFirst": {
+          "marginTop": 0,
+        },
+        "rowFirstAfterHeader": {
+          "marginTop": 16,
+        },
+        "rowGap": 16,
+        "rowMultiple": {
+          "flexDirection": "column",
+          "rowGap": 16,
+        },
+        "stacked": true,
+      },
+      "page": {
+        "elementWrapperMultiple": {
+          "paddingStart": 16,
+        },
+        "gutter": 16,
+        "row": {
+          "alignSelf": "stretch",
+          "flexDirection": "row",
+          "marginTop": 16,
+        },
+        "rowFirst": {
+          "marginTop": 0,
+        },
+        "rowFirstAfterHeader": {
+          "marginTop": 24,
+        },
+        "rowGap": 16,
+        "rowMultiple": {
+          "flexWrap": "wrap",
+          "marginStart": -16,
+          "rowGap": 16,
+        },
+        "stacked": false,
+      },
+      "pageNarrow": {
+        "elementWrapperMultiple": {},
+        "gutter": 16,
+        "row": {
+          "alignSelf": "stretch",
+          "flexDirection": "row",
+          "marginTop": 16,
+        },
+        "rowFirst": {
+          "marginTop": 0,
+        },
+        "rowFirstAfterHeader": {
+          "marginTop": 24,
+        },
+        "rowGap": 16,
+        "rowMultiple": {
+          "flexDirection": "column",
+          "rowGap": 16,
+        },
+        "stacked": true,
+      },
+    },
   },
   "unsupportedQuestion": {
     "fragments": {
@@ -3178,6 +3822,73 @@ exports[`curated recipe golden snapshots ThreeDimensionalLight: recipes build to
       },
     },
   },
+  "questionChrome": {
+    "fragments": {
+      "commentArea": {
+        "gap": 8,
+        "marginTop": 16,
+      },
+      "commentLabel": {
+        "color": "rgba(0, 0, 0, 0.91)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+      },
+      "contentLeft": {
+        "flex": 1,
+      },
+      "description": {
+        "color": "rgba(0, 0, 0, 0.45)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "fontWeight": "400",
+        "lineHeight": 24,
+      },
+      "descriptionUnderInput": {
+        "paddingTop": 12,
+      },
+      "descriptionUnderTitle": {
+        "marginTop": 4,
+      },
+      "errorItem": {
+        "color": "rgba(229, 10, 62, 1)",
+        "fontSize": 12,
+        "fontWeight": "600",
+        "lineHeight": 16,
+      },
+      "errorItemInfo": {
+        "color": "rgba(67, 127, 217, 1)",
+      },
+      "errorItemWarning": {
+        "color": "rgba(255, 152, 20, 1)",
+      },
+      "errorPanel": {
+        "backgroundColor": "rgba(229, 10, 62, 0.1)",
+        "borderRadius": 4,
+        "gap": 4,
+        "paddingHorizontal": 12,
+        "paddingVertical": 8,
+      },
+      "errorPanelAbove": {
+        "marginBottom": 8,
+      },
+      "errorPanelBelow": {
+        "marginTop": 8,
+      },
+      "errorPanelInfo": {
+        "backgroundColor": "rgba(67, 127, 217, 0.1)",
+      },
+      "errorPanelWarning": {
+        "backgroundColor": "rgba(255, 152, 20, 0.1)",
+      },
+      "headerLeft": {
+        "marginTop": 12,
+      },
+      "titleLeftRow": {
+        "columnGap": 24,
+        "flexDirection": "row",
+      },
+    },
+  },
   "questionTitle": {
     "fragments": {
       "collapsed": {
@@ -3496,6 +4207,100 @@ exports[`curated recipe golden snapshots ThreeDimensionalLight: recipes build to
       "unselected": "rgba(0, 0, 0, 0.08)",
     },
     "starIconSize": 48,
+  },
+  "row": {
+    "variants": {
+      "inner": {
+        "elementWrapperMultiple": {
+          "paddingStart": 40,
+        },
+        "gutter": 40,
+        "row": {
+          "alignSelf": "stretch",
+          "flexDirection": "row",
+          "marginTop": 32,
+        },
+        "rowFirst": {
+          "marginTop": 0,
+        },
+        "rowFirstAfterHeader": {
+          "marginTop": 32,
+        },
+        "rowGap": 32,
+        "rowMultiple": {
+          "flexWrap": "wrap",
+          "marginStart": -40,
+          "rowGap": 32,
+        },
+        "stacked": false,
+      },
+      "innerNarrow": {
+        "elementWrapperMultiple": {},
+        "gutter": 24,
+        "row": {
+          "alignSelf": "stretch",
+          "flexDirection": "row",
+          "marginTop": 16,
+        },
+        "rowFirst": {
+          "marginTop": 0,
+        },
+        "rowFirstAfterHeader": {
+          "marginTop": 16,
+        },
+        "rowGap": 16,
+        "rowMultiple": {
+          "flexDirection": "column",
+          "rowGap": 16,
+        },
+        "stacked": true,
+      },
+      "page": {
+        "elementWrapperMultiple": {
+          "paddingStart": 16,
+        },
+        "gutter": 16,
+        "row": {
+          "alignSelf": "stretch",
+          "flexDirection": "row",
+          "marginTop": 16,
+        },
+        "rowFirst": {
+          "marginTop": 0,
+        },
+        "rowFirstAfterHeader": {
+          "marginTop": 24,
+        },
+        "rowGap": 16,
+        "rowMultiple": {
+          "flexWrap": "wrap",
+          "marginStart": -16,
+          "rowGap": 16,
+        },
+        "stacked": false,
+      },
+      "pageNarrow": {
+        "elementWrapperMultiple": {},
+        "gutter": 16,
+        "row": {
+          "alignSelf": "stretch",
+          "flexDirection": "row",
+          "marginTop": 16,
+        },
+        "rowFirst": {
+          "marginTop": 0,
+        },
+        "rowFirstAfterHeader": {
+          "marginTop": 24,
+        },
+        "rowGap": 16,
+        "rowMultiple": {
+          "flexDirection": "column",
+          "rowGap": 16,
+        },
+        "stacked": true,
+      },
+    },
   },
   "unsupportedQuestion": {
     "fragments": {

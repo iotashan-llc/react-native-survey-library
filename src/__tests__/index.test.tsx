@@ -33,15 +33,20 @@ describe('index.tsx: registrar wiring (design: docs/design/0.5-factories.md)', (
   it('importing the package root registers the supported descriptor rows into both factories', () => {
     expect(RNQuestionFactory.getAllTypes()).toEqual([
       'boolean',
+      'checkbox',
+      'comment',
       'empty',
       'expression',
+      'radiogroup',
       'rating',
       'sv-boolean-checkbox',
       'sv-boolean-radio',
     ]);
     expect(RNElementFactory.getAllTypes()).toEqual([
+      'panel',
       'survey-header',
       'sv-logo-image',
+      'sv-page',
       'sv-rating-item',
       'sv-rating-item-smiley',
       'sv-rating-item-star',

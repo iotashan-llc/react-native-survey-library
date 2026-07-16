@@ -133,6 +133,150 @@ the defaults are generous (256KB source, 5000 nodes, 512KB of text,
 etc.). If legitimate content is hitting a bound, treat it as a signal to
 simplify the HTML rather than expecting the same rendering as web.
 
+## Scrolling & focus (task 1.2 — native lifecycle bridge)
+
+Web scrolls/focuses through the DOM (`scrollIntoView`, element focus).
+This library intercepts survey-core's single scroll/focus funnel
+(`onScrollToTop`) and drives the registered ScrollView + native inputs
+instead (`docs/design/1.2-lifecycle-bridge.md`).
+
+### `onScrollToTop`'s `allow` is locked `false` — consumers cannot re-allow
+
+On web a consumer handler may set `options.allow = true/false` to steer
+core's own DOM scrolling. Here the bridge owns scrolling: `allow` is
+locked `false` for the whole dispatch (a reassignment is ignored and
+surfaces the `allow-override-ignored` diagnostic). The event stays fully
+observable.
+
+**Workaround:** to suppress or customize the native scroll, use the
+renderer-level scroll event (`<Survey>`'s `onScrollToElement` prop, task
+1.1 — built on the bridge's `onScrollRequest` seam; returning `false`
+suppresses the native scroll only, focus still completes).
+
+### `Question.focus(onError, scrollIfVisible: true)` force-scroll is lost
+
+Web forwards `scrollIfVisible: true` down to `scrollIntoView`, forcing a
+scroll even when the question is already visible. The fired
+`ScrollToTopEvent` does not carry that flag, so the bridge always skips
+the scroll when the target is fully visible in the viewport. The focus
+itself still completes — only the redundant scroll motion differs.
+
+**Workaround:** none; if upstream adds the flag to the event, the bridge
+will honor it.
+
+### `question.focusIn()` fires from the native input's `onFocus`
+
+Web fires `focusIn` (→ `onFocusInQuestion`, `lastActiveQuestion`) from a
+DOM focus-bubble listener on the survey root. Here each input component
+fires `question.focusIn()` from its own `onFocus` handler (the
+`ElementHandle.focusFirst` ownership contract) — same event timing
+semantics (fires when focus actually lands, once per focus), different
+mechanism. Consumers observing `onFocusInQuestion` see equivalent
+behavior.
+
+## Element/row widths (task 1.3)
+
+Web hands survey-core's computed width strings (`SurveyElement.rootStyle`:
+`flexBasis`/`minWidth`/`maxWidth` as CSS text) straight to the browser's
+CSS engine. React Native has no CSS engine, so this library evaluates
+those strings itself (`src/layout/width-resolver.ts`) against the
+measured row width and gives Yoga plain numbers.
+
+### Supported width grammar (everything survey-core itself emits)
+
+| Form | Example | Notes |
+|---|---|---|
+| empty / `auto` | `""`, `"auto"` | constraint omitted |
+| bare number | `"250"`, `250` | treated as px (survey-core's own convention) |
+| px | `"300px"` | 1 CSS px = 1 dp |
+| percent | `"33.333333%"` | resolves against the measured row width (plus the inter-element gutter on multi-element rows, matching web's gutter geometry) |
+| `calc()` | `"calc((100% - 300px)/2)"` | `+ - * /` arithmetic with nested parens (the restricted calc type rules: `+`/`-` same-type, `*`/`/` need a plain number) |
+| `min()` / `max()` | `"min(100%, 300px)"` | n-ary, nestable inside `calc()` |
+
+Numbers are CSS number tokens — signed and scientific forms parse
+(`"+10px"`, `"-10px"`, `"1e2px"`; survey-core emits these for numeric
+user widths like `"+10"` or `"1e2"`). Two deliberate deviations from a
+browser's CSS engine, both to honor survey-core's own conventions:
+
+- **Bare numbers mean px even inside `min()`/`max()`** — survey-core
+  emits `min(100%, 250)` for a numeric user `minWidth`, which a browser
+  discards as a type error; this library reads it as 250dp. (So
+  `min(1, 300px)` is 1dp here, where web would drop the constraint.)
+- **Hex/locale-decimal numerics are NOT parsed** — survey-core's
+  numeric check also lets `"0x10"` / `"10,5"` through (emitting
+  `"0x10px"` / `"10,5px"`); those degrade per-property with a
+  diagnostic, same as any invalid value.
+
+Because widths resolve against a *measured* container, a row's children
+render one frame after the row's first `onLayout` (imperceptible in
+practice; web computes the same values in its layout pass instead).
+
+### Unsupported units degrade per-property, never crash
+
+Any other CSS unit in a user-set `width`/`minWidth`/`maxWidth` — `em`,
+`rem`, `vw`, `vh`, `pt`, `ch`, viewport/font-relative units in general —
+and any unparseable value (web lets the browser silently discard those)
+produce structured diagnostic data (`layout/unsupported-width-unit` /
+`layout/invalid-width`, returned by the resolver; the row renderer —
+task 1.4 — forwards them, deduplicated, through the standard
+diagnostics seam) and drop just that one constraint: the element falls
+back to sharing the row like an unsized element. All other constraints
+on the same element keep working.
+
+**Workaround:** express element widths in `px`, `%`, or the `calc()`/
+`min()`/`max()` combinations of those — the only forms survey-core's own
+row math ever generates.
+
+## Page/panel/row composition (task 1.4)
+
+### Lazy rendering is not supported
+
+`survey.lazyRendering` (and `lazyRenderingFirstBatchSize`) is driven by
+DOM scroll observation (`ScrollableContainer`/IntersectionObserver on
+web); there is no RN equivalent wired, so rows always render eagerly
+and no skeleton placeholders exist. Surveys that enable it still work —
+the flag simply has no effect.
+
+### `afterRender*` events never fire
+
+The web renderer calls `survey.afterRenderSurvey/afterRenderPage/
+afterRenderQuestion` with live DOM nodes during render lifecycles. This
+renderer never does (there are no DOM nodes, and the render-phase side
+effects violate React 19 contracts). Hosts that used `onAfterRender*`
+events for styling should use theme JSON; for focus/scroll behavior see
+the next item.
+
+### Expand/add scroll-to-element rides the lifecycle bridge
+
+survey-core schedules internal scroll-to-element timers on
+`panel.expand()`, dynamic element adds (`addNewQuestion`/`addElement`
+with focus), and page changes. All of them funnel through
+`onScrollToTop`, which the native lifecycle bridge intercepts (see the
+"Scrolling & focus" section above). Without a bridge-registered
+ScrollView the request is safely inert — the facade's environment stub
+keeps core's DOM scroll path from throwing, and nothing scrolls.
+
+### Row enter/leave animations are not carried
+
+Core disallows animations headless (the renderer never calls
+`enableOnElementRerenderedEvent()`), so `.sd-row--enter/--leave`
+fade/slide transitions do not occur. Rows appear and disappear
+immediately on visibility/membership changes.
+
+### Narrow-mode multi-element rows stack explicitly
+
+On the web, side-by-side questions collapse to one-per-line on narrow
+screens *emergently*: each element's `min-width: min(100%, var(--min-width))`
+forces `flex-wrap` onto its own line, and `flex-grow: 1` fills it. That
+path needs CSS `min()`/percentages resolved at layout time, which the
+all-numeric RN width resolver deliberately does not have. Instead,
+narrow mode (the theme provider's `narrow` prop, driven by the survey
+root's own width measurement) is an explicit switch: multi-element rows
+render as a vertical stack of full-width children separated by the
+row-gap metric. While stacked, per-element `width`/`minWidth`/`maxWidth`
+are not consulted — a web element whose explicit `max-width` would have
+kept it narrower than its line renders full-width here.
+
 ## Icons (task 1.5)
 
 Web renders icons as `<svg><use xlink:href="#icon-x"/></svg>` against a
@@ -229,3 +373,68 @@ diagnostic seam) when a survey or question requested
 `textUpdateMode: "onTyping"` on a masked question. Per-keystroke mask
 formatting of the visible text (the web `InputElementAdapter` role)
 arrives with the text question component (task 1.10).
+
+## Comment / radiogroup / checkbox questions (tasks 1.11, 1.12)
+
+### `acceptCarriageReturn:false` filters newlines from typed text instead of intercepting the keypress
+
+Web prevents the Enter keydown at the DOM level (`event.preventDefault()`
+in `QuestionCommentModel.onKeyDown`), so a newline never enters the
+`<textarea>` buffer. RN's `TextInput` has no equivalent way to intercept
+a keypress and stop it from mutating the text buffer for a multiline
+field. This library reaches the same end state — no newline ever
+visible or committed — by stripping `\r`/`\n`/`\r\n` from the typed text
+inside `onChangeText` before it reaches the draft/commit adapter. The
+observable difference is only during composition on some IME keyboards
+where a newline could theoretically flash before being stripped; the
+committed value and the settled draft are identical to web.
+
+### No resize handle for the comment area
+
+Web's `allowResizeComment`/`Question.allowResize` renders a
+user-draggable resize handle on the `<textarea>`. RN has no native
+equivalent gesture primitive wired for this in v1, so the comment
+question always sizes itself the same way regardless of
+`allowResize`/`resizeStyle` (only `autoGrow` — content-driven growth via
+`onContentSizeChange` — is honored).
+
+### Read-only text never renders as plain text (`isReadOnlyRenderDiv` not ported)
+
+Web can optionally render a read-only text/comment question as a plain
+`<div>` instead of a disabled `<textarea>`/`<input>`
+(`settings.readOnly.textRenderMode === "div"`). This library always
+renders the same `TextInput`/item controls with `editable={false}`,
+styled via the read-only recipe fragment, regardless of that setting.
+
+### Choice items render without a dedicated icon primitive (v1)
+
+The checked-state checkmark (checkbox) and filled dot (radiogroup) are
+drawn as plain native glyphs (a `✓` `Text` / a small filled `View`)
+sized and colored from the item recipe's `iconSize`/`iconFills` tokens,
+rather than through a shared icon primitive — task 1.5's `RNIcon`
+had not landed when this task shipped. Swapping in a real icon
+component later is a presentation-only change; no model or state
+contract depends on the glyph shape.
+
+### Columns are a flat N-column flex-wrap grid, not upstream's column-item redistribution
+
+Web's `colCount > 1` layout (`getColumnsWithColumnItemFlow`/
+`getColumnsWithRowItemFlow`) redistributes items into column-major or
+row-major buckets with per-column DOM containers. This library's v1
+implementation is a simple flex-wrap grid: each item gets a
+`${100 / colCount}%`-wide container inside a `flexWrap: 'wrap'` row.
+Visually equivalent item ordering for small choice lists; upstream's
+exact column-balancing algorithm is not reproduced.
+
+### "Other" item free text uses its own draft/commit adapter, not the primary text adapter
+
+The checkbox/radiogroup "Other (describe)" comment field commits through
+`question.otherValue` — a different model surface than the primary
+`value`/`inputValue` the task-1.9 `DraftCommitAdapter` is scoped to, and
+one whose backing store is mode-dependent (the `comment` property when
+`storeOthersAsComment` is true — the default — or the `otherValue`
+property plus the value itself when false). A sibling adapter
+(`OtherCommentDraftAdapter`) mirrors the same draft/commit timing
+(`isInputTextUpdate` gates per-keystroke commit; blur always commits)
+and subscribes to both backing properties so external writes stay live
+in either mode — functionally equivalent to web, implemented separately.
