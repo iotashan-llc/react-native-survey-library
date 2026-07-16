@@ -52,6 +52,7 @@ import {
   RatingStarItem,
 } from '../questions/RatingQuestion';
 import { TextQuestion } from '../questions/TextQuestion';
+import { ImageQuestion } from '../questions/ImageQuestion';
 
 export type DescriptorRoute = 'template' | 'renderer' | 'element';
 
@@ -204,6 +205,15 @@ export const DESCRIPTOR_TABLE: readonly Descriptor[] = [
     route: 'template',
     component: () => RatingQuestion,
     milestone: 'M1',
+  },
+  // Task 2.10 — image question (static display + scaling modes).
+  {
+    status: 'supported',
+    questionType: 'image',
+    dispatchKey: 'image',
+    route: 'template',
+    component: () => ImageQuestion,
+    milestone: 'M2',
   },
   {
     status: 'supported',

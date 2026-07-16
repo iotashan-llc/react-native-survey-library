@@ -37,6 +37,7 @@ describe('index.tsx: registrar wiring (design: docs/design/0.5-factories.md)', (
       'comment',
       'empty',
       'expression',
+      'image',
       'radiogroup',
       'rating',
       'sv-boolean-checkbox',

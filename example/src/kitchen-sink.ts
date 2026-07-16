@@ -155,6 +155,15 @@ export const kitchenSinkJson = {
           rateValues: ['solo', 'small', 'medium', 'large'],
         },
         {
+          type: 'image',
+          name: 'heroImage',
+          imageLink: LOGO_DATA_URI,
+          imageFit: 'contain',
+          imageWidth: '96',
+          imageHeight: '96',
+          altText: 'Sample image (task 2.10)',
+        },
+        {
           type: 'panel',
           name: 'scores',
           title: 'Computed (expression)',
