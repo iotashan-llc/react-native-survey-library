@@ -54,6 +54,21 @@ import type {
 import { extractModelEventProps, wireModelEventProps } from './event-props';
 import type { ExtractedEventProps, SurveyModelEventProps } from './event-props';
 import { evaluateWidthExpression } from '../layout/width-resolver';
+import { SurveyHeader } from '../components/SurveyHeader';
+import { SurveyProgressBar } from '../components/SurveyProgressBar';
+import { SurveyNavigation } from '../components/SurveyNavigation';
+import { SurveyStateFrame } from '../components/SurveyStateFrame';
+
+/**
+ * The shell's `ISurveyCreator` stand-in, threaded through page → row →
+ * question dispatch. The RN dispatch chain never calls creator METHODS
+ * (rows dispatch through the descriptor factories directly — upstream's
+ * `createQuestionElement` role), but `QuestionElementBase.canRender`
+ * requires a truthy creator (upstream parity) — omitting it renders
+ * every question null (the 1.17 kitchen-sink regression). Frozen, stable
+ * identity: never re-created across renders.
+ */
+const SHELL_CREATOR = Object.freeze({});
 
 /** RN-level scroll-interception event (design note, "Bridge wiring"),
  * delivered through the bridge's `onScrollRequest` consult seam.
@@ -373,9 +388,18 @@ class SurveyRoot extends SurveyElementBase<SurveyRootProps> {
               onLayout={this.handleScrollLayout}
               scrollEventThrottle={16}
             >
-              {presentingPages
-                ? this.renderActivePage()
-                : this.renderNonRunningState(state)}
+              {/* Shell assembly (task 1.17): header always (its own
+                  renderedHasHeader gate applies); progress + nav only
+                  while pages present; the state frame owns completed/
+                  completedBefore/loading/empty. */}
+              <SurveyHeader survey={survey} />
+              {presentingPages ? <SurveyProgressBar survey={survey} /> : null}
+              {presentingPages ? (
+                this.renderActivePage()
+              ) : (
+                <SurveyStateFrame survey={survey} />
+              )}
+              {presentingPages ? <SurveyNavigation survey={survey} /> : null}
             </ScrollView>
           </View>
         </View>
@@ -394,13 +418,11 @@ class SurveyRoot extends SurveyElementBase<SurveyRootProps> {
     const key =
       (survey as SurveyModel & { pageComponent?: string }).pageComponent ||
       'sv-page';
-    return RNElementFactory.createElement(key, { survey, page });
-  }
-
-  /** Seam for task 1.8: completion/completed-before/loading/empty states
-   * render nothing in the v0.1 shell. */
-  protected renderNonRunningState(_state: string): React.JSX.Element | null {
-    return null;
+    return RNElementFactory.createElement(key, {
+      survey,
+      page,
+      creator: SHELL_CREATOR,
+    });
   }
 }
 
