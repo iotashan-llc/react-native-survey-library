@@ -260,24 +260,37 @@ describe('<Survey> ref handle', () => {
 describe('<Survey> responsive narrow', () => {
   it('root layout below 600pt wide calls survey.setIsMobile(true); wide layout resets it', () => {
     const model = new Model(JSON_A);
+    // setIsMobile is deferred one macrotask (task 1.16: the write must
+    // land outside the commit batch that opens subscriber mount windows).
+    jest.useFakeTimers();
     const calls: Array<boolean | undefined> = [];
     jest.spyOn(model, 'setIsMobile').mockImplementation((v?: boolean) => {
       calls.push(v);
     });
-    const { getByTestId } = render(<Survey model={model} />);
-    const root = getByTestId('survey-root');
-    act(() => {
-      root.props.onLayout({
-        nativeEvent: { layout: { width: 400, height: 800, x: 0, y: 0 } },
+    try {
+      const { getByTestId } = render(<Survey model={model} />);
+      const root = getByTestId('survey-root');
+      act(() => {
+        root.props.onLayout({
+          nativeEvent: { layout: { width: 400, height: 800, x: 0, y: 0 } },
+        });
       });
-    });
-    expect(calls[calls.length - 1]).toBe(true);
-    act(() => {
-      root.props.onLayout({
-        nativeEvent: { layout: { width: 900, height: 800, x: 0, y: 0 } },
+      act(() => {
+        jest.advanceTimersByTime(1);
       });
-    });
-    expect(calls[calls.length - 1]).toBe(false);
+      expect(calls[calls.length - 1]).toBe(true);
+      act(() => {
+        root.props.onLayout({
+          nativeEvent: { layout: { width: 900, height: 800, x: 0, y: 0 } },
+        });
+      });
+      act(() => {
+        jest.advanceTimersByTime(1);
+      });
+      expect(calls[calls.length - 1]).toBe(false);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 });
 

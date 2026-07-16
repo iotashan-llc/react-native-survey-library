@@ -43,7 +43,18 @@ export class Radiogroup extends QuestionElementBase<RadiogroupProps> {
           : { flexDirection: 'column' as const };
 
     return (
-      <View testID="radiogroup-items" style={containerStyle}>
+      <View
+        testID="radiogroup-items"
+        // Core defines the input role as radiogroup
+        // (a11y_input_ariaRole, question_radiogroup.ts:95-97); items keep
+        // their individual radio/checked semantics (task 1.16).
+        accessibilityRole="radiogroup"
+        accessibilityLabel={
+          (question as unknown as { a11y_input_ariaLabel: string | null })
+            .a11y_input_ariaLabel ?? question.processedTitle
+        }
+        style={containerStyle}
+      >
         {question.visibleChoices.map((item) => (
           <View
             key={item.uniqueId}

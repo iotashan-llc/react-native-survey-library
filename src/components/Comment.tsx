@@ -184,6 +184,7 @@ export class Comment extends QuestionElementBase<CommentProps, CommentState> {
       <View>
         <TextInput
           testID="comment-input"
+          accessibilityLabel={question.processedTitle || question.name}
           multiline
           value={this.adapter.renderedValue}
           editable={!readOnly}

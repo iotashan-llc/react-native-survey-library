@@ -628,7 +628,14 @@ export const Survey = React.forwardRef<SurveyRefHandle, SurveyProps>(
     });
 
     // Responsive ownership (provider doc): narrow -> model.setIsMobile.
-    // Live-entry read, same rationale as the theme effect above.
+    // Live-entry read, same rationale as the theme effect above. The
+    // write is DEFERRED one macrotask: this effect runs in the same
+    // commit batch that mounts subscriber components (their D4
+    // mount-commit window is still open), and `setIsMobile` fans out a
+    // `_isMobile` property notification — deferring moves the mutation
+    // after the batch so the dev-only render-to-commit invariant warning
+    // never fires for the renderer's own responsive plumbing (task 1.16
+    // polish; behavior unchanged — core no-ops equal values).
     React.useEffect(() => {
       const liveModel = entryRef.current?.model ?? null;
       if (!liveModel) {
@@ -641,8 +648,11 @@ export const Survey = React.forwardRef<SurveyRefHandle, SurveyProps>(
       ) {
         return;
       }
-      liveModel.setIsMobile(narrow);
       isMobileRef.current = { model: liveModel, narrow };
+      const timer = setTimeout(() => {
+        if (!liveModel.isDisposed) liveModel.setIsMobile(narrow);
+      }, 0);
+      return () => clearTimeout(timer);
     });
 
     React.useImperativeHandle(ref, () => ({

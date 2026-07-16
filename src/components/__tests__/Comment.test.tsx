@@ -209,3 +209,13 @@ describe('Comment', () => {
     expect(focusInSpy).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('Comment — input accessibility (task 1.16)', () => {
+  it('the TextInput carries the question label (parity with TextQuestion)', () => {
+    const question = createComment({ title: 'Tell us more' });
+    render(<Comment question={question} creator={{}} />);
+    expect(screen.getByTestId('comment-input').props.accessibilityLabel).toBe(
+      'Tell us more'
+    );
+  });
+});
