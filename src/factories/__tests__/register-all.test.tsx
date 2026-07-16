@@ -181,14 +181,20 @@ describe('registerAll (module side effect)', () => {
 
     expect(RNQuestionFactory.getAllTypes()).toEqual([
       'boolean',
+      'checkbox',
+      'comment',
       'empty',
       'expression',
+      'radiogroup',
       'sv-boolean-checkbox',
       'sv-boolean-radio',
+      'text',
     ]);
     expect(RNElementFactory.getAllTypes()).toEqual([
+      'panel',
       'survey-header',
       'sv-logo-image',
+      'sv-page',
       'sv-string-viewer',
     ]);
   });

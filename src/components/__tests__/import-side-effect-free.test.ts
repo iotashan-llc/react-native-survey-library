@@ -34,8 +34,13 @@ describe('component modules are import-side-effect-free', () => {
   it.each([
     ['../EmptyQuestion'],
     ['../UnsupportedQuestion'],
+    ['../Comment'],
+    ['../Checkbox'],
+    ['../Radiogroup'],
+    ['../ChoiceItemRow'],
     ['../../questions/BooleanQuestion'],
     ['../../questions/ExpressionQuestion'],
+    ['../../questions/TextQuestion'],
   ])('importing %s registers nothing into either factory', (modulePath) => {
     const { questionTypes, elementTypes } =
       factoryStateAfterImporting(modulePath);
@@ -49,10 +54,14 @@ describe('component modules are import-side-effect-free', () => {
     );
     expect(questionTypes).toEqual([
       'boolean',
+      'checkbox',
+      'comment',
       'empty',
       'expression',
+      'radiogroup',
       'sv-boolean-checkbox',
       'sv-boolean-radio',
+      'text',
     ]);
   });
 });

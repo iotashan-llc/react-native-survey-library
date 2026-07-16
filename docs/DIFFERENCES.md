@@ -271,6 +271,56 @@ on the same element keep working.
 `min()`/`max()` combinations of those — the only forms survey-core's own
 row math ever generates.
 
+## Page/panel/row composition (task 1.4)
+
+### Lazy rendering is not supported
+
+`survey.lazyRendering` (and `lazyRenderingFirstBatchSize`) is driven by
+DOM scroll observation (`ScrollableContainer`/IntersectionObserver on
+web); there is no RN equivalent wired, so rows always render eagerly
+and no skeleton placeholders exist. Surveys that enable it still work —
+the flag simply has no effect.
+
+### `afterRender*` events never fire
+
+The web renderer calls `survey.afterRenderSurvey/afterRenderPage/
+afterRenderQuestion` with live DOM nodes during render lifecycles. This
+renderer never does (there are no DOM nodes, and the render-phase side
+effects violate React 19 contracts). Hosts that used `onAfterRender*`
+events for styling should use theme JSON; for focus/scroll behavior see
+the next item.
+
+### Expand/add scroll-to-element rides the lifecycle bridge
+
+survey-core schedules internal scroll-to-element timers on
+`panel.expand()`, dynamic element adds (`addNewQuestion`/`addElement`
+with focus), and page changes. All of them funnel through
+`onScrollToTop`, which the native lifecycle bridge intercepts (see the
+"Scrolling & focus" section above). Without a bridge-registered
+ScrollView the request is safely inert — the facade's environment stub
+keeps core's DOM scroll path from throwing, and nothing scrolls.
+
+### Row enter/leave animations are not carried
+
+Core disallows animations headless (the renderer never calls
+`enableOnElementRerenderedEvent()`), so `.sd-row--enter/--leave`
+fade/slide transitions do not occur. Rows appear and disappear
+immediately on visibility/membership changes.
+
+### Narrow-mode multi-element rows stack explicitly
+
+On the web, side-by-side questions collapse to one-per-line on narrow
+screens *emergently*: each element's `min-width: min(100%, var(--min-width))`
+forces `flex-wrap` onto its own line, and `flex-grow: 1` fills it. That
+path needs CSS `min()`/percentages resolved at layout time, which the
+all-numeric RN width resolver deliberately does not have. Instead,
+narrow mode (the theme provider's `narrow` prop, driven by the survey
+root's own width measurement) is an explicit switch: multi-element rows
+render as a vertical stack of full-width children separated by the
+row-gap metric. While stacked, per-element `width`/`minWidth`/`maxWidth`
+are not consulted — a web element whose explicit `max-width` would have
+kept it narrower than its line renders full-width here.
+
 ## Icons (task 1.5)
 
 Web renders icons as `<svg><use xlink:href="#icon-x"/></svg>` against a
@@ -367,3 +417,203 @@ diagnostic seam) when a survey or question requested
 `textUpdateMode: "onTyping"` on a masked question. Per-keystroke mask
 formatting of the visible text (the web `InputElementAdapter` role)
 arrives with the text question component (task 1.10).
+
+## Text question rendering (task 1.10)
+
+The `text` question renders as a native `TextInput` for all 13
+`inputType`s survey-core allows (settings.ts `questions.inputTypes`).
+Web delegates each `inputType` to the browser's own `<input type=…>`
+widget; React Native has no such per-type widget set, so the mapping is
+explicit — and where no native affordance exists yet, the field falls
+back to plain text rather than approximating one.
+
+### Text input inputType fallbacks
+
+`text`, `email`, `url`, `tel`, `number`, and `password` get real native
+affordances (keyboard type, autofill hints, secure entry). The other
+seven — `date`, `datetime-local`, `time`, `month`, `week`, `color`, and
+`range` — render as plain text fields in v1: no native date/time
+picker, no color swatch, no slider. Core's VALUE-level validation
+(min/max/step, required, validators) runs at commit time exactly as on
+web; the FORMAT guarantee a browser widget provides is a different
+story — see the next section.
+
+**Migration path:** native date/time pickers are scheduled for M5 and
+`range` gets a real slider in task 4.4 (see
+`docs/IMPLEMENTATION-PLAN.md`); until then hosts needing a picker UX
+should use a custom question or collect the value as text.
+
+### Date/time fallback types: format validation is component-side, not browser-side
+
+On web, `date`/`datetime-local`/`time`/`month`/`week` inputs are native
+widgets with a hard contract: the committed value is either
+format-valid or `""`. Unparseable text never reaches the model — the
+DOM reads it as `input.value === ""` with `validity.badInput` set, and
+core surfaces an "Invalid input" error from `validity.badInput` plus
+the browser's `validationMessage` (fed through `onKeyUp` into
+`dateValidationMessage`). RN has no DOM validity, no
+`validationMessage`, and no keyup pipeline, so the renderer reproduces
+the contract itself (`src/questions/dateTimeFallback.ts`, WHATWG-shaped
+format checks):
+
+- **Commit guard (all five types):** text that fails the HTML format
+  check for its `inputType` commits as `""` at blur/submit — web
+  parity: the DOM would have read `""` too. Mid-typing commits
+  (`textUpdateMode: "onTyping"`) of in-progress partials are simply
+  skipped (not `""`-committed), so typing `2024-0…` toward a valid
+  month neither commits garbage nor clears the field mid-edit. This
+  guard is also a crash guard: committing an unparseable `month` string
+  into an unmodified survey-core THROWS (`correctValueType` calls
+  `createDate(...).toISOString()` on it), and `datetime-local` hits the
+  same path under `settings.storeUtcDates`.
+- **Error surface, `date` / `datetime-local`:** the format verdict is
+  routed through core's own PUBLIC `onKeyUp` handler (the exact handler
+  web wires), which stamps `dateValidationMessage`; core's
+  `onCheckForErrors` then reports "Invalid input"
+  (`invalidInputErrorText`, localized) at validation time. Same error,
+  same text, same timing as web.
+- **Error surface, `time` / `month` / `week`: none (divergence).**
+  Core's `isDateInputType` covers only `date`/`datetime-local`, so
+  there is no sanctioned seam to surface a format error for these three
+  without patching core. Discarded input emits the once-per-question
+  `datetime-fallback-invalid-discarded` diagnostic (standard diagnostic
+  seam) instead of a user-visible error. Hosts that need a visible
+  error today should add a `regex` validator; web surfaces
+  "Invalid input" via DOM validity here, RN does not.
+- **Field display after a discarded commit (divergence):** web keeps
+  the unparseable text visible in the widget while the value reads
+  `""`; RN's controlled field syncs to the committed model value at
+  blur, so the field visibly clears. The value-level outcome is
+  identical.
+
+### Masked inputs: the maxLength cap is applied after formatting, not by the native prop
+
+Web's mask adapter truncates the FORMATTED value to the input's
+`maxlength` before writing it back (`InputElementAdapter.
+setInputValue`): a mask can restore literals and placeholders past the
+raw edit's length, so the cap has to run post-format. RN's native
+`maxLength` prop caps the RAW edit BEFORE the mask runs — at the limit
+it would swallow legitimate mid-string edits (a fixed-length pattern
+mask momentarily exceeds the limit while shifting digits) and cannot
+cap what `processInput` expands. So for masked questions the native
+`maxLength` prop is intentionally omitted and the renderer applies
+web's post-format cap itself (`applyMaskedEdit`), truncating the
+formatted draft and clamping the caret. Unmasked questions keep the
+native prop. Same observable limit as web through typing and deletion;
+the only divergence is which layer enforces it.
+
+### Masked inputs and IME composition: best-effort, single-frame caret control
+
+Web defers value updates around IME composition using DOM composition
+events and the keyCode-229 dance; RN 0.86 exposes NO composition
+events (`onTextInput` is gone from the New Architecture API), so a
+true "defer masking while composing" is not implementable. The
+renderer minimizes interference instead:
+
+- The `TextInput` is never left permanently selection-controlled. The
+  caret is forced only for the single frame after the mask actually
+  reshapes an edit, and control is released back to the native layer on
+  the next selection event (one-shot).
+- Edits the mask accepts verbatim never touch the `selection` prop at
+  all — plain digit entry through a numeric/currency mask stays fully
+  native-owned.
+- Pre-edit selection tracking (`onSelectionChange`) reconstructs web's
+  `beforeinput` args (`createArgs`) exactly, including
+  repeated-character edits a bare text diff cannot locate.
+
+**Residual divergence:** composing multi-keystroke IME text directly
+into a masked field (e.g. CJK input) can still have the composition
+interrupted when the mask rejects or reshapes the composed fragment
+mid-flight — on web the mask adapter's `beforeinput`+`preventDefault`
+interception is similarly hostile to composition inside masked fields,
+but the failure shape differs (web cancels the insert; RN may reset
+the composition). Mask vocabularies are effectively ASCII
+(numeric/currency/datetime/pattern), so this affects only IME entry of
+characters the mask would reject anyway.
+
+### `min`/`max`/`step` render no widget affordance
+
+Web's `<input type="number">` (and date/range types) surface
+`min`/`max`/`step` as browser-native UI: spinners that stop at the
+bounds, sliders with a fixed track, date pickers that grey out
+out-of-range dates. RN's `TextInput` has no equivalent attribute-level
+affordance, so `renderedMin`/`renderedMax`/`renderedStep` do not change
+what is rendered. The underlying VALUE validation is unaffected — core
+enforces min/max/step at commit time (`isValueLessMin`,
+`isValueGreaterMax`, `isStepNumberIncorrect`) exactly as on web, where
+that validation also runs independently of the browser affordance.
+
+### `autocomplete` tokens pass through on an exact allowlist
+
+`question.autocomplete` carries an HTML autocomplete token. RN's
+`TextInput.autoComplete` accepts its own (overlapping) vocabulary, so
+tokens are passed through only when RN recognizes them verbatim
+(`email`, `tel`, `given-name`, `cc-number`, `off`, …); unmapped tokens
+are dropped silently — the prop is omitted and RN/the OS fall back to
+their own autofill heuristics. No token is ever guessed or remapped to
+a "closest" RN value.
+
+## Comment / radiogroup / checkbox questions (tasks 1.11, 1.12)
+
+### `acceptCarriageReturn:false` filters newlines from typed text instead of intercepting the keypress
+
+Web prevents the Enter keydown at the DOM level (`event.preventDefault()`
+in `QuestionCommentModel.onKeyDown`), so a newline never enters the
+`<textarea>` buffer. RN's `TextInput` has no equivalent way to intercept
+a keypress and stop it from mutating the text buffer for a multiline
+field. This library reaches the same end state — no newline ever
+visible or committed — by stripping `\r`/`\n`/`\r\n` from the typed text
+inside `onChangeText` before it reaches the draft/commit adapter. The
+observable difference is only during composition on some IME keyboards
+where a newline could theoretically flash before being stripped; the
+committed value and the settled draft are identical to web.
+
+### No resize handle for the comment area
+
+Web's `allowResizeComment`/`Question.allowResize` renders a
+user-draggable resize handle on the `<textarea>`. RN has no native
+equivalent gesture primitive wired for this in v1, so the comment
+question always sizes itself the same way regardless of
+`allowResize`/`resizeStyle` (only `autoGrow` — content-driven growth via
+`onContentSizeChange` — is honored).
+
+### Read-only text never renders as plain text (`isReadOnlyRenderDiv` not ported)
+
+Web can optionally render a read-only text/comment question as a plain
+`<div>` instead of a disabled `<textarea>`/`<input>`
+(`settings.readOnly.textRenderMode === "div"`). This library always
+renders the same `TextInput`/item controls with `editable={false}`,
+styled via the read-only recipe fragment, regardless of that setting.
+
+### Choice items render without a dedicated icon primitive (v1)
+
+The checked-state checkmark (checkbox) and filled dot (radiogroup) are
+drawn as plain native glyphs (a `✓` `Text` / a small filled `View`)
+sized and colored from the item recipe's `iconSize`/`iconFills` tokens,
+rather than through a shared icon primitive — task 1.5's `RNIcon`
+had not landed when this task shipped. Swapping in a real icon
+component later is a presentation-only change; no model or state
+contract depends on the glyph shape.
+
+### Columns are a flat N-column flex-wrap grid, not upstream's column-item redistribution
+
+Web's `colCount > 1` layout (`getColumnsWithColumnItemFlow`/
+`getColumnsWithRowItemFlow`) redistributes items into column-major or
+row-major buckets with per-column DOM containers. This library's v1
+implementation is a simple flex-wrap grid: each item gets a
+`${100 / colCount}%`-wide container inside a `flexWrap: 'wrap'` row.
+Visually equivalent item ordering for small choice lists; upstream's
+exact column-balancing algorithm is not reproduced.
+
+### "Other" item free text uses its own draft/commit adapter, not the primary text adapter
+
+The checkbox/radiogroup "Other (describe)" comment field commits through
+`question.otherValue` — a different model surface than the primary
+`value`/`inputValue` the task-1.9 `DraftCommitAdapter` is scoped to, and
+one whose backing store is mode-dependent (the `comment` property when
+`storeOthersAsComment` is true — the default — or the `otherValue`
+property plus the value itself when false). A sibling adapter
+(`OtherCommentDraftAdapter`) mirrors the same draft/commit timing
+(`isInputTextUpdate` gates per-keystroke commit; blur always commits)
+and subscribes to both backing properties so external writes stay live
+in either mode — functionally equivalent to web, implemented separately.
