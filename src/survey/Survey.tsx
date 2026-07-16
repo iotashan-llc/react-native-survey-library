@@ -219,8 +219,13 @@ class SurveyRoot extends SurveyElementBase<SurveyRootProps> {
     const survey = this.props.survey;
     const state = survey.state;
     const page = survey.activePage;
-    if (!page) return;
-    if (state !== 'running' && state !== 'starting' && state !== 'preview') {
+    const presenting =
+      state === 'running' || state === 'starting' || state === 'preview';
+    if (!page || !presenting) {
+      // Reset the gate whenever no page presents (review round 3): a
+      // completed→clear() round-trip re-mounts the SAME PageModel and
+      // must re-fire the render-complete for it.
+      this.lastAfterRenderPage = null;
       return;
     }
     if (page === this.lastAfterRenderPage) return;

@@ -327,6 +327,30 @@ describe('<Survey> render-complete: core afterRenderPage machine (review round 1
     expect(spy).toHaveBeenCalledTimes(2);
   });
 
+  it('a same-PageModel remount after completed→clear() re-fires render-complete (gate resets when no page presents — review round 3)', () => {
+    const onePage = {
+      pages: [{ name: 'only', elements: [{ type: 'text', name: 'q1' }] }],
+    };
+    const model = new Model(onePage);
+    const spy = jest
+      .spyOn(
+        model as unknown as { afterRenderPage(el: unknown): void },
+        'afterRenderPage'
+      )
+      .mockImplementation(() => undefined);
+    render(<Survey model={model} />);
+    expect(spy).toHaveBeenCalledTimes(1);
+    act(() => {
+      model.doComplete();
+    });
+    expect(spy).toHaveBeenCalledTimes(1);
+    act(() => {
+      model.clear(); // back to running — SAME PageModel instance
+    });
+    expect(model.state).toBe('running');
+    expect(spy).toHaveBeenCalledTimes(2);
+  });
+
   it('core still invokes renderCallback (behavioral drift gate for the not-listable member)', () => {
     const model = new Model(JSON_A);
     render(<Survey model={model} />);
