@@ -62,6 +62,16 @@ export type { SurveyHeaderProps } from './components/SurveyHeader';
 export { LogoImage } from './components/LogoImage';
 export type { LogoImageProps } from './components/LogoImage';
 
+// text question (task 1.10, A5) — the DraftCommitAdapter it wires
+// (task 1.9) lives at './inputs/DraftCommitAdapter'.
+export { TextQuestion } from './questions/TextQuestion';
+export type { TextQuestionProps } from './questions/TextQuestion';
+export { DraftCommitAdapter } from './inputs/DraftCommitAdapter';
+export type {
+  DraftCommitAdapterOptions,
+  DraftCommitKind,
+} from './inputs/DraftCommitAdapter';
+
 // theme-core (design: docs/design/0.6-theme-core.md) — the pure
 // ITheme -> tokens resolver plus its standalone helpers. theme-rn (0.7)
 // consumes ResolvedTheme; hosts may also call resolveTheme directly.

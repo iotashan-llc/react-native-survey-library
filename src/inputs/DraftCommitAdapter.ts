@@ -82,6 +82,9 @@ type TextLikeQuestion = Question & {
   textUpdateMode?: string;
 };
 
+/** Which handle* method is attempting the commit. */
+export type DraftCommitTrigger = 'typing' | 'blur' | 'submit';
+
 export interface DraftCommitAdapterOptions {
   /** A text-like question (text / comment / textbase descendant). */
   question: Question;
@@ -98,6 +101,34 @@ export interface DraftCommitAdapterOptions {
    * off the 0.4 base's model subscription.
    */
   onRenderedValueChange?: () => void;
+  /**
+   * Pre-commit guard seam (1.10, review round 2): maps the draft text to
+   * what actually commits, or returns `undefined` to SKIP this commit
+   * attempt entirely (no write, no notification — the draft is never
+   * touched). Runs on every commit ATTEMPT, before the equality guard.
+   *
+   * The consumer: date/time plain-text fallback types, where web's
+   * native widgets guarantee value-or-empty (`""` on `badInput`) and an
+   * unparseable `month` string passed into core's `correctValueType`
+   * THROWS (question_text.ts:668-685) — the 1.10 component maps invalid
+   * text to `""` at blur/submit and skips mid-typing commits so onTyping
+   * mode neither commits garbage nor wipes the in-progress draft via the
+   * model-sync pass.
+   */
+  transformCommitText?: (
+    text: string,
+    trigger: DraftCommitTrigger
+  ) => string | undefined;
+  /**
+   * Display-shaping seam (1.10, review round 3): maps model text to what
+   * the draft RENDERS, applied at construction and on every
+   * model-to-draft sync. The consumer: masked questions' post-format
+   * maxLength cap — upstream truncates in `setInputValue` during adapter
+   * construction and mask-property updates (input_element_adapter.ts:
+   * 19-26,33-37), not only on edits, so the edit-path cap alone leaves
+   * default/externally-written values uncapped.
+   */
+  formatDisplayText?: (text: string) => string;
 }
 
 /**
@@ -111,6 +142,10 @@ export class DraftCommitAdapter {
   private readonly question: TextLikeQuestion;
   private readonly kind: DraftCommitKind;
   private readonly onRenderedValueChange: (() => void) | undefined;
+  private readonly transformCommitText:
+    | ((text: string, trigger: DraftCommitTrigger) => string | undefined)
+    | undefined;
+  private readonly formatDisplayText: ((text: string) => string) | undefined;
   private readonly subscribedNames: string[];
   private readonly subscriptionKey: string;
   private draft: string;
@@ -123,6 +158,8 @@ export class DraftCommitAdapter {
       options.kind ??
       (this.question.isDescendantOf('text') ? 'inputValue' : 'value');
     this.onRenderedValueChange = options.onRenderedValueChange;
+    this.transformCommitText = options.transformCommitText;
+    this.formatDisplayText = options.formatDisplayText;
     this.subscriptionKey = `__rnDraftCommit${++nextSubscriptionId}`;
     this.draft = this.formatValue(this.readModelText());
     // The same public seam core's own TextAreaModel uses (text-area.ts:
@@ -179,7 +216,7 @@ export class DraftCommitAdapter {
       return;
     }
     if (this.question.isInputTextUpdate) {
-      this.commit(text);
+      this.commit(text, 'typing');
     }
   }
 
@@ -195,10 +232,10 @@ export class DraftCommitAdapter {
   /** Wire to `TextInput.onBlur`. Commits in BOTH modes (web blur parity). */
   public handleBlur(): void {
     if (this.disposed) return;
-    this.commit(this.draft);
-    // Built AFTER the commit: the sync pass may have rewritten the draft
-    // to the core-transformed text, and the handler's internal
-    // updateValueOnEvent must see the settled value and no-op.
+    this.commit(this.draft, 'blur');
+    // Built AFTER the commit, from the MODEL (see syntheticEvent): the
+    // handler's internal updateValueOnEvent must see the settled value
+    // and no-op — committing is exclusively this.commit's job.
     this.question.onBlur(this.syntheticEvent());
     this.editing = false;
   }
@@ -209,7 +246,7 @@ export class DraftCommitAdapter {
    */
   public handleSubmitEditing(): void {
     if (this.disposed) return;
-    this.commit(this.draft);
+    this.commit(this.draft, 'submit');
   }
 
   /** Unregisters the model subscription (mirrors TextAreaModel.dispose). */
@@ -247,7 +284,13 @@ export class DraftCommitAdapter {
    *   false)) value = text` — mirrors comment's `updateQuestionValue`
    *   (question_comment.ts getTextAreaOptions).
    */
-  private commit(text: string): void {
+  private commit(rawText: string, trigger: DraftCommitTrigger): void {
+    let text = rawText;
+    if (this.transformCommitText) {
+      const transformed = this.transformCommitText(rawText, trigger);
+      if (transformed === undefined) return; // guard says: skip this attempt
+      text = transformed;
+    }
     const question = this.question;
     if (this.kind === 'inputValue') {
       const equal = Helpers.checkIfValuesEqual(question.value, text, {
@@ -298,8 +341,8 @@ export class DraftCommitAdapter {
 
   /** Web's `getValue` + DOM string coercion: empty → "", else String(v). */
   private formatValue(value: unknown): string {
-    if (Helpers.isValueEmpty(value)) return '';
-    return String(value);
+    const text = Helpers.isValueEmpty(value) ? '' : String(value);
+    return this.formatDisplayText ? this.formatDisplayText(text) : text;
   }
 
   private setDraft(next: string): void {
@@ -311,9 +354,17 @@ export class DraftCommitAdapter {
   /**
    * The DOM-event shape core's public handlers destructure
    * (`event.target.value`; `validationMessage` reads as undefined, which
-   * the date-validation path tolerates).
+   * the date-validation path tolerates). The value is the SETTLED MODEL
+   * text, not the draft: core's `onBlurCore` runs its own
+   * `updateValueOnEvent(event)` (question_text.ts:820-825), and a
+   * model-equal value makes that a guaranteed equality no-op. Feeding the
+   * draft instead would let that internal path COMMIT it — normally
+   * harmless (post-commit the two loosely agree), but a commit-guard
+   * skip/rewrite (`transformCommitText`) leaves draft ≠ model on purpose,
+   * and the guarded text must not sneak into the model through core's
+   * blur handler.
    */
   private syntheticEvent(): { target: { value: string } } {
-    return { target: { value: this.draft } };
+    return { target: { value: this.formatValue(this.readModelText()) } };
   }
 }

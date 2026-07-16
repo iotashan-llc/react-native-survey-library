@@ -374,6 +374,141 @@ diagnostic seam) when a survey or question requested
 formatting of the visible text (the web `InputElementAdapter` role)
 arrives with the text question component (task 1.10).
 
+## Text question rendering (task 1.10)
+
+The `text` question renders as a native `TextInput` for all 13
+`inputType`s survey-core allows (settings.ts `questions.inputTypes`).
+Web delegates each `inputType` to the browser's own `<input type=…>`
+widget; React Native has no such per-type widget set, so the mapping is
+explicit — and where no native affordance exists yet, the field falls
+back to plain text rather than approximating one.
+
+### Text input inputType fallbacks
+
+`text`, `email`, `url`, `tel`, `number`, and `password` get real native
+affordances (keyboard type, autofill hints, secure entry). The other
+seven — `date`, `datetime-local`, `time`, `month`, `week`, `color`, and
+`range` — render as plain text fields in v1: no native date/time
+picker, no color swatch, no slider. Core's VALUE-level validation
+(min/max/step, required, validators) runs at commit time exactly as on
+web; the FORMAT guarantee a browser widget provides is a different
+story — see the next section.
+
+**Migration path:** native date/time pickers are scheduled for M5 and
+`range` gets a real slider in task 4.4 (see
+`docs/IMPLEMENTATION-PLAN.md`); until then hosts needing a picker UX
+should use a custom question or collect the value as text.
+
+### Date/time fallback types: format validation is component-side, not browser-side
+
+On web, `date`/`datetime-local`/`time`/`month`/`week` inputs are native
+widgets with a hard contract: the committed value is either
+format-valid or `""`. Unparseable text never reaches the model — the
+DOM reads it as `input.value === ""` with `validity.badInput` set, and
+core surfaces an "Invalid input" error from `validity.badInput` plus
+the browser's `validationMessage` (fed through `onKeyUp` into
+`dateValidationMessage`). RN has no DOM validity, no
+`validationMessage`, and no keyup pipeline, so the renderer reproduces
+the contract itself (`src/questions/dateTimeFallback.ts`, WHATWG-shaped
+format checks):
+
+- **Commit guard (all five types):** text that fails the HTML format
+  check for its `inputType` commits as `""` at blur/submit — web
+  parity: the DOM would have read `""` too. Mid-typing commits
+  (`textUpdateMode: "onTyping"`) of in-progress partials are simply
+  skipped (not `""`-committed), so typing `2024-0…` toward a valid
+  month neither commits garbage nor clears the field mid-edit. This
+  guard is also a crash guard: committing an unparseable `month` string
+  into an unmodified survey-core THROWS (`correctValueType` calls
+  `createDate(...).toISOString()` on it), and `datetime-local` hits the
+  same path under `settings.storeUtcDates`.
+- **Error surface, `date` / `datetime-local`:** the format verdict is
+  routed through core's own PUBLIC `onKeyUp` handler (the exact handler
+  web wires), which stamps `dateValidationMessage`; core's
+  `onCheckForErrors` then reports "Invalid input"
+  (`invalidInputErrorText`, localized) at validation time. Same error,
+  same text, same timing as web.
+- **Error surface, `time` / `month` / `week`: none (divergence).**
+  Core's `isDateInputType` covers only `date`/`datetime-local`, so
+  there is no sanctioned seam to surface a format error for these three
+  without patching core. Discarded input emits the once-per-question
+  `datetime-fallback-invalid-discarded` diagnostic (standard diagnostic
+  seam) instead of a user-visible error. Hosts that need a visible
+  error today should add a `regex` validator; web surfaces
+  "Invalid input" via DOM validity here, RN does not.
+- **Field display after a discarded commit (divergence):** web keeps
+  the unparseable text visible in the widget while the value reads
+  `""`; RN's controlled field syncs to the committed model value at
+  blur, so the field visibly clears. The value-level outcome is
+  identical.
+
+### Masked inputs: the maxLength cap is applied after formatting, not by the native prop
+
+Web's mask adapter truncates the FORMATTED value to the input's
+`maxlength` before writing it back (`InputElementAdapter.
+setInputValue`): a mask can restore literals and placeholders past the
+raw edit's length, so the cap has to run post-format. RN's native
+`maxLength` prop caps the RAW edit BEFORE the mask runs — at the limit
+it would swallow legitimate mid-string edits (a fixed-length pattern
+mask momentarily exceeds the limit while shifting digits) and cannot
+cap what `processInput` expands. So for masked questions the native
+`maxLength` prop is intentionally omitted and the renderer applies
+web's post-format cap itself (`applyMaskedEdit`), truncating the
+formatted draft and clamping the caret. Unmasked questions keep the
+native prop. Same observable limit as web through typing and deletion;
+the only divergence is which layer enforces it.
+
+### Masked inputs and IME composition: best-effort, single-frame caret control
+
+Web defers value updates around IME composition using DOM composition
+events and the keyCode-229 dance; RN 0.86 exposes NO composition
+events (`onTextInput` is gone from the New Architecture API), so a
+true "defer masking while composing" is not implementable. The
+renderer minimizes interference instead:
+
+- The `TextInput` is never left permanently selection-controlled. The
+  caret is forced only for the single frame after the mask actually
+  reshapes an edit, and control is released back to the native layer on
+  the next selection event (one-shot).
+- Edits the mask accepts verbatim never touch the `selection` prop at
+  all — plain digit entry through a numeric/currency mask stays fully
+  native-owned.
+- Pre-edit selection tracking (`onSelectionChange`) reconstructs web's
+  `beforeinput` args (`createArgs`) exactly, including
+  repeated-character edits a bare text diff cannot locate.
+
+**Residual divergence:** composing multi-keystroke IME text directly
+into a masked field (e.g. CJK input) can still have the composition
+interrupted when the mask rejects or reshapes the composed fragment
+mid-flight — on web the mask adapter's `beforeinput`+`preventDefault`
+interception is similarly hostile to composition inside masked fields,
+but the failure shape differs (web cancels the insert; RN may reset
+the composition). Mask vocabularies are effectively ASCII
+(numeric/currency/datetime/pattern), so this affects only IME entry of
+characters the mask would reject anyway.
+
+### `min`/`max`/`step` render no widget affordance
+
+Web's `<input type="number">` (and date/range types) surface
+`min`/`max`/`step` as browser-native UI: spinners that stop at the
+bounds, sliders with a fixed track, date pickers that grey out
+out-of-range dates. RN's `TextInput` has no equivalent attribute-level
+affordance, so `renderedMin`/`renderedMax`/`renderedStep` do not change
+what is rendered. The underlying VALUE validation is unaffected — core
+enforces min/max/step at commit time (`isValueLessMin`,
+`isValueGreaterMax`, `isStepNumberIncorrect`) exactly as on web, where
+that validation also runs independently of the browser affordance.
+
+### `autocomplete` tokens pass through on an exact allowlist
+
+`question.autocomplete` carries an HTML autocomplete token. RN's
+`TextInput.autoComplete` accepts its own (overlapping) vocabulary, so
+tokens are passed through only when RN recognizes them verbatim
+(`email`, `tel`, `given-name`, `cc-number`, `off`, …); unmapped tokens
+are dropped silently — the prop is omitted and RN/the OS fall back to
+their own autofill heuristics. No token is ever guessed or remapped to
+a "closest" RN value.
+
 ## Comment / radiogroup / checkbox questions (tasks 1.11, 1.12)
 
 ### `acceptCarriageReturn:false` filters newlines from typed text instead of intercepting the keypress

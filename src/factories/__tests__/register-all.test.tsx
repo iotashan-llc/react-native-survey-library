@@ -188,6 +188,7 @@ describe('registerAll (module side effect)', () => {
       'radiogroup',
       'sv-boolean-checkbox',
       'sv-boolean-radio',
+      'text',
     ]);
     expect(RNElementFactory.getAllTypes()).toEqual([
       'panel',

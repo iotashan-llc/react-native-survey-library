@@ -23,8 +23,9 @@
  * diagnostic, which is honest: no adapter exists yet). M1 rows so far:
  * the task-1.6 element-route rows (`sv-string-viewer`, `survey-header`,
  * `sv-logo-image`), `boolean` (template + two renderer-route rows for
- * `checkbox`/`radio` renderAs modes, task 1.13) and `expression`
- * (template, task 1.15). Everything else arrives per milestone by adding
+ * `checkbox`/`radio` renderAs modes, task 1.13), `expression`
+ * (template, task 1.15) and `text` (template, task 1.10). Everything
+ * else arrives per milestone by adding
  * rows here — this table is NOT pre-populated with every future dispatch
  * key.
  */
@@ -44,6 +45,7 @@ import {
   BooleanRadioQuestion,
 } from '../questions/BooleanQuestion';
 import { ExpressionQuestion } from '../questions/ExpressionQuestion';
+import { TextQuestion } from '../questions/TextQuestion';
 
 export type DescriptorRoute = 'template' | 'renderer' | 'element';
 
@@ -179,6 +181,14 @@ export const DESCRIPTOR_TABLE: readonly Descriptor[] = [
     dispatchKey: 'expression',
     route: 'template',
     component: () => ExpressionQuestion,
+    milestone: 'M1',
+  },
+  {
+    status: 'supported',
+    questionType: 'text',
+    dispatchKey: 'text',
+    route: 'template',
+    component: () => TextQuestion,
     milestone: 'M1',
   },
   {

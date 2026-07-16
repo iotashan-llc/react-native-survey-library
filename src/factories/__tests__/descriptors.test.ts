@@ -6,7 +6,8 @@
  * diagnostic until task 2.11 lands their adapters). M1 rows added by
  * tasks 1.6 (element routes: sv-string-viewer, survey-header,
  * sv-logo-image), 1.4 (composition element routes: sv-page, panel),
- * 1.11 (comment), 1.12 (checkbox, radiogroup), 1.13 (boolean: template +
+ * 1.10 (text: template), 1.11 (comment), 1.12 (checkbox, radiogroup),
+ * 1.13 (boolean: template +
  * checkbox/radio renderer routes) and 1.15 (expression: template).
  */
 import { DESCRIPTOR_TABLE } from '../descriptors';
@@ -36,6 +37,7 @@ describe('DESCRIPTOR_TABLE (M0 + M1)', () => {
       'sv-logo-image',
       'sv-page',
       'sv-string-viewer',
+      'text',
     ]);
   });
 
@@ -65,6 +67,17 @@ describe('DESCRIPTOR_TABLE (M0 + M1)', () => {
     expect(typeof row.component).toBe('function');
     expect(typeof row.component()).toBe('function');
     expect(row.milestone).toBe('M0');
+  });
+
+  it('"text" (task 1.10) is a supported/template row with a resolvable component thunk', () => {
+    const row = byKey('text');
+    expect(row.status).toBe('supported');
+    expect(row.route).toBe('template');
+    expect(row.questionType).toBe('text');
+    if (row.status !== 'supported') throw new Error('unreachable');
+    expect(typeof row.component).toBe('function');
+    expect(typeof row.component()).toBe('function');
+    expect(row.milestone).toBe('M1');
   });
 
   it('"custom" and "composite" are planned/template rows with no component field, carrying a reason and milestone', () => {

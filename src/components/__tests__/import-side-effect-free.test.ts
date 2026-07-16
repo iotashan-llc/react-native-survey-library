@@ -40,6 +40,7 @@ describe('component modules are import-side-effect-free', () => {
     ['../ChoiceItemRow'],
     ['../../questions/BooleanQuestion'],
     ['../../questions/ExpressionQuestion'],
+    ['../../questions/TextQuestion'],
   ])('importing %s registers nothing into either factory', (modulePath) => {
     const { questionTypes, elementTypes } =
       factoryStateAfterImporting(modulePath);
@@ -60,6 +61,7 @@ describe('component modules are import-side-effect-free', () => {
       'radiogroup',
       'sv-boolean-checkbox',
       'sv-boolean-radio',
+      'text',
     ]);
   });
 });

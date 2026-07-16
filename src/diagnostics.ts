@@ -183,6 +183,25 @@ export interface MaskedOnTypingDowngradedPayload {
 }
 
 /**
+ * Emitted (once per question) by 1.10's text component when unparseable
+ * text typed into a `time`/`month`/`week` plain-text fallback is
+ * DISCARDED at commit (committed as empty — web parity: those native
+ * widgets read as `""` on `badInput`). Unlike `date`/`datetime-local`
+ * (which route through core's public `onKeyUp` ->
+ * `dateValidationMessage` and surface a real "Invalid input" error),
+ * these three have NO sanctioned core error seam (core's
+ * `isDateInputType` covers only date/datetime-local,
+ * question_text.ts:570-572) — this diagnostic is the only signal the
+ * host gets. See docs/DIFFERENCES.md, "Text input inputType fallbacks".
+ */
+export interface DateTimeFallbackInvalidDiscardedPayload {
+  code: 'datetime-fallback-invalid-discarded';
+  questionType: string;
+  name: string | undefined;
+  inputType: string;
+}
+
+/**
  * Task 1.4's forwarding edge for the width resolver's pure-data
  * diagnostics (design: docs/design/1.3-width-resolver.md, D4 — "1.4's row
  * component forwards them post-commit through the seam with a new
@@ -216,6 +235,7 @@ export type DiagnosticPayload =
   | ImageUriBlockedPayload
   | ElementWrapperMissingPayload
   | MaskedOnTypingDowngradedPayload
+  | DateTimeFallbackInvalidDiscardedPayload
   | LayoutDiagnosticPayload;
 
 export type DiagnosticHandler = (payload: DiagnosticPayload) => void;
@@ -314,6 +334,20 @@ export function reportMaskedOnTypingDowngradedOnce(
 ): void {
   if (maskedOnTypingDowngradedEmitted.has(question)) return;
   maskedOnTypingDowngradedEmitted.add(question);
+  reportDiagnostic(payload);
+}
+
+/** Once per question (same dedup shape as the masked-downgrade report):
+ * every discarded keystroke/blur repeating the same host-visible fact
+ * must not spam the handler. */
+const dateTimeFallbackInvalidDiscardedEmitted = new WeakSet<Question>();
+
+export function reportDateTimeFallbackInvalidDiscardedOnce(
+  question: Question,
+  payload: DateTimeFallbackInvalidDiscardedPayload
+): void {
+  if (dateTimeFallbackInvalidDiscardedEmitted.has(question)) return;
+  dateTimeFallbackInvalidDiscardedEmitted.add(question);
   reportDiagnostic(payload);
 }
 
