@@ -50,6 +50,9 @@ export interface ButtonGroupRecipe {
     item: ViewStyle[];
     caption: TextStyle[];
   };
+  /** Icon `use` fill per state (scss: $foreground-light / $primary when
+   * selected / $foreground when disabled — disabled wins). */
+  iconFill(input: ButtonGroupStateInput): string;
 }
 
 export function buildButtonGroupRecipe(
@@ -71,6 +74,11 @@ export function buildButtonGroupRecipe(
   const primary = resolveColorVar(
     resolved,
     '--sjs-primary-backcolor',
+    sink
+  ).css;
+  const foregroundLight = resolveColorVar(
+    resolved,
+    '--sjs-general-forecolor-light',
     sink
   ).css;
 
@@ -128,6 +136,11 @@ export function buildButtonGroupRecipe(
         caption.push(fragments.captionDisabled);
       }
       return { item, caption };
+    },
+    iconFill(input: ButtonGroupStateInput) {
+      if (input.disabled) return foreground;
+      if (input.selected) return primary;
+      return foregroundLight;
     },
   };
 }

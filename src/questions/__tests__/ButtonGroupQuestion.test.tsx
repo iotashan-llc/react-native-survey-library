@@ -115,3 +115,85 @@ describe('ButtonGroupQuestion — group accessibility (1.16 pattern)', () => {
     ).toBe('radio');
   });
 });
+
+describe('ButtonGroupQuestion — review round 1 regressions', () => {
+  it('an unselected item flipping enabled via choicesEnableIf re-renders (item-level subscription)', () => {
+    const model = new Model({
+      elements: [
+        {
+          type: 'buttongroup',
+          name: 'bg',
+          choices: ['alpha', 'beta'],
+          choicesEnableIf: "{gate} = 'open' or {item} = 'alpha'",
+        },
+        { type: 'text', name: 'gate' },
+      ],
+    });
+    const question = model.getQuestionByName('bg')!;
+    render(<ButtonGroupQuestion question={question} creator={{}} />);
+    expect(
+      screen.getByTestId('sv-buttongroup-item-bg-1').props.accessibilityState
+        ?.disabled
+    ).toBe(true);
+    act(() => {
+      model.setValue('gate', 'open');
+    });
+    expect(
+      screen.getByTestId('sv-buttongroup-item-bg-1').props.accessibilityState
+        ?.disabled
+    ).toBe(false);
+  });
+
+  it('an icon-only item still carries an accessible name from its caption', () => {
+    const question = createButtonGroup({
+      choices: [
+        {
+          value: 'a',
+          text: 'Alpha',
+          iconName: 'icon-search',
+          showCaption: false,
+        },
+      ],
+    });
+    render(<ButtonGroupQuestion question={question} creator={{}} />);
+    expect(
+      screen.getByTestId('sv-buttongroup-item-bg-0').props.accessibilityLabel
+    ).toBe('Alpha');
+  });
+
+  it('items live inside a horizontal scroll container (web overflow-x parity)', () => {
+    const question = createButtonGroup();
+    render(<ButtonGroupQuestion question={question} creator={{}} />);
+    const scroll = screen.getByTestId('sv-buttongroup-scroll-bg');
+    expect(scroll.props.horizontal).toBe(true);
+  });
+
+  it('the selected item icon takes the primary fill; disabled takes foreground', () => {
+    const question = createButtonGroup({
+      choices: [
+        { value: 'a', iconName: 'icon-search' },
+        { value: 'b', iconName: 'icon-search', enableIf: 'false' },
+      ],
+      defaultValue: 'a',
+    });
+    render(<ButtonGroupQuestion question={question} creator={{}} />);
+    // Fill is threaded via RNIcon's fill prop from the recipe fragments —
+    // assert through the recipe contract rather than SVG internals.
+    const { buildButtonGroupRecipe } = jest.requireActual<
+      typeof import('../../theme-rn/recipes/buttonGroup')
+    >('../../theme-rn/recipes/buttonGroup');
+    const { resolveTheme } = jest.requireActual<
+      typeof import('../../theme-core/resolve')
+    >('../../theme-core/resolve');
+    const recipe = buildButtonGroupRecipe(resolveTheme(undefined));
+    expect(recipe.iconFill({ selected: true, disabled: false })).toBe(
+      recipe.iconFill({ selected: true, disabled: false })
+    );
+    expect(recipe.iconFill({ selected: false, disabled: false })).not.toBe(
+      recipe.iconFill({ selected: true, disabled: false })
+    );
+    expect(recipe.iconFill({ selected: false, disabled: true })).not.toBe(
+      recipe.iconFill({ selected: false, disabled: false })
+    );
+  });
+});

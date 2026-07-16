@@ -123,6 +123,7 @@ exports[`curated recipe golden snapshots ContrastLight: recipes build to a stabl
         "borderEndWidth": 1,
       },
     },
+    "iconFill": [Function],
     "select": [Function],
   },
   "header": {
@@ -1014,6 +1015,7 @@ exports[`curated recipe golden snapshots DefaultLight: recipes build to a stable
         "borderEndWidth": 1,
       },
     },
+    "iconFill": [Function],
     "select": [Function],
   },
   "header": {
@@ -1905,6 +1907,7 @@ exports[`curated recipe golden snapshots LayeredDark: recipes build to a stable 
         "borderEndWidth": 1,
       },
     },
+    "iconFill": [Function],
     "select": [Function],
   },
   "header": {
@@ -2892,6 +2895,7 @@ exports[`curated recipe golden snapshots SharpDark: recipes build to a stable sn
         "borderEndWidth": 1,
       },
     },
+    "iconFill": [Function],
     "select": [Function],
   },
   "header": {
@@ -3767,6 +3771,7 @@ exports[`curated recipe golden snapshots ThreeDimensionalLight: recipes build to
         "borderEndWidth": 1,
       },
     },
+    "iconFill": [Function],
     "select": [Function],
   },
   "header": {
