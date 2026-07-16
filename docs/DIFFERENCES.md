@@ -658,3 +658,15 @@ item keeps `radio` + checked semantics. React Native has no
 `a11y_input_ariaRequired`/`a11y_input_ariaInvalid` are NOT mapped —
 required/invalid state reaches users through the rendered error text
 (question chrome), not platform accessibility state.
+
+
+## Accessibility (task 1.16)
+
+### Checkbox groups expose a label but no group role
+
+Core assigns the checkbox question's input role `"group"`
+(`a11y_input_ariaRole`, question_checkbox.ts:760-762). React Native has
+no group accessibility role, so the items container carries the question
+label (`a11y_input_ariaLabel` ?? `processedTitle`) without a role;
+each item keeps its own `checkbox` role + checked state. Radiogroup and
+rating containers DO map their core `radiogroup` role natively.

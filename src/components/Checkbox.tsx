@@ -68,7 +68,19 @@ export class Checkbox extends QuestionElementBase<CheckboxProps> {
           : { flexDirection: 'column' as const };
 
     return (
-      <View testID="checkbox-items" style={containerStyle}>
+      <View
+        testID="checkbox-items"
+        // Core's checkbox input role is "group" (a11y_input_ariaRole,
+        // question_checkbox.ts:760-762) — RN has no group role, so the
+        // container carries the question label only; items keep their
+        // individual checkbox/checked semantics (task 1.16, documented in
+        // docs/DIFFERENCES.md).
+        accessibilityLabel={
+          (question as unknown as { a11y_input_ariaLabel: string | null })
+            .a11y_input_ariaLabel ?? question.processedTitle
+        }
+        style={containerStyle}
+      >
         {question.visibleChoices.map((item) => (
           <View
             key={item.uniqueId}

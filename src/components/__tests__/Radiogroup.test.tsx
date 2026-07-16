@@ -127,3 +127,13 @@ describe('Radiogroup', () => {
     );
   });
 });
+
+describe('Radiogroup — group accessibility (task 1.16)', () => {
+  it('the items container exposes radiogroup semantics with the question label (core a11y_input_ariaRole, question_radiogroup.ts:95-97)', () => {
+    const question = createRadiogroup({ title: 'Choose one' });
+    render(<Radiogroup question={question} creator={{}} />);
+    const container = screen.getByTestId('radiogroup-items');
+    expect(container.props.accessibilityRole).toBe('radiogroup');
+    expect(container.props.accessibilityLabel).toBe('Choose one');
+  });
+});

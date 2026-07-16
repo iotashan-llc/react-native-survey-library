@@ -127,3 +127,15 @@ describe('BooleanQuestion (switch/default renderAs)', () => {
     expect(sw.props.disabled).toBe(true);
   });
 });
+
+describe('BooleanQuestion — switch accessibility label (task 1.16)', () => {
+  it('the Switch carries the question title as its accessible name', () => {
+    const { question } = createBooleanQuestion('q-lbl', {
+      title: 'Enable feature?',
+    });
+    render(<BooleanQuestion question={question} creator={{}} />);
+    expect(
+      screen.getByTestId('sv-boolean-switch-q-lbl').props.accessibilityLabel
+    ).toBe('Enable feature?');
+  });
+});

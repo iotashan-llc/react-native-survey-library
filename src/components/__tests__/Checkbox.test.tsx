@@ -235,3 +235,24 @@ describe('Checkbox', () => {
     expect(valueChangedCount).toBe(1);
   });
 });
+
+describe('Checkbox — group accessibility (task 1.16)', () => {
+  it('the items container carries the question label (core ariaRole "group" has no RN analog — label only, documented)', () => {
+    const question = createCheckbox({ title: 'Pick some' });
+    render(<Checkbox question={question} creator={{}} />);
+    const container = screen.getByTestId('checkbox-items');
+    expect(container.props.accessibilityLabel).toBe('Pick some');
+    expect(container.props.accessibilityRole).toBeUndefined();
+  });
+});
+
+describe('Checkbox — "Other" input accessibility label (task 1.16)', () => {
+  it('the conditional free-text input is named by the other item text', () => {
+    const question = createCheckbox({ showOtherItem: true });
+    render(<Checkbox question={question} creator={{}} />);
+    fireEvent.press(screen.getByText(question.otherItem.text));
+    expect(
+      screen.getByTestId('checkbox-other-input').props.accessibilityLabel
+    ).toBe(question.otherItem.text);
+  });
+});
