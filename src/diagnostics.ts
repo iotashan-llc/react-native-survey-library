@@ -266,6 +266,18 @@ export interface ProgressBarTypeUnsupportedPayload {
   message: string;
 }
 
+/**
+ * Task 2.10: the `image` question renders only `renderedMode === "image"`
+ * in v1 — `"video"` is deferred (media task) and `"youtube"` is a
+ * documented won't-support. Rendering nothing + reporting beats a
+ * misleading empty frame (invariant 9's honest-degradation spirit).
+ */
+export interface ImageContentModeUnsupportedPayload {
+  code: 'image-content-mode-unsupported';
+  questionName: string;
+  contentMode: string;
+}
+
 export type DiagnosticPayload =
   | UnsupportedQuestionTypePayload
   | CustomWidgetIgnoredPayload
@@ -283,7 +295,8 @@ export type DiagnosticPayload =
   | MaskedOnTypingDowngradedPayload
   | DateTimeFallbackInvalidDiscardedPayload
   | LayoutDiagnosticPayload
-  | ProgressBarTypeUnsupportedPayload;
+  | ProgressBarTypeUnsupportedPayload
+  | ImageContentModeUnsupportedPayload;
 
 export type DiagnosticHandler = (payload: DiagnosticPayload) => void;
 

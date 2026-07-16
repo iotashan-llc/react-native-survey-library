@@ -97,6 +97,9 @@ export type { SurveyStateFrameProps } from './components/SurveyStateFrame';
 // text question (task 1.10, A5) — the DraftCommitAdapter it wires
 // (task 1.9) lives at './inputs/DraftCommitAdapter'.
 export { TextQuestion } from './questions/TextQuestion';
+// image question (task 2.10).
+export { ImageQuestion } from './questions/ImageQuestion';
+export type { ImageQuestionProps } from './questions/ImageQuestion';
 export type { TextQuestionProps } from './questions/TextQuestion';
 export { DraftCommitAdapter } from './inputs/DraftCommitAdapter';
 export type {

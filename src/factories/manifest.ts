@@ -187,7 +187,11 @@ export const MODEL_TYPE_CLASSIFICATION: Readonly<
     milestone: 'M2',
     reason: 'task 2.8a/2.8b/2.8c',
   },
-  image: { status: 'planned', milestone: 'M2', reason: 'task 2.10' },
+  image: {
+    status: 'supported',
+    milestone: 'M2',
+    runtimeRenderable: { expectedTemplate: 'image', expectedRoute: 'template' },
+  },
 
   // Phase 3 — v0.3 (M3).
   matrix: { status: 'planned', milestone: 'M3', reason: 'task 3.2' },

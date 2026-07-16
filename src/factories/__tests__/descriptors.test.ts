@@ -29,6 +29,7 @@ describe('DESCRIPTOR_TABLE (M0 + M1)', () => {
       'custom',
       'empty',
       'expression',
+      'image',
       'panel',
       'radiogroup',
       'rating',

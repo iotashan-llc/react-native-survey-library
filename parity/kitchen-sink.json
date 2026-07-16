@@ -148,6 +148,15 @@
           ]
         },
         {
+          "type": "image",
+          "name": "heroImage",
+          "imageLink": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPj/HwADBwIAMCbHYQAAAABJRU5ErkJggg==",
+          "imageFit": "contain",
+          "imageWidth": "96",
+          "imageHeight": "96",
+          "altText": "Sample image (task 2.10)"
+        },
+        {
           "type": "panel",
           "name": "scores",
           "title": "Computed (expression)",

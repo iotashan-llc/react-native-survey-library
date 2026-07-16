@@ -670,3 +670,30 @@ no group accessibility role, so the items container carries the question
 label (`a11y_input_ariaLabel` ?? `processedTitle`) without a role;
 each item keeps its own `checkbox` role + checked state. Radiogroup and
 rating containers DO map their core `radiogroup` role natively.
+
+
+## Image question (task 2.10)
+
+### `contentMode: "video"` is deferred; `"youtube"` is never supported
+
+v0.2 renders only `renderedMode === "image"`. A video content mode
+renders nothing and reports an `image-content-mode-unsupported`
+diagnostic (native video arrives with the expo-video capability task);
+YouTube iframes are a documented won't-support (WebView/expo-video path
+described in the plan).
+
+### A failed image load shows the alt text (web shows nothing)
+
+Web sets `display:none` on a broken `<img>` (`contentNotLoaded`).
+Native screens render `renderedAltText` (altText || title) instead —
+an accessible fallback beats a silent blank. Load state still routes
+through core's own `onLoadHandler`/`onErrorHandler`.
+
+### `imageFit` maps to RN `resizeMode`
+
+contain → contain, cover → cover, fill → stretch, none → center (same
+mapping as the header logo). Dimensions come from core's
+`renderedWidth`/`renderedHeight` (serializer defaults 200×150); an
+`auto` dimension is omitted — RN cannot derive intrinsic size
+synchronously, so auto-sized images need explicit `imageWidth`/
+`imageHeight` in the JSON.

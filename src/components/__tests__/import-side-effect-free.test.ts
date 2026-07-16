@@ -42,6 +42,7 @@ describe('component modules are import-side-effect-free', () => {
     ['../../questions/ExpressionQuestion'],
     ['../../questions/RatingQuestion'],
     ['../../questions/TextQuestion'],
+    ['../../questions/ImageQuestion'],
   ])('importing %s registers nothing into either factory', (modulePath) => {
     const { questionTypes, elementTypes } =
       factoryStateAfterImporting(modulePath);
@@ -59,6 +60,7 @@ describe('component modules are import-side-effect-free', () => {
       'comment',
       'empty',
       'expression',
+      'image',
       'radiogroup',
       'rating',
       'sv-boolean-checkbox',
