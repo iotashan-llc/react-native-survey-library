@@ -146,3 +146,56 @@ describe('ImageQuestion — core load-state contract', () => {
     ).toBe(true);
   });
 });
+
+describe('ImageQuestion — review round 1 regressions', () => {
+  it('the sink consumes the CANONICAL uri, not the raw authored string', () => {
+    const question = createImageQuestion({
+      // Uppercase scheme/host canonicalize to lowercase.
+      imageLink: 'HTTPS://CDN.EXAMPLE.COM/pic.png',
+    });
+    render(
+      <UriPolicyContext.Provider
+        value={{ allowedOrigins: ['https://cdn.example.com'] }}
+      >
+        <ImageQuestion question={question} creator={{}} />
+      </UriPolicyContext.Provider>
+    );
+    const uri = screen.getByTestId('sv-image-q1').props.source.uri as string;
+    expect(uri.startsWith('https://cdn.example.com/')).toBe(true);
+  });
+
+  it('error → changed imageLink → the Image re-mounts and can recover', () => {
+    const question = createImageQuestion({ altText: 'broken' });
+    render(<ImageQuestion question={question} creator={{}} />);
+    act(() => {
+      screen.getByTestId('sv-image-q1').props.onError();
+    });
+    expect(screen.queryByTestId('sv-image-q1')).toBeNull();
+    act(() => {
+      (question as unknown as { imageLink: string }).imageLink =
+        PNG_DATA.replace('CYII=', 'CYII=') + '';
+      // A genuinely different link:
+      (question as unknown as { imageLink: string }).imageLink =
+        'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAEklEQVR42mNk+M9Qz8DAwMgAABUEAgHXd/EXAAAAAElFTkSuQmCC';
+    });
+    const image = screen.getByTestId('sv-image-q1');
+    expect(image).toBeTruthy();
+    act(() => {
+      image.props.onLoad();
+    });
+    expect(
+      (question as unknown as { contentNotLoaded: boolean }).contentNotLoaded
+    ).toBe(false);
+  });
+
+  it('a localized in-place link update re-renders (locImageLink.onStringChanged subscription)', () => {
+    const question = createImageQuestion();
+    render(<ImageQuestion question={question} creator={{}} />);
+    const second =
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAEklEQVR42mNk+M9Qz8DAwMgAABUEAgHXd/EXAAAAAElFTkSuQmCC';
+    act(() => {
+      (question as unknown as { imageLink: string }).imageLink = second;
+    });
+    expect(screen.getByTestId('sv-image-q1').props.source.uri).toBe(second);
+  });
+});

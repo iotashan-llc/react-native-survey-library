@@ -1049,6 +1049,71 @@ export const API_SURFACE_WATCHLIST: readonly WatchedApiMember[] = [
     reason:
       "Rating radiogroup row's accessibilityLabel source (review round 1; falls back to processedTitle).",
   },
+  // Task 2.10 — image question bindings (QuestionImageModel).
+  {
+    id: 'QuestionImageModel.locImageLink',
+    member: 'locImageLink',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.QuestionImageModel.prototype,
+    reason:
+      'ImageQuestion (2.10) renders locImageLink.renderedHtml and subscribes onStringChanged.',
+  },
+  {
+    id: 'QuestionImageModel.renderedMode',
+    member: 'renderedMode',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.QuestionImageModel.prototype,
+    reason: 'ImageQuestion (2.10) image-only v1 gate.',
+  },
+  {
+    id: 'QuestionImageModel.imageFit',
+    member: 'imageFit',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.QuestionImageModel.prototype,
+    reason: 'ImageQuestion (2.10) resizeMode mapping input.',
+  },
+  {
+    id: 'QuestionImageModel.renderedWidth',
+    member: 'renderedWidth',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.QuestionImageModel.prototype,
+    reason: 'ImageQuestion (2.10) numeric width.',
+  },
+  {
+    id: 'QuestionImageModel.renderedHeight',
+    member: 'renderedHeight',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.QuestionImageModel.prototype,
+    reason: 'ImageQuestion (2.10) numeric height.',
+  },
+  {
+    id: 'QuestionImageModel.renderedAltText',
+    member: 'renderedAltText',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.QuestionImageModel.prototype,
+    reason: 'ImageQuestion (2.10) accessible name + error fallback text.',
+  },
+  {
+    id: 'QuestionImageModel.contentNotLoaded',
+    member: 'contentNotLoaded',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.QuestionImageModel.prototype,
+    reason: 'ImageQuestion (2.10) load-state gate (@property-backed).',
+  },
+  {
+    id: 'QuestionImageModel.onLoadHandler',
+    member: 'onLoadHandler',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.QuestionImageModel.prototype,
+    reason: 'ImageQuestion (2.10) RN Image onLoad routes into core.',
+  },
+  {
+    id: 'QuestionImageModel.onErrorHandler',
+    member: 'onErrorHandler',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.QuestionImageModel.prototype,
+    reason: 'ImageQuestion (2.10) RN Image onError routes into core.',
+  },
   {
     id: 'QuestionRatingModel.itemStarIcon',
     member: 'itemStarIcon',
