@@ -41,6 +41,7 @@ describe('index.tsx: registrar wiring (design: docs/design/0.5-factories.md)', (
       'rating',
       'sv-boolean-checkbox',
       'sv-boolean-radio',
+      'text',
     ]);
     expect(RNElementFactory.getAllTypes()).toEqual([
       'panel',

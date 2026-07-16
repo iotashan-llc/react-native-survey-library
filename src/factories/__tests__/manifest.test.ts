@@ -56,13 +56,13 @@ describe('manifest: model-type inventory', () => {
     }
   });
 
-  it('"empty" is classified supported/M0; "text"/"rating" are classified planned with a milestone', () => {
+  it('"empty"/"text" are classified supported (M0/M1); "rating" is still classified planned with a milestone', () => {
     expect(MODEL_TYPE_CLASSIFICATION.empty).toMatchObject({
       status: 'supported',
       milestone: 'M0',
     });
     expect(MODEL_TYPE_CLASSIFICATION.text).toMatchObject({
-      status: 'planned',
+      status: 'supported',
       milestone: 'M1',
     });
     expect(MODEL_TYPE_CLASSIFICATION.rating).toMatchObject({
@@ -168,22 +168,26 @@ describe('manifest: classification/descriptor status consistency', () => {
   });
 
   it('detects a supported descriptor row whose model-type classification is not supported', () => {
+    // 'multipletext' is still classified 'planned' (task 2.6, M2) — a
+    // supported descriptor row for it is the inconsistency this test
+    // wants ('text'/'checkbox' can't be reused here anymore: tasks
+    // 1.10/1.12 landed them as genuinely supported on both sides).
     const descriptors: Descriptor[] = [
       ...DESCRIPTOR_TABLE,
       {
         status: 'supported',
-        questionType: 'text',
-        dispatchKey: 'text',
+        questionType: 'multipletext',
+        dispatchKey: 'multipletext',
         route: 'template',
         component: () => (() => null) as never,
-        milestone: 'M1',
+        milestone: 'M2',
       },
     ];
     const violations = diffManifestConsistency(
       MODEL_TYPE_CLASSIFICATION,
       descriptors
     );
-    expect(violations.some((v) => v.includes('text'))).toBe(true);
+    expect(violations.some((v) => v.includes('multipletext'))).toBe(true);
   });
 
   it('detects a supported classification entry lacking runtimeRenderable safe-construction metadata', () => {

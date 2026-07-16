@@ -72,6 +72,15 @@ export { SurveyProgressBar } from './components/SurveyProgressBar';
 export type { SurveyProgressBarProps } from './components/SurveyProgressBar';
 export { SurveyStateFrame } from './components/SurveyStateFrame';
 export type { SurveyStateFrameProps } from './components/SurveyStateFrame';
+// text question (task 1.10, A5) — the DraftCommitAdapter it wires
+// (task 1.9) lives at './inputs/DraftCommitAdapter'.
+export { TextQuestion } from './questions/TextQuestion';
+export type { TextQuestionProps } from './questions/TextQuestion';
+export { DraftCommitAdapter } from './inputs/DraftCommitAdapter';
+export type {
+  DraftCommitAdapterOptions,
+  DraftCommitKind,
+} from './inputs/DraftCommitAdapter';
 
 // theme-core (design: docs/design/0.6-theme-core.md) — the pure
 // ITheme -> tokens resolver plus its standalone helpers. theme-rn (0.7)

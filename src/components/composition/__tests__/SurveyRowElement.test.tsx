@@ -53,9 +53,11 @@ describe('SurveyRowElement — dispatch', () => {
     expect(screen.queryByTestId('unsupported-question-panel')).toBeNull();
   });
 
-  it('falls back to UnsupportedQuestion on a dispatch miss (planned type "text"), never throwing', () => {
+  it('falls back to UnsupportedQuestion on a dispatch miss (planned type "multipletext"), never throwing', () => {
+    // 'multipletext' stays planned until M2 (task 2.6) — 'text' landed as
+    // supported in task 1.10, so it can no longer model a dispatch miss.
     const { model, question } = firstQuestion({
-      elements: [{ type: 'text', name: 'q-text' }],
+      elements: [{ type: 'multipletext', name: 'q-text' }],
     });
     render(
       <SurveyRowElement
@@ -96,7 +98,7 @@ describe('SurveyRowElement — QuestionChrome at the dispatch boundary (M1 dispa
 
   it('the unsupported fallback is wrapped in chrome too (title chrome renders around the fallback panel)', () => {
     const { model, question } = firstQuestion({
-      elements: [{ type: 'text', name: 'q-text', title: 'Text Title' }],
+      elements: [{ type: 'multipletext', name: 'q-text', title: 'Text Title' }],
     });
     render(
       <SurveyRowElement

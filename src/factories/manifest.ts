@@ -116,7 +116,12 @@ export const MODEL_TYPE_CLASSIFICATION: Readonly<
       expectedRoute: 'template',
     },
   },
-  text: { status: 'planned', milestone: 'M1', reason: 'task 1.10' },
+  text: {
+    status: 'supported',
+    milestone: 'M1',
+    reason: 'task 1.10',
+    runtimeRenderable: { expectedTemplate: 'text', expectedRoute: 'template' },
+  },
   comment: {
     status: 'supported',
     milestone: 'M1',
