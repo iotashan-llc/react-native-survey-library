@@ -249,6 +249,133 @@ describe('preflightSurveyJson', () => {
     ]);
   });
 
+  describe('choicesByUrl template lint (review round 1 CRITICAL)', () => {
+    it('strips a template whose substitution sits in the scheme/authority position, even when a baseUrl would let it validate as relative', () => {
+      // `{scheme}://evil.example/x` has no literal scheme, so validateUri
+      // with a configured baseUrl can resolve it as base-relative and
+      // pass — but at request time core substitutes the placeholder and
+      // fetches a hostile ABSOLUTE URL. The JSON-time lint
+      // (lintChoicesByUrlTemplate) must run FIRST and reject it.
+      const json = {
+        elements: [
+          {
+            type: 'dropdown',
+            name: 'q1',
+            choicesByUrl: { url: '{scheme}://evil.example/x' },
+          },
+        ],
+      };
+      const { json: clean, diagnostics } = preflightSurveyJson(json, {
+        allowedOrigins: ['https://api.example.com'],
+        baseUrl: 'https://api.example.com/data/',
+      });
+      const q = (clean as { elements: { choicesByUrl?: unknown }[] })
+        .elements[0]!;
+      expect(q.choicesByUrl).toBeUndefined();
+      expect(blockedOf(diagnostics)).toEqual([
+        'elements[0].choicesByUrl.url|choicesByUrl|substitution-in-authority-position',
+      ]);
+    });
+
+    it('lints the legacy string form too', () => {
+      const json = {
+        elements: [
+          {
+            type: 'dropdown',
+            name: 'q1',
+            choicesByUrl: '//{host}/items',
+          },
+        ],
+      };
+      const { json: clean, diagnostics } = preflightSurveyJson(json, {
+        allowedOrigins: ['https://api.example.com'],
+        baseUrl: 'https://api.example.com/data/',
+      });
+      const q = (clean as { elements: { choicesByUrl?: unknown }[] })
+        .elements[0]!;
+      expect(q.choicesByUrl).toBeUndefined();
+      expect(diagnostics).toHaveLength(1);
+      expect(diagnostics[0]!.reason).toBe('substitution-in-authority-position');
+    });
+
+    it('a query-position substitution against an allowed origin still passes', () => {
+      const json = {
+        elements: [
+          {
+            type: 'dropdown',
+            name: 'q1',
+            choicesByUrl: { url: 'https://api.example.com/items?q={term}' },
+          },
+        ],
+      };
+      const result = preflightSurveyJson(json, ALLOWED);
+      expect(result.json).toBe(json);
+      expect(result.diagnostics).toEqual([]);
+    });
+  });
+
+  describe('matrix columns (review round 1 CRITICAL: question-bearing containers)', () => {
+    it('finds and strips a disallowed choicesByUrl inside matrixdropdown columns', () => {
+      const json = {
+        pages: [
+          {
+            elements: [
+              {
+                type: 'matrixdropdown',
+                name: 'm1',
+                columns: [
+                  { name: 'plain' },
+                  {
+                    name: 'col2',
+                    cellType: 'dropdown',
+                    choicesByUrl: { url: 'https://evil.example/cells' },
+                  },
+                ],
+                rows: ['r1'],
+              },
+            ],
+          },
+        ],
+      };
+      const snapshot = JSON.parse(JSON.stringify(json));
+      const { json: clean, diagnostics } = preflightSurveyJson(json, ALLOWED);
+      expect(json).toEqual(snapshot);
+      type Col = { choicesByUrl?: unknown };
+      const cols = (
+        clean as {
+          pages: { elements: { columns: Col[] }[] }[];
+        }
+      ).pages[0]!.elements[0]!.columns;
+      expect(cols[1]!.choicesByUrl).toBeUndefined();
+      expect(blockedOf(diagnostics)).toEqual([
+        'pages[0].elements[0].columns[1].choicesByUrl.url|choicesByUrl|origin-not-allowlisted',
+      ]);
+    });
+
+    it('matrixdynamic detailElements are traversed too', () => {
+      const json = {
+        elements: [
+          {
+            type: 'matrixdynamic',
+            name: 'm2',
+            columns: [{ name: 'c1' }],
+            detailElements: [
+              {
+                type: 'dropdown',
+                name: 'd1',
+                choicesByUrl: { url: 'https://evil.example/detail' },
+              },
+            ],
+          },
+        ],
+      };
+      const { diagnostics } = preflightSurveyJson(json, ALLOWED);
+      expect(blockedOf(diagnostics)).toEqual([
+        'elements[0].detailElements[0].choicesByUrl.url|choicesByUrl|origin-not-allowlisted',
+      ]);
+    });
+  });
+
   describe('robustness', () => {
     it.each([null, undefined, 'not-json', 42])(
       'returns non-object input %p untouched with no diagnostics',

@@ -281,14 +281,19 @@ web); there is no RN equivalent wired, so rows always render eagerly
 and no skeleton placeholders exist. Surveys that enable it still work —
 the flag simply has no effect.
 
-### `afterRender*` events never fire
+### `onAfterRenderPage` fires with `htmlElement: null`; the other `afterRender*` events never fire
 
 The web renderer calls `survey.afterRenderSurvey/afterRenderPage/
 afterRenderQuestion` with live DOM nodes during render lifecycles. This
-renderer never does (there are no DOM nodes, and the render-phase side
-effects violate React 19 contracts). Hosts that used `onAfterRender*`
-events for styling should use theme JSON; for focus/scroll behavior see
-the next item.
+renderer calls core's public `afterRenderPage` from its commit
+lifecycles (it owns the page-change scroll/autofocus machine — design-
+mode suppression, scroll dedup, deferred `scrollToTopOnPageChange`,
+pending-focus routing), so **`onAfterRenderPage` DOES fire — with
+`htmlElement: null`** (there is no DOM node to pass).
+`afterRenderSurvey`/`afterRenderQuestion` are never called (no DOM
+nodes; render-phase side effects violate React 19 contracts). Hosts that
+used `onAfterRender*` events for styling should use theme JSON; for
+focus/scroll behavior see the next item.
 
 ### Expand/add scroll-to-element rides the lifecycle bridge
 

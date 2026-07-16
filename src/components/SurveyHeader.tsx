@@ -36,6 +36,7 @@ import { RNElementFactory } from '../factories/ElementFactory';
 import { SurveyElementBase } from '../reactivity/SurveyElementBase';
 import { composeStyles } from '../theme-rn/recipes/types';
 import type { UriPolicyConfig } from '../security/uri-policy';
+import { UriPolicyContext } from '../security/UriPolicyContext';
 import { reportDiagnostic } from '../diagnostics';
 
 export interface SurveyHeaderProps {
@@ -136,11 +137,26 @@ export class SurveyHeader extends SurveyElementBase<SurveyHeaderProps> {
       this.survey,
       'logo-image'
     );
+    // Registration miss detection stays synchronous (commit-phase
+    // diagnostic below); the real element re-creates inside the policy
+    // consumer so the survey-scoped default reaches the logo sink
+    // (review round 1 major #2 — explicit prop wins over context).
     const rendered = RNElementFactory.createElement(componentName, {
       data: componentData,
       uriConfig: this.props.logoUriConfig,
     });
-    if (rendered) return rendered;
+    if (rendered) {
+      return (
+        <UriPolicyContext.Consumer key={`logo-${componentName}`}>
+          {(contextPolicy) =>
+            RNElementFactory.createElement(componentName, {
+              data: componentData,
+              uriConfig: this.props.logoUriConfig ?? contextPolicy,
+            })
+          }
+        </UriPolicyContext.Consumer>
+      );
+    }
     this.pendingWrapperMiss = { componentName, reason: 'logo-image' };
     return null;
   }

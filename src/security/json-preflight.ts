@@ -30,7 +30,7 @@
  * sanitizer + press-time revalidation own those (0.9); `link` context is
  * human-mediated by definition.
  */
-import { validateUri } from './uri-policy';
+import { lintChoicesByUrlTemplate, validateUri } from './uri-policy';
 import type { UriContext, UriPolicyConfig } from './uri-policy';
 
 export interface PreflightDiagnostic {
@@ -56,8 +56,17 @@ function isJsonObject(value: unknown): value is JsonObject {
 
 /** Container keys recursed on every element node. `questions` is the
  * legacy alias survey-core's deserializer still honors — skipping it
- * would be a policy bypass, not a feature gap. */
-const CHILD_ARRAY_KEYS = ['elements', 'templateElements', 'questions'] as const;
+ * would be a policy bypass, not a feature gap. `columns` carries
+ * matrixdropdown/matrixdynamic column definitions (each can hold its own
+ * `choicesByUrl`) and `detailElements` their detail-panel questions —
+ * both are question-bearing containers (review round 1 CRITICAL). */
+const CHILD_ARRAY_KEYS = [
+  'elements',
+  'templateElements',
+  'questions',
+  'columns',
+  'detailElements',
+] as const;
 
 export function preflightSurveyJson(
   json: unknown,
@@ -75,6 +84,23 @@ export function preflightSurveyJson(
     path: string
   ): boolean {
     if (typeof value !== 'string' || value.length === 0) return false;
+    // JSON-time template lint FIRST (review round 1 CRITICAL): a
+    // substitution in the scheme/authority position (`{scheme}://…`,
+    // `//{host}/…`) can validate as base-relative under a configured
+    // baseUrl yet expand into a hostile ABSOLUTE request when core
+    // substitutes it — validateUri alone cannot see that.
+    if (context === 'choicesByUrl') {
+      const lint = lintChoicesByUrlTemplate(value);
+      if (!lint.ok) {
+        diagnostics.push({
+          code: 'survey-json-blocked-url',
+          path,
+          context,
+          reason: lint.reason ?? 'template-lint-failed',
+        });
+        return true;
+      }
+    }
     const result = validateUri(value, context, config);
     if (result.ok) return false;
     diagnostics.push({

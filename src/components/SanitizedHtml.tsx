@@ -39,6 +39,7 @@ import type {
 } from '../security/sanitize-html';
 import { validateUri } from '../security/uri-policy';
 import type { UriPolicyConfig } from '../security/uri-policy';
+import { UriPolicyContext } from '../security/UriPolicyContext';
 import { reportDiagnostic } from '../diagnostics';
 
 export interface SanitizedHtmlProps {
@@ -159,8 +160,14 @@ export function SanitizedHtml(props: SanitizedHtmlProps): React.JSX.Element {
     contentWidth,
     relaxedFormatting,
     bounds,
-    imageUriConfig,
+    imageUriConfig: imageUriConfigProp,
   } = props;
+
+  // Survey-scoped policy default (review round 1 major #2): the explicit
+  // prop wins; otherwise the <Survey uriPolicy> context applies, so ONE
+  // config reaches preflight AND this sink.
+  const contextPolicy = React.useContext(UriPolicyContext);
+  const imageUriConfig = imageUriConfigProp ?? contextPolicy;
 
   const configKey = sanitizeConfigKey(
     relaxedFormatting,

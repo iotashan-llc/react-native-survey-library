@@ -517,7 +517,31 @@ export const API_SURFACE_WATCHLIST: readonly WatchedApiMember[] = [
     expectedKind: 'method',
     resolveHost: (sc) => sc.SurveyModel.prototype,
     reason:
-      "The other branch of 1.1's render-complete seam: no parked focus → scrollToTopOnPageChange() re-enters the funnel with the page shape.",
+      "The deferred branch of core's afterRenderPage machine: re-enters the funnel with the page shape (the installed bridge intercepts).",
+  },
+  {
+    id: 'SurveyModel.afterRenderPage',
+    member: 'afterRenderPage',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.SurveyModel.prototype,
+    reason:
+      "1.1's render-complete call delegates to core's own machine (survey.ts:5514-5526) instead of hand-rolling the either/or (review round 1).",
+  },
+  {
+    id: 'SurveyModel.renderedWidth',
+    member: 'renderedWidth',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.SurveyModel.prototype,
+    reason:
+      'Root width contract (1.3 design, owned by 1.1): maxWidth on the survey root View.',
+  },
+  {
+    id: 'SurveyModel.widthMode',
+    member: 'widthMode',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.SurveyModel.prototype,
+    reason:
+      'Input to renderedWidth (calculatedWidthMode) — static mode gates the root constraint.',
   },
   {
     id: 'settings.environment',

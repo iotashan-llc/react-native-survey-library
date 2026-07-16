@@ -37,6 +37,7 @@ import type { SurveyComponentStyles } from '../theme-rn/overrides';
 import { RNElementFactory } from '../factories/ElementFactory';
 import { preflightSurveyJson } from '../security/json-preflight';
 import type { UriPolicyConfig } from '../security/uri-policy';
+import { UriPolicyContext } from '../security/UriPolicyContext';
 import { reportDiagnostic } from '../diagnostics';
 import {
   createLifecycleRegistry,
@@ -52,6 +53,7 @@ import type {
 } from '../lifecycle/types';
 import { extractModelEventProps, wireModelEventProps } from './event-props';
 import type { ExtractedEventProps, SurveyModelEventProps } from './event-props';
+import { evaluateWidthExpression } from '../layout/width-resolver';
 
 /** RN-level scroll-interception event (design note, "Bridge wiring"),
  * delivered through the bridge's `onScrollRequest` consult seam.
@@ -133,7 +135,6 @@ class SurveyRoot extends SurveyElementBase<SurveyRootProps> {
   private uninstallBridge: (() => void) | undefined;
   private deregisterScrollHost: (() => void) | undefined;
   private wiredEventProps: ExtractedEventProps = {};
-  private lastActivePage: unknown = null;
   private lastNarrow: boolean | null = null;
 
   /** Scroll-host viewport bookkeeping (bridge-author wiring note:
@@ -181,7 +182,7 @@ class SurveyRoot extends SurveyElementBase<SurveyRootProps> {
     // setSurveyEvents) — covers state/page transitions the property
     // subscription may not surface.
     survey.renderCallback = () => this.forceUpdate();
-    this.lastActivePage = survey.activePage;
+    this.callAfterRenderPage();
   }
 
   componentDidUpdate(): void {
@@ -189,36 +190,51 @@ class SurveyRoot extends SurveyElementBase<SurveyRootProps> {
     const survey = this.props.survey;
     wireModelEventProps(survey, this.wiredEventProps, this.props.eventProps);
     this.wiredEventProps = this.props.eventProps;
-
-    // The render-complete call that drives the page-change scroll (1.2
-    // design, "Sequencing"): re-enters the core funnel, which the bridge
-    // intercepts. Only meaningful while the survey is presenting pages.
-    // Core afterRenderPage parity (survey.ts:5514-5519): a pending
-    // `focusingQuestionInfo` (set by `focusQuestion`) routes to
-    // `focusQuestionInfo()` and SUPPRESSES the page-change scroll —
-    // either/or, never both. Both members are private in the typings but
-    // real at runtime (`focusQuestionInfo` is a prototype method, pinned
-    // by the api-surface gate; `focusingQuestionInfo` is a bare field —
-    // see the gate's not-listable note).
-    const page = survey.activePage;
-    if (page !== this.lastActivePage) {
-      this.lastActivePage = page;
-      const state = survey.state;
-      if (page && (state === 'running' || state === 'starting')) {
-        const focusable = survey as unknown as {
-          focusingQuestionInfo?: unknown;
-          focusQuestionInfo(): void;
-        };
-        if (focusable.focusingQuestionInfo) {
-          focusable.focusQuestionInfo();
-        } else {
-          survey.scrollToTopOnPageChange();
-        }
-      }
-    }
+    this.callAfterRenderPage();
   }
 
-  componentWillUnmount(): void {
+  /**
+   * The render-complete call (review round 1: full core parity, not a
+   * hand-rolled either/or). Delegates to core's PUBLIC `afterRenderPage`
+   * (survey.ts:5514-5526) — exactly what upstream's page component calls
+   * from ITS didMount/didUpdate — which owns the whole machine: design-
+   * mode suppression, `doScroll` dedup via `isCurrentPageRendered`
+   * (mount → `scrollToTopOnPageChange(false)`, the autofocus path; page
+   * change → `(true)`), the `setTimeout(…, 1)` deferral, the pending-
+   * focus suppression, and the unconditional `focusQuestionInfo()`.
+   * The deferred funnel re-enters `scrollToTopOnPageChange`, which the
+   * installed bridge intercepts (1.2 design, "Sequencing").
+   *
+   * RN has no HTMLElement: `onAfterRenderPage` subscribers receive
+   * `htmlElement: null` (documented in DIFFERENCES.md).
+   */
+  private callAfterRenderPage(): void {
+    const survey = this.props.survey;
+    const state = survey.state;
+    if (!survey.activePage) return;
+    if (state !== 'running' && state !== 'starting' && state !== 'preview') {
+      return;
+    }
+    (
+      survey as unknown as { afterRenderPage(htmlElement: unknown): void }
+    ).afterRenderPage(null);
+  }
+
+  /** Whether `detachFromModel` already ran (swap transactions detach
+   * BEFORE the keyed unmount — see the outer component's model-resolution
+   * effect; review round 1 "ordered transaction"). */
+  private detached = false;
+
+  /**
+   * Idempotent teardown of every model-facing wire this root owns:
+   * event props, renderCallback, scroll-host registration, bridge.
+   * Called by the OUTER component before it disposes an owned model on
+   * swap (the keyed unmount only happens a commit later — too late), and
+   * by `componentWillUnmount` for the normal path.
+   */
+  public detachFromModel(): void {
+    if (this.detached) return;
+    this.detached = true;
     const survey = this.props.survey;
     wireModelEventProps(survey, this.wiredEventProps, {});
     this.wiredEventProps = {};
@@ -227,6 +243,10 @@ class SurveyRoot extends SurveyElementBase<SurveyRootProps> {
     this.deregisterScrollHost = undefined;
     this.uninstallBridge?.();
     this.uninstallBridge = undefined;
+  }
+
+  componentWillUnmount(): void {
+    this.detachFromModel();
     super.componentWillUnmount();
   }
 
@@ -275,13 +295,47 @@ class SurveyRoot extends SurveyElementBase<SurveyRootProps> {
     this.viewportHeight = event.nativeEvent.layout.height;
   };
 
+  /** Measured root width — the percent base for a calc()-form
+   * `renderedWidth` (plain % strings pass through natively). */
+  private rootLayoutWidth: number | null = null;
+
   private readonly handleRootLayout = (event: LayoutChangeEvent): void => {
-    const narrow = event.nativeEvent.layout.width < NARROW_BREAKPOINT;
+    const width = event.nativeEvent.layout.width;
+    if (width !== this.rootLayoutWidth) {
+      this.rootLayoutWidth = width;
+      this.forceUpdate();
+    }
+    const narrow = width < NARROW_BREAKPOINT;
     if (narrow !== this.lastNarrow) {
       this.lastNarrow = narrow;
       this.props.onNarrowChange(narrow);
     }
   };
+
+  /**
+   * Root width contract (1.3 design "Exclusions" — owned here): upstream
+   * applies `style.maxWidth = survey.renderedWidth` on the page body
+   * (reactSurvey.tsx:178-180) and centers it via the static-mode css.
+   * `renderedWidth` is `"600px"` / `"80%"` / undefined; percent strings
+   * pass through (native % maxWidth), everything else goes through the
+   * 1.3 evaluator (px/calc → dp). Reactive for free: `width`/
+   * `calculatedWidthMode` are model properties the 0.4 base observes.
+   */
+  private resolveRootWidthStyle():
+    | { maxWidth: number | string; alignSelf: 'center'; width: '100%' }
+    | undefined {
+    const raw = (this.props.survey as SurveyModel & { renderedWidth?: unknown })
+      .renderedWidth;
+    if (!raw || typeof raw !== 'string') return undefined;
+    const trimmed = raw.trim();
+    if (trimmed.length === 0) return undefined;
+    const constrain = (maxWidth: number | string) =>
+      ({ maxWidth, alignSelf: 'center', width: '100%' }) as const;
+    if (trimmed.endsWith('%')) return constrain(trimmed);
+    const value = evaluateWidthExpression(trimmed, this.rootLayoutWidth ?? 0);
+    if (value.kind === 'dp' && value.dp > 0) return constrain(value.dp);
+    return undefined;
+  }
 
   protected renderElement(): React.JSX.Element {
     const survey = this.props.survey;
@@ -289,7 +343,11 @@ class SurveyRoot extends SurveyElementBase<SurveyRootProps> {
     const presentingPages = state === 'running' || state === 'starting';
     return (
       <LifecycleContext.Provider value={this.lifecycleValue}>
-        <View testID="survey-root" onLayout={this.handleRootLayout}>
+        <View
+          testID="survey-root"
+          onLayout={this.handleRootLayout}
+          style={this.resolveRootWidthStyle()}
+        >
           <ScrollView
             ref={this.scrollRef}
             testID="survey-scroll"
@@ -422,6 +480,11 @@ export const Survey = React.forwardRef<SurveyRefHandle, SurveyProps>(
 
       const prev = entryRef.current;
       const disposePrevIfOwned = (): void => {
+        // Ordered swap transaction (review round 1): detach the old
+        // root's model wiring (events, renderCallback, scroll host,
+        // bridge) FIRST — the keyed remount would only unwire a commit
+        // later, against an already-disposed model.
+        innerRef.current?.detachFromModel();
         if (prev?.owned && !prev.model.isDisposed) prev.model.dispose();
       };
 
@@ -484,40 +547,51 @@ export const Survey = React.forwardRef<SurveyRefHandle, SurveyProps>(
 
     // applyTheme — on model creation/swap and on theme change (canonical
     // snapshot compare, not reference compare). No theme prop -> no call.
+    // Reads the LIVE entry (never the render-captured snapshot): within
+    // the same commit as a swap, the resolution effect above has already
+    // replaced the model, and the render-time capture would be the old —
+    // possibly just-disposed — instance (review round 1).
     React.useEffect(() => {
-      if (!activeModel || !theme) {
-        appliedThemeRef.current = { model: activeModel, signature: '' };
+      const liveModel = entryRef.current?.model ?? null;
+      if (!liveModel || !theme) {
+        appliedThemeRef.current = { model: liveModel, signature: '' };
         return;
       }
       const signature = stableStringify(theme);
       if (
-        appliedThemeRef.current.model === activeModel &&
+        appliedThemeRef.current.model === liveModel &&
         appliedThemeRef.current.signature === signature
       ) {
         return;
       }
-      activeModel.applyTheme(theme);
-      appliedThemeRef.current = { model: activeModel, signature };
+      liveModel.applyTheme(theme);
+      appliedThemeRef.current = { model: liveModel, signature };
     });
 
     // Responsive ownership (provider doc): narrow -> model.setIsMobile.
+    // Live-entry read, same rationale as the theme effect above.
     React.useEffect(() => {
-      if (!activeModel) {
+      const liveModel = entryRef.current?.model ?? null;
+      if (!liveModel) {
         isMobileRef.current = { model: null, narrow: null };
         return;
       }
       if (
-        isMobileRef.current.model === activeModel &&
+        isMobileRef.current.model === liveModel &&
         isMobileRef.current.narrow === narrow
       ) {
         return;
       }
-      activeModel.setIsMobile(narrow);
-      isMobileRef.current = { model: activeModel, narrow };
+      liveModel.setIsMobile(narrow);
+      isMobileRef.current = { model: liveModel, narrow };
     });
 
     React.useImperativeHandle(ref, () => ({
-      model: activeModel,
+      // Getter: the handle can never expose a stale render-captured model
+      // while its methods act on the live entry (review round 1).
+      get model() {
+        return entryRef.current?.model ?? null;
+      },
       focusQuestion: (name: string) =>
         entryRef.current?.model.focusQuestion(name) ?? false,
       scrollToTop: () => {
@@ -528,18 +602,20 @@ export const Survey = React.forwardRef<SurveyRefHandle, SurveyProps>(
     const eventProps = extractModelEventProps(rest as Record<string, unknown>);
 
     return (
-      <SurveyThemeProvider theme={theme} styles={styles} narrow={narrow}>
-        {activeModel ? (
-          <SurveyRoot
-            key={entryRef.current!.key}
-            ref={innerRef}
-            survey={activeModel}
-            eventProps={eventProps}
-            onScrollToElement={onScrollToElement}
-            onNarrowChange={setNarrow}
-          />
-        ) : null}
-      </SurveyThemeProvider>
+      <UriPolicyContext.Provider value={uriPolicy}>
+        <SurveyThemeProvider theme={theme} styles={styles} narrow={narrow}>
+          {activeModel ? (
+            <SurveyRoot
+              key={entryRef.current!.key}
+              ref={innerRef}
+              survey={activeModel}
+              eventProps={eventProps}
+              onScrollToElement={onScrollToElement}
+              onNarrowChange={setNarrow}
+            />
+          ) : null}
+        </SurveyThemeProvider>
+      </UriPolicyContext.Provider>
     );
   }
 );

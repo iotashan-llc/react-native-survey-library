@@ -215,21 +215,36 @@ describe('<Survey> onScrollToElement consult wiring (bridge onScrollRequest seam
   });
 });
 
-describe('<Survey> page-change render-complete call', () => {
-  it('calls survey.scrollToTopOnPageChange after the active page changes', () => {
+describe('<Survey> render-complete: core afterRenderPage machine (review round 1)', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('mount defers scrollToTopOnPageChange(false) (the initial autofocus path); a page change defers (true)', () => {
     const model = new Model(JSON_A);
     const spy = jest
       .spyOn(model, 'scrollToTopOnPageChange')
       .mockImplementation(() => undefined);
     render(<Survey model={model} />);
-    expect(spy).not.toHaveBeenCalled(); // mount is not a page CHANGE
+    expect(spy).not.toHaveBeenCalled(); // deferred via setTimeout(…, 1)
+    act(() => {
+      jest.advanceTimersByTime(2);
+    });
+    expect(spy).toHaveBeenCalledWith(false); // isCurrentPageRendered undefined
+    spy.mockClear();
     act(() => {
       model.nextPage();
     });
-    expect(spy).toHaveBeenCalled();
+    act(() => {
+      jest.advanceTimersByTime(2);
+    });
+    expect(spy).toHaveBeenCalledWith(true); // page change reset the flag
   });
 
-  it('routes render-complete to focusQuestionInfo INSTEAD of scrolling when a focus is pending (core afterRenderPage parity, survey.ts:5514-5519)', () => {
+  it('a pending focusingQuestionInfo suppresses the scroll and routes to focusQuestionInfo (survey.ts:5514-5519)', () => {
     const model = new Model(JSON_A);
     type FocusInternals = {
       focusingQuestionInfo?: unknown;
@@ -243,23 +258,143 @@ describe('<Survey> page-change render-complete call', () => {
       .spyOn(internals, 'focusQuestionInfo')
       .mockImplementation(() => undefined);
     render(<Survey model={model} />);
+    act(() => {
+      jest.advanceTimersByTime(2);
+    });
+    scrollSpy.mockClear();
     internals.focusingQuestionInfo = { question: undefined, onError: false };
     act(() => {
       model.nextPage();
+    });
+    act(() => {
+      jest.advanceTimersByTime(2);
     });
     expect(focusSpy).toHaveBeenCalled();
     expect(scrollSpy).not.toHaveBeenCalled();
   });
 
-  it('does not call scrollToTopOnPageChange when the survey leaves the running state', () => {
+  it('suppresses the scroll entirely in design mode (isDesignMode gate the old seam lacked)', () => {
+    const model = new Model(JSON_A);
+    (model as unknown as { setDesignMode(on: boolean): void }).setDesignMode(
+      true
+    );
+    const spy = jest
+      .spyOn(model, 'scrollToTopOnPageChange')
+      .mockImplementation(() => undefined);
+    render(<Survey model={model} />);
+    act(() => {
+      jest.advanceTimersByTime(2);
+    });
+    expect(spy).not.toHaveBeenCalled();
+  });
+
+  it('schedules no NEW render-complete call after the survey leaves the running state', () => {
     const model = new Model(JSON_A);
     const spy = jest
       .spyOn(model, 'scrollToTopOnPageChange')
       .mockImplementation(() => undefined);
     render(<Survey model={model} />);
     act(() => {
+      jest.advanceTimersByTime(2);
+    });
+    spy.mockClear();
+    act(() => {
       model.doComplete();
     });
+    act(() => {
+      jest.advanceTimersByTime(2);
+    });
     expect(spy).not.toHaveBeenCalled();
+  });
+
+  it('core still invokes renderCallback (behavioral drift gate for the not-listable member)', () => {
+    const model = new Model(JSON_A);
+    render(<Survey model={model} />);
+    const callback = jest.fn();
+    model.renderCallback = callback;
+    (model as unknown as { render(el?: unknown): void }).render();
+    expect(callback).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('<Survey> model swap is an ordered transaction (review round 1)', () => {
+  const JSON_B = {
+    pages: [{ name: 'p1', elements: [{ type: 'text', name: 'qb' }] }],
+  };
+  const THEME = { cssVariables: { '--sjs-general-backcolor': '#ffffff' } };
+
+  it('detaches the old root wiring BEFORE disposing; theme/mobile land on the NEW model; the ref never exposes the old model after the swap', () => {
+    const log: string[] = [];
+    const applyThemeTargets: unknown[] = [];
+    const realDispose = Model.prototype.dispose;
+    const realApplyTheme = Model.prototype.applyTheme;
+    const disposeSpy = jest
+      .spyOn(Model.prototype, 'dispose')
+      .mockImplementation(function (this: InstanceType<typeof Model>) {
+        const events = this as unknown as {
+          onComplete: { isEmpty: boolean };
+          renderCallback?: () => void;
+        };
+        log.push(
+          `dispose(handlersDetached=${events.onComplete.isEmpty},` +
+            `renderCallbackCleared=${events.renderCallback === undefined})`
+        );
+        realDispose.call(this);
+      });
+    const themeSpy = jest
+      .spyOn(Model.prototype, 'applyTheme')
+      .mockImplementation(function (
+        this: InstanceType<typeof Model>,
+        theme: Parameters<typeof realApplyTheme>[0]
+      ) {
+        applyThemeTargets.push(this);
+        log.push('applyTheme');
+        realApplyTheme.call(this, theme);
+      });
+    mockInstall.mockImplementation(() => {
+      const uninstall = jest.fn(() => {
+        log.push('bridgeUninstall');
+      });
+      return uninstall;
+    });
+    try {
+      // Owned-json path: the component constructs AND disposes the model.
+      const ref = React.createRef<import('../Survey').SurveyRefHandle>();
+      const onComplete = jest.fn();
+      const { rerender } = render(
+        <Survey ref={ref} json={JSON_A} theme={THEME} onComplete={onComplete} />
+      );
+      const oldModel = ref.current!.model!;
+      log.length = 0; // only observe the SWAP sequence
+      applyThemeTargets.length = 0;
+      rerender(
+        <Survey ref={ref} json={JSON_B} theme={THEME} onComplete={onComplete} />
+      );
+      const newModel = ref.current!.model!;
+      expect(newModel).not.toBe(oldModel);
+      // Ordered transaction: bridge uninstall precedes dispose; dispose
+      // sees events already detached and renderCallback cleared.
+      const uninstallIndex = log.indexOf('bridgeUninstall');
+      const disposeIndex = log.findIndex((entry) =>
+        entry.startsWith('dispose(')
+      );
+      expect(uninstallIndex).toBeGreaterThanOrEqual(0);
+      expect(disposeIndex).toBeGreaterThanOrEqual(0);
+      expect(uninstallIndex).toBeLessThan(disposeIndex);
+      expect(log[disposeIndex]).toBe(
+        'dispose(handlersDetached=true,renderCallbackCleared=true)'
+      );
+      // Theme lands on the NEW model, never re-applied to the old one
+      // during the swap.
+      expect(applyThemeTargets).toContain(newModel);
+      expect(applyThemeTargets).not.toContain(oldModel);
+      // The ref exposes the live (new) model.
+      expect(ref.current!.model).toBe(newModel);
+      expect(oldModel.isDisposed).toBe(true);
+    } finally {
+      disposeSpy.mockRestore();
+      themeSpy.mockRestore();
+      mockInstall.mockImplementation(() => jest.fn());
+    }
   });
 });

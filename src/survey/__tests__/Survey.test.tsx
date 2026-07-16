@@ -280,3 +280,45 @@ describe('<Survey> responsive narrow', () => {
     expect(calls[calls.length - 1]).toBe(false);
   });
 });
+
+describe('<Survey> root width (review round 1: 1.3 contract owned by 1.1)', () => {
+  const PAGE = { elements: [{ type: 'text', name: 'q1' }] };
+
+  function rootStyle(
+    getByTestId: (id: string) => { props: { style?: unknown } }
+  ): Record<string, unknown> {
+    const style = getByTestId('survey-root').props.style;
+    return Object.assign({}, ...[style].flat(Infinity).filter(Boolean));
+  }
+
+  it('a static widthMode + px width constrains the root (maxWidth, centered)', () => {
+    const model = new Model({ widthMode: 'static', width: '600px', ...PAGE });
+    const { getByTestId } = render(<Survey model={model} />);
+    const style = rootStyle(getByTestId);
+    expect(style.maxWidth).toBe(600);
+    expect(style.alignSelf).toBe('center');
+    expect(style.width).toBe('100%');
+  });
+
+  it('a percent width passes through as-is (native % maxWidth)', () => {
+    const model = new Model({ widthMode: 'static', width: '80%', ...PAGE });
+    const { getByTestId } = render(<Survey model={model} />);
+    expect(rootStyle(getByTestId).maxWidth).toBe('80%');
+  });
+
+  it('no renderedWidth -> unconstrained root (no maxWidth)', () => {
+    const model = new Model({ ...PAGE });
+    expect(model.renderedWidth).toBeUndefined();
+    const { getByTestId } = render(<Survey model={model} />);
+    expect(rootStyle(getByTestId).maxWidth).toBeUndefined();
+  });
+
+  it('a width change re-renders the constraint (reactive via the 0.4 base)', () => {
+    const model = new Model({ widthMode: 'static', width: '600px', ...PAGE });
+    const { getByTestId } = render(<Survey model={model} />);
+    act(() => {
+      model.width = '400px';
+    });
+    expect(rootStyle(getByTestId).maxWidth).toBe(400);
+  });
+});
