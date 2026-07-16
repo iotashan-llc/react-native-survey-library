@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>survey-react parity — kitchen sink</title>
+    <!-- Pinned to the survey-core version the RN renderer is tested
+         against (see package.json peer band). survey-js-ui is the
+         official React-free web renderer sharing survey-react-ui's
+         markup/CSS — the styling reference for side-by-side shots. -->
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/survey-core@2.5.33/survey-core.min.css"
+    />
+    <script src="https://unpkg.com/survey-core@2.5.33/survey.core.min.js"></script>
+    <script src="https://unpkg.com/survey-core@2.5.33/themes/index.min.js"></script>
+    <script src="https://unpkg.com/survey-js-ui@2.5.33/survey-js-ui.min.js"></script>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+      }
+      #banner {
+        font:
+          12px/1.4 -apple-system,
+          sans-serif;
+        padding: 4px 8px;
+        background: #eee;
+        color: #333;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="banner"></div>
+    <div id="surveyElement"></div>
+    <script>
+      // ?theme=DefaultDark etc. (any export of survey-core/themes);
+      // default DefaultLight — mirrors the RN example's switcher set.
+      const params = new URLSearchParams(location.search);
+      const themeName = params.get('theme') || 'DefaultLight';
+      document.getElementById('banner').textContent =
+        'web parity — survey-core 2.5.33 — theme ' +
+        themeName +
+        ' — ' +
+        window.innerWidth +
+        '×' +
+        window.innerHeight;
+      fetch('./kitchen-sink.json')
+        .then((r) => r.json())
+        .then((json) => {
+          const model = new Survey.Model(json);
+          const theme = SurveyTheme[themeName];
+          if (theme) model.applyTheme(theme);
+          model.onComplete.add((sender) => {
+            console.log('[parity] completed', sender.data);
+          });
+          SurveyUI.renderSurvey(model, document.getElementById('surveyElement'));
+        })
+        .catch((error) => {
+          document.getElementById('banner').textContent =
+            'FAILED: ' + error.message;
+        });
+    </script>
+  </body>
+</html>
