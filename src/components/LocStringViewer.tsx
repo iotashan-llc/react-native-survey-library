@@ -105,7 +105,15 @@ export class SurveyLocStringViewer extends React.Component<
 
   protected renderString(): React.JSX.Element {
     if (this.locStr.hasHtml) {
-      return <SanitizedHtml html={this.locStr.renderedHtml} />;
+      // The caller's text style reaches HTML strings too (task 2.9
+      // review: recipe caption styles must not silently drop on the
+      // hasHtml branch).
+      return (
+        <SanitizedHtml
+          html={this.locStr.renderedHtml}
+          baseStyle={this.props.style}
+        />
+      );
     }
     const text = this.locStr.renderedHtml;
     return (

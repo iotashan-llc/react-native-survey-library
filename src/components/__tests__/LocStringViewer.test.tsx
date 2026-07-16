@@ -23,6 +23,7 @@
  */
 import * as React from 'react';
 import { render, screen, act } from '@testing-library/react-native';
+import { SanitizedHtml } from '../SanitizedHtml';
 
 import { Model, LocalizableString } from '../../core/facade';
 import { SurveyElementBase } from '../../reactivity/SurveyElementBase';
@@ -151,6 +152,24 @@ describe('SurveyLocStringViewer — sanitized rich text path', () => {
     expect(screen.getByText(/bold/)).toBeTruthy();
     expect(screen.queryByText(/\*\*/)).toBeNull();
     expect(screen.queryByText(/<b>/)).toBeNull();
+  });
+
+  it('the caller style reaches the HTML branch as SanitizedHtml baseStyle (task 2.9 review)', () => {
+    const model = new Model({ title: 'Hello **bold** world' });
+    markdownToBold(model);
+    render(
+      <SurveyLocStringViewer
+        model={model.locTitle}
+        style={{ fontWeight: '600', color: '#123456' }}
+      />
+    );
+    const html = screen.UNSAFE_getByType(SanitizedHtml as never) as unknown as {
+      props: { baseStyle?: unknown };
+    };
+    expect(html.props.baseStyle).toEqual({
+      fontWeight: '600',
+      color: '#123456',
+    });
   });
 
   it('re-renders the rich-text path on string change', () => {

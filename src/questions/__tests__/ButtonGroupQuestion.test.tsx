@@ -177,23 +177,41 @@ describe('ButtonGroupQuestion — review round 1 regressions', () => {
       defaultValue: 'a',
     });
     render(<ButtonGroupQuestion question={question} creator={{}} />);
-    // Fill is threaded via RNIcon's fill prop from the recipe fragments —
-    // assert through the recipe contract rather than SVG internals.
     const { buildButtonGroupRecipe } = jest.requireActual<
       typeof import('../../theme-rn/recipes/buttonGroup')
     >('../../theme-rn/recipes/buttonGroup');
     const { resolveTheme } = jest.requireActual<
       typeof import('../../theme-core/resolve')
     >('../../theme-core/resolve');
-    const recipe = buildButtonGroupRecipe(resolveTheme(undefined));
-    expect(recipe.iconFill({ selected: true, disabled: false })).toBe(
-      recipe.iconFill({ selected: true, disabled: false })
+    const { resolveColorVar } = jest.requireActual<
+      typeof import('../../theme-rn/recipes/tokenLookup')
+    >('../../theme-rn/recipes/tokenLookup');
+    const resolved = resolveTheme(undefined);
+    const recipe = buildButtonGroupRecipe(resolved);
+    const primary = resolveColorVar(resolved, '--sjs-primary-backcolor').css;
+    const foreground = resolveColorVar(resolved, '--sjs-general-forecolor').css;
+    const foregroundLight = resolveColorVar(
+      resolved,
+      '--sjs-general-forecolor-light'
+    ).css;
+    // Exact token mapping incl. disabled+selected precedence (disabled wins).
+    expect(recipe.iconFill({ selected: false, disabled: false })).toBe(
+      foregroundLight
     );
-    expect(recipe.iconFill({ selected: false, disabled: false })).not.toBe(
-      recipe.iconFill({ selected: true, disabled: false })
+    expect(recipe.iconFill({ selected: true, disabled: false })).toBe(primary);
+    expect(recipe.iconFill({ selected: false, disabled: true })).toBe(
+      foreground
     );
-    expect(recipe.iconFill({ selected: false, disabled: true })).not.toBe(
-      recipe.iconFill({ selected: false, disabled: false })
+    expect(recipe.iconFill({ selected: true, disabled: true })).toBe(
+      foreground
     );
+    // The rendered icons received exactly those fills.
+    const { RNIcon: IconComponent } = jest.requireActual<
+      typeof import('../../components/RNIcon')
+    >('../../components/RNIcon');
+    const icons = screen.UNSAFE_getAllByType(
+      IconComponent as never
+    ) as unknown as Array<{ props: { fill?: string } }>;
+    expect(icons.map((icon) => icon.props.fill)).toEqual([primary, foreground]);
   });
 });

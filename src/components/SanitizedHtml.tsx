@@ -29,8 +29,8 @@
  * claim narrowed: deferred module evaluation only").
  */
 import * as React from 'react';
-import { Dimensions } from 'react-native';
-import type { GestureResponderEvent } from 'react-native';
+import { Dimensions, StyleSheet } from 'react-native';
+import type { GestureResponderEvent, StyleProp, TextStyle } from 'react-native';
 import type { ComponentType } from 'react';
 import { sanitizeHtml } from '../security/sanitize-html';
 import type {
@@ -60,6 +60,10 @@ export interface SanitizedHtmlProps {
   relaxedFormatting?: boolean;
   /** Resource-bound overrides — DOWN only. */
   bounds?: Partial<ResourceBounds>;
+  /** Base text style applied to the rendered HTML root (task 2.9: recipe
+   * caption styles must reach HTML captions too — threaded to the
+   * renderer's `baseStyle`). */
+  baseStyle?: StyleProp<TextStyle>;
   /** Origin-allowlist / baseUrl config for `<img>` elements found inside
    * the HTML content (context `'image'`). Not wired to Survey-level
    * config yet (that is task 1.1) — threaded through for that caller. */
@@ -218,6 +222,11 @@ export function SanitizedHtml(props: SanitizedHtmlProps): React.JSX.Element {
       contentWidth={resolvedContentWidth}
       renderersProps={renderersProps}
       enableCSSInlineProcessing={false}
+      baseStyle={
+        props.baseStyle
+          ? (StyleSheet.flatten(props.baseStyle) as Record<string, unknown>)
+          : undefined
+      }
     />
   );
 }

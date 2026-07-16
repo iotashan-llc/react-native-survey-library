@@ -98,11 +98,10 @@ class ButtonGroupItemRow extends SurveyElementBase<ButtonGroupItemRowProps> {
         accessibilityState={{ checked: vm.selected, disabled: vm.readOnly }}
         disabled={vm.readOnly}
         onPress={() => vm.onChange()}
-        style={[
-          ...composeStyles(styles.item[0]!, { override: slots?.item }),
-          ...styles.item.slice(1),
-          isLast ? null : recipe.fragments.itemDivider,
-        ]}
+        style={composeStyles(
+          [...styles.item, ...(isLast ? [] : [recipe.fragments.itemDivider])],
+          { override: slots?.item }
+        )}
       >
         {vm.iconName ? (
           <RNIcon
@@ -114,11 +113,13 @@ class ButtonGroupItemRow extends SurveyElementBase<ButtonGroupItemRowProps> {
         {vm.showCaption
           ? SurveyElementBase.renderLocString(
               vm.caption,
-              [
-                ...styles.caption,
-                vm.iconName ? recipe.fragments.captionAfterIcon : null,
-                slots?.caption,
-              ],
+              composeStyles(
+                [
+                  ...styles.caption,
+                  ...(vm.iconName ? [recipe.fragments.captionAfterIcon] : []),
+                ],
+                { override: slots?.caption }
+              ),
               `caption-${index}`
             )
           : null}
