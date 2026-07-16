@@ -28,7 +28,31 @@ export type {
 export { QuestionChrome } from './components/QuestionChrome';
 export type { QuestionChromeProps } from './components/QuestionChrome';
 export { setDiagnosticHandler, reportDiagnostic } from './diagnostics';
-export type { DiagnosticHandler, DiagnosticPayload } from './diagnostics';
+export type {
+  DiagnosticHandler,
+  DiagnosticPayload,
+  LifecycleDiagnosticPayload,
+} from './diagnostics';
+
+// Native lifecycle bridge (design: docs/design/1.2-lifecycle-bridge.md,
+// A15) — the per-survey ref/layout registry, the onScrollToTop
+// interception bridge, and the context 1.1's <Survey> provides them
+// through. Components register ElementHandles via the 0.4 mounted hooks.
+export { createLifecycleRegistry } from './lifecycle/registry';
+export { installLifecycleBridge } from './lifecycle/bridge';
+export { LifecycleContext } from './lifecycle/LifecycleContext';
+export type { LifecycleContextValue } from './lifecycle/LifecycleContext';
+export type {
+  ElementHandle,
+  LifecycleBridgeOptions,
+  LifecycleRegistry,
+  RegistrableElement,
+  ResolvedScrollTarget,
+  ScrollHostHandle,
+  ScrollHostViewport,
+  ScrollRequestInfo,
+  TargetMeasurement,
+} from './lifecycle/types';
 
 // Task 1.6 — LocalizableString renderer + basic survey header.
 export { SurveyLocStringViewer } from './components/LocStringViewer';

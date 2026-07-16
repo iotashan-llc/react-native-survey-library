@@ -319,6 +319,17 @@ export const API_SURFACE_WATCHLIST: readonly WatchedApiMember[] = [
     reason:
       'Test cleanup for renderer-route registration (register-all.test.tsx).',
   },
+  {
+    id: 'SurveyModel.onScrollToTop',
+    member: 'onScrollToTop',
+    // Assigned in the SurveyModel constructor (`this.addEvent()`), so an
+    // OWN data property on each INSTANCE — probed on a minimal empty
+    // model, same pattern as the QuestionCustomWidget probe above.
+    expectedKind: 'data',
+    resolveHost: (sc) => new sc.Model(undefined),
+    reason:
+      'The lifecycle bridge subscribes the single scroll/focus funnel here (design 1.2-lifecycle-bridge, A15).',
+  },
   // Task 1.5 (design: docs/design/1.5-icon-actionbutton.md) — RNIcon's
   // resolution seams. Runtime kinds verified against the installed
   // v2.5.33 package.
@@ -371,14 +382,77 @@ export const API_SURFACE_WATCHLIST: readonly WatchedApiMember[] = [
     member: 'add',
     expectedKind: 'method',
     resolveHost: (sc) => sc.EventBase.prototype,
-    reason: "RNIcon's onIconsChanged subscribe (componentDidMount).",
+    reason:
+      "Lifecycle bridge install subscribes onScrollToTop; RNIcon's onIconsChanged subscribe (componentDidMount).",
   },
   {
     id: 'EventBase.remove',
     member: 'remove',
     expectedKind: 'method',
     resolveHost: (sc) => sc.EventBase.prototype,
-    reason: "RNIcon's onIconsChanged unsubscribe (componentWillUnmount).",
+    reason:
+      "Lifecycle bridge uninstall unsubscribes onScrollToTop; RNIcon's onIconsChanged unsubscribe (componentWillUnmount).",
+  },
+  {
+    id: 'Question.focusIn',
+    member: 'focusIn',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.Question.prototype,
+    reason:
+      'Focus-event ownership contract: components fire it from their native input onFocus (ElementHandle.focusFirst contract; web drives this from a DOM focus-bubble handler).',
+  },
+  {
+    id: 'Question.inputId',
+    member: 'inputId',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Question.prototype,
+    reason:
+      "Focus-intent discrimination depends on the panel-expand caller passing id: q.inputId (distinct from question.id) — the bridge treats only elementId === question.id as focus intent (design 1.2-lifecycle-bridge, 'Focus-intent discrimination').",
+  },
+  {
+    id: 'Question.page',
+    member: 'page',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Question.prototype,
+    reason:
+      "Registry owning-page fallback: resolveScrollTarget reads `.page` off an unregistered question to fall back to its registered page handle (design 1.2-lifecycle-bridge, 'Lookup order').",
+  },
+  {
+    id: 'PanelModel.page',
+    member: 'page',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.PanelModel.prototype,
+    reason:
+      'Registry owning-page fallback for registered panels (same lookup order as Question.page).',
+  },
+  {
+    id: 'SurveyModel.focusQuestionInfo',
+    member: 'focusQuestionInfo',
+    // PRIVATE in the TS declarations (called via cast) but a plain
+    // prototype method at runtime — this row is the drift gate for that
+    // documented private-API dependency (review round 2 #3).
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.SurveyModel.prototype,
+    reason:
+      "1.1's render-complete seam mirrors afterRenderPage (survey.ts:5514-5519): while focusingQuestionInfo is parked it calls focusQuestionInfo() to execute the cross-page focus (design 1.2-lifecycle-bridge, 'Cross-page focus').",
+  },
+  {
+    id: 'SurveyModel.scrollToTopOnPageChange',
+    member: 'scrollToTopOnPageChange',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.SurveyModel.prototype,
+    reason:
+      "The other branch of 1.1's render-complete seam: no parked focus → scrollToTopOnPageChange() re-enters the funnel with the page shape.",
+  },
+  {
+    id: 'settings.environment',
+    member: 'environment',
+    // A data field on the settings singleton — undefined in RN until the
+    // facade's 1.2 stub fills it (the key itself is always present).
+    expectedKind: 'data',
+    resolveHost: (sc) => sc.settings,
+    reason:
+      "The shim's 1.2 amendment stubs it so destructures of the environment object itself survive (NARROW contract — DOM-only field dereferences stay unsupported; design 1.2-lifecycle-bridge, piece 3).",
   },
   // Task 1.5 — the Action members ActionButton binds (accessor entries
   // resolve through BaseAction.prototype via descriptorKind's prototype

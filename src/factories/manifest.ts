@@ -122,9 +122,35 @@ export const MODEL_TYPE_CLASSIFICATION: Readonly<
     reason: 'task 1.10',
     runtimeRenderable: { expectedTemplate: 'text', expectedRoute: 'template' },
   },
-  comment: { status: 'planned', milestone: 'M1', reason: 'task 1.11' },
-  checkbox: { status: 'planned', milestone: 'M1', reason: 'task 1.12' },
-  radiogroup: { status: 'planned', milestone: 'M1', reason: 'task 1.12' },
+  comment: {
+    status: 'supported',
+    milestone: 'M1',
+    reason: 'task 1.11',
+    runtimeRenderable: {
+      expectedTemplate: 'comment',
+      expectedRoute: 'template',
+    },
+  },
+  checkbox: {
+    status: 'supported',
+    milestone: 'M1',
+    reason: 'task 1.12',
+    runtimeRenderable: {
+      expectedTemplate: 'checkbox',
+      expectedRoute: 'template',
+      fixtureJson: { type: 'checkbox', choices: ['a', 'b'] },
+    },
+  },
+  radiogroup: {
+    status: 'supported',
+    milestone: 'M1',
+    reason: 'task 1.12',
+    runtimeRenderable: {
+      expectedTemplate: 'radiogroup',
+      expectedRoute: 'template',
+      fixtureJson: { type: 'radiogroup', choices: ['a', 'b'] },
+    },
+  },
   boolean: {
     status: 'supported',
     milestone: 'M1',

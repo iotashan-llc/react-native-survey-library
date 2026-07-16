@@ -22,6 +22,7 @@ import {
   type QuestionChromeRecipe,
 } from './questionChrome';
 import { buildHeaderRecipe, type HeaderRecipe } from './header';
+import { buildRowRecipe, type RowRecipe } from './row';
 
 export interface Recipes {
   item: ItemRecipe;
@@ -33,6 +34,8 @@ export interface Recipes {
   questionChrome: QuestionChromeRecipe;
   /** Basic survey header (task 1.6). */
   header: HeaderRecipe;
+  /** Row/element composition geometry (task 1.4). */
+  row: RowRecipe;
 }
 
 export function buildRecipes(
@@ -47,6 +50,7 @@ export function buildRecipes(
     unsupportedQuestion: buildUnsupportedQuestionRecipe(resolved, buildCtx),
     questionChrome: buildQuestionChromeRecipe(resolved, buildCtx),
     header: buildHeaderRecipe(resolved, buildCtx),
+    row: buildRowRecipe(resolved, buildCtx),
   };
 }
 
@@ -58,3 +62,4 @@ export * from './questionTitle';
 export * from './unsupportedQuestion';
 export * from './questionChrome';
 export * from './header';
+export * from './row';

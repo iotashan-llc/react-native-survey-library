@@ -31,9 +31,14 @@
  */
 import type { ComponentType } from 'react';
 import { EmptyQuestion } from '../components/EmptyQuestion';
+import { Comment } from '../components/Comment';
+import { Checkbox } from '../components/Checkbox';
+import { Radiogroup } from '../components/Radiogroup';
 import { SurveyLocStringViewer } from '../components/LocStringViewer';
 import { SurveyHeader } from '../components/SurveyHeader';
 import { LogoImage } from '../components/LogoImage';
+import { SurveyPage } from '../components/composition/SurveyPage';
+import { SurveyPanel } from '../components/composition/SurveyPanel';
 import {
   BooleanCheckboxQuestion,
   BooleanQuestion,
@@ -108,6 +113,27 @@ export const DESCRIPTOR_TABLE: readonly Descriptor[] = [
     dispatchKey: 'sv-logo-image',
     route: 'element',
     component: () => LogoImage,
+    milestone: 'M1',
+  },
+
+  // M1, task 1.4 — composition element rows. `sv-page` mirrors upstream's
+  // ReactElementFactory key (page.tsx registers "sv-page"); `panel` is the
+  // key `SurveyRowElement` dispatches when a row element `isPanel`
+  // (upstream: `element.getTemplate()` -> "panel" in the element factory).
+  {
+    status: 'supported',
+    questionType: 'sv-page',
+    dispatchKey: 'sv-page',
+    route: 'element',
+    component: () => SurveyPage,
+    milestone: 'M1',
+  },
+  {
+    status: 'supported',
+    questionType: 'panel',
+    dispatchKey: 'panel',
+    route: 'element',
+    component: () => SurveyPanel,
     milestone: 'M1',
   },
   // Task 1.13 (boolean): three rows, one per `renderAs` mode (verified
@@ -190,5 +216,32 @@ export const DESCRIPTOR_TABLE: readonly Descriptor[] = [
       "regardless of the registered custom type's own name — until the " +
       'adapter exists, a dispatch miss on this key falls through to the ' +
       'unsupported-type fallback + diagnostic.',
+  },
+  // Phase 1 — v0.1 (M1). getTemplate() === getType() for all three (no
+  // override; verified against a live fixture in manifest.ts's
+  // runtimeRenderable construction gate) — dispatchKey === questionType.
+  {
+    status: 'supported',
+    questionType: 'comment',
+    dispatchKey: 'comment',
+    route: 'template',
+    component: () => Comment,
+    milestone: 'M1',
+  },
+  {
+    status: 'supported',
+    questionType: 'checkbox',
+    dispatchKey: 'checkbox',
+    route: 'template',
+    component: () => Checkbox,
+    milestone: 'M1',
+  },
+  {
+    status: 'supported',
+    questionType: 'radiogroup',
+    dispatchKey: 'radiogroup',
+    route: 'template',
+    component: () => Radiogroup,
+    milestone: 'M1',
   },
 ];
