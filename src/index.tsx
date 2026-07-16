@@ -32,7 +32,29 @@ export type {
   DiagnosticHandler,
   DiagnosticPayload,
   LifecycleDiagnosticPayload,
+  SurveyRootDiagnosticPayload,
+  SurveyJsonBlockedUrlPayload,
 } from './diagnostics';
+
+// The <Survey> root (design: docs/design/1.1-survey-root.md; A11, A12) —
+// json XOR model, pre-model URL preflight, applyTheme, owned-model
+// dispose, SurveyRefHandle, compiler-derived event props.
+// `preflightSurveyJson` is exported for hosts on the `model` path (which
+// is documented trusted/prevalidated): they can run the same A11
+// preflight over their json before constructing the model themselves.
+export { Survey } from './survey/Survey';
+export type {
+  SurveyProps,
+  SurveyOwnProps,
+  SurveyRefHandle,
+  SurveyScrollToElementEvent,
+} from './survey/Survey';
+export type { SurveyModelEventProps } from './survey/event-props';
+export { preflightSurveyJson } from './security/json-preflight';
+export type {
+  PreflightDiagnostic,
+  PreflightResult,
+} from './security/json-preflight';
 
 // Native lifecycle bridge (design: docs/design/1.2-lifecycle-bridge.md,
 // A15) — the per-survey ref/layout registry, the onScrollToTop

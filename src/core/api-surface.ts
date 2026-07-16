@@ -24,7 +24,7 @@
  *   type-only interfaces, erased at runtime, nothing to reflect on; their
  *   real shape is exercised behaviorally by 0.4's tests.
  * - Fixture-CHOICE test bindings (`Question.indent`/`readOnly`,
- *   checkbox `choices`, `Model.dispose`, the shim smoke test's
+ *   checkbox `choices`, the shim smoke test's
  *   `getValue`/`setValue`/`state`/`currentPageNo`/`completeLastPage`,
  *   `CustomWidgetCollection.Instance.clear`/`.addCustomWidget`) — each is
  *   read/written by exactly one suite that fails loudly on its own if the
@@ -319,6 +319,81 @@ export const API_SURFACE_WATCHLIST: readonly WatchedApiMember[] = [
     reason:
       'Test cleanup for renderer-route registration (register-all.test.tsx).',
   },
+  // ------------------------------------------------------------------
+  // Task 1.1 <Survey> root bindings (design: docs/design/1.1-survey-root.md).
+  // NOT listed despite being production bindings: `SurveyModel.
+  // renderCallback` (write-only assignment) and `SurveyModel.
+  // pageComponent` (read with `|| 'sv-page'` fallback) — both are bare
+  // TS field declarations with NO runtime descriptor on the prototype OR
+  // a fresh instance (verified against 2.5.33), so reflection would
+  // report a false 'missing'; the Survey behavioral suites own them.
+  // Same story for `SurveyModel.focusingQuestionInfo` (the private bare
+  // field read by the afterRenderPage-parity branch) — its paired
+  // METHOD `focusQuestionInfo` IS a real prototype member and is pinned
+  // below.
+  // ------------------------------------------------------------------
+  {
+    id: 'SurveyModel.applyTheme',
+    member: 'applyTheme',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.SurveyModel.prototype,
+    reason:
+      "<Survey>'s theme prop keeps model-side derived state consistent (design 1.1-survey-root, 'Theme').",
+  },
+  {
+    id: 'SurveyModel.state',
+    member: 'state',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.SurveyModel.prototype,
+    reason: "Survey root's running/starting vs completion-state render switch.",
+  },
+  {
+    id: 'SurveyModel.activePage',
+    member: 'activePage',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.SurveyModel.prototype,
+    reason:
+      'Page dispatch target + page-change detection in SurveyRoot.componentDidUpdate.',
+  },
+  {
+    id: 'SurveyModel.focusQuestion',
+    member: 'focusQuestion',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.SurveyModel.prototype,
+    reason: 'SurveyRefHandle.focusQuestion delegate.',
+  },
+  {
+    id: 'SurveyModel.setIsMobile',
+    member: 'setIsMobile',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.SurveyModel.prototype,
+    reason:
+      "Responsive ownership: root onLayout width < 600 -> setIsMobile (design 0.7-theme-rn, 'Responsive ownership').",
+  },
+  {
+    id: 'SurveyModel.dispose',
+    member: 'dispose',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.SurveyModel.prototype,
+    reason:
+      'Owned-model dispose on unmount/json-swap (promoted from the fixture-exclusion list: production binds it as of 1.1).',
+  },
+  {
+    id: 'Base.isDisposed',
+    member: 'isDisposed',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Base.prototype,
+    reason:
+      'Dispose idempotence guard + StrictMode remount-simulation recovery (design 1.1-survey-root).',
+  },
+  {
+    id: 'Helpers.isTwoValueEquals',
+    member: 'isTwoValueEquals',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.Helpers,
+    reason:
+      'json prop deep-equality change detection (upstream reactSurvey.tsx parity).',
+  },
   {
     id: 'SurveyModel.onScrollToTop',
     member: 'onScrollToTop',
@@ -383,7 +458,7 @@ export const API_SURFACE_WATCHLIST: readonly WatchedApiMember[] = [
     expectedKind: 'method',
     resolveHost: (sc) => sc.EventBase.prototype,
     reason:
-      "Lifecycle bridge install subscribes onScrollToTop; RNIcon's onIconsChanged subscribe (componentDidMount).",
+      "Event-prop wiring subscribes consumer handlers (design 1.1-survey-root, 'Event props'); lifecycle bridge install subscribes onScrollToTop; RNIcon's onIconsChanged subscribe (componentDidMount).",
   },
   {
     id: 'EventBase.remove',
@@ -391,7 +466,7 @@ export const API_SURFACE_WATCHLIST: readonly WatchedApiMember[] = [
     expectedKind: 'method',
     resolveHost: (sc) => sc.EventBase.prototype,
     reason:
-      "Lifecycle bridge uninstall unsubscribes onScrollToTop; RNIcon's onIconsChanged unsubscribe (componentWillUnmount).",
+      "Event-prop wiring unsubscribes on identity swap/model swap/unmount; lifecycle bridge uninstall unsubscribes onScrollToTop; RNIcon's onIconsChanged unsubscribe (componentWillUnmount).",
   },
   {
     id: 'Question.focusIn',
@@ -442,7 +517,31 @@ export const API_SURFACE_WATCHLIST: readonly WatchedApiMember[] = [
     expectedKind: 'method',
     resolveHost: (sc) => sc.SurveyModel.prototype,
     reason:
-      "The other branch of 1.1's render-complete seam: no parked focus → scrollToTopOnPageChange() re-enters the funnel with the page shape.",
+      "The deferred branch of core's afterRenderPage machine: re-enters the funnel with the page shape (the installed bridge intercepts).",
+  },
+  {
+    id: 'SurveyModel.afterRenderPage',
+    member: 'afterRenderPage',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.SurveyModel.prototype,
+    reason:
+      "1.1's render-complete call delegates to core's own machine (survey.ts:5514-5526) instead of hand-rolling the either/or (review round 1).",
+  },
+  {
+    id: 'SurveyModel.renderedWidth',
+    member: 'renderedWidth',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.SurveyModel.prototype,
+    reason:
+      'Root width contract (1.3 design, owned by 1.1): maxWidth on the survey root View.',
+  },
+  {
+    id: 'SurveyModel.widthMode',
+    member: 'widthMode',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.SurveyModel.prototype,
+    reason:
+      'Input to renderedWidth (calculatedWidthMode) — static mode gates the root constraint.',
   },
   {
     id: 'settings.environment',

@@ -133,6 +133,50 @@ the defaults are generous (256KB source, 5000 nodes, 512KB of text,
 etc.). If legitimate content is hitting a bound, treat it as a signal to
 simplify the HTML rather than expecting the same rendering as web.
 
+## `<Survey>` root component (task 1.1)
+
+### No arbitrary model-property passthrough props
+
+`survey-react-ui`'s `<Survey>` assigns any unrecognized prop straight
+onto the model (`updateSurvey`: `survey[key] = props[key]`), so web code
+like `<Survey model={m} showNavigationButtons={false} />` silently works.
+This library's `<Survey>` accepts a **typed surface only**: `json`,
+`model`, `theme`, `styles`, `uriPolicy`, `onScrollToElement`, plus every
+model event as a typed `on*` prop (derived from survey-core's actual
+`EventBase` members, so the compiler flags drift).
+
+**Workaround:** set model properties on the model itself
+(`model.showNavigationButtons = false`) or in the survey JSON — both
+work identically to web.
+
+### `json`-path URLs are policy-checked BEFORE the model exists; `model`-path is trusted
+
+On web, `choicesByUrl` fires its network request the moment the
+`SurveyModel` is constructed — before any application code can veto it.
+This library preflights the `json` prop against the central URI policy
+(scheme/origin allowlist, `uriPolicy` prop) and **strips** any offending
+URL-bearing property (`choicesByUrl`, `imageLink`, `logo`,
+`backgroundImage`) from a clone before constructing the model. Each
+strip emits a `survey-json-blocked-url` diagnostic; the consumer's JSON
+object is never mutated. A survey passed as a prebuilt `model` is
+documented as **trusted/prevalidated by the host** — no preflight runs
+(hosts can call the exported `preflightSurveyJson` themselves before
+constructing).
+
+**Residual gap:** an ALLOWED `choicesByUrl` fetch is performed by
+survey-core itself, so the policy's manual-redirect rule cannot be
+enforced on that one sink from outside; the empirical abort gate lands
+with the dropdown task (2.3). Scheme/origin policy IS enforced.
+
+### Owned-model lifetime
+
+A model built from the `json` prop is owned by the component: it is
+disposed on unmount and on `json` content change (deep-equality — a new
+object with equal content does NOT recreate, matching web). Host-passed
+`model`s are never disposed. Web's renderer leaks its event
+subscriptions on unmount; this library fully unwires its prop-driven
+subscriptions from host-owned models.
+
 ## Scrolling & focus (task 1.2 — native lifecycle bridge)
 
 Web scrolls/focuses through the DOM (`scrollIntoView`, element focus).
@@ -237,14 +281,19 @@ web); there is no RN equivalent wired, so rows always render eagerly
 and no skeleton placeholders exist. Surveys that enable it still work —
 the flag simply has no effect.
 
-### `afterRender*` events never fire
+### `onAfterRenderPage` fires with `htmlElement: null`; the other `afterRender*` events never fire
 
 The web renderer calls `survey.afterRenderSurvey/afterRenderPage/
 afterRenderQuestion` with live DOM nodes during render lifecycles. This
-renderer never does (there are no DOM nodes, and the render-phase side
-effects violate React 19 contracts). Hosts that used `onAfterRender*`
-events for styling should use theme JSON; for focus/scroll behavior see
-the next item.
+renderer calls core's public `afterRenderPage` from its commit
+lifecycles (it owns the page-change scroll/autofocus machine — design-
+mode suppression, scroll dedup, deferred `scrollToTopOnPageChange`,
+pending-focus routing), so **`onAfterRenderPage` DOES fire — with
+`htmlElement: null`** (there is no DOM node to pass).
+`afterRenderSurvey`/`afterRenderQuestion` are never called (no DOM
+nodes; render-phase side effects violate React 19 contracts). Hosts that
+used `onAfterRender*` events for styling should use theme JSON; for
+focus/scroll behavior see the next item.
 
 ### Expand/add scroll-to-element rides the lifecycle bridge
 

@@ -36,6 +36,7 @@ import { RNElementFactory } from '../factories/ElementFactory';
 import { SurveyElementBase } from '../reactivity/SurveyElementBase';
 import { composeStyles } from '../theme-rn/recipes/types';
 import type { UriPolicyConfig } from '../security/uri-policy';
+import { UriPolicyContext } from '../security/UriPolicyContext';
 import { reportDiagnostic } from '../diagnostics';
 
 export interface SurveyHeaderProps {
@@ -136,13 +137,26 @@ export class SurveyHeader extends SurveyElementBase<SurveyHeaderProps> {
       this.survey,
       'logo-image'
     );
-    const rendered = RNElementFactory.createElement(componentName, {
-      data: componentData,
-      uriConfig: this.props.logoUriConfig,
-    });
-    if (rendered) return rendered;
-    this.pendingWrapperMiss = { componentName, reason: 'logo-image' };
-    return null;
+    // Registration miss detection stays synchronous (commit-phase
+    // diagnostic below) WITHOUT invoking the creator (review round 2
+    // minor: a custom wrapper creator must not execute twice per render);
+    // the element itself creates inside the policy consumer so the
+    // survey-scoped default reaches the logo sink (round 1 major #2 —
+    // explicit prop wins over context).
+    if (!RNElementFactory.isElementRegistered(componentName)) {
+      this.pendingWrapperMiss = { componentName, reason: 'logo-image' };
+      return null;
+    }
+    return (
+      <UriPolicyContext.Consumer key={`logo-${componentName}`}>
+        {(contextPolicy) =>
+          RNElementFactory.createElement(componentName, {
+            data: componentData,
+            uriConfig: this.props.logoUriConfig ?? contextPolicy,
+          })
+        }
+      </UriPolicyContext.Consumer>
+    );
   }
 
   protected renderElement(): React.JSX.Element | null {

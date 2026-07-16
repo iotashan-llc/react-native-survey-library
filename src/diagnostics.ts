@@ -112,6 +112,32 @@ export interface LifecycleDiagnosticPayload {
   elementType: string | undefined;
 }
 
+/**
+ * Survey root prop-contract diagnostics (design:
+ * docs/design/1.1-survey-root.md, "Props (A12)" — XOR enforcement is
+ * non-throwing per invariant 9):
+ * - `conflicting-props` — both `json` and `model` passed; `model` wins.
+ * - `missing-model` — neither passed; nothing renders (1.8 refines the
+ *   empty state).
+ * Reported once per condition TRANSITION, not per render.
+ */
+export interface SurveyRootDiagnosticPayload {
+  code: 'survey-root-diagnostic';
+  rootCode: 'conflicting-props' | 'missing-model';
+}
+
+/** Forwarded verbatim from `preflightSurveyJson`'s returned diagnostics
+ * (design: docs/design/1.1-survey-root.md, "Pre-model URL preflight
+ * (A11)"). `context` is `UriContext` from `./security/uri-policy` — typed
+ * as `string` here, same decoupling rationale as
+ * `SanitizedHtmlDiagnosticPayload.sanitizeCode`. */
+export interface SurveyJsonBlockedUrlPayload {
+  code: 'survey-json-blocked-url';
+  path: string;
+  context: string;
+  reason: string;
+}
+
 /** Emitted (once per resolved key — dedupe owned by
  * `components/icon-resolution.ts`) when an icon name resolves to no raw
  * SVG in any source (consumer registries, bundled V2 set). The component
@@ -248,6 +274,8 @@ export type DiagnosticPayload =
   | SanitizedHtmlDiagnosticPayload
   | SanitizedHtmlLinkPressDroppedPayload
   | LifecycleDiagnosticPayload
+  | SurveyRootDiagnosticPayload
+  | SurveyJsonBlockedUrlPayload
   | UnknownIconPayload
   | IconSvgDiagnosticPayload
   | ImageUriBlockedPayload

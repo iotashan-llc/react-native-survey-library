@@ -118,7 +118,11 @@ function writeReactNativeStub(consumerDir) {
       // `SanitizedHtml` (design: docs/design/0.9-html-strategy.md) reads
       // `Dimensions.get('window').width` at module scope for its default
       // `contentWidth` fallback.
-      "export const Dimensions = { get: () => ({ width: 0, height: 0 }) };\n"
+      "export const Dimensions = { get: () => ({ width: 0, height: 0 }) };\n" +
+      // Task 1.1's <Survey> root (src/survey/Survey.tsx) imports
+      // ScrollView as a VALUE (its LayoutChangeEvent/NativeScrollEvent
+      // imports are type-only and erased).
+      "export const ScrollView = 'ScrollView';\n"
   );
 }
 
