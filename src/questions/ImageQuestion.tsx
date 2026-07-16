@@ -85,7 +85,8 @@ function PolicyGatedImage(props: {
 }): React.JSX.Element | null {
   const { question, rawUri, uriConfig } = props;
   const contextPolicy = React.useContext(UriPolicyContext);
-  const result = validateUri(rawUri, 'image', uriConfig ?? contextPolicy);
+  const effectivePolicy = uriConfig ?? contextPolicy;
+  const result = validateUri(rawUri, 'image', effectivePolicy);
 
   // After an error, remember WHICH uri failed: the alt text shows only
   // while the failed link is still current — a changed link re-mounts
@@ -103,7 +104,10 @@ function PolicyGatedImage(props: {
         reason: blockedReason,
       });
     }
-  }, [rawUri, blockedReason]);
+    // effectivePolicy in deps (review round 2): a DIFFERENT policy that
+    // still blocks the same uri for the same reason is a new decision —
+    // it flushes its own diagnostic.
+  }, [rawUri, blockedReason, effectivePolicy]);
 
   if (!result.ok) return null;
 

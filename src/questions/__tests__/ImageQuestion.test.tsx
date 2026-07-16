@@ -199,3 +199,34 @@ describe('ImageQuestion — review round 1 regressions', () => {
     expect(screen.getByTestId('sv-image-q1').props.source.uri).toBe(second);
   });
 });
+
+describe('ImageQuestion — policy-identity diagnostic (review round 2)', () => {
+  it('a NEW still-blocking policy flushes its own diagnostic for the same uri/reason', () => {
+    const payloads: DiagnosticPayload[] = [];
+    setDiagnosticHandler((p) => payloads.push(p));
+    const question = createImageQuestion({
+      imageLink: 'https://cdn.example.com/pic.png',
+    });
+    const { rerender } = render(
+      <UriPolicyContext.Provider
+        value={{ allowedOrigins: ['https://other.example'] }}
+      >
+        <ImageQuestion question={question} creator={{}} />
+      </UriPolicyContext.Provider>
+    );
+    const countAfterFirst = payloads.filter(
+      (p) => p.code === 'image-uri-blocked'
+    ).length;
+    expect(countAfterFirst).toBe(1);
+    rerender(
+      <UriPolicyContext.Provider
+        value={{ allowedOrigins: ['https://another.example'] }}
+      >
+        <ImageQuestion question={question} creator={{}} />
+      </UriPolicyContext.Provider>
+    );
+    expect(payloads.filter((p) => p.code === 'image-uri-blocked').length).toBe(
+      2
+    );
+  });
+});
