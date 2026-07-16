@@ -375,6 +375,33 @@ describe('TextQuestion: masked maxLength (post-format cap at the native boundary
     expect(getInput().props.value).toBe('1__-_');
   });
 
+  it('initial render: a default value whose masked display exceeds maxLength is capped', () => {
+    // Upstream truncates in setInputValue during ADAPTER CONSTRUCTION
+    // (input_element_adapter.ts:19-26), not only on edits.
+    const { question } = textSurvey(
+      {},
+      {
+        defaultValue: '123456',
+        maskType: 'pattern',
+        maskSettings: { pattern: '999-999' },
+        maxLength: 5,
+      }
+    );
+    renderQuestion(question);
+    // "123456" formats to "123-456" (7 chars) — capped to 5 on init.
+    expect(getInput().props.value).toBe('123-4');
+  });
+
+  it('external model write: the synced masked display is capped too', () => {
+    const { question } = maskedMaxLenSurvey();
+    renderQuestion(question);
+    act(() => {
+      question.value = '987654';
+    });
+    // "987654" formats to "987-654" (7 chars) — capped to 5 on sync.
+    expect(getInput().props.value).toBe('987-6');
+  });
+
   it('deletion: the reformatted draft stays capped', () => {
     const { question } = maskedMaxLenSurvey();
     renderQuestion(question);

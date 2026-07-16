@@ -119,6 +119,16 @@ export interface DraftCommitAdapterOptions {
     text: string,
     trigger: DraftCommitTrigger
   ) => string | undefined;
+  /**
+   * Display-shaping seam (1.10, review round 3): maps model text to what
+   * the draft RENDERS, applied at construction and on every
+   * model-to-draft sync. The consumer: masked questions' post-format
+   * maxLength cap — upstream truncates in `setInputValue` during adapter
+   * construction and mask-property updates (input_element_adapter.ts:
+   * 19-26,33-37), not only on edits, so the edit-path cap alone leaves
+   * default/externally-written values uncapped.
+   */
+  formatDisplayText?: (text: string) => string;
 }
 
 /**
@@ -135,6 +145,7 @@ export class DraftCommitAdapter {
   private readonly transformCommitText:
     | ((text: string, trigger: DraftCommitTrigger) => string | undefined)
     | undefined;
+  private readonly formatDisplayText: ((text: string) => string) | undefined;
   private readonly subscribedNames: string[];
   private readonly subscriptionKey: string;
   private draft: string;
@@ -148,6 +159,7 @@ export class DraftCommitAdapter {
       (this.question.isDescendantOf('text') ? 'inputValue' : 'value');
     this.onRenderedValueChange = options.onRenderedValueChange;
     this.transformCommitText = options.transformCommitText;
+    this.formatDisplayText = options.formatDisplayText;
     this.subscriptionKey = `__rnDraftCommit${++nextSubscriptionId}`;
     this.draft = this.formatValue(this.readModelText());
     // The same public seam core's own TextAreaModel uses (text-area.ts:
@@ -329,8 +341,8 @@ export class DraftCommitAdapter {
 
   /** Web's `getValue` + DOM string coercion: empty → "", else String(v). */
   private formatValue(value: unknown): string {
-    if (Helpers.isValueEmpty(value)) return '';
-    return String(value);
+    const text = Helpers.isValueEmpty(value) ? '' : String(value);
+    return this.formatDisplayText ? this.formatDisplayText(text) : text;
   }
 
   private setDraft(next: string): void {

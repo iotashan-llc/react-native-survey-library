@@ -45,19 +45,47 @@ export function isDateTimeFallbackType(
   return DATE_TIME_FALLBACK_TYPES.has(inputType);
 }
 
-/** WHATWG HTML "valid month string": YYYY-MM, year >= 1, month 01-12. */
-const MONTH_RE = /^\d{4,}-(0[1-9]|1[0-2])$/;
-
-/** WHATWG HTML "valid time string": HH:MM[:SS[.fff]]. */
-const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d(\.\d{1,3})?)?$/;
+/** YYYY-MM shape; year > 0 enforced separately (WHATWG: year >= 1). */
+const MONTH_SHAPE_RE = /^(\d{4,})-(0[1-9]|1[0-2])$/;
 
 /**
- * WHATWG HTML "valid week string": YYYY-Www, week 01-53. (The spec also
- * rejects week 53 in short ISO years; that year-shape refinement is
- * deliberately skipped — core-side min/max validation is the home for
- * finer range rules.)
+ * WHATWG HTML "valid time string": HH:MM[:SS[.fractional]]. The spec
+ * allows ONE OR MORE fractional-second digits (no upper bound).
  */
-const WEEK_RE = /^\d{4,}-W(0[1-9]|[1-4]\d|5[0-3])$/;
+const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d(:[0-5]\d(\.\d+)?)?$/;
+
+/** YYYY-Www shape; week-number vs ISO week-year checked separately. */
+const WEEK_SHAPE_RE = /^(\d{4,})-W(0[1-9]|[1-4]\d|5[0-3])$/;
+
+/** WHATWG "valid month string": YYYY-MM, year >= 1, month 01-12. */
+function isValidMonthString(text: string): boolean {
+  const m = MONTH_SHAPE_RE.exec(text);
+  return m !== null && Number(m[1]) >= 1;
+}
+
+/**
+ * How many ISO weeks a week-year has (52 or 53). Per ISO 8601 (and the
+ * WHATWG "week string" rules), a year has 53 weeks iff Jan 1 falls on a
+ * Thursday, or it's a leap year whose Jan 1 falls on a Wednesday.
+ */
+function isoWeeksInYear(year: number): 52 | 53 {
+  const jan1Dow = new Date(Date.UTC(year, 0, 1)).getUTCDay();
+  const isLeap = (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
+  return jan1Dow === 4 || (isLeap && jan1Dow === 3) ? 53 : 52;
+}
+
+/**
+ * WHATWG "valid week string": YYYY-Www, year >= 1, week 01-52, or 53
+ * only when that ISO week-year actually has 53 weeks.
+ */
+function isValidWeekString(text: string): boolean {
+  const m = WEEK_SHAPE_RE.exec(text);
+  if (!m) return false;
+  const year = Number(m[1]);
+  if (year < 1) return false;
+  const week = Number(m[2]);
+  return week <= isoWeeksInYear(year);
+}
 
 /** YYYY-MM-DD with a real calendar-day check (month lengths, leap years). */
 function isValidDateString(text: string): boolean {
@@ -102,8 +130,8 @@ export function isDateTimeFallbackTextValid(
     case 'time':
       return TIME_RE.test(text);
     case 'month':
-      return MONTH_RE.test(text);
+      return isValidMonthString(text);
     case 'week':
-      return WEEK_RE.test(text);
+      return isValidWeekString(text);
   }
 }

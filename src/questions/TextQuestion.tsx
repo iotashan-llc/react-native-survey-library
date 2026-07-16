@@ -104,6 +104,18 @@ export class TextQuestion extends QuestionElementBase<
       // adapter's dedicated re-render seam (design: 1.9-draft-commit.md
       // "Draft change notifications").
       onRenderedValueChange: () => this.forceUpdate(),
+      // Post-format maxLength cap for masked DISPLAY text on construction
+      // and model-to-draft sync — upstream setInputValue truncates there
+      // too (input_element_adapter.ts:19-26,33-37); the edit path applies
+      // the same cap inside applyMaskedEdit (handleChangeText).
+      formatDisplayText: (text) => {
+        const q = question as unknown as QuestionTextModel;
+        if (!this.hasActiveMask(q)) return text;
+        const maxLength = this.resolveMaxLength(q);
+        return maxLength !== undefined && text.length > maxLength
+          ? text.slice(0, maxLength)
+          : text;
+      },
       // Pre-commit guard for the date/time plain-text fallback types
       // (dateTimeFallback.ts). Web's native widgets guarantee
       // value-or-empty ("" on badInput) — and for `month`, core's own

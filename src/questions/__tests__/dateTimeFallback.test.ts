@@ -94,14 +94,19 @@ describe('isDateTimeFallbackTextValid', () => {
   });
 
   describe('time (HH:MM, optional :SS and fraction)', () => {
-    it.each(['00:00', '23:59', '10:30:59', '10:30:59.123'])(
-      'valid: %s',
-      (v) => {
-        expect(isDateTimeFallbackTextValid('time', v)).toBe(true);
-      }
-    );
+    it.each([
+      '00:00',
+      '23:59',
+      '10:30:59',
+      '10:30:59.123',
+      // WHATWG allows one-or-more fractional digits, unbounded.
+      '10:30:59.1',
+      '10:30:59.1234567',
+    ])('valid: %s', (v) => {
+      expect(isDateTimeFallbackTextValid('time', v)).toBe(true);
+    });
 
-    it.each(['24:00', '10:60', '10:3', '10', 'noon', '10:30 PM'])(
+    it.each(['24:00', '10:60', '10:3', '10', 'noon', '10:30 PM', '10:30:59.'])(
       'invalid: %s',
       (v) => {
         expect(isDateTimeFallbackTextValid('time', v)).toBe(false);
@@ -114,24 +119,43 @@ describe('isDateTimeFallbackTextValid', () => {
       expect(isDateTimeFallbackTextValid('month', v)).toBe(true);
     });
 
-    it.each(['garbage', '2024-13', '2024-00', '2024-1', '2024', '2024-01-15'])(
-      'invalid: %s',
-      (v) => {
-        expect(isDateTimeFallbackTextValid('month', v)).toBe(false);
-      }
-    );
+    it.each([
+      'garbage',
+      '2024-13',
+      '2024-00',
+      '2024-1',
+      '2024',
+      '2024-01-15',
+      // WHATWG: year must be > 0.
+      '0000-01',
+    ])('invalid: %s', (v) => {
+      expect(isDateTimeFallbackTextValid('month', v)).toBe(false);
+    });
   });
 
   describe('week (YYYY-Www)', () => {
-    it.each(['2024-W01', '2024-W29', '2024-W53'])('valid: %s', (v) => {
+    it.each([
+      '2024-W01',
+      '2024-W29',
+      // 53-week ISO years: 2015 (Jan 1 = Thu), 2020 (leap, Jan 1 = Wed).
+      '2015-W53',
+      '2020-W53',
+    ])('valid: %s', (v) => {
       expect(isDateTimeFallbackTextValid('week', v)).toBe(true);
     });
 
-    it.each(['garbage', '2024-W00', '2024-W54', '2024-w29', '2024-29'])(
-      'invalid: %s',
-      (v) => {
-        expect(isDateTimeFallbackTextValid('week', v)).toBe(false);
-      }
-    );
+    it.each([
+      'garbage',
+      '2024-W00',
+      '2024-W54',
+      '2024-w29',
+      '2024-29',
+      // 2024 is a 52-week ISO year — W53 is invalid (WHATWG week rules).
+      '2024-W53',
+      // WHATWG: year must be > 0.
+      '0000-W01',
+    ])('invalid: %s', (v) => {
+      expect(isDateTimeFallbackTextValid('week', v)).toBe(false);
+    });
   });
 });
