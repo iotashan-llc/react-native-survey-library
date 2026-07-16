@@ -793,6 +793,14 @@ export const API_SURFACE_WATCHLIST: readonly WatchedApiMember[] = [
     reason: "SurveyProgressBar's (task 1.8) accessibilityLabel.",
   },
   {
+    id: 'Model.progressBarType',
+    member: 'progressBarType',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Model.prototype,
+    reason:
+      "SurveyProgressBar's (review round 1) percentage-family guard: buttons/TOC types render null + diagnostic.",
+  },
+  {
     id: 'Model.state',
     member: 'state',
     expectedKind: 'accessor',
@@ -902,6 +910,30 @@ export const API_SURFACE_WATCHLIST: readonly WatchedApiMember[] = [
     resolveHost: (sc) => sc.QuestionRatingModel.prototype,
     reason:
       'RatingQuestion (task 1.14) item-press handler -- consumed as-is (toggle-to-clear + readOnly guard, invariant 6).',
+  },
+  {
+    id: 'QuestionRatingModel.rateValues',
+    member: 'rateValues',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.QuestionRatingModel.prototype,
+    reason:
+      "Star fill-up-to position semantics (review round 1) mirror upstream's private useRateValues() from this public property.",
+  },
+  {
+    id: 'QuestionRatingModel.autoGenerate',
+    member: 'autoGenerate',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.QuestionRatingModel.prototype,
+    reason:
+      'Second half of the mirrored useRateValues() body (rateValues.length && !autoGenerate).',
+  },
+  {
+    id: 'QuestionRatingModel.a11y_input_ariaLabel',
+    member: 'a11y_input_ariaLabel',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.QuestionRatingModel.prototype,
+    reason:
+      "Rating radiogroup row's accessibilityLabel source (review round 1; falls back to processedTitle).",
   },
   {
     id: 'QuestionRatingModel.itemStarIcon',

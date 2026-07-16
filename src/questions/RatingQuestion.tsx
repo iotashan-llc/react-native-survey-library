@@ -38,10 +38,11 @@
  *   text, natural flex flow) renders.
  * - The star item's dual-SVG partial-fill overlay collapses to a
  *   discrete unfilled/filled icon swap; "filled up to the selected value"
- *   (`getItemClass`'s `isStar` branch) is ported for the common numeric-
- *   rateValues case, degrading to plain equality for custom (non-numeric)
- *   `rateValues` -- `useRateValues()` is a `private` upstream method with
- *   no public equivalent to call from outside the class.
+ *   (`getItemClass`'s `isStar` branch) is ported for BOTH branches:
+ *   numeric compare on auto-generated scales, `rateValues`-position
+ *   compare for custom values (upstream's `useRateValues()` is `private`,
+ *   so its one-line body is mirrored from the same public properties --
+ *   `rateValues.length && !autoGenerate`).
  * - Overflow: upstream's `.sd-rating { overflow-x: auto }` maps to a
  *   horizontal `ScrollView` (a layout choice, not a re-derivation of any
  *   core visibility/state logic -- `rootWrappable`/`itemSmallMode`'s
@@ -119,14 +120,46 @@ function isPillOrSmileySelected(
 }
 
 /**
+ * Upstream's `useRateValues()` (question_rating.ts:209-211) is `private`;
+ * this mirrors its one-line body from the same PUBLIC properties it
+ * reads. Both members sit on the api-surface watchlist.
+ */
+function usesCustomRateValues(question: QuestionRatingModel): boolean {
+  const q = question as unknown as {
+    rateValues: unknown[];
+    autoGenerate: boolean;
+  };
+  return q.rateValues.length > 0 && !q.autoGenerate;
+}
+
+/**
  * "Filled up to the selected value" (`getItemClass`'s `isStar` branch,
- * numeric-rateValues case only -- see module doc's documented delta).
+ * question_rating.ts:771-777): numeric compare when the scale is
+ * auto-generated; POSITION in `rateValues` when custom values are used
+ * (review round 1 -- a later string-valued choice fills every preceding
+ * star; upstream compares `rateValues` indices, loose-equality match).
  */
 function isStarSelected(
   question: QuestionRatingModel,
   item: RenderedRatingItem
 ): boolean {
   const value = question.value as unknown;
+  if (usesCustomRateValues(question)) {
+    // `RatingItem extends ItemValue`: rendered items ARE the rateValues
+    // entries, so upstream compares `rateValues.indexOf(item)` directly.
+    const rateValues = (
+      question as unknown as {
+        rateValues: { value: unknown }[];
+      }
+    ).rateValues;
+    // eslint-disable-next-line eqeqeq
+    const selected = rateValues.filter((i) => i.value == value)[0];
+    if (selected === undefined) return false;
+    return (
+      rateValues.indexOf(selected) >=
+      rateValues.indexOf(item as unknown as (typeof rateValues)[number])
+    );
+  }
   if (typeof value === 'number' && typeof item.value === 'number') {
     return value >= item.value;
   }
@@ -339,7 +372,21 @@ export class RatingQuestion extends QuestionElementBase<QuestionElementBaseProps
       <View style={styles.root} testID={`sv-rating-${question.name}`}>
         {minText}
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View style={fragments.row}>
+          <View
+            testID={`sv-rating-row-${question.name}`}
+            // Core defines the rating input's role as radiogroup
+            // (a11y_input_ariaRole, question_rating.ts:975-977); items
+            // keep their individual radio/checked semantics. RN has no
+            // aria-required/aria-invalid analog -- required/invalid
+            // surface through the rendered error text instead
+            // (documented in docs/DIFFERENCES.md).
+            accessibilityRole="radiogroup"
+            accessibilityLabel={
+              (question as unknown as { a11y_input_ariaLabel: string | null })
+                .a11y_input_ariaLabel ?? question.processedTitle
+            }
+            style={fragments.row}
+          >
             {question.renderedRateItems.map((item, index) =>
               this.renderItem(item, index)
             )}

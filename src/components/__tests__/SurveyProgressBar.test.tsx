@@ -8,9 +8,26 @@
  * 0.4 `SurveyElementBase` mechanism (subscribes the survey model).
  */
 import { StyleSheet } from 'react-native';
-import { act, render, screen } from '@testing-library/react-native';
+import { act, render, screen, within } from '@testing-library/react-native';
 import { Model } from '../../core/facade';
 import { SurveyProgressBar } from '../SurveyProgressBar';
+import { setDiagnosticHandler } from '../../diagnostics';
+import type { DiagnosticPayload } from '../../diagnostics';
+
+function twoPageModel(extra: Record<string, unknown> = {}): Model {
+  return new Model({
+    showProgressBar: true,
+    ...extra,
+    pages: [
+      { elements: [{ type: 'text', name: 'q1' }] },
+      { elements: [{ type: 'text', name: 'q2' }] },
+    ],
+  });
+}
+
+afterEach(() => {
+  setDiagnosticHandler(undefined);
+});
 
 describe('SurveyProgressBar -- render gate', () => {
   it('renders null when showProgressBar is false (default)', () => {
@@ -45,7 +62,7 @@ describe('SurveyProgressBar -- progressValue/progressText binding', () => {
     });
     render(<SurveyProgressBar survey={model} />);
     const fill = screen.getByTestId('survey-progress-bar-fill');
-    const track = screen.getByTestId('survey-progress-bar');
+    const track = screen.getByTestId('survey-progress-bar-track');
     const flatFillStyle = StyleSheet.flatten(fill.props.style);
     expect(flatFillStyle).toEqual(
       expect.objectContaining({ width: `${model.progressValue}%` })
@@ -83,5 +100,62 @@ describe('SurveyProgressBar -- progressValue/progressText binding', () => {
     });
     expect(screen.getByText(model.progressText)).toBeTruthy();
     expect(model.progressText).not.toBe(before);
+  });
+});
+
+describe('SurveyProgressBar -- structure (review round 1: text must not clip)', () => {
+  it('progressText renders OUTSIDE the height-limited track, as a sibling below it', () => {
+    // Upstream renders the fill inside the bar and the VISIBLE text as
+    // the bar's sibling (progress.tsx:33-52); the in-track copy is the
+    // one its CSS hides. A text inside our overflow-hidden track would
+    // be clipped to the 0.25-unit bar height.
+    const model = twoPageModel();
+    render(<SurveyProgressBar survey={model} />);
+    const track = screen.getByTestId('survey-progress-bar-track');
+    expect(within(track).queryByText(model.progressText)).toBeNull();
+    expect(within(track).getByTestId('survey-progress-bar-fill')).toBeTruthy();
+    const root = screen.getByTestId('survey-progress-bar');
+    expect(within(root).getByText(model.progressText)).toBeTruthy();
+  });
+
+  it('the progressbar accessibility role/value live on the track', () => {
+    const model = twoPageModel();
+    render(<SurveyProgressBar survey={model} />);
+    const track = screen.getByTestId('survey-progress-bar-track');
+    expect(track.props.accessibilityRole).toBe('progressbar');
+    expect(track.props.accessibilityValue).toEqual({
+      min: 0,
+      max: 100,
+      now: model.progressValue,
+    });
+  });
+});
+
+describe('SurveyProgressBar -- progressBarType guard (percentage family only)', () => {
+  it.each(['pages', 'questions', 'requiredQuestions', 'correctQuestions'])(
+    'renders the percentage bar for progressBarType "%s"',
+    (progressBarType) => {
+      const model = twoPageModel({ progressBarType });
+      render(<SurveyProgressBar survey={model} />);
+      expect(screen.getByTestId('survey-progress-bar')).toBeTruthy();
+      expect(screen.getByTestId('survey-progress-bar-fill')).toBeTruthy();
+    }
+  );
+
+  it('renders null for progressBarType "buttons" and emits a structured diagnostic once', () => {
+    const payloads: DiagnosticPayload[] = [];
+    setDiagnosticHandler((p) => payloads.push(p));
+    const model = twoPageModel({ progressBarType: 'buttons' });
+    const { toJSON, rerender } = render(<SurveyProgressBar survey={model} />);
+    expect(toJSON()).toBeNull();
+    rerender(<SurveyProgressBar survey={model} />);
+    const relevant = payloads.filter(
+      (p) => p.code === 'progress-bar-type-unsupported'
+    );
+    expect(relevant).toHaveLength(1);
+    expect(relevant[0]).toMatchObject({
+      code: 'progress-bar-type-unsupported',
+      progressBarType: 'buttons',
+    });
   });
 });
