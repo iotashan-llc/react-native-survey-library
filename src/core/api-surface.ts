@@ -801,6 +801,21 @@ export const API_SURFACE_WATCHLIST: readonly WatchedApiMember[] = [
       "SurveyProgressBar's (review round 1) percentage-family guard: buttons/TOC types render null + diagnostic.",
   },
   {
+    id: 'settings.legacyProgressBarView',
+    member: 'legacyProgressBarView',
+    expectedKind: 'data',
+    resolveHost: (sc) => sc.settings,
+    reason:
+      'Input to the mirrored pages->buttons progress routing (private progressBarComponentName, survey.ts:2942-2949).',
+  },
+  {
+    id: 'surveyCss.currentType',
+    member: 'currentType',
+    expectedKind: 'data',
+    resolveHost: (sc) => (sc as { surveyCss?: unknown }).surveyCss,
+    reason: 'Second input to the mirrored pages->buttons progress routing.',
+  },
+  {
     id: 'Model.state',
     member: 'state',
     expectedKind: 'accessor',

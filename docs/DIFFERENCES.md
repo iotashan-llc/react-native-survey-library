@@ -442,10 +442,13 @@ in either mode — functionally equivalent to web, implemented separately.
 
 ## Navigation / progress / rating (tasks 1.8, 1.14)
 
-### Only the percentage `progressBarType` family renders (v1)
+### Only the percentage progress routes render (v1)
 
-`SurveyProgressBar` renders `"pages"`, `"questions"`,
-`"requiredQuestions"`, and `"correctQuestions"` — the family upstream
+`SurveyProgressBar` renders the EFFECTIVE percentage routes: `"questions"`,
+`"requiredQuestions"`, `"correctQuestions"` — and `"pages"` only under
+`settings.legacyProgressBarView` (mirroring the private
+`progressBarComponentName` conversion: under the default css type,
+`"pages"` routes to the ProgressButtons tree upstream) — the family upstream
 routes through its own percentage `SurveyProgress` component. The
 obsolete `"buttons"` value and the TOC/page-titles extension render a
 materially different component tree upstream (`ProgressButtons`) and

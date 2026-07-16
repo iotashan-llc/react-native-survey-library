@@ -213,7 +213,11 @@ export interface LayoutDiagnosticPayload {
  */
 export interface ProgressBarTypeUnsupportedPayload {
   code: 'progress-bar-type-unsupported';
+  /** The authored `progressBarType`. */
   progressBarType: string;
+  /** The EFFECTIVE upstream route after the pages->buttons conversion
+   * (private `progressBarComponentName`, survey.ts:2942-2949). */
+  effectiveType: string;
   message: string;
 }
 

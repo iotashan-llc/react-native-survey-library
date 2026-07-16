@@ -33,17 +33,42 @@
 import * as React from 'react';
 import { Text, View } from 'react-native';
 import type { Base, SurveyModel } from '../core/facade';
+import { settings, surveyCss } from '../core/facade';
 import { SurveyElementBase } from '../reactivity/SurveyElementBase';
 import { composeStyles } from '../theme-rn/recipes/types';
 import { reportDiagnostic } from '../diagnostics';
 
-/** The `progressBarType` family upstream's `SurveyProgress` itself renders. */
+/** The EFFECTIVE progress routes upstream's percentage `SurveyProgress`
+ * itself registers (sv-progress-pages/questions/correctquestions/
+ * requiredquestions — progress.tsx:58-75), compared case-insensitively
+ * the way `progressBarComponentName` builds the route. */
 const PERCENTAGE_PROGRESS_TYPES = new Set([
   'pages',
   'questions',
-  'requiredQuestions',
-  'correctQuestions',
+  'requiredquestions',
+  'correctquestions',
+  // onSetting-normalized singular spellings (survey.ts progressBarType).
+  'requiredquestion',
+  'correctquestion',
 ]);
+
+/**
+ * Mirror of upstream's PRIVATE `progressBarComponentName` conversion
+ * (survey.ts:2942-2949), from the same public inputs: under the default
+ * css type with the legacy view disabled, `"pages"` routes to the
+ * `progress-buttons` component tree — NOT the percentage bar.
+ */
+function effectiveProgressType(progressBarType: string): string {
+  const css = surveyCss as { currentType?: string };
+  if (
+    !settings.legacyProgressBarView &&
+    css.currentType === 'default' &&
+    progressBarType.toLowerCase() === 'pages'
+  ) {
+    return 'buttons';
+  }
+  return progressBarType;
+}
 
 export interface SurveyProgressBarProps {
   survey: SurveyModel;
@@ -59,24 +84,48 @@ export class SurveyProgressBar extends SurveyElementBase<SurveyProgressBarProps>
     return this.survey ?? null;
   }
 
-  /** Once-per-instance guard for the unsupported-type diagnostic. */
+  /** Set during render, flushed from the commit lifecycles (repo
+   * pattern: no diagnostics during a speculative/discardable render);
+   * once per mounted instance. */
+  private pendingUnsupportedType:
+    { progressBarType: string; effectiveType: string } | undefined;
   private reportedUnsupportedType = false;
 
+  componentDidMount(): void {
+    super.componentDidMount();
+    this.flushUnsupportedTypeDiagnostic();
+  }
+
+  componentDidUpdate(): void {
+    super.componentDidUpdate();
+    this.flushUnsupportedTypeDiagnostic();
+  }
+
+  private flushUnsupportedTypeDiagnostic(): void {
+    const pending = this.pendingUnsupportedType;
+    if (!pending || this.reportedUnsupportedType) return;
+    this.reportedUnsupportedType = true;
+    reportDiagnostic({
+      code: 'progress-bar-type-unsupported',
+      progressBarType: pending.progressBarType,
+      effectiveType: pending.effectiveType,
+      message:
+        `progressBarType "${pending.progressBarType}" (effective route ` +
+        `"${pending.effectiveType}") renders a button/TOC component tree ` +
+        'upstream and is deferred; the percentage bar is not rendered ' +
+        'for it.',
+    });
+  }
+
   protected canRender(): boolean {
+    this.pendingUnsupportedType = undefined;
     if (!this.survey || !this.survey.showProgressBar) return false;
     const progressBarType = this.survey.progressBarType;
-    if (PERCENTAGE_PROGRESS_TYPES.has(progressBarType)) return true;
-    if (!this.reportedUnsupportedType) {
-      this.reportedUnsupportedType = true;
-      reportDiagnostic({
-        code: 'progress-bar-type-unsupported',
-        progressBarType,
-        message:
-          `progressBarType "${progressBarType}" renders a button/TOC ` +
-          'component tree upstream and is deferred; the percentage bar ' +
-          'is not rendered for it.',
-      });
+    const effectiveType = effectiveProgressType(progressBarType);
+    if (PERCENTAGE_PROGRESS_TYPES.has(effectiveType.toLowerCase())) {
+      return true;
     }
+    this.pendingUnsupportedType = { progressBarType, effectiveType };
     return false;
   }
 

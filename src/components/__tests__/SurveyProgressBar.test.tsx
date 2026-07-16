@@ -17,6 +17,9 @@ import type { DiagnosticPayload } from '../../diagnostics';
 function twoPageModel(extra: Record<string, unknown> = {}): Model {
   return new Model({
     showProgressBar: true,
+    // "questions" keeps the percentage route under the default css type
+    // ("pages" routes to progress-buttons upstream — guard suite below).
+    progressBarType: 'questions',
     ...extra,
     pages: [
       { elements: [{ type: 'text', name: 'q1' }] },
@@ -40,6 +43,7 @@ describe('SurveyProgressBar -- render gate', () => {
   it('renders the track + bar + text when showProgressBar is true', () => {
     const model = new Model({
       showProgressBar: true,
+      progressBarType: 'questions',
       pages: [
         { elements: [{ type: 'text', name: 'q1' }] },
         { elements: [{ type: 'text', name: 'q2' }] },
@@ -55,6 +59,7 @@ describe('SurveyProgressBar -- progressValue/progressText binding', () => {
   it('the fill width and accessibility value reflect progressValue', () => {
     const model = new Model({
       showProgressBar: true,
+      progressBarType: 'questions',
       pages: [
         { elements: [{ type: 'text', name: 'q1' }] },
         { elements: [{ type: 'text', name: 'q2' }] },
@@ -75,6 +80,7 @@ describe('SurveyProgressBar -- progressValue/progressText binding', () => {
   it('renders progressText as visible text', () => {
     const model = new Model({
       showProgressBar: true,
+      progressBarType: 'questions',
       pages: [
         { elements: [{ type: 'text', name: 'q1' }] },
         { elements: [{ type: 'text', name: 'q2' }] },
@@ -87,6 +93,7 @@ describe('SurveyProgressBar -- progressValue/progressText binding', () => {
   it('re-renders reactively on page navigation (survey model subscription)', async () => {
     const model = new Model({
       showProgressBar: true,
+      progressBarType: 'questions',
       pages: [
         { elements: [{ type: 'text', name: 'q1' }] },
         { elements: [{ type: 'text', name: 'q2' }] },
@@ -95,7 +102,8 @@ describe('SurveyProgressBar -- progressValue/progressText binding', () => {
     render(<SurveyProgressBar survey={model} />);
     const before = model.progressText;
     await act(async () => {
-      model.nextPage();
+      // "questions" progress advances when an answer lands.
+      model.setValue('q1', 'answered');
       await Promise.resolve();
     });
     expect(screen.getByText(model.progressText)).toBeTruthy();
@@ -131,8 +139,8 @@ describe('SurveyProgressBar -- structure (review round 1: text must not clip)', 
   });
 });
 
-describe('SurveyProgressBar -- progressBarType guard (percentage family only)', () => {
-  it.each(['pages', 'questions', 'requiredQuestions', 'correctQuestions'])(
+describe('SurveyProgressBar -- effective progress-route guard (review round 2)', () => {
+  it.each(['questions', 'requiredQuestions', 'correctQuestions'])(
     'renders the percentage bar for progressBarType "%s"',
     (progressBarType) => {
       const model = twoPageModel({ progressBarType });
@@ -141,6 +149,41 @@ describe('SurveyProgressBar -- progressBarType guard (percentage family only)', 
       expect(screen.getByTestId('survey-progress-bar-fill')).toBeTruthy();
     }
   );
+
+  it('"pages" under the default effective route (default css, non-legacy) routes to progress-buttons upstream: renders null + one diagnostic', () => {
+    // Upstream's private progressBarComponentName converts pages ->
+    // buttons when !settings.legacyProgressBarView && surveyCss.currentType
+    // === "default" (survey.ts:2942-2949) — both hold in this RN runtime.
+    const payloads: DiagnosticPayload[] = [];
+    setDiagnosticHandler((p) => payloads.push(p));
+    const model = twoPageModel({ progressBarType: 'pages' });
+    const { toJSON, rerender } = render(<SurveyProgressBar survey={model} />);
+    expect(toJSON()).toBeNull();
+    rerender(<SurveyProgressBar survey={model} />);
+    const relevant = payloads.filter(
+      (p) => p.code === 'progress-bar-type-unsupported'
+    );
+    expect(relevant).toHaveLength(1);
+    expect(relevant[0]).toMatchObject({
+      code: 'progress-bar-type-unsupported',
+      progressBarType: 'pages',
+      effectiveType: 'buttons',
+    });
+  });
+
+  it('"pages" under legacyProgressBarView renders the percentage bar (upstream keeps the progress-pages route)', () => {
+    const { settings } = jest.requireActual<{
+      settings: { legacyProgressBarView: boolean };
+    }>('../../core/facade');
+    settings.legacyProgressBarView = true;
+    try {
+      const model = twoPageModel({ progressBarType: 'pages' });
+      render(<SurveyProgressBar survey={model} />);
+      expect(screen.getByTestId('survey-progress-bar-fill')).toBeTruthy();
+    } finally {
+      settings.legacyProgressBarView = false;
+    }
+  });
 
   it('renders null for progressBarType "buttons" and emits a structured diagnostic once', () => {
     const payloads: DiagnosticPayload[] = [];
