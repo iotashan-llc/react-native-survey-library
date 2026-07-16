@@ -307,6 +307,26 @@ describe('<Survey> render-complete: core afterRenderPage machine (review round 1
     expect(spy).not.toHaveBeenCalled();
   });
 
+  it('fires render-complete exactly once per page: once on mount (mount-reconciliation update included), never on unrelated model updates, once per page change (review round 2)', () => {
+    const model = new Model(JSON_A);
+    const spy = jest
+      .spyOn(
+        model as unknown as { afterRenderPage(el: unknown): void },
+        'afterRenderPage'
+      )
+      .mockImplementation(() => undefined);
+    render(<Survey model={model} />);
+    expect(spy).toHaveBeenCalledTimes(1);
+    act(() => {
+      model.title = 'changed'; // unrelated model update re-renders the root
+    });
+    expect(spy).toHaveBeenCalledTimes(1);
+    act(() => {
+      model.nextPage();
+    });
+    expect(spy).toHaveBeenCalledTimes(2);
+  });
+
   it('core still invokes renderCallback (behavioral drift gate for the not-listable member)', () => {
     const model = new Model(JSON_A);
     render(<Survey model={model} />);
@@ -334,10 +354,19 @@ describe('<Survey> model swap is an ordered transaction (review round 1)', () =>
         const events = this as unknown as {
           onComplete: { isEmpty: boolean };
           renderCallback?: () => void;
+          hasActiveUISubscribers: boolean;
+          activePage?: { hasActiveUISubscribers: boolean } | null;
         };
+        // Two-phase contract (review round 2): by dispose time the keyed
+        // remount has unmounted the ENTIRE old tree — no 0.4 reactive
+        // subscriber (root, page, question) may still be attached.
+        const pageSubscribers =
+          events.activePage?.hasActiveUISubscribers ?? false;
         log.push(
           `dispose(handlersDetached=${events.onComplete.isEmpty},` +
-            `renderCallbackCleared=${events.renderCallback === undefined})`
+            `renderCallbackCleared=${events.renderCallback === undefined},` +
+            `uiSubscribers=${events.hasActiveUISubscribers},` +
+            `pageSubscribers=${pageSubscribers})`
         );
         realDispose.call(this);
       });
@@ -382,7 +411,8 @@ describe('<Survey> model swap is an ordered transaction (review round 1)', () =>
       expect(disposeIndex).toBeGreaterThanOrEqual(0);
       expect(uninstallIndex).toBeLessThan(disposeIndex);
       expect(log[disposeIndex]).toBe(
-        'dispose(handlersDetached=true,renderCallbackCleared=true)'
+        'dispose(handlersDetached=true,renderCallbackCleared=true,' +
+          'uiSubscribers=false,pageSubscribers=false)'
       );
       // Theme lands on the NEW model, never re-applied to the old one
       // during the swap.

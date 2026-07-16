@@ -287,7 +287,10 @@ describe('<Survey> root width (review round 1: 1.3 contract owned by 1.1)', () =
   function rootStyle(
     getByTestId: (id: string) => { props: { style?: unknown } }
   ): Record<string, unknown> {
-    const style = getByTestId('survey-root').props.style;
+    // The constraint lives on the INNER body; the outer `survey-root`
+    // stays unconstrained (it is the width evaluator's percent base —
+    // review round 2).
+    const style = getByTestId('survey-body').props.style;
     return Object.assign({}, ...[style].flat(Infinity).filter(Boolean));
   }
 
@@ -320,5 +323,31 @@ describe('<Survey> root width (review round 1: 1.3 contract owned by 1.1)', () =
       model.width = '400px';
     });
     expect(rootStyle(getByTestId).maxWidth).toBe(400);
+  });
+
+  it('a calc() width resolves against the UNCONSTRAINED outer width and stays stable across repeated layouts (review round 2: no feedback shrink)', () => {
+    const model = new Model({
+      widthMode: 'static',
+      width: 'calc(100% - 40px)',
+      ...PAGE,
+    });
+    const { getByTestId } = render(<Survey model={model} />);
+    const fireOuterLayout = (width: number) =>
+      act(() => {
+        getByTestId('survey-root').props.onLayout({
+          nativeEvent: { layout: { width, height: 800, x: 0, y: 0 } },
+        });
+      });
+    fireOuterLayout(1000);
+    expect(rootStyle(getByTestId).maxWidth).toBe(960);
+    // The outer probe is unconstrained, so its next layout reports the
+    // SAME parent width — the resolved value must not compound.
+    fireOuterLayout(1000);
+    expect(rootStyle(getByTestId).maxWidth).toBe(960);
+    fireOuterLayout(1000);
+    expect(rootStyle(getByTestId).maxWidth).toBe(960);
+    // A real parent resize re-resolves from the new base.
+    fireOuterLayout(800);
+    expect(rootStyle(getByTestId).maxWidth).toBe(760);
   });
 });

@@ -208,13 +208,23 @@ class SurveyRoot extends SurveyElementBase<SurveyRootProps> {
    * RN has no HTMLElement: `onAfterRenderPage` subscribers receive
    * `htmlElement: null` (documented in DIFFERENCES.md).
    */
+  /** The page whose render-complete was last reported — upstream's page
+   * component likewise skips updates while the same page stays active
+   * (panel-base.tsx:53-62); without this gate the 0.4 base's mount
+   * reconciliation update and every unrelated model update would re-fire
+   * `onAfterRenderPage` and re-schedule deferred scrolls (review round 2). */
+  private lastAfterRenderPage: unknown = null;
+
   private callAfterRenderPage(): void {
     const survey = this.props.survey;
     const state = survey.state;
-    if (!survey.activePage) return;
+    const page = survey.activePage;
+    if (!page) return;
     if (state !== 'running' && state !== 'starting' && state !== 'preview') {
       return;
     }
+    if (page === this.lastAfterRenderPage) return;
+    this.lastAfterRenderPage = page;
     (
       survey as unknown as { afterRenderPage(htmlElement: unknown): void }
     ).afterRenderPage(null);
@@ -343,22 +353,26 @@ class SurveyRoot extends SurveyElementBase<SurveyRootProps> {
     const presentingPages = state === 'running' || state === 'starting';
     return (
       <LifecycleContext.Provider value={this.lifecycleValue}>
-        <View
-          testID="survey-root"
-          onLayout={this.handleRootLayout}
-          style={this.resolveRootWidthStyle()}
-        >
-          <ScrollView
-            ref={this.scrollRef}
-            testID="survey-scroll"
-            onScroll={this.handleScroll}
-            onLayout={this.handleScrollLayout}
-            scrollEventThrottle={16}
-          >
-            {presentingPages
-              ? this.renderActivePage()
-              : this.renderNonRunningState(state)}
-          </ScrollView>
+        {/* The OUTER root stays unconstrained — it is the layout probe
+            (narrow breakpoint + the width evaluator's percent base). The
+            constraint applies to the INNER body only, so a calc()-form
+            renderedWidth never feeds its own result back into the base
+            (review round 2: 1000dp parent + calc(100% - 40px) must stay
+            960, not shrink 960→920→880 across layouts). */}
+        <View testID="survey-root" onLayout={this.handleRootLayout}>
+          <View testID="survey-body" style={this.resolveRootWidthStyle()}>
+            <ScrollView
+              ref={this.scrollRef}
+              testID="survey-scroll"
+              onScroll={this.handleScroll}
+              onLayout={this.handleScrollLayout}
+              scrollEventThrottle={16}
+            >
+              {presentingPages
+                ? this.renderActivePage()
+                : this.renderNonRunningState(state)}
+            </ScrollView>
+          </View>
         </View>
       </LifecycleContext.Provider>
     );
@@ -438,6 +452,13 @@ export const Survey = React.forwardRef<SurveyRefHandle, SurveyProps>(
 
     const entryRef = React.useRef<ModelEntry | null>(null);
     const innerRef = React.useRef<SurveyRoot | null>(null);
+    /** Two-phase owned-model disposal (review round 2): a replaced owned
+     * model is STAGED here; the keyed remount commit unmounts the old
+     * tree (every 0.4 subscription unwinds), and only the FOLLOWING
+     * commit's dispose effect actually disposes — so disposal never runs
+     * with live UI subscribers. `staged` → `ready` → disposed. */
+    const disposeStagedRef = React.useRef<SurveyModel[]>([]);
+    const disposeReadyRef = React.useRef<SurveyModel[]>([]);
     const lastConditionRef = React.useRef<PropCondition | null>(null);
     const appliedThemeRef = React.useRef<{
       model: SurveyModel | null;
@@ -480,12 +501,16 @@ export const Survey = React.forwardRef<SurveyRefHandle, SurveyProps>(
 
       const prev = entryRef.current;
       const disposePrevIfOwned = (): void => {
-        // Ordered swap transaction (review round 1): detach the old
-        // root's model wiring (events, renderCallback, scroll host,
-        // bridge) FIRST — the keyed remount would only unwire a commit
-        // later, against an already-disposed model.
+        // Ordered swap transaction (review rounds 1+2): detach the old
+        // root's explicit model wiring (events, renderCallback, scroll
+        // host, bridge) NOW, then STAGE the owned model for disposal —
+        // the keyed remount commit unmounts the old tree (unsubscribing
+        // every 0.4 reactive subscriber, root and descendants) and the
+        // commit after that actually disposes (dispose effect below).
         innerRef.current?.detachFromModel();
-        if (prev?.owned && !prev.model.isDisposed) prev.model.dispose();
+        if (prev?.owned && !prev.model.isDisposed) {
+          disposeStagedRef.current.push(prev.model);
+        }
       };
 
       if (model !== undefined) {
@@ -533,11 +558,40 @@ export const Survey = React.forwardRef<SurveyRefHandle, SurveyProps>(
       }
     });
 
+    // Dispose effect — the second phase of the swap transaction. Runs
+    // AFTER the resolution effect every commit: `ready` models were
+    // staged in a PREVIOUS commit, so the keyed remount that unmounted
+    // their tree (and unwound every 0.4 subscription) has already
+    // committed — dispose them now. Then promote this commit's staged
+    // models; the `force()` the resolution effect issued guarantees the
+    // promoting commit happens.
+    React.useEffect(() => {
+      const ready = disposeReadyRef.current;
+      if (ready.length > 0) {
+        disposeReadyRef.current = [];
+        for (const staleModel of ready) {
+          if (!staleModel.isDisposed) staleModel.dispose();
+        }
+      }
+      if (disposeStagedRef.current.length > 0) {
+        disposeReadyRef.current = disposeStagedRef.current;
+        disposeStagedRef.current = [];
+      }
+    });
+
     // Owned-model dispose on unmount. Clearing entryRef makes StrictMode's
     // remount simulation reconstruct from the retained json prop instead
     // of rendering a disposed model.
     React.useEffect(
       () => () => {
+        for (const staleModel of [
+          ...disposeReadyRef.current,
+          ...disposeStagedRef.current,
+        ]) {
+          if (!staleModel.isDisposed) staleModel.dispose();
+        }
+        disposeReadyRef.current = [];
+        disposeStagedRef.current = [];
         const entry = entryRef.current;
         if (entry?.owned && !entry.model.isDisposed) entry.model.dispose();
         entryRef.current = null;
