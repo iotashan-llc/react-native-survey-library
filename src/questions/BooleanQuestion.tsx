@@ -145,6 +145,7 @@ export class BooleanQuestion extends QuestionElementBase<QuestionElementBaseProp
           trackColor={{ false: trackColorFalse, true: trackColorTrue }}
           thumbColor={thumbColor}
           accessibilityRole="switch"
+          accessibilityLabel={question.processedTitle || question.name}
           accessibilityState={{
             disabled,
             checked: question.isIndeterminate ? 'mixed' : isChecked,

@@ -245,3 +245,14 @@ describe('Checkbox — group accessibility (task 1.16)', () => {
     expect(container.props.accessibilityRole).toBeUndefined();
   });
 });
+
+describe('Checkbox — "Other" input accessibility label (task 1.16)', () => {
+  it('the conditional free-text input is named by the other item text', () => {
+    const question = createCheckbox({ showOtherItem: true });
+    render(<Checkbox question={question} creator={{}} />);
+    fireEvent.press(screen.getByText(question.otherItem.text));
+    expect(
+      screen.getByTestId('checkbox-other-input').props.accessibilityLabel
+    ).toBe(question.otherItem.text);
+  });
+});

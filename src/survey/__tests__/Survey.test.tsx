@@ -292,6 +292,32 @@ describe('<Survey> responsive narrow', () => {
       jest.useRealTimers();
     }
   });
+
+  it('a re-render BEFORE the deferred timer fires must not swallow the setIsMobile write (review round 1: applied-ref only updates inside the timer)', () => {
+    jest.useFakeTimers();
+    const model = new Model({ elements: [{ type: 'text', name: 'q1' }] });
+    const calls: Array<boolean | undefined> = [];
+    jest.spyOn(model, 'setIsMobile').mockImplementation((v?: boolean) => {
+      calls.push(v);
+    });
+    try {
+      const { getByTestId, rerender } = render(<Survey model={model} />);
+      act(() => {
+        getByTestId('survey-root').props.onLayout({
+          nativeEvent: { layout: { width: 400, height: 800, x: 0, y: 0 } },
+        });
+      });
+      // Unrelated re-render: the effect cleanup cancels the pending
+      // timer — the rescheduled one must still deliver the write.
+      rerender(<Survey model={model} />);
+      act(() => {
+        jest.advanceTimersByTime(1);
+      });
+      expect(calls[calls.length - 1]).toBe(true);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
 });
 
 describe('<Survey> root width (review round 1: 1.3 contract owned by 1.1)', () => {

@@ -5,7 +5,10 @@
  */
 import * as React from 'react';
 import { Pressable, SafeAreaView, StyleSheet, Text, View } from 'react-native';
-import { Survey } from '@iotashan-llc/react-native-survey-library';
+import {
+  Survey,
+  setDiagnosticHandler,
+} from '@iotashan-llc/react-native-survey-library';
 import type { ITheme } from 'survey-core';
 import {
   DefaultLight,
@@ -15,6 +18,13 @@ import {
 } from 'survey-core/themes';
 
 import { kitchenSinkJson } from './kitchen-sink';
+
+// Host-owned diagnostics (the recommended pattern): route the library's
+// structured diagnostics wherever your app logs. Without a handler the
+// library dev-warns, which surfaces LogBox toasts in development.
+setDiagnosticHandler((payload) => {
+  console.log('[survey diagnostic]', payload.code, payload);
+});
 
 const THEMES: Array<{ name: string; theme: ITheme; dark: boolean }> = [
   { name: 'Default Light', theme: DefaultLight, dark: false },

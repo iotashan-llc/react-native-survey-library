@@ -223,6 +223,9 @@ export function RatingStarItem(
     <Pressable
       testID={`sv-rating-item-${question.name}-${index}`}
       accessibilityRole="radio"
+      // Icon-only control: the RNIcon child is accessibility-hidden, so
+      // the item text (localized rate value) names the radio (task 1.16).
+      accessibilityLabel={item.text}
       accessibilityState={{ checked: selected, disabled: inputReadOnly }}
       disabled={inputReadOnly}
       onPress={handlePress}
@@ -274,6 +277,8 @@ export function RatingSmileyItem(
       onPressOut={() => setPressed(false)}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
+      // Icon-only control (smiley): named by the localized item text.
+      accessibilityLabel={item.text}
       style={composeStyles(selection, {
         override: overrideStyles.rating?.smileyItem,
       })}

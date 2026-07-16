@@ -12,12 +12,14 @@ React Native rendering engine for the [SurveyJS Form Library](https://surveyjs.i
 npm install @iotashan-llc/react-native-survey-library survey-core
 ```
 
-Capability peer dependencies (batteries-included — install once):
+Required peer dependencies (batteries-included — install once):
 
 ```sh
-npx expo install react-native-svg react-native-gesture-handler react-native-reanimated
+npx expo install react-native-svg
 npm install @native-html/render
 ```
+
+Later milestones add more capability peers (gesture-handler, reanimated, slider, signature canvas, expo pickers/video) as the question types that need them land.
 
 ## Quick start
 
@@ -53,7 +55,7 @@ export default function FeedbackScreen() {
 
 ## Supported in v0.1 (M1)
 
-Question types: `text` (all 13 inputTypes, input masks, character counter), `comment`, `boolean` (default/checkbox/radio renderAs), `checkbox`, `radiogroup`, `rating` (numbers/stars/smileys/custom rateValues), `expression` — plus panels, multi-element rows, pages, navigation (start/prev/next/preview/complete), percentage progress bar, survey header (title/description/logo), completed/loading/empty state frames, and the full theme JSON pipeline (golden-tested against all 40 `survey-core/themes`).
+Question types: `text` (all 13 inputTypes, input masks, character counter), `comment`, `boolean` (default/checkbox/radio renderAs), `checkbox`, `radiogroup`, `rating` (numbers/stars/smileys/custom rateValues), `expression` — plus panels, multi-element rows, pages, navigation (start/prev/next/preview/complete), percentage progress bar, survey header (title/description/logo), completed/loading/empty state frames, and the full theme JSON pipeline (validated across all 40 `survey-core/themes`; golden snapshots for the curated set).
 
 Anything else renders a **non-throwing fallback panel** with a structured diagnostic — an unsupported type never crashes the survey.
 

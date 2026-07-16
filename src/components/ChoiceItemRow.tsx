@@ -209,6 +209,9 @@ export function ChoiceItemRow(props: ChoiceItemRowProps): React.JSX.Element {
         <View style={styles.otherInputWrap}>
           <TextInput
             testID={props.otherInputTestID}
+            // The conditional free-text area is named by its item's
+            // localized text ("Other (describe)" by default) — task 1.16.
+            accessibilityLabel={item.text}
             value={adapterRef.current?.renderedValue ?? ''}
             editable={!readOnly && itemEnabled}
             onChangeText={(text) => adapterRef.current?.handleChangeText(text)}

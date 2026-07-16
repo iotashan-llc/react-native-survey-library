@@ -670,8 +670,12 @@ export const Survey = React.forwardRef<SurveyRefHandle, SurveyProps>(
       ) {
         return;
       }
-      isMobileRef.current = { model: liveModel, narrow };
+      // The applied-ref updates INSIDE the timer (review round 1): an
+      // intervening re-render cancels the pending timer via cleanup, and
+      // the rescheduled effect must not early-return believing the write
+      // already landed.
       const timer = setTimeout(() => {
+        isMobileRef.current = { model: liveModel, narrow };
         if (!liveModel.isDisposed) liveModel.setIsMobile(narrow);
       }, 0);
       return () => clearTimeout(timer);

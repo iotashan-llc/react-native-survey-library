@@ -228,3 +228,27 @@ describe('RatingQuestion -- item-dispatch miss (renderAs: "dropdown", deferred t
     ]);
   });
 });
+
+describe('RatingQuestion — icon-only item labels (task 1.16)', () => {
+  it('star items are named by the localized item text (icon child is a11y-hidden)', () => {
+    const { question } = createRatingQuestion('q-star-lbl', {
+      rateType: 'stars',
+      rateMax: 3,
+    });
+    render(<RatingQuestion question={question} creator={{}} />);
+    expect(
+      screen.getByTestId('sv-rating-item-q-star-lbl-0').props.accessibilityLabel
+    ).toBe('1');
+  });
+
+  it('smiley items are named by the localized item text', () => {
+    const { question } = createRatingQuestion('q-sm-lbl', {
+      rateType: 'smileys',
+      rateMax: 3,
+    });
+    render(<RatingQuestion question={question} creator={{}} />);
+    expect(
+      screen.getByTestId('sv-rating-item-q-sm-lbl-1').props.accessibilityLabel
+    ).toBe('2');
+  });
+});
