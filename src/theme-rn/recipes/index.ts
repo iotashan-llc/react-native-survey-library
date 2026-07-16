@@ -26,6 +26,7 @@ import {
 } from './questionChrome';
 import { buildHeaderRecipe, type HeaderRecipe } from './header';
 import { buildRowRecipe, type RowRecipe } from './row';
+import { buildButtonGroupRecipe, type ButtonGroupRecipe } from './buttonGroup';
 
 export interface Recipes {
   item: ItemRecipe;
@@ -43,6 +44,8 @@ export interface Recipes {
   rating: RatingRecipe;
   /** Row/element composition geometry (task 1.4). */
   row: RowRecipe;
+  /** Button-group items (task 2.9). */
+  buttonGroup: ButtonGroupRecipe;
 }
 
 export function buildRecipes(
@@ -60,6 +63,7 @@ export function buildRecipes(
     progress: buildProgressRecipe(resolved, buildCtx),
     rating: buildRatingRecipe(resolved, buildCtx),
     row: buildRowRecipe(resolved, buildCtx),
+    buttonGroup: buildButtonGroupRecipe(resolved, buildCtx),
   };
 }
 
@@ -74,3 +78,4 @@ export * from './header';
 export * from './progress';
 export * from './rating';
 export * from './row';
+export * from './buttonGroup';

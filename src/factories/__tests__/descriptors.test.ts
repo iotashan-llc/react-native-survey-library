@@ -23,6 +23,7 @@ describe('DESCRIPTOR_TABLE (M0 + M1)', () => {
   it('has exactly the expected dispatch keys', () => {
     expect(DESCRIPTOR_TABLE.map((r) => r.dispatchKey).sort()).toEqual([
       'boolean',
+      'buttongroup',
       'checkbox',
       'comment',
       'composite',

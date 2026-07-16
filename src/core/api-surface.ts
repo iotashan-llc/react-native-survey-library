@@ -1049,6 +1049,17 @@ export const API_SURFACE_WATCHLIST: readonly WatchedApiMember[] = [
     reason:
       "Rating radiogroup row's accessibilityLabel source (review round 1; falls back to processedTitle).",
   },
+  // Task 2.9 — buttongroup bindings.
+  {
+    id: 'ButtonGroupItemModel',
+    member: 'ButtonGroupItemModel',
+    // The facade's ESM re-export surfaces module bindings as getters —
+    // 'accessor' is the namespace-level kind for an exported class.
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc,
+    reason:
+      "ButtonGroupQuestion (2.9) constructs core's per-item view-model (value/caption/icon/selected/readOnly/onChange).",
+  },
   // Task 2.10 — image question bindings (QuestionImageModel).
   {
     id: 'QuestionImageModel.locImageLink',

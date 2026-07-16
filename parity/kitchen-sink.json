@@ -148,6 +148,16 @@
           ]
         },
         {
+          "type": "buttongroup",
+          "name": "plan",
+          "title": "Plan (buttongroup)",
+          "choices": [
+            "Free",
+            "Pro",
+            "Team"
+          ]
+        },
+        {
           "type": "image",
           "name": "heroImage",
           "imageLink": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPj/HwADBwIAMCbHYQAAAABJRU5ErkJggg==",
