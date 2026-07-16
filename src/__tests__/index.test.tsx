@@ -38,6 +38,7 @@ describe('index.tsx: registrar wiring (design: docs/design/0.5-factories.md)', (
       'empty',
       'expression',
       'radiogroup',
+      'rating',
       'sv-boolean-checkbox',
       'sv-boolean-radio',
       'text',
@@ -47,6 +48,9 @@ describe('index.tsx: registrar wiring (design: docs/design/0.5-factories.md)', (
       'survey-header',
       'sv-logo-image',
       'sv-page',
+      'sv-rating-item',
+      'sv-rating-item-smiley',
+      'sv-rating-item-star',
       'sv-string-viewer',
     ]);
   });

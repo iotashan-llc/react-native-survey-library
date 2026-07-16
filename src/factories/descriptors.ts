@@ -45,6 +45,12 @@ import {
   BooleanRadioQuestion,
 } from '../questions/BooleanQuestion';
 import { ExpressionQuestion } from '../questions/ExpressionQuestion';
+import {
+  RatingPillItem,
+  RatingQuestion,
+  RatingSmileyItem,
+  RatingStarItem,
+} from '../questions/RatingQuestion';
 import { TextQuestion } from '../questions/TextQuestion';
 
 export type DescriptorRoute = 'template' | 'renderer' | 'element';
@@ -181,6 +187,46 @@ export const DESCRIPTOR_TABLE: readonly Descriptor[] = [
     dispatchKey: 'expression',
     route: 'template',
     component: () => ExpressionQuestion,
+    milestone: 'M1',
+  },
+  // Task 1.14 (rating): a single template row (upstream never calls
+  // `RendererFactory.registerRenderer` for "rating" -- no renderAs
+  // variants, so no renderer-route row) plus three element-route rows for
+  // the per-item dispatch (`question.itemComponent`, an internal-to-
+  // question factory concept -- see RatingQuestion.tsx's doc comment).
+  // `sv-rating-dropdown-item` (`renderAs: "dropdown"`) is DEFERRED to M2
+  // popups; a dispatch miss on that key falls through to the shared
+  // unsupported-item fallback, never a throw.
+  {
+    status: 'supported',
+    questionType: 'rating',
+    dispatchKey: 'rating',
+    route: 'template',
+    component: () => RatingQuestion,
+    milestone: 'M1',
+  },
+  {
+    status: 'supported',
+    questionType: 'sv-rating-item',
+    dispatchKey: 'sv-rating-item',
+    route: 'element',
+    component: () => RatingPillItem,
+    milestone: 'M1',
+  },
+  {
+    status: 'supported',
+    questionType: 'sv-rating-item-star',
+    dispatchKey: 'sv-rating-item-star',
+    route: 'element',
+    component: () => RatingStarItem,
+    milestone: 'M1',
+  },
+  {
+    status: 'supported',
+    questionType: 'sv-rating-item-smiley',
+    dispatchKey: 'sv-rating-item-smiley',
+    route: 'element',
+    component: () => RatingSmileyItem,
     milestone: 'M1',
   },
   {

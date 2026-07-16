@@ -337,6 +337,27 @@ exports[`curated recipe golden snapshots ContrastLight: recipes build to a stabl
     },
     "iconSize": 16,
   },
+  "progress": {
+    "fragments": {
+      "bar": {
+        "backgroundColor": "rgba(0, 0, 0, 1)",
+        "height": "100%",
+      },
+      "text": {
+        "color": "rgba(0, 0, 0, 1)",
+        "fontSize": 12,
+        "fontWeight": "600",
+        "lineHeight": 16,
+        "paddingHorizontal": 12,
+        "paddingVertical": 8,
+      },
+      "track": {
+        "backgroundColor": "rgba(0, 0, 0, 0.2)",
+        "height": 2,
+        "overflow": "hidden",
+      },
+    },
+  },
   "questionChrome": {
     "fragments": {
       "commentArea": {
@@ -435,6 +456,245 @@ exports[`curated recipe golden snapshots ContrastLight: recipes build to a stabl
         "lineHeight": 24,
       },
     },
+  },
+  "rating": {
+    "fragments": {
+      "minMaxText": {
+        "color": "rgba(0, 0, 0, 1)",
+        "fontSize": 16,
+        "paddingHorizontal": 8,
+      },
+      "pill": {
+        "base": {
+          "alignItems": "center",
+          "backgroundColor": "rgba(255, 255, 255, 1)",
+          "borderRadius": 100,
+          "boxShadow": [
+            {
+              "blurRadius": 0,
+              "color": "rgba(0, 0, 0, 1)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 2,
+            },
+          ],
+          "color": "rgba(0, 0, 0, 1)",
+          "elevation": undefined,
+          "fontSize": 16,
+          "justifyContent": "center",
+          "minHeight": 48,
+          "minWidth": 48,
+          "paddingHorizontal": 20,
+          "paddingVertical": 4,
+        },
+        "error": {
+          "backgroundColor": "rgba(229, 10, 62, 0.1)",
+          "boxShadow": [],
+          "elevation": 0,
+        },
+        "focused": {
+          "boxShadow": [
+            {
+              "blurRadius": 0,
+              "color": "rgba(0, 0, 0, 1)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 0,
+            },
+            {
+              "blurRadius": 0,
+              "color": "rgba(0, 0, 0, 1)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 2,
+            },
+          ],
+          "elevation": undefined,
+        },
+        "pressed": {
+          "backgroundColor": "rgba(255, 216, 77, 1)",
+        },
+        "preview": {
+          "backgroundColor": "transparent",
+          "borderColor": "transparent",
+          "borderWidth": 1,
+          "boxShadow": [],
+          "color": "rgba(0, 0, 0, 1)",
+          "elevation": 0,
+        },
+        "readOnly": {
+          "backgroundColor": "transparent",
+          "borderColor": "rgba(0, 0, 0, 0.16)",
+          "borderWidth": 2,
+          "boxShadow": [],
+          "color": "rgba(0, 0, 0, 1)",
+          "elevation": 0,
+        },
+        "selected": {
+          "backgroundColor": "rgba(0, 0, 0, 1)",
+          "boxShadow": [],
+          "color": "rgba(255, 255, 255, 1)",
+          "elevation": 0,
+          "fontWeight": "600",
+        },
+        "selectedFocused": {
+          "boxShadow": [
+            {
+              "blurRadius": 0,
+              "color": "rgba(0, 0, 0, 1)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 0,
+            },
+            {
+              "blurRadius": 0,
+              "color": "rgba(255, 255, 255, 1)",
+              "inset": true,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 4,
+            },
+            {
+              "blurRadius": 0,
+              "color": "rgba(0, 0, 0, 1)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 2,
+            },
+          ],
+          "elevation": undefined,
+        },
+        "selectedPreview": {
+          "borderColor": "rgba(0, 0, 0, 1)",
+          "color": "rgba(0, 0, 0, 1)",
+        },
+        "selectedReadOnly": {
+          "borderColor": "rgba(0, 0, 0, 1)",
+          "color": "rgba(0, 0, 0, 1)",
+        },
+      },
+      "row": {
+        "alignItems": "center",
+        "flexDirection": "row",
+        "gap": 8,
+      },
+      "smiley": {
+        "base": {
+          "alignItems": "center",
+          "borderColor": "rgba(0, 0, 0, 1)",
+          "borderRadius": 100,
+          "borderWidth": 2,
+          "boxShadow": [
+            {
+              "blurRadius": 0,
+              "color": "rgba(0, 0, 0, 1)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 0,
+            },
+          ],
+          "elevation": undefined,
+          "justifyContent": "center",
+          "minHeight": 48,
+          "minWidth": 48,
+          "padding": 10,
+        },
+        "error": {
+          "backgroundColor": "rgba(229, 10, 62, 0.1)",
+          "borderColor": "transparent",
+        },
+        "focused": {
+          "borderWidth": 0,
+          "boxShadow": [
+            {
+              "blurRadius": 0,
+              "color": "rgba(0, 0, 0, 1)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 0,
+            },
+            {
+              "blurRadius": 0,
+              "color": "rgba(0, 0, 0, 1)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 2,
+            },
+          ],
+          "elevation": undefined,
+        },
+        "pressed": {
+          "backgroundColor": "rgba(255, 216, 77, 1)",
+          "borderColor": "rgba(0, 0, 0, 1)",
+        },
+        "preview": {
+          "borderColor": "rgba(0, 0, 0, 1)",
+          "borderWidth": 1,
+        },
+        "readOnly": {
+          "borderColor": "rgba(0, 0, 0, 1)",
+        },
+        "selected": {
+          "backgroundColor": "rgba(0, 0, 0, 1)",
+          "borderColor": "rgba(0, 0, 0, 1)",
+        },
+        "selectedFocused": {
+          "borderWidth": 0,
+          "boxShadow": [
+            {
+              "blurRadius": 0,
+              "color": "rgba(0, 0, 0, 1)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 0,
+            },
+            {
+              "blurRadius": 0,
+              "color": "rgba(255, 255, 255, 1)",
+              "inset": true,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 4,
+            },
+            {
+              "blurRadius": 0,
+              "color": "rgba(0, 0, 0, 1)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 2,
+            },
+          ],
+          "elevation": undefined,
+        },
+        "selectedPreview": {
+          "backgroundColor": "rgba(0, 0, 0, 1)",
+        },
+        "selectedReadOnly": {
+          "backgroundColor": "transparent",
+          "borderColor": "rgba(0, 0, 0, 1)",
+        },
+      },
+    },
+    "smileyIconFills": {
+      "error": "rgba(0, 0, 0, 1)",
+      "preview": "rgba(0, 0, 0, 1)",
+      "readOnly": "rgba(0, 0, 0, 1)",
+      "selected": "rgba(255, 255, 255, 1)",
+      "selectedPreview": "rgba(255, 255, 255, 1)",
+      "selectedReadOnly": "rgba(0, 0, 0, 1)",
+      "unselected": "rgba(0, 0, 0, 1)",
+    },
+    "starIconSize": 48,
   },
   "row": {
     "variants": {
@@ -891,6 +1151,27 @@ exports[`curated recipe golden snapshots DefaultLight: recipes build to a stable
     },
     "iconSize": 16,
   },
+  "progress": {
+    "fragments": {
+      "bar": {
+        "backgroundColor": "rgba(25, 179, 148, 1)",
+        "height": "100%",
+      },
+      "text": {
+        "color": "rgba(0, 0, 0, 0.45)",
+        "fontSize": 12,
+        "fontWeight": "600",
+        "lineHeight": 16,
+        "paddingHorizontal": 12,
+        "paddingVertical": 8,
+      },
+      "track": {
+        "backgroundColor": "rgba(0, 0, 0, 0.09)",
+        "height": 2,
+        "overflow": "hidden",
+      },
+    },
+  },
   "questionChrome": {
     "fragments": {
       "commentArea": {
@@ -989,6 +1270,245 @@ exports[`curated recipe golden snapshots DefaultLight: recipes build to a stable
         "lineHeight": 24,
       },
     },
+  },
+  "rating": {
+    "fragments": {
+      "minMaxText": {
+        "color": "rgba(0, 0, 0, 0.91)",
+        "fontSize": 16,
+        "paddingHorizontal": 8,
+      },
+      "pill": {
+        "base": {
+          "alignItems": "center",
+          "backgroundColor": "rgba(255, 255, 255, 1)",
+          "borderRadius": 100,
+          "boxShadow": [
+            {
+              "blurRadius": 2,
+              "color": "rgba(0, 0, 0, 0.15)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 1,
+              "spreadDistance": 0,
+            },
+          ],
+          "color": "rgba(0, 0, 0, 0.91)",
+          "elevation": undefined,
+          "fontSize": 16,
+          "justifyContent": "center",
+          "minHeight": 48,
+          "minWidth": 48,
+          "paddingHorizontal": 20,
+          "paddingVertical": 4,
+        },
+        "error": {
+          "backgroundColor": "rgba(229, 10, 62, 0.1)",
+          "boxShadow": [],
+          "elevation": 0,
+        },
+        "focused": {
+          "boxShadow": [
+            {
+              "blurRadius": 0,
+              "color": "rgba(0, 0, 0, 0.15)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 0,
+            },
+            {
+              "blurRadius": 0,
+              "color": "rgba(25, 179, 148, 1)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 2,
+            },
+          ],
+          "elevation": undefined,
+        },
+        "pressed": {
+          "backgroundColor": "rgba(248, 248, 248, 1)",
+        },
+        "preview": {
+          "backgroundColor": "transparent",
+          "borderColor": "transparent",
+          "borderWidth": 1,
+          "boxShadow": [],
+          "color": "rgba(0, 0, 0, 0.91)",
+          "elevation": 0,
+        },
+        "readOnly": {
+          "backgroundColor": "transparent",
+          "borderColor": "rgba(0, 0, 0, 0.16)",
+          "borderWidth": 2,
+          "boxShadow": [],
+          "color": "rgba(0, 0, 0, 0.45)",
+          "elevation": 0,
+        },
+        "selected": {
+          "backgroundColor": "rgba(25, 179, 148, 1)",
+          "boxShadow": [],
+          "color": "rgba(255, 255, 255, 1)",
+          "elevation": 0,
+          "fontWeight": "600",
+        },
+        "selectedFocused": {
+          "boxShadow": [
+            {
+              "blurRadius": 0,
+              "color": "rgba(0, 0, 0, 0.15)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 0,
+            },
+            {
+              "blurRadius": 0,
+              "color": "rgba(255, 255, 255, 1)",
+              "inset": true,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 4,
+            },
+            {
+              "blurRadius": 0,
+              "color": "rgba(25, 179, 148, 1)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 2,
+            },
+          ],
+          "elevation": undefined,
+        },
+        "selectedPreview": {
+          "borderColor": "rgba(0, 0, 0, 0.91)",
+          "color": "rgba(0, 0, 0, 0.91)",
+        },
+        "selectedReadOnly": {
+          "borderColor": "rgba(0, 0, 0, 0.91)",
+          "color": "rgba(0, 0, 0, 0.91)",
+        },
+      },
+      "row": {
+        "alignItems": "center",
+        "flexDirection": "row",
+        "gap": 8,
+      },
+      "smiley": {
+        "base": {
+          "alignItems": "center",
+          "borderColor": "rgba(0, 0, 0, 0.16)",
+          "borderRadius": 100,
+          "borderWidth": 2,
+          "boxShadow": [
+            {
+              "blurRadius": 0,
+              "color": "rgba(0, 0, 0, 0.15)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 0,
+            },
+          ],
+          "elevation": undefined,
+          "justifyContent": "center",
+          "minHeight": 48,
+          "minWidth": 48,
+          "padding": 10,
+        },
+        "error": {
+          "backgroundColor": "rgba(229, 10, 62, 0.1)",
+          "borderColor": "transparent",
+        },
+        "focused": {
+          "borderWidth": 0,
+          "boxShadow": [
+            {
+              "blurRadius": 0,
+              "color": "rgba(0, 0, 0, 0.15)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 0,
+            },
+            {
+              "blurRadius": 0,
+              "color": "rgba(25, 179, 148, 1)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 2,
+            },
+          ],
+          "elevation": undefined,
+        },
+        "pressed": {
+          "backgroundColor": "rgba(248, 248, 248, 1)",
+          "borderColor": "rgba(0, 0, 0, 0.16)",
+        },
+        "preview": {
+          "borderColor": "rgba(0, 0, 0, 0.91)",
+          "borderWidth": 1,
+        },
+        "readOnly": {
+          "borderColor": "rgba(0, 0, 0, 0.16)",
+        },
+        "selected": {
+          "backgroundColor": "rgba(25, 179, 148, 1)",
+          "borderColor": "rgba(25, 179, 148, 1)",
+        },
+        "selectedFocused": {
+          "borderWidth": 0,
+          "boxShadow": [
+            {
+              "blurRadius": 0,
+              "color": "rgba(0, 0, 0, 0.15)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 0,
+            },
+            {
+              "blurRadius": 0,
+              "color": "rgba(255, 255, 255, 1)",
+              "inset": true,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 4,
+            },
+            {
+              "blurRadius": 0,
+              "color": "rgba(25, 179, 148, 1)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 2,
+            },
+          ],
+          "elevation": undefined,
+        },
+        "selectedPreview": {
+          "backgroundColor": "rgba(0, 0, 0, 0.91)",
+        },
+        "selectedReadOnly": {
+          "backgroundColor": "transparent",
+          "borderColor": "rgba(0, 0, 0, 0.91)",
+        },
+      },
+    },
+    "smileyIconFills": {
+      "error": "rgba(0, 0, 0, 0.45)",
+      "preview": "rgba(0, 0, 0, 0.91)",
+      "readOnly": "rgba(0, 0, 0, 0.16)",
+      "selected": "rgba(255, 255, 255, 1)",
+      "selectedPreview": "rgba(255, 255, 255, 1)",
+      "selectedReadOnly": "rgba(0, 0, 0, 0.91)",
+      "unselected": "rgba(0, 0, 0, 0.16)",
+    },
+    "starIconSize": 48,
   },
   "row": {
     "variants": {
@@ -1509,6 +2029,27 @@ exports[`curated recipe golden snapshots LayeredDark: recipes build to a stable 
     },
     "iconSize": 16,
   },
+  "progress": {
+    "fragments": {
+      "bar": {
+        "backgroundColor": "rgba(164, 127, 243, 1)",
+        "height": "100%",
+      },
+      "text": {
+        "color": "rgba(117, 119, 141, 1)",
+        "fontSize": 12,
+        "fontWeight": "600",
+        "lineHeight": 16,
+        "paddingHorizontal": 12,
+        "paddingVertical": 8,
+      },
+      "track": {
+        "backgroundColor": "rgba(54, 56, 69, 1)",
+        "height": 2,
+        "overflow": "hidden",
+      },
+    },
+  },
   "questionChrome": {
     "fragments": {
       "commentArea": {
@@ -1607,6 +2148,341 @@ exports[`curated recipe golden snapshots LayeredDark: recipes build to a stable 
         "lineHeight": 24,
       },
     },
+  },
+  "rating": {
+    "fragments": {
+      "minMaxText": {
+        "color": "rgba(213, 215, 238, 1)",
+        "fontSize": 16,
+        "paddingHorizontal": 8,
+      },
+      "pill": {
+        "base": {
+          "alignItems": "center",
+          "backgroundColor": "rgba(39, 40, 50, 1)",
+          "borderRadius": 100,
+          "boxShadow": [
+            {
+              "blurRadius": 0,
+              "color": "rgba(255, 255, 255, 0.1)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 1,
+            },
+            {
+              "blurRadius": 16,
+              "color": "rgba(0, 0, 0, 0.15)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 8,
+              "spreadDistance": 0,
+            },
+            {
+              "blurRadius": 4,
+              "color": "rgba(0, 0, 0, 0.2)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 2,
+              "spreadDistance": 0,
+            },
+          ],
+          "color": "rgba(213, 215, 238, 1)",
+          "elevation": undefined,
+          "fontSize": 16,
+          "justifyContent": "center",
+          "minHeight": 48,
+          "minWidth": 48,
+          "paddingHorizontal": 20,
+          "paddingVertical": 4,
+        },
+        "error": {
+          "backgroundColor": "rgba(254, 76, 108, 0.1)",
+          "boxShadow": [],
+          "elevation": 0,
+        },
+        "focused": {
+          "boxShadow": [
+            {
+              "blurRadius": 0,
+              "color": "rgba(255, 255, 255, 0.1)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 0,
+            },
+            {
+              "blurRadius": 0,
+              "color": "rgba(0, 0, 0, 0.15)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 0,
+            },
+            {
+              "blurRadius": 0,
+              "color": "rgba(0, 0, 0, 0.2)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 0,
+            },
+            {
+              "blurRadius": 0,
+              "color": "rgba(164, 127, 243, 1)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 2,
+            },
+          ],
+          "elevation": undefined,
+        },
+        "pressed": {
+          "backgroundColor": "rgba(46, 47, 58, 1)",
+        },
+        "preview": {
+          "backgroundColor": "transparent",
+          "borderColor": "transparent",
+          "borderWidth": 1,
+          "boxShadow": [],
+          "color": "rgba(213, 215, 238, 1)",
+          "elevation": 0,
+        },
+        "readOnly": {
+          "backgroundColor": "transparent",
+          "borderColor": "rgba(255, 255, 255, 0.08)",
+          "borderWidth": 2,
+          "boxShadow": [],
+          "color": "rgba(117, 120, 140, 1)",
+          "elevation": 0,
+        },
+        "selected": {
+          "backgroundColor": "rgba(164, 127, 243, 1)",
+          "boxShadow": [],
+          "color": "rgba(32, 32, 32, 1)",
+          "elevation": 0,
+          "fontWeight": "600",
+        },
+        "selectedFocused": {
+          "boxShadow": [
+            {
+              "blurRadius": 0,
+              "color": "rgba(255, 255, 255, 0.1)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 0,
+            },
+            {
+              "blurRadius": 0,
+              "color": "rgba(0, 0, 0, 0.15)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 0,
+            },
+            {
+              "blurRadius": 0,
+              "color": "rgba(0, 0, 0, 0.2)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 0,
+            },
+            {
+              "blurRadius": 0,
+              "color": "rgba(39, 40, 50, 1)",
+              "inset": true,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 4,
+            },
+            {
+              "blurRadius": 0,
+              "color": "rgba(164, 127, 243, 1)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 2,
+            },
+          ],
+          "elevation": undefined,
+        },
+        "selectedPreview": {
+          "borderColor": "rgba(213, 215, 238, 1)",
+          "color": "rgba(213, 215, 238, 1)",
+        },
+        "selectedReadOnly": {
+          "borderColor": "rgba(213, 215, 238, 1)",
+          "color": "rgba(213, 215, 238, 1)",
+        },
+      },
+      "row": {
+        "alignItems": "center",
+        "flexDirection": "row",
+        "gap": 8,
+      },
+      "smiley": {
+        "base": {
+          "alignItems": "center",
+          "borderColor": "rgba(67, 69, 85, 1)",
+          "borderRadius": 100,
+          "borderWidth": 2,
+          "boxShadow": [
+            {
+              "blurRadius": 0,
+              "color": "rgba(255, 255, 255, 0.1)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 0,
+            },
+            {
+              "blurRadius": 0,
+              "color": "rgba(0, 0, 0, 0.15)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 0,
+            },
+            {
+              "blurRadius": 0,
+              "color": "rgba(0, 0, 0, 0.2)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 0,
+            },
+          ],
+          "elevation": undefined,
+          "justifyContent": "center",
+          "minHeight": 48,
+          "minWidth": 48,
+          "padding": 10,
+        },
+        "error": {
+          "backgroundColor": "rgba(254, 76, 108, 0.1)",
+          "borderColor": "transparent",
+        },
+        "focused": {
+          "borderWidth": 0,
+          "boxShadow": [
+            {
+              "blurRadius": 0,
+              "color": "rgba(255, 255, 255, 0.1)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 0,
+            },
+            {
+              "blurRadius": 0,
+              "color": "rgba(0, 0, 0, 0.15)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 0,
+            },
+            {
+              "blurRadius": 0,
+              "color": "rgba(0, 0, 0, 0.2)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 0,
+            },
+            {
+              "blurRadius": 0,
+              "color": "rgba(164, 127, 243, 1)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 2,
+            },
+          ],
+          "elevation": undefined,
+        },
+        "pressed": {
+          "backgroundColor": "rgba(46, 47, 58, 1)",
+          "borderColor": "rgba(67, 69, 85, 1)",
+        },
+        "preview": {
+          "borderColor": "rgba(213, 215, 238, 1)",
+          "borderWidth": 1,
+        },
+        "readOnly": {
+          "borderColor": "rgba(67, 69, 85, 1)",
+        },
+        "selected": {
+          "backgroundColor": "rgba(164, 127, 243, 1)",
+          "borderColor": "rgba(164, 127, 243, 1)",
+        },
+        "selectedFocused": {
+          "borderWidth": 0,
+          "boxShadow": [
+            {
+              "blurRadius": 0,
+              "color": "rgba(255, 255, 255, 0.1)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 0,
+            },
+            {
+              "blurRadius": 0,
+              "color": "rgba(0, 0, 0, 0.15)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 0,
+            },
+            {
+              "blurRadius": 0,
+              "color": "rgba(0, 0, 0, 0.2)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 0,
+            },
+            {
+              "blurRadius": 0,
+              "color": "rgba(39, 40, 50, 1)",
+              "inset": true,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 4,
+            },
+            {
+              "blurRadius": 0,
+              "color": "rgba(164, 127, 243, 1)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 2,
+            },
+          ],
+          "elevation": undefined,
+        },
+        "selectedPreview": {
+          "backgroundColor": "rgba(213, 215, 238, 1)",
+        },
+        "selectedReadOnly": {
+          "backgroundColor": "transparent",
+          "borderColor": "rgba(213, 215, 238, 1)",
+        },
+      },
+    },
+    "smileyIconFills": {
+      "error": "rgba(117, 120, 140, 1)",
+      "preview": "rgba(213, 215, 238, 1)",
+      "readOnly": "rgba(67, 69, 85, 1)",
+      "selected": "rgba(32, 32, 32, 1)",
+      "selectedPreview": "rgba(39, 40, 50, 1)",
+      "selectedReadOnly": "rgba(213, 215, 238, 1)",
+      "unselected": "rgba(67, 69, 85, 1)",
+    },
+    "starIconSize": 48,
   },
   "row": {
     "variants": {
@@ -2063,6 +2939,27 @@ exports[`curated recipe golden snapshots SharpDark: recipes build to a stable sn
     },
     "iconSize": 16,
   },
+  "progress": {
+    "fragments": {
+      "bar": {
+        "backgroundColor": "rgba(16, 226, 255, 1)",
+        "height": "100%",
+      },
+      "text": {
+        "color": "rgba(255, 255, 255, 0.55)",
+        "fontSize": 12,
+        "fontWeight": "600",
+        "lineHeight": 16,
+        "paddingHorizontal": 12,
+        "paddingVertical": 8,
+      },
+      "track": {
+        "backgroundColor": "rgba(255, 255, 255, 0.22)",
+        "height": 2,
+        "overflow": "hidden",
+      },
+    },
+  },
   "questionChrome": {
     "fragments": {
       "commentArea": {
@@ -2161,6 +3058,245 @@ exports[`curated recipe golden snapshots SharpDark: recipes build to a stable sn
         "lineHeight": 24,
       },
     },
+  },
+  "rating": {
+    "fragments": {
+      "minMaxText": {
+        "color": "rgba(255, 255, 255, 0.78)",
+        "fontSize": 16,
+        "paddingHorizontal": 8,
+      },
+      "pill": {
+        "base": {
+          "alignItems": "center",
+          "backgroundColor": "rgba(48, 48, 48, 1)",
+          "borderRadius": 100,
+          "boxShadow": [
+            {
+              "blurRadius": 0,
+              "color": "rgba(255, 255, 255, 0.28)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 1,
+            },
+          ],
+          "color": "rgba(255, 255, 255, 0.78)",
+          "elevation": undefined,
+          "fontSize": 16,
+          "justifyContent": "center",
+          "minHeight": 48,
+          "minWidth": 48,
+          "paddingHorizontal": 20,
+          "paddingVertical": 4,
+        },
+        "error": {
+          "backgroundColor": "rgba(254, 76, 108, 0.1)",
+          "boxShadow": [],
+          "elevation": 0,
+        },
+        "focused": {
+          "boxShadow": [
+            {
+              "blurRadius": 0,
+              "color": "rgba(255, 255, 255, 0.28)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 0,
+            },
+            {
+              "blurRadius": 0,
+              "color": "rgba(16, 226, 255, 1)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 2,
+            },
+          ],
+          "elevation": undefined,
+        },
+        "pressed": {
+          "backgroundColor": "rgba(58, 58, 58, 1)",
+        },
+        "preview": {
+          "backgroundColor": "transparent",
+          "borderColor": "transparent",
+          "borderWidth": 1,
+          "boxShadow": [],
+          "color": "rgba(255, 255, 255, 0.78)",
+          "elevation": 0,
+        },
+        "readOnly": {
+          "backgroundColor": "transparent",
+          "borderColor": "rgba(255, 255, 255, 0.08)",
+          "borderWidth": 2,
+          "boxShadow": [],
+          "color": "rgba(255, 255, 255, 0.5)",
+          "elevation": 0,
+        },
+        "selected": {
+          "backgroundColor": "rgba(16, 226, 255, 1)",
+          "boxShadow": [],
+          "color": "rgba(32, 32, 32, 1)",
+          "elevation": 0,
+          "fontWeight": "600",
+        },
+        "selectedFocused": {
+          "boxShadow": [
+            {
+              "blurRadius": 0,
+              "color": "rgba(255, 255, 255, 0.28)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 0,
+            },
+            {
+              "blurRadius": 0,
+              "color": "rgba(48, 48, 48, 1)",
+              "inset": true,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 4,
+            },
+            {
+              "blurRadius": 0,
+              "color": "rgba(16, 226, 255, 1)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 2,
+            },
+          ],
+          "elevation": undefined,
+        },
+        "selectedPreview": {
+          "borderColor": "rgba(255, 255, 255, 0.78)",
+          "color": "rgba(255, 255, 255, 0.78)",
+        },
+        "selectedReadOnly": {
+          "borderColor": "rgba(255, 255, 255, 0.78)",
+          "color": "rgba(255, 255, 255, 0.78)",
+        },
+      },
+      "row": {
+        "alignItems": "center",
+        "flexDirection": "row",
+        "gap": 8,
+      },
+      "smiley": {
+        "base": {
+          "alignItems": "center",
+          "borderColor": "rgba(255, 255, 255, 0.22)",
+          "borderRadius": 100,
+          "borderWidth": 2,
+          "boxShadow": [
+            {
+              "blurRadius": 0,
+              "color": "rgba(255, 255, 255, 0.28)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 0,
+            },
+          ],
+          "elevation": undefined,
+          "justifyContent": "center",
+          "minHeight": 48,
+          "minWidth": 48,
+          "padding": 10,
+        },
+        "error": {
+          "backgroundColor": "rgba(254, 76, 108, 0.1)",
+          "borderColor": "transparent",
+        },
+        "focused": {
+          "borderWidth": 0,
+          "boxShadow": [
+            {
+              "blurRadius": 0,
+              "color": "rgba(255, 255, 255, 0.28)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 0,
+            },
+            {
+              "blurRadius": 0,
+              "color": "rgba(16, 226, 255, 1)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 2,
+            },
+          ],
+          "elevation": undefined,
+        },
+        "pressed": {
+          "backgroundColor": "rgba(58, 58, 58, 1)",
+          "borderColor": "rgba(255, 255, 255, 0.22)",
+        },
+        "preview": {
+          "borderColor": "rgba(255, 255, 255, 0.78)",
+          "borderWidth": 1,
+        },
+        "readOnly": {
+          "borderColor": "rgba(255, 255, 255, 0.22)",
+        },
+        "selected": {
+          "backgroundColor": "rgba(16, 226, 255, 1)",
+          "borderColor": "rgba(16, 226, 255, 1)",
+        },
+        "selectedFocused": {
+          "borderWidth": 0,
+          "boxShadow": [
+            {
+              "blurRadius": 0,
+              "color": "rgba(255, 255, 255, 0.28)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 0,
+            },
+            {
+              "blurRadius": 0,
+              "color": "rgba(48, 48, 48, 1)",
+              "inset": true,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 4,
+            },
+            {
+              "blurRadius": 0,
+              "color": "rgba(16, 226, 255, 1)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 2,
+            },
+          ],
+          "elevation": undefined,
+        },
+        "selectedPreview": {
+          "backgroundColor": "rgba(255, 255, 255, 0.78)",
+        },
+        "selectedReadOnly": {
+          "backgroundColor": "transparent",
+          "borderColor": "rgba(255, 255, 255, 0.78)",
+        },
+      },
+    },
+    "smileyIconFills": {
+      "error": "rgba(255, 255, 255, 0.5)",
+      "preview": "rgba(255, 255, 255, 0.78)",
+      "readOnly": "rgba(255, 255, 255, 0.22)",
+      "selected": "rgba(32, 32, 32, 1)",
+      "selectedPreview": "rgba(48, 48, 48, 1)",
+      "selectedReadOnly": "rgba(255, 255, 255, 0.78)",
+      "unselected": "rgba(255, 255, 255, 0.22)",
+    },
+    "starIconSize": 48,
   },
   "row": {
     "variants": {
@@ -2665,6 +3801,27 @@ exports[`curated recipe golden snapshots ThreeDimensionalLight: recipes build to
     },
     "iconSize": 16,
   },
+  "progress": {
+    "fragments": {
+      "bar": {
+        "backgroundColor": "rgba(217, 74, 100, 1)",
+        "height": "100%",
+      },
+      "text": {
+        "color": "rgba(0, 0, 0, 0.45)",
+        "fontSize": 12,
+        "fontWeight": "600",
+        "lineHeight": 16,
+        "paddingHorizontal": 12,
+        "paddingVertical": 8,
+      },
+      "track": {
+        "backgroundColor": "rgba(0, 0, 0, 0.08)",
+        "height": 2,
+        "overflow": "hidden",
+      },
+    },
+  },
   "questionChrome": {
     "fragments": {
       "commentArea": {
@@ -2763,6 +3920,293 @@ exports[`curated recipe golden snapshots ThreeDimensionalLight: recipes build to
         "lineHeight": 24,
       },
     },
+  },
+  "rating": {
+    "fragments": {
+      "minMaxText": {
+        "color": "rgba(0, 0, 0, 0.91)",
+        "fontSize": 16,
+        "paddingHorizontal": 8,
+      },
+      "pill": {
+        "base": {
+          "alignItems": "center",
+          "backgroundColor": "rgba(248, 248, 248, 1)",
+          "borderRadius": 100,
+          "boxShadow": [
+            {
+              "blurRadius": 0,
+              "color": "rgba(228, 228, 228, 1)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 2,
+              "spreadDistance": 2,
+            },
+            {
+              "blurRadius": 0,
+              "color": "rgba(228, 228, 228, 1)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 2,
+            },
+          ],
+          "color": "rgba(0, 0, 0, 0.91)",
+          "elevation": undefined,
+          "fontSize": 16,
+          "justifyContent": "center",
+          "minHeight": 48,
+          "minWidth": 48,
+          "paddingHorizontal": 20,
+          "paddingVertical": 4,
+        },
+        "error": {
+          "backgroundColor": "rgba(229, 10, 62, 0.1)",
+          "boxShadow": [],
+          "elevation": 0,
+        },
+        "focused": {
+          "boxShadow": [
+            {
+              "blurRadius": 0,
+              "color": "rgba(228, 228, 228, 1)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 0,
+            },
+            {
+              "blurRadius": 0,
+              "color": "rgba(228, 228, 228, 1)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 0,
+            },
+            {
+              "blurRadius": 0,
+              "color": "rgba(217, 74, 100, 1)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 2,
+            },
+          ],
+          "elevation": undefined,
+        },
+        "pressed": {
+          "backgroundColor": "rgba(242, 242, 242, 1)",
+        },
+        "preview": {
+          "backgroundColor": "transparent",
+          "borderColor": "transparent",
+          "borderWidth": 1,
+          "boxShadow": [],
+          "color": "rgba(0, 0, 0, 0.91)",
+          "elevation": 0,
+        },
+        "readOnly": {
+          "backgroundColor": "transparent",
+          "borderColor": "rgba(0, 0, 0, 0.16)",
+          "borderWidth": 2,
+          "boxShadow": [],
+          "color": "rgba(0, 0, 0, 0.45)",
+          "elevation": 0,
+        },
+        "selected": {
+          "backgroundColor": "rgba(217, 74, 100, 1)",
+          "boxShadow": [],
+          "color": "rgba(255, 255, 255, 1)",
+          "elevation": 0,
+          "fontWeight": "600",
+        },
+        "selectedFocused": {
+          "boxShadow": [
+            {
+              "blurRadius": 0,
+              "color": "rgba(228, 228, 228, 1)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 0,
+            },
+            {
+              "blurRadius": 0,
+              "color": "rgba(228, 228, 228, 1)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 0,
+            },
+            {
+              "blurRadius": 0,
+              "color": "rgba(248, 248, 248, 1)",
+              "inset": true,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 4,
+            },
+            {
+              "blurRadius": 0,
+              "color": "rgba(217, 74, 100, 1)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 2,
+            },
+          ],
+          "elevation": undefined,
+        },
+        "selectedPreview": {
+          "borderColor": "rgba(0, 0, 0, 0.91)",
+          "color": "rgba(0, 0, 0, 0.91)",
+        },
+        "selectedReadOnly": {
+          "borderColor": "rgba(0, 0, 0, 0.91)",
+          "color": "rgba(0, 0, 0, 0.91)",
+        },
+      },
+      "row": {
+        "alignItems": "center",
+        "flexDirection": "row",
+        "gap": 8,
+      },
+      "smiley": {
+        "base": {
+          "alignItems": "center",
+          "borderColor": "rgba(0, 0, 0, 0.08)",
+          "borderRadius": 100,
+          "borderWidth": 2,
+          "boxShadow": [
+            {
+              "blurRadius": 0,
+              "color": "rgba(228, 228, 228, 1)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 0,
+            },
+            {
+              "blurRadius": 0,
+              "color": "rgba(228, 228, 228, 1)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 0,
+            },
+          ],
+          "elevation": undefined,
+          "justifyContent": "center",
+          "minHeight": 48,
+          "minWidth": 48,
+          "padding": 10,
+        },
+        "error": {
+          "backgroundColor": "rgba(229, 10, 62, 0.1)",
+          "borderColor": "transparent",
+        },
+        "focused": {
+          "borderWidth": 0,
+          "boxShadow": [
+            {
+              "blurRadius": 0,
+              "color": "rgba(228, 228, 228, 1)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 0,
+            },
+            {
+              "blurRadius": 0,
+              "color": "rgba(228, 228, 228, 1)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 0,
+            },
+            {
+              "blurRadius": 0,
+              "color": "rgba(217, 74, 100, 1)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 2,
+            },
+          ],
+          "elevation": undefined,
+        },
+        "pressed": {
+          "backgroundColor": "rgba(242, 242, 242, 1)",
+          "borderColor": "rgba(0, 0, 0, 0.08)",
+        },
+        "preview": {
+          "borderColor": "rgba(0, 0, 0, 0.91)",
+          "borderWidth": 1,
+        },
+        "readOnly": {
+          "borderColor": "rgba(0, 0, 0, 0.08)",
+        },
+        "selected": {
+          "backgroundColor": "rgba(217, 74, 100, 1)",
+          "borderColor": "rgba(217, 74, 100, 1)",
+        },
+        "selectedFocused": {
+          "borderWidth": 0,
+          "boxShadow": [
+            {
+              "blurRadius": 0,
+              "color": "rgba(228, 228, 228, 1)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 0,
+            },
+            {
+              "blurRadius": 0,
+              "color": "rgba(228, 228, 228, 1)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 0,
+            },
+            {
+              "blurRadius": 0,
+              "color": "rgba(248, 248, 248, 1)",
+              "inset": true,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 4,
+            },
+            {
+              "blurRadius": 0,
+              "color": "rgba(217, 74, 100, 1)",
+              "inset": false,
+              "offsetX": 0,
+              "offsetY": 0,
+              "spreadDistance": 2,
+            },
+          ],
+          "elevation": undefined,
+        },
+        "selectedPreview": {
+          "backgroundColor": "rgba(0, 0, 0, 0.91)",
+        },
+        "selectedReadOnly": {
+          "backgroundColor": "transparent",
+          "borderColor": "rgba(0, 0, 0, 0.91)",
+        },
+      },
+    },
+    "smileyIconFills": {
+      "error": "rgba(0, 0, 0, 0.45)",
+      "preview": "rgba(0, 0, 0, 0.91)",
+      "readOnly": "rgba(0, 0, 0, 0.08)",
+      "selected": "rgba(255, 255, 255, 1)",
+      "selectedPreview": "rgba(248, 248, 248, 1)",
+      "selectedReadOnly": "rgba(0, 0, 0, 0.91)",
+      "unselected": "rgba(0, 0, 0, 0.08)",
+    },
+    "starIconSize": 48,
   },
   "row": {
     "variants": {
