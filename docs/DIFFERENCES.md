@@ -699,6 +699,39 @@ synchronously, so auto-sized images need explicit `imageWidth`/
 `imageHeight` in the JSON.
 
 
+## Imagepicker question (task 2.7)
+
+The `imagepicker` renders a grid of image-choice tiles; tapping selects
+(scalar value for single-select, an array for `multiSelect`). It reuses
+the image question's URI-policy image path (task 2.10) and the
+checkbox/radiogroup selection semantics, so those questions' differences
+apply.
+
+### Columns are a flat N-column flex-wrap grid
+
+Like checkbox/radiogroup (task 1.12), the `colCount`/`getCurrentColCount`
+layout is a simple flex-wrap grid — each tile a `${100/cols}%`-wide
+container. Upstream's exact column-balancing/responsive-image algorithm
+(`responsiveColCount`, per-breakpoint image resizing) is not reproduced;
+tile size comes from core's `renderedImageWidth`/`renderedImageHeight`.
+
+### A blocked/failed choice image shows the choice text
+
+Each tile's image loads through the central URI policy
+(`validateUri(…, 'image')`, invariant 8) — `data:` inline images and
+allowlisted `https:` load; a raw remote (`http`/`https`) source that
+fails the policy is dropped **fail-closed** with an `image-uri-blocked`
+diagnostic, and the tile renders the choice **text** instead of a blank
+image (same fail-closed posture as the image question, task 2.10). Web
+would request the URL directly.
+
+### `contentMode` other than `"image"` renders nothing
+
+Like the image question (2.10), only `contentMode: "image"` is supported
+in v1 — `"video"`/`"youtube"` render nothing and report an
+`image-content-mode-unsupported` diagnostic (native video/WebView paths
+are deferred).
+
 ## Buttongroup question (task 2.9)
 
 ### No overflow-to-dropdown until task 2.5

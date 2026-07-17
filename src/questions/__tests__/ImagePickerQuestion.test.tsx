@@ -8,6 +8,10 @@ import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { Model } from '../../core/facade';
 import '../../factories/register-all';
 import { ImagePickerQuestion } from '../ImagePickerQuestion';
+import {
+  setDiagnosticHandler,
+  type DiagnosticPayload,
+} from '../../diagnostics';
 
 // 1x1 PNGs (data: — no network; URI policy allows strict inline data images).
 const IMG =
@@ -76,6 +80,76 @@ describe('ImagePickerQuestion — grid + single select', () => {
       screen.getByTestId('imagepicker-item-fox').props.accessibilityState
         ?.selected
     ).toBe(true);
+  });
+});
+
+describe('ImagePickerQuestion — image policy + content mode', () => {
+  it('a blocked remote image URI falls back to the choice text + a diagnostic (fail-closed)', async () => {
+    const codes: string[] = [];
+    setDiagnosticHandler((p: DiagnosticPayload) => codes.push(p.code));
+    try {
+      const model = new Model({
+        elements: [
+          {
+            type: 'imagepicker',
+            name: 'ip',
+            showLabel: false,
+            choices: [
+              // Raw remote http (not allowlisted) → policy fail-closed.
+              {
+                value: 'bad',
+                imageLink: 'http://evil.example/x.png',
+                text: 'BadImg',
+              },
+            ],
+          },
+        ],
+      });
+      const question = model.getQuestionByName('ip')!;
+      render(<ImagePickerQuestion question={question} creator={{}} />);
+      await flush();
+      expect(screen.getByTestId('imagepicker-fallback-bad')).toBeTruthy();
+      expect(screen.getByText('BadImg')).toBeTruthy();
+      expect(codes).toContain('image-uri-blocked');
+    } finally {
+      setDiagnosticHandler(undefined);
+    }
+  });
+
+  it('contentMode "video" renders nothing + a diagnostic (v1 image-only)', async () => {
+    const codes: string[] = [];
+    setDiagnosticHandler((p: DiagnosticPayload) => codes.push(p.code));
+    try {
+      const model = new Model({
+        elements: [
+          {
+            type: 'imagepicker',
+            name: 'ip',
+            contentMode: 'video',
+            choices: [{ value: 'a' }],
+          },
+        ],
+      });
+      const question = model.getQuestionByName('ip')!;
+      render(<ImagePickerQuestion question={question} creator={{}} />);
+      await flush();
+      expect(
+        screen.getByTestId('imagepicker-content-mode-unsupported')
+      ).toBeTruthy();
+      expect(screen.queryByTestId('imagepicker-grid')).toBeNull();
+      expect(codes).toContain('image-content-mode-unsupported');
+    } finally {
+      setDiagnosticHandler(undefined);
+    }
+  });
+
+  it('no label rendered when showLabel is false', async () => {
+    const { question } = createImagePicker({ showLabel: false });
+    render(<ImagePickerQuestion question={question} creator={{}} />);
+    await flush();
+    expect(screen.getByTestId('imagepicker-item-cat')).toBeTruthy();
+    // The data: image renders, so no text-fallback; label suppressed.
+    expect(screen.queryByText('Cat')).toBeNull();
   });
 });
 
