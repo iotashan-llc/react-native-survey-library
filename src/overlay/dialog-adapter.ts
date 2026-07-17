@@ -63,23 +63,32 @@ export function resetDialogAdapterDiagnostics(): void {
   displacementReported = false;
 }
 
+/** Once-per-module-evaluation epoch bind: a stale epoch's later calls
+ * must NOT restore its old implementation over a newer epoch's. */
+let epochBound = false;
+
 function getOrCreateSlot(): DispatcherSlot {
   let slot = mutableSettings[DIALOG_DISPATCHER_SLOT];
   if (!slot) {
     const created: DispatcherSlot = {
       dispatcher: (options: unknown, rootElement?: unknown) =>
         created.impl(options, rootElement),
-      impl: () => undefined,
+      // A fresh slot always dispatches to THIS module's implementation.
+      impl: adapterShowDialog,
       previous: undefined,
       enabled: true,
       tokens: [],
     };
     slot = created;
     mutableSettings[DIALOG_DISPATCHER_SLOT] = slot;
+    epochBound = true;
+  } else if (!epochBound) {
+    // First touch of an EXISTING slot from this module evaluation
+    // (epoch B under HMR): take over the implementation exactly once —
+    // a stale epoch's later calls never rebind.
+    epochBound = true;
+    slot.impl = adapterShowDialog;
   }
-  // Each epoch (re)binds the implementation; the dispatcher identity
-  // never changes.
-  slot.impl = adapterShowDialog;
   return slot;
 }
 
@@ -252,15 +261,34 @@ function adapterShowDialog(
     try {
       consumerOnHide?.();
     } finally {
-      // Finalizer: hide-before-resolution resolves cancel (never zero
-      // resolutions); during `applying` the apply return commits.
-      if (state === 'open') terminalCancel();
-      else if (state === 'applying') pendingDismissal = true;
-      token.registrations.delete(registration);
-      // Bridge unregister deferred off the model callback.
-      Promise.resolve()
-        .then(() => registration.unregister())
-        .catch(() => undefined);
+      try {
+        // Finalizer: hide-before-resolution resolves cancel (never zero
+        // resolutions); during `applying` the apply return commits. A
+        // throwing consumer onCancel must not skip the cleanup below.
+        if (state === 'open') terminalCancel();
+        else if (state === 'applying') pendingDismissal = true;
+      } finally {
+        token.registrations.delete(registration);
+        // Bridge unregister deferred off the model callback.
+        Promise.resolve()
+          .then(() => registration.unregister())
+          .catch(() => undefined);
+      }
+    }
+  };
+  const consumerOnDispose = opts.onDispose;
+  popup.onDispose = () => {
+    try {
+      consumerOnDispose?.();
+    } finally {
+      try {
+        // Disposal while visible = terminal cancel (exactly-once guard
+        // inside the state machine makes the ordinary-after-hide path a
+        // no-op).
+        if (state === 'open') terminalCancel();
+      } finally {
+        token.registrations.delete(registration);
+      }
     }
   };
 
@@ -280,11 +308,17 @@ function adapterShowDialog(
   const entry = token.stack
     .entries()
     .find((candidate) => candidate.payload.popup === popup);
+  if (!entry) {
+    // Invariant violation — registerPopup + show() must have pushed the
+    // entry synchronously. Failing loudly beats retitling a container
+    // no presenter renders.
+    throw new Error(
+      'dialog-adapter: presented popup has no overlay entry (bridge invariant)'
+    );
+  }
   let width: string | undefined;
   const handle: DialogHandle = {
-    footerToolbar:
-      entry?.payload.footerActions.container ??
-      detachedHandle(opts.componentName).footerToolbar,
+    footerToolbar: entry.payload.footerActions.container,
     get width() {
       return width;
     },
@@ -339,8 +373,11 @@ export function registerDialogHost(
       }
     },
   };
+  const wasEmpty = liveTokens(slot).length === 0;
   slot.tokens.push(token);
-  installIfNeeded(slot);
+  // Install ONLY on the 0->1 transition — a consumer takeover installed
+  // while host A is mounted must survive host B mounting.
+  if (wasEmpty) installIfNeeded(slot);
   return token;
 }
 

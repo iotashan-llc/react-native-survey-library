@@ -411,3 +411,130 @@ describe('dialog adapter — D8 matrix (throw, routing, onShow, epoch)', () => {
     token.dispose();
   });
 });
+
+describe('dialog adapter — D8 completion (review round 1)', () => {
+  it('consumer takeover while host A is mounted survives host B mounting (install only on 0->1)', () => {
+    const tokenA = registerDialogHost(makeStack());
+    const takeover: ShowDialogFn = () => 'takeover';
+    mutableSettings.showDialog = takeover;
+    const tokenB = registerDialogHost(makeStack());
+    expect(mutableSettings.showDialog).toBe(takeover);
+    tokenB.dispose();
+    tokenA.dispose();
+    expect(mutableSettings.showDialog).toBe(takeover);
+  });
+
+  it('open on A, mount B, dispose A: the open dialog closes with cancel; new dialogs route to B', () => {
+    const stackA = makeStack();
+    const stackB = makeStack();
+    const tokenA = registerDialogHost(stackA);
+    const results: string[] = [];
+    (mutableSettings.showDialog as ShowDialogFn)({
+      componentName: 'sv-string-viewer',
+      data: { model: null },
+      onCancel: () => {
+        results.push('cancel-A');
+      },
+    });
+    const tokenB = registerDialogHost(stackB);
+    tokenA.dispose();
+    expect(stackA.entries()).toHaveLength(0);
+    expect(results).toEqual(['cancel-A']);
+    (mutableSettings.showDialog as ShowDialogFn)({
+      componentName: 'sv-string-viewer',
+      data: { model: null },
+    });
+    expect(stackB.entries()).toHaveLength(1);
+    tokenB.dispose();
+  });
+
+  it('cancellation arriving DURING applying defers; apply-false then resolves the deferred cancel once', () => {
+    const stack = makeStack();
+    const token = registerDialogHost(stack);
+    const results: string[] = [];
+    let popupRef: { hide(): void } | null = null;
+    const handle = (mutableSettings.showDialog as ShowDialogFn)({
+      componentName: 'sv-string-viewer',
+      data: { model: null },
+      onApply: () => {
+        // Synchronous dismissal mid-apply (e.g. the yes-action tears
+        // the UI down) — then reject the apply.
+        popupRef!.hide();
+        return false;
+      },
+      onCancel: () => {
+        results.push('cancel');
+      },
+    }) as {
+      footerToolbar: { getActionById(id: string): { action(): void } };
+      popupModel: { hide(): void };
+    };
+    popupRef = handle.popupModel;
+    handle.footerToolbar.getActionById('apply').action();
+    stack.entries()[0]?.payload.onDismissAcknowledged();
+    expect(results).toEqual(['cancel']); // exactly once, deferred
+    token.dispose();
+  });
+
+  it('apply-throw with a pending dismissal resolves the deferred cancel then rethrows', () => {
+    const stack = makeStack();
+    const token = registerDialogHost(stack);
+    const results: string[] = [];
+    let popupRef: { hide(): void } | null = null;
+    const handle = (mutableSettings.showDialog as ShowDialogFn)({
+      componentName: 'sv-string-viewer',
+      data: { model: null },
+      onApply: () => {
+        popupRef!.hide();
+        throw new Error('yes-action exploded');
+      },
+      onCancel: () => {
+        results.push('cancel');
+      },
+    }) as {
+      footerToolbar: { getActionById(id: string): { action(): void } };
+      popupModel: { hide(): void };
+    };
+    popupRef = handle.popupModel;
+    expect(() => handle.footerToolbar.getActionById('apply').action()).toThrow(
+      'yes-action exploded'
+    );
+    stack.entries()[0]?.payload.onDismissAcknowledged();
+    expect(results).toEqual(['cancel']);
+    token.dispose();
+  });
+
+  it('zero-token disable removes a persistent dispatcher; re-enable installs on the next registration', () => {
+    const first = registerDialogHost(makeStack());
+    first.dispose(); // persistent dispatcher
+    const persisted = mutableSettings.showDialog;
+    expect(typeof persisted).toBe('function');
+    setDialogAdapterEnabled(false);
+    expect(mutableSettings.showDialog).toBeUndefined();
+    setDialogAdapterEnabled(true);
+    expect(mutableSettings.showDialog).toBeUndefined(); // not yet
+    const second = registerDialogHost(makeStack());
+    expect(typeof mutableSettings.showDialog).toBe('function');
+    second.dispose();
+  });
+
+  it('popupModel.dispose() while visible resolves cancel exactly once (onDispose composition)', () => {
+    const stack = makeStack();
+    const token = registerDialogHost(stack);
+    const results: string[] = [];
+    const consumerDispose = jest.fn();
+    const handle = (mutableSettings.showDialog as ShowDialogFn)({
+      componentName: 'sv-string-viewer',
+      data: { model: null },
+      onCancel: () => {
+        results.push('cancel');
+      },
+      onDispose: consumerDispose,
+    }) as { popupModel: { dispose(): void } };
+    handle.popupModel.dispose();
+    expect(consumerDispose).toHaveBeenCalledTimes(1);
+    expect(results).toEqual(['cancel']);
+    token.dispose();
+    expect(results).toEqual(['cancel']);
+  });
+});

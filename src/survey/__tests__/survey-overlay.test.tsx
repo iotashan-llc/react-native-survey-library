@@ -5,7 +5,7 @@
  */
 import * as React from 'react';
 import { Modal } from 'react-native';
-import { act, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { Model, PopupModel } from '../../core/facade';
 import '../../factories/register-all';
 import { Survey } from '../Survey';
@@ -238,7 +238,7 @@ describe('Survey shell — dialog host registration (task 2.2)', () => {
     expect(screen.getByTestId('overlay-panel-dialog')).toBeTruthy();
     act(() => {
       // Cancel keeps the panel.
-      screen.getByTestId('overlay-action-cancel').props.onPress?.();
+      fireEvent.press(screen.getByTestId('overlay-action-cancel'));
     });
     view.unmount();
     // Post-unmount: a stray confirm resolves cancel (fail-safe), no throw.
@@ -247,5 +247,50 @@ describe('Survey shell — dialog host registration (task 2.2)', () => {
       question.removePanelUI(0);
     });
     expect(question.panelCount).toBe(2);
+  });
+});
+
+describe('Survey shell — StrictMode dialog host (D8.7)', () => {
+  it('StrictMode double-mount keeps a working dialog host; final unmount leaves none', () => {
+    const model = new Model({
+      elements: [
+        {
+          type: 'paneldynamic',
+          name: 'pd',
+          confirmDelete: true,
+          panelCount: 2,
+          templateElements: [{ type: 'text', name: 'inner' }],
+        },
+      ],
+    });
+    model.data = { pd: [{ inner: 'a' }, { inner: 'b' }] };
+    const view = render(
+      <React.StrictMode>
+        <Survey model={model as never} />
+      </React.StrictMode>
+    );
+    const question = model.getQuestionByName('pd') as unknown as {
+      panelCount: number;
+      removePanelUI(index: number): void;
+    };
+    act(() => {
+      question.removePanelUI(0);
+    });
+    // The confirm presents despite StrictMode's mount/unmount/mount.
+    expect(screen.getByTestId('overlay-panel-dialog')).toBeTruthy();
+    // Core retitled the buttons through the returned handle (locale
+    // strings — confirm-dialog.ts:50-52).
+    expect(screen.getByText('OK')).toBeTruthy();
+    expect(screen.getByText('Cancel')).toBeTruthy();
+    act(() => {
+      fireEvent.press(screen.getByTestId('overlay-action-apply'));
+    });
+    expect(question.panelCount).toBe(1);
+    view.unmount();
+    // Post-unmount confirm resolves cancel silently (fail-safe).
+    act(() => {
+      question.removePanelUI(0);
+    });
+    expect(question.panelCount).toBe(1);
   });
 });
