@@ -53,13 +53,22 @@ export class MultipleTextQuestion extends QuestionElementBase<QuestionElementBas
   }
 
   private renderErrors(editor: Question): React.JSX.Element[] {
-    return editor.errors.map((error, index) => (
+    // Core-filtered renderedErrors (not raw errors — upstream's
+    // SurveyElementErrors path), each through the locstring renderer so
+    // rich/Markdown error text renders instead of showing HTML.
+    return (
+      editor as unknown as { renderedErrors: Question['errors'] }
+    ).renderedErrors.map((error, index) => (
       <Text
         key={`err-${index}`}
         accessibilityRole="alert"
         testID={`sv-multipletext-error-${editor.name}-${index}`}
       >
-        {(error as { locText: LocalizableString }).locText.renderedHtml}
+        {SurveyElementBase.renderLocString(
+          (error as { locText: LocalizableString }).locText,
+          undefined,
+          `err-text-${index}`
+        )}
       </Text>
     ));
   }

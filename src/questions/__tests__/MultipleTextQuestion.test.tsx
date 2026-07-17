@@ -82,3 +82,40 @@ describe('MultipleTextQuestion — grid + editors', () => {
     expect(screen.getByText(/Response required/i)).toBeTruthy();
   });
 });
+
+describe('MultipleTextQuestion — mutable paths (review)', () => {
+  it('changing colCount after mount recomposes the rows', () => {
+    const { question } = createMultipleText();
+    render(<MultipleTextQuestion question={question} creator={{}} />);
+    expect(screen.getAllByTestId('sv-multipletext-row')).toHaveLength(3);
+    act(() => {
+      (question as unknown as { colCount: number }).colCount = 3;
+    });
+    expect(screen.getAllByTestId('sv-multipletext-row')).toHaveLength(1);
+  });
+
+  it('an error row disappears once the item becomes valid', () => {
+    const { model, question } = createMultipleText({
+      items: [{ name: 'req', title: 'Required item', isRequired: true }],
+    });
+    render(<MultipleTextQuestion question={question} creator={{}} />);
+    act(() => {
+      model.completeLastPage();
+    });
+    expect(
+      screen.getByTestId('sv-multipletext-error-req-0').props.accessibilityRole
+    ).toBe('alert');
+    act(() => {
+      question.value = { req: 'filled' };
+      (question as unknown as { validate(): boolean }).validate();
+    });
+    expect(screen.queryByText(/Response required/i)).toBeNull();
+  });
+
+  it('each input carries its item title as the accessible name', () => {
+    const { question } = createMultipleText();
+    render(<MultipleTextQuestion question={question} creator={{}} />);
+    const input = screen.getByTestId('first-input');
+    expect(input.props.accessibilityLabel).toBe('First name');
+  });
+});
