@@ -5,7 +5,7 @@
  * onDidDismiss) is injectable via OverlayPresenterContext.
  */
 import * as React from 'react';
-import { AccessibilityInfo, Modal, StyleSheet } from 'react-native';
+import { AccessibilityInfo, Modal, StyleSheet, View } from 'react-native';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { PopupModel } from '../../core/facade';
 import '../../factories/register-all';
@@ -529,6 +529,45 @@ describe('OverlayHost — opener focus restoration (2.3 seam)', () => {
       });
       expect(focusSpy).toHaveBeenCalledWith(77);
       expect(focusSpy).not.toHaveBeenCalledWith(88);
+    } finally {
+      focusSpy.mockRestore();
+    }
+  });
+
+  it('restores the opener even when a descendant presenter effect hides the popup on mount (PR #29 review r5 #1)', () => {
+    const focusSpy = jest
+      .spyOn(AccessibilityInfo, 'setAccessibilityFocus')
+      .mockImplementation(() => undefined);
+    try {
+      // A presenter that hides its entry immediately from a mount effect
+      // (descendant passive effects run BEFORE the host's), flipping the
+      // live entry to dismissing. The host's render-time opener snapshot
+      // must still drive the restore.
+      function HidingPresenter(
+        props: OverlayPresenterProps
+      ): React.JSX.Element {
+        const { visible, requestHide, entry, onDidDismiss } = props;
+        React.useEffect(() => {
+          if (visible) requestHide();
+        }, [visible, requestHide]);
+        // Ack the dismissal so the entry actually leaves the stack.
+        React.useEffect(() => {
+          if (entry.state === 'dismissing') onDidDismiss();
+        }, [entry.state, onDidDismiss]);
+        return <View testID="hiding-presenter" />;
+      }
+      const stack = createOverlayStack<OverlayPayload>();
+      const popup = new PopupModel('sv-string-viewer', { model: null });
+      registerPopup(popup, stack, { openerHandle: () => 77 });
+      render(
+        <OverlayPresenterContext.Provider value={HidingPresenter}>
+          <OverlayHost stack={stack} />
+        </OverlayPresenterContext.Provider>
+      );
+      act(() => {
+        popup.show();
+      });
+      expect(focusSpy).toHaveBeenCalledWith(77);
     } finally {
       focusSpy.mockRestore();
     }

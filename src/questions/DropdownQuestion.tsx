@@ -125,10 +125,11 @@ const reportedDropdownDiagnostics = new WeakMap<Question, Set<string>>();
  * "Other (describe)" comment input. Owns its `OtherCommentDraftAdapter`
  * in an effect (constructed/disposed in the commit phase, never during
  * render — a suspended/abandoned render must not leak a subscription)
- * and renders a CONTROLLED `TextInput`. Rendered with `key={question.id}`
- * so a question prop swap fully remounts it: fresh adapter, fresh value,
- * no native draft carried from the previous question (PR #29 review r3
- * #2/#3).
+ * and renders a CONTROLLED `TextInput`. Rendered with
+ * `key={question.uniqueId}` (immutable, unlike the mutable `id`) so a
+ * question prop swap fully remounts it: fresh adapter, fresh value, no
+ * native draft carried from the previous question (PR #29 review r3
+ * #2/#3, r4 #2).
  */
 function DropdownOtherComment(props: {
   question: Question;

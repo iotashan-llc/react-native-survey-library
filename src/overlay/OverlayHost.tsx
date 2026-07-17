@@ -259,24 +259,29 @@ export function OverlayHost(props: OverlayHostProps): React.JSX.Element {
   // while a non-dismissing root WITH an opener exists, so it is RETAINED
   // once every entry is dismissing.
   //
-  // Capture + fire in a COMMIT-PHASE effect (not during render): a
-  // render-phase ref mutation can survive an abandoned/suspended render,
-  // recording an opener that was never committed (PR #29 review r4 #1).
-  // The effect has no dep array so it observes every committed entry
-  // set; it fires setAccessibilityFocus only on the transition to empty.
+  // Two-phase to satisfy competing hazards (PR #29 review r4 #1, r5 #1):
+  //  - The scalars are READ during render (pure — no ref mutation, so an
+  //    abandoned/suspended render leaves nothing behind) from THIS
+  //    render's committed entry view.
+  //  - The ref write + focus fire happen in a COMMIT-PHASE effect keyed
+  //    on those scalar snapshots. `OverlayEntry.state` mutates in place
+  //    and React runs descendant passive effects BEFORE the parent's, so
+  //    a descendant/custom-Presenter effect that hides the just-shown
+  //    popup could flip the live entry to `dismissing` before a
+  //    read-in-effect ran — the render-time snapshot is immune to that.
   const openerToRestore = React.useRef<(() => number | null) | null>(null);
+  const sessionRootOpener =
+    entries.find((e) => e.state !== 'dismissing')?.payload.openerHandle ?? null;
+  const stackEmpty = entries.length === 0;
   React.useEffect(() => {
-    const root = entries.find((e) => e.state !== 'dismissing');
-    if (root?.payload.openerHandle) {
-      openerToRestore.current = root.payload.openerHandle;
-    }
-    if (entries.length > 0) return;
+    if (sessionRootOpener) openerToRestore.current = sessionRootOpener;
+    if (!stackEmpty) return;
     const opener = openerToRestore.current;
     openerToRestore.current = null;
     if (!opener) return;
     const handle = opener();
     if (handle != null) AccessibilityInfo.setAccessibilityFocus(handle);
-  });
+  }, [sessionRootOpener, stackEmpty]);
   // Back/escape target ONLY a genuinely active entry — while a dismissal
   // ack is pending the (suspended) ancestor must not be cancellable.
   const trulyActive = active && active.state === 'active' ? active : null;
