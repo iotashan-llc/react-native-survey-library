@@ -145,11 +145,21 @@ function DefaultPresenter(props: OverlayPresenterProps): React.JSX.Element {
   }, [dismissing, onDidDismiss]);
 
   // 2.3 opener-focus restoration (D8 seam): when this entry unmounts
-  // after a dismissal, hand a11y focus back to the opener control.
+  // after a GENUINE dismissal, hand a11y focus back to the opener
+  // control. Gated on an actual dismiss (not bare effect cleanup): React
+  // StrictMode runs setup→cleanup→setup on mount, and a show-during-
+  // dismiss swap unmounts a still-active generation — neither must steal
+  // focus from the live Modal (PR #29 review, major #5). The ref latches
+  // when this specific entry enters its dismissing phase.
   const openerHandle = payload.openerHandle;
+  const dismissedRef = React.useRef(false);
+  React.useEffect(() => {
+    if (dismissing) dismissedRef.current = true;
+  }, [dismissing]);
   React.useEffect(() => {
     if (!openerHandle) return undefined;
     return () => {
+      if (!dismissedRef.current) return;
       const handle = openerHandle();
       if (handle != null) AccessibilityInfo.setAccessibilityFocus(handle);
     };

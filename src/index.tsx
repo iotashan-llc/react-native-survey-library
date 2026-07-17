@@ -37,6 +37,8 @@ export type {
   DialogAdapterDisplacedPayload,
   DialogAdapterEnableWhileMountedPayload,
   DialogNoHostPayload,
+  DropdownSelectModeUnsupportedPayload,
+  DropdownInputComponentMissingPayload,
 } from './diagnostics';
 
 // The <Survey> root (design: docs/design/1.1-survey-root.md; A11, A12) —

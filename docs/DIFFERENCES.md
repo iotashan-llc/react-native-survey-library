@@ -778,3 +778,51 @@ Core fires `onChoicesLazyLoad` with no in-flight guard (concurrent
 skips on rapid scrolling). The RN picker gates its end-reached trigger
 on the owning question's `isReady`, so exactly one page loads at a
 time.
+
+### `renderAs: "select"` degrades to a non-interactive value display
+
+On web, `renderAs: "select"` renders a native `<select>` element. Core
+builds the overlay/touch view model (`dropdownListModel`) only for the
+default popup rendering, so a `"select"` dropdown has **no**
+`dropdownListModel` and there is no sheet to open. Rather than crash on
+the missing model (`getTemplate()` still routes the question to this
+component), the RN control degrades to a **non-interactive** display of
+the selected value (or placeholder) and emits a one-shot
+`dropdown-select-mode-unsupported` diagnostic. There is no native
+`<select>` analog in React Native; use the default dropdown rendering
+for an interactive picker.
+
+### The "Other (describe)" comment renders inside the control
+
+Selecting the "Other" choice sets the question's
+`isShowingChoiceComment`, which the shared `QuestionChrome` does **not**
+render for dropdown (`showCommentArea` stays false — that is a separate
+question-level feature). The RN dropdown therefore hosts its own comment
+`TextInput` directly below the control, backed by the same
+`OtherCommentDraftAdapter` used by checkbox/radiogroup — so
+`textUpdateMode`/`storeOthersAsComment` behavior matches those types
+(see the checkbox/radiogroup section). Web renders the same comment as a
+sibling input; the value-level outcome is identical.
+
+### a11y mirrors core's INPUT aria surface, with a caveat on live expansion
+
+The collapsed control carries core's **input** aria role
+(`vm.ariaInputRole` — `combobox` under the default `searchEnabled`, not
+a hardcoded `button`), the question label, and a labeled clear
+affordance (not a bare `✕` glyph). Web reads the same input aria surface
+on its inner input element. One caveat: the `expanded` state on the
+collapsed control reflects `ariaExpanded` at render time; because the
+overlay **sheet** (not the collapsed control) receives accessibility
+focus when the list opens, screen readers announce the open list rather
+than a live expansion toggle on the control itself.
+
+### Custom item component: an unregistered name falls back to value text
+
+`showInputFieldComponent` names a custom item component
+(`inputFieldComponentName`) for the selected value. If that name is not
+registered in `RNElementFactory`, the control does **not** show an empty
+placeholder (core suppresses `showSelectedItemLocText` when a component
+name exists, and its DOM-cleaning fallback leaves `inputStringRendered`
+empty on RN); instead it renders the selected item's localized text and
+emits a `dropdown-input-component-missing` diagnostic. Register the
+custom component before rendering for the intended custom UI.

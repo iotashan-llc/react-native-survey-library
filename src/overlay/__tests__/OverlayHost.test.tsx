@@ -443,4 +443,28 @@ describe('OverlayHost — opener focus restoration (2.3 seam)', () => {
       focusSpy.mockRestore();
     }
   });
+
+  it('does NOT restore opener focus on a StrictMode setup→cleanup→setup mount (PR #29 review, major #5)', () => {
+    const focusSpy = jest
+      .spyOn(AccessibilityInfo, 'setAccessibilityFocus')
+      .mockImplementation(() => undefined);
+    try {
+      const stack = createOverlayStack<OverlayPayload>();
+      const popup = new PopupModel('sv-string-viewer', { model: null });
+      registerPopup(popup, stack, { openerHandle: () => 77 });
+      render(
+        <React.StrictMode>
+          <OverlayHost stack={stack} />
+        </React.StrictMode>
+      );
+      act(() => {
+        popup.show(); // opens; StrictMode double-invokes effects
+      });
+      // The opener-focus cleanup must NOT fire while the popup is merely
+      // shown — only a genuine dismissal hands focus back to the opener.
+      expect(focusSpy).not.toHaveBeenCalledWith(77);
+    } finally {
+      focusSpy.mockRestore();
+    }
+  });
 });
