@@ -122,6 +122,10 @@ export {
   DropdownQuestion,
   DropdownQuestionElement,
 } from './questions/DropdownQuestion';
+export {
+  TagboxQuestion,
+  TagboxQuestionElement,
+} from './questions/TagboxQuestion';
 export type { ImageQuestionProps } from './questions/ImageQuestion';
 export type { TextQuestionProps } from './questions/TextQuestion';
 export { DraftCommitAdapter } from './inputs/DraftCommitAdapter';

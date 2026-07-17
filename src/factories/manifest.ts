@@ -185,7 +185,14 @@ export const MODEL_TYPE_CLASSIFICATION: Readonly<
       expectedRoute: 'template',
     },
   },
-  tagbox: { status: 'planned', milestone: 'M2', reason: 'task 2.4' },
+  tagbox: {
+    status: 'supported',
+    milestone: 'M2',
+    runtimeRenderable: {
+      expectedTemplate: 'tagbox',
+      expectedRoute: 'template',
+    },
+  },
   buttongroup: {
     status: 'supported',
     milestone: 'M2',

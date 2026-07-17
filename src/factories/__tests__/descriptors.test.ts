@@ -47,6 +47,7 @@ describe('DESCRIPTOR_TABLE (M0 + M1)', () => {
       'sv-rating-item-smiley',
       'sv-rating-item-star',
       'sv-string-viewer',
+      'tagbox',
       'text',
     ]);
   });

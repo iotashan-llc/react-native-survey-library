@@ -56,7 +56,7 @@ describe('manifest: model-type inventory', () => {
     }
   });
 
-  it('"empty"/"text"/"rating" are classified supported (M0/M1); "tagbox" is still classified planned with a milestone', () => {
+  it('"empty"/"text"/"rating" are classified supported (M0/M1); "imagepicker" is still classified planned with a milestone', () => {
     expect(MODEL_TYPE_CLASSIFICATION.empty).toMatchObject({
       status: 'supported',
       milestone: 'M0',
@@ -69,7 +69,7 @@ describe('manifest: model-type inventory', () => {
       status: 'supported',
       milestone: 'M1',
     });
-    expect(MODEL_TYPE_CLASSIFICATION.tagbox).toMatchObject({
+    expect(MODEL_TYPE_CLASSIFICATION.imagepicker).toMatchObject({
       status: 'planned',
       milestone: 'M2',
     });
@@ -172,7 +172,7 @@ describe('manifest: classification/descriptor status consistency', () => {
   });
 
   it('detects a supported descriptor row whose model-type classification is not supported', () => {
-    // 'tagbox' is still classified 'planned' (task 2.4, M2) — a
+    // 'imagepicker' is still classified 'planned' (task 2.7, M2) — a
     // supported descriptor row for it is the inconsistency this test
     // wants ('text'/'checkbox' can't be reused here anymore: tasks
     // 1.10/1.12 landed them as genuinely supported on both sides).
@@ -180,8 +180,8 @@ describe('manifest: classification/descriptor status consistency', () => {
       ...DESCRIPTOR_TABLE,
       {
         status: 'supported',
-        questionType: 'tagbox',
-        dispatchKey: 'tagbox',
+        questionType: 'imagepicker',
+        dispatchKey: 'imagepicker',
         route: 'template',
         component: () => (() => null) as never,
         milestone: 'M2',
@@ -191,7 +191,7 @@ describe('manifest: classification/descriptor status consistency', () => {
       MODEL_TYPE_CLASSIFICATION,
       descriptors
     );
-    expect(violations.some((v) => v.includes('tagbox'))).toBe(true);
+    expect(violations.some((v) => v.includes('imagepicker'))).toBe(true);
   });
 
   it('detects a supported classification entry lacking runtimeRenderable safe-construction metadata', () => {

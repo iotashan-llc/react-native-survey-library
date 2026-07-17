@@ -71,6 +71,7 @@ describe('component modules are import-side-effect-free', () => {
       'rating',
       'sv-boolean-checkbox',
       'sv-boolean-radio',
+      'tagbox',
       'text',
     ]);
   });

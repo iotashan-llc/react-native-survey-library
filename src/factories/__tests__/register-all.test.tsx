@@ -193,6 +193,7 @@ describe('registerAll (module side effect)', () => {
       'rating',
       'sv-boolean-checkbox',
       'sv-boolean-radio',
+      'tagbox',
       'text',
     ]);
     expect(RNElementFactory.getAllTypes()).toEqual([
