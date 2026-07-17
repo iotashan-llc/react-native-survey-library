@@ -161,6 +161,18 @@ export const kitchenSinkJson = {
           choices: ['Free', 'Pro', 'Team'],
         },
         {
+          type: 'multipletext',
+          name: 'contact',
+          title: 'Contact (multipletext)',
+          colCount: 2,
+          items: [
+            { name: 'firstName', title: 'First name', isRequired: true },
+            { name: 'lastName', title: 'Last name' },
+            { name: 'email', title: 'E-mail', inputType: 'email' },
+            { name: 'phone', title: 'Phone', inputType: 'tel' },
+          ],
+        },
+        {
           type: 'image',
           name: 'heroImage',
           imageLink: LOGO_DATA_URI,

@@ -172,7 +172,7 @@ describe('manifest: classification/descriptor status consistency', () => {
   });
 
   it('detects a supported descriptor row whose model-type classification is not supported', () => {
-    // 'multipletext' is still classified 'planned' (task 2.6, M2) — a
+    // 'tagbox' is still classified 'planned' (task 2.4, M2) — a
     // supported descriptor row for it is the inconsistency this test
     // wants ('text'/'checkbox' can't be reused here anymore: tasks
     // 1.10/1.12 landed them as genuinely supported on both sides).
@@ -180,8 +180,8 @@ describe('manifest: classification/descriptor status consistency', () => {
       ...DESCRIPTOR_TABLE,
       {
         status: 'supported',
-        questionType: 'multipletext',
-        dispatchKey: 'multipletext',
+        questionType: 'tagbox',
+        dispatchKey: 'tagbox',
         route: 'template',
         component: () => (() => null) as never,
         milestone: 'M2',
@@ -191,7 +191,7 @@ describe('manifest: classification/descriptor status consistency', () => {
       MODEL_TYPE_CLASSIFICATION,
       descriptors
     );
-    expect(violations.some((v) => v.includes('multipletext'))).toBe(true);
+    expect(violations.some((v) => v.includes('tagbox'))).toBe(true);
   });
 
   it('detects a supported classification entry lacking runtimeRenderable safe-construction metadata', () => {

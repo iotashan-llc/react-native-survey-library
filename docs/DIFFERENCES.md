@@ -706,3 +706,21 @@ synchronously, so auto-sized images need explicit `imageWidth`/
 Web swaps the button row for a dropdown when the container is too
 narrow (`buttongroup-dropdown.tsx`, width shrink observer). v0.2 renders a horizontal-scroll row (web parity: overflow-x auto + nowrap); the adaptive dropdown arrives with the 2.5 overlay work. The web `:focus-within` ring is a keyboard-web
 affordance with no RN analog.
+
+## Multipletext question (task 2.6)
+
+### Flex rows instead of a `<table>`
+
+Web renders `<table class="sd-multipletext">` with `<td>` title/editor
+cells (`reactquestion_multipletext.tsx`). RN has no table primitive, so
+each core row (`question.getRows()`) becomes a flex row and each cell an
+equal-flex column — title above its input rather than beside it. Column
+count, row splitting, and error-row visibility (`itemErrorLocation`)
+all stay core-driven; only the visual arrangement inside a cell differs.
+
+### Item editors are real `QuestionTextModel`s — text-question differences apply
+
+Each item's `editor` renders through the same `TextQuestion` used for
+standalone text questions, so every task-1.9/1.10 difference
+(draft/commit `textUpdateMode`, inputType keyboard mapping, mask
+behavior) applies unchanged inside multipletext cells.

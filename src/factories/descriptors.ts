@@ -52,6 +52,7 @@ import {
   RatingStarItem,
 } from '../questions/RatingQuestion';
 import { TextQuestion } from '../questions/TextQuestion';
+import { MultipleTextQuestion } from '../questions/MultipleTextQuestion';
 import { ImageQuestion } from '../questions/ImageQuestion';
 import { ButtonGroupQuestion } from '../questions/ButtonGroupQuestion';
 import { ListItemGroupContent, ListPickerElement } from '../overlay/ListPicker';
@@ -226,6 +227,15 @@ export const DESCRIPTOR_TABLE: readonly Descriptor[] = [
     dispatchKey: 'sv-list-item-group',
     route: 'element',
     component: () => ListItemGroupContent,
+    milestone: 'M2',
+  },
+  // Task 2.6 — multipletext question.
+  {
+    status: 'supported',
+    questionType: 'multipletext',
+    dispatchKey: 'multipletext',
+    route: 'template',
+    component: () => MultipleTextQuestion,
     milestone: 'M2',
   },
   // Task 2.9 — buttongroup question.
