@@ -534,7 +534,10 @@ describe('dialog adapter — D8 completion (review round 1)', () => {
     handle.popupModel.dispose();
     expect(consumerDispose).toHaveBeenCalledTimes(1);
     expect(results).toEqual(['cancel']);
-    token.dispose();
+    // dispose() never calls hide() (2.5.33) — the adapter must
+    // semantically close the bridge so the overlay entry cannot leak.
+    expect(stack.entries()).toHaveLength(0);
+    token.dispose(); // idempotent against the already-closed bridge
     expect(results).toEqual(['cancel']);
   });
 });

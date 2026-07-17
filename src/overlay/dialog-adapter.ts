@@ -284,10 +284,17 @@ function adapterShowDialog(
       try {
         // Disposal while visible = terminal cancel (exactly-once guard
         // inside the state machine makes the ordinary-after-hide path a
-        // no-op).
+        // no-op); during `applying` the apply return commits the
+        // deferred cancel.
         if (state === 'open') terminalCancel();
+        else if (state === 'applying') pendingDismissal = true;
       } finally {
         token.registrations.delete(registration);
+        // PopupModel.dispose() never calls hide() (2.5.33), so the
+        // overlay entry would otherwise leak visible — semantically
+        // close the bridge synchronously (idempotent against a later
+        // token.dispose()).
+        registration.unregister();
       }
     }
   };
