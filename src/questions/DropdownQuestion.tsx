@@ -58,6 +58,7 @@ import {
 } from 'react-native';
 import type { AccessibilityRole } from 'react-native';
 import type { Base, Question } from '../core/facade';
+import { Helpers } from '../core/facade';
 import { QuestionElementBase } from '../reactivity/QuestionElementBase';
 import type { QuestionElementBaseProps } from '../reactivity/QuestionElementBase';
 import { SurveyElementBase } from '../reactivity/SurveyElementBase';
@@ -115,6 +116,11 @@ const KNOWN_ACCESSIBILITY_ROLES = new Set<AccessibilityRole>([
   'list',
 ]);
 
+// Module-scoped so dedup survives unmount/remount of the SAME core
+// Question (or two renderer instances over one question) — an
+// instance-local map would re-report on remount (PR #29 review r4 #3).
+const reportedDropdownDiagnostics = new WeakMap<Question, Set<string>>();
+
 /**
  * "Other (describe)" comment input. Owns its `OtherCommentDraftAdapter`
  * in an effect (constructed/disposed in the commit phase, never during
@@ -145,8 +151,15 @@ function DropdownOtherComment(props: {
   }, [question]);
   const adapter = adapterRef.current;
   // Before the effect runs (first commit), source the initial value from
-  // the model so an existing comment shows without a flash.
-  const value = adapter ? adapter.renderedValue : String(q.otherValue ?? '');
+  // the model so an existing comment shows without a flash — using the
+  // adapter's SurveyJS-empty semantics (Helpers.isValueEmpty), not a raw
+  // String(), so an empty/NaN/object value matches the adapter's '' and
+  // avoids a one-frame flip (PR #29 review r4 #4).
+  const value = adapter
+    ? adapter.renderedValue
+    : Helpers.isValueEmpty(q.otherValue)
+      ? ''
+      : String(q.otherValue);
   return (
     <TextInput
       testID="sv-dropdown-other"
@@ -194,7 +207,6 @@ export class DropdownQuestion extends QuestionElementBase<DropdownQuestionProps>
   private pendingSelectMiss: string | undefined;
   private pendingComponentMiss: string | undefined;
   private pendingMissQuestion: Question | undefined;
-  private readonly reportedDiagnostics = new WeakMap<Question, Set<string>>();
 
   private readonly controlRef =
     React.createRef<React.ComponentRef<typeof Pressable>>();
@@ -280,10 +292,10 @@ export class DropdownQuestion extends QuestionElementBase<DropdownQuestionProps>
   private flushDiagnostics(): void {
     const question = this.pendingMissQuestion;
     if (!question) return;
-    let reported = this.reportedDiagnostics.get(question);
+    let reported = reportedDropdownDiagnostics.get(question);
     if (!reported) {
       reported = new Set<string>();
-      this.reportedDiagnostics.set(question, reported);
+      reportedDropdownDiagnostics.set(question, reported);
     }
     if (this.pendingSelectMiss && !reported.has('select')) {
       reported.add('select');
@@ -454,7 +466,9 @@ export class DropdownQuestion extends QuestionElementBase<DropdownQuestionProps>
         {top}
         {question.isShowingChoiceComment ? (
           <DropdownOtherComment
-            key={String(this.questionBase.id)}
+            key={String(
+              (this.questionBase as unknown as { uniqueId: number }).uniqueId
+            )}
             question={this.questionBase}
           />
         ) : null}

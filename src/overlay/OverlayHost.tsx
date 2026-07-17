@@ -256,22 +256,27 @@ export function OverlayHost(props: OverlayHostProps): React.JSX.Element {
   // if A and B are dismissed in one batch there is no intermediate
   // render to promote A, so keying on `active` would strand B's now-
   // unmounted opener (PR #29 review r3 #1). The ref is only overwritten
-  // while a non-dismissing root exists, so it is RETAINED once every
-  // entry is dismissing.
+  // while a non-dismissing root WITH an opener exists, so it is RETAINED
+  // once every entry is dismissing.
+  //
+  // Capture + fire in a COMMIT-PHASE effect (not during render): a
+  // render-phase ref mutation can survive an abandoned/suspended render,
+  // recording an opener that was never committed (PR #29 review r4 #1).
+  // The effect has no dep array so it observes every committed entry
+  // set; it fires setAccessibilityFocus only on the transition to empty.
   const openerToRestore = React.useRef<(() => number | null) | null>(null);
-  const sessionRoot = entries.find((e) => e.state !== 'dismissing') ?? null;
-  if (sessionRoot?.payload.openerHandle) {
-    openerToRestore.current = sessionRoot.payload.openerHandle;
-  }
-  const stackEmpty = entries.length === 0;
   React.useEffect(() => {
-    if (!stackEmpty) return;
+    const root = entries.find((e) => e.state !== 'dismissing');
+    if (root?.payload.openerHandle) {
+      openerToRestore.current = root.payload.openerHandle;
+    }
+    if (entries.length > 0) return;
     const opener = openerToRestore.current;
     openerToRestore.current = null;
     if (!opener) return;
     const handle = opener();
     if (handle != null) AccessibilityInfo.setAccessibilityFocus(handle);
-  }, [stackEmpty]);
+  });
   // Back/escape target ONLY a genuinely active entry — while a dismissal
   // ack is pending the (suspended) ancestor must not be cancellable.
   const trulyActive = active && active.state === 'active' ? active : null;

@@ -310,6 +310,29 @@ describe('DropdownQuestion — deferred diagnostics dedupe (r2 #6)', () => {
       setDiagnosticHandler(undefined);
     }
   });
+
+  it('does NOT re-report on unmount/remount of the SAME question (module-scope dedup, r4 #3)', async () => {
+    const codes: string[] = [];
+    setDiagnosticHandler((p: DiagnosticPayload) => codes.push(p.code));
+    try {
+      const { question } = createDropdown({ itemComponent: 'no-such-rn-item' });
+      question.value = 'apple';
+      const first = render(
+        <DropdownQuestion question={question} creator={{}} />
+      );
+      await flush();
+      first.unmount();
+      // Remount over the SAME core Question — an instance-local dedup map
+      // would re-report here; the module-scoped map suppresses it.
+      render(<DropdownQuestion question={question} creator={{}} />);
+      await flush();
+      expect(
+        codes.filter((c) => c === 'dropdown-input-component-missing')
+      ).toHaveLength(1);
+    } finally {
+      setDiagnosticHandler(undefined);
+    }
+  });
 });
 
 describe('DropdownQuestion — popup bridge reconciles on prop swap (major #3)', () => {
