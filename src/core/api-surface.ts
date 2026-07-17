@@ -1049,6 +1049,22 @@ export const API_SURFACE_WATCHLIST: readonly WatchedApiMember[] = [
     reason:
       "Rating radiogroup row's accessibilityLabel source (review round 1; falls back to processedTitle).",
   },
+  // Task 2.1 — device-mode adapter seam (facade applies _setIsTouch(true)).
+  {
+    id: '_setIsTouch',
+    member: '_setIsTouch',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc,
+    reason:
+      "2.1 device adapter: pinned-2.5.33 'for tests' seam the facade uses to put core in touch mode (RN classifies desktop otherwise).",
+  },
+  {
+    id: 'IsTouch',
+    member: 'IsTouch',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc,
+    reason: '2.1 device adapter observable (facade asserts touch mode).',
+  },
   // Task 2.9 — buttongroup bindings.
   {
     id: 'ButtonGroupItemModel',
