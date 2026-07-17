@@ -116,6 +116,10 @@ export { ButtonGroupQuestion } from './questions/ButtonGroupQuestion';
 // image question (task 2.10).
 export { ImageQuestion } from './questions/ImageQuestion';
 export { MultipleTextQuestion } from './questions/MultipleTextQuestion';
+export {
+  DropdownQuestion,
+  DropdownQuestionElement,
+} from './questions/DropdownQuestion';
 export type { ImageQuestionProps } from './questions/ImageQuestion';
 export type { TextQuestionProps } from './questions/TextQuestion';
 export { DraftCommitAdapter } from './inputs/DraftCommitAdapter';

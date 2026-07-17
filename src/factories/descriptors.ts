@@ -53,6 +53,7 @@ import {
 } from '../questions/RatingQuestion';
 import { TextQuestion } from '../questions/TextQuestion';
 import { MultipleTextQuestion } from '../questions/MultipleTextQuestion';
+import { DropdownQuestionElement } from '../questions/DropdownQuestion';
 import { ImageQuestion } from '../questions/ImageQuestion';
 import { ButtonGroupQuestion } from '../questions/ButtonGroupQuestion';
 import { ListItemGroupContent, ListPickerElement } from '../overlay/ListPicker';
@@ -227,6 +228,16 @@ export const DESCRIPTOR_TABLE: readonly Descriptor[] = [
     dispatchKey: 'sv-list-item-group',
     route: 'element',
     component: () => ListItemGroupContent,
+    milestone: 'M2',
+  },
+  // Task 2.3 — dropdown question (overlay-backed; the element wrapper
+  // binds the per-Survey stack).
+  {
+    status: 'supported',
+    questionType: 'dropdown',
+    dispatchKey: 'dropdown',
+    route: 'template',
+    component: () => DropdownQuestionElement,
     milestone: 'M2',
   },
   // Task 2.6 — multipletext question.

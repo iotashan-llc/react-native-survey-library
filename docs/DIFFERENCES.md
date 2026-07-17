@@ -754,3 +754,27 @@ are ignored. Consumer `onShow` fires on a microtask AFTER presentation
 (web fires it during the show transition). With NO Survey mounted, a
 dialog call resolves its `onCancel` immediately (fail-safe — never
 auto-confirm a destructive action) and reports `dialog-no-host`.
+
+## Dropdown question (task 2.3)
+
+### The control never hosts an inline filter input
+
+Web's dropdown control embeds a text input (`inputMode='none'` on
+touch) with hint prefix/suffix autocomplete affordances
+(dropdown-base.tsx). The RN control is a button showing the selected
+item's text (or `inputStringRendered`, or the placeholder); typing
+happens in the overlay's search box (core's own touch behavior —
+`setSearchEnabled` on open). Hint strings are dropped.
+
+### Popup is the 2.1 overlay sheet, never an anchored list
+
+No coordinate anchoring (won't-support): the choice list presents as
+the overlay sheet with search/lazy-load/nested-group behavior from the
+shared ListPicker.
+
+### Lazy-load paging is serialized
+
+Core fires `onChoicesLazyLoad` with no in-flight guard (concurrent
+skips on rapid scrolling). The RN picker gates its end-reached trigger
+on the owning question's `isReady`, so exactly one page loads at a
+time.

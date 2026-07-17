@@ -1179,6 +1179,55 @@ export const API_SURFACE_WATCHLIST: readonly WatchedApiMember[] = [
     resolveHost: (sc) => new sc.Model(undefined),
     reason: '2.1 D3 device adapter (fill-if-untouched).',
   },
+  // Task 2.3 — dropdown bindings (control + view model + lazy-load gate).
+  ...(
+    [
+      ['dropdownListModel', 'accessor'],
+      ['allowClear', 'accessor'],
+      ['showInputFieldComponent', 'accessor'],
+      ['inputFieldComponentName', 'accessor'],
+      ['showSelectedItemLocText', 'accessor'],
+      ['selectedItemLocText', 'accessor'],
+      ['isInputReadOnly', 'accessor'],
+      ['readOnlyText', 'accessor'],
+      ['isReady', 'accessor'],
+    ] as const
+  ).map(([member, expectedKind]) => ({
+    id: `QuestionDropdownModel.${member}`,
+    member,
+    expectedKind: expectedKind as MemberKind,
+    resolveHost: (sc: typeof FacadeModule) => {
+      const model = new sc.Model({
+        elements: [{ type: 'dropdown', name: 'probe', choices: ['a'] }],
+      });
+      return model.getQuestionByName('probe');
+    },
+    reason: '2.3 dropdown control binding.',
+  })),
+  ...(
+    [
+      ['onClick', 'method'],
+      ['onClear', 'method'],
+      ['placeholderRendered', 'accessor'],
+      ['inputStringRendered', 'accessor'],
+      ['getSelectedAction', 'method'],
+    ] as const
+  ).map(([member, expectedKind]) => ({
+    id: `DropdownListModel.${member}`,
+    member,
+    expectedKind: expectedKind as MemberKind,
+    resolveHost: (sc: typeof FacadeModule) => {
+      const model = new sc.Model({
+        elements: [{ type: 'dropdown', name: 'probe', choices: ['a'] }],
+      });
+      return (
+        model.getQuestionByName('probe') as unknown as {
+          dropdownListModel: unknown;
+        }
+      ).dropdownListModel;
+    },
+    reason: '2.3 dropdown view-model binding.',
+  })),
   // Task 2.2 — dialog adapter seams (settings hooks the dispatcher
   // rides; presence pinned so a core rename breaks loudly).
   {

@@ -144,6 +144,17 @@ function DefaultPresenter(props: OverlayPresenterProps): React.JSX.Element {
     if (dismissing) onDidDismiss();
   }, [dismissing, onDidDismiss]);
 
+  // 2.3 opener-focus restoration (D8 seam): when this entry unmounts
+  // after a dismissal, hand a11y focus back to the opener control.
+  const openerHandle = payload.openerHandle;
+  React.useEffect(() => {
+    if (!openerHandle) return undefined;
+    return () => {
+      const handle = openerHandle();
+      if (handle != null) AccessibilityInfo.setAccessibilityFocus(handle);
+    };
+  }, [openerHandle]);
+
   const isSheet = payload.shape === 'sheet';
   return (
     <Pressable

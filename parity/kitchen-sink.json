@@ -158,6 +158,27 @@
           ]
         },
         {
+          "type": "dropdown",
+          "name": "fruit",
+          "title": "Favorite fruit (dropdown)",
+          "placeholder": "Pick a fruit…",
+          "allowClear": true,
+          "choices": [
+            "Apple",
+            "Banana",
+            "Cherry",
+            "Dragonfruit",
+            "Elderberry",
+            "Fig",
+            "Grape",
+            "Honeydew",
+            "Kiwi",
+            "Lemon",
+            "Mango",
+            "Nectarine"
+          ]
+        },
+        {
           "type": "multipletext",
           "name": "contact",
           "title": "Contact (multipletext)",

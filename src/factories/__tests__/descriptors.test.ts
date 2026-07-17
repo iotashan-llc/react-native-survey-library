@@ -28,6 +28,7 @@ describe('DESCRIPTOR_TABLE (M0 + M1)', () => {
       'comment',
       'composite',
       'custom',
+      'dropdown',
       'empty',
       'expression',
       'image',

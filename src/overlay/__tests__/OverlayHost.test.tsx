@@ -5,7 +5,7 @@
  * onDidDismiss) is injectable via OverlayPresenterContext.
  */
 import * as React from 'react';
-import { Modal, StyleSheet } from 'react-native';
+import { AccessibilityInfo, Modal, StyleSheet } from 'react-native';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { PopupModel } from '../../core/facade';
 import '../../factories/register-all';
@@ -418,5 +418,29 @@ describe('OverlayHost — real sv-list lazy re-arm across reopen (verification m
     );
     expect(dangerStyle.backgroundColor).toBeTruthy();
     expect(dangerStyle.backgroundColor).not.toBe(other.backgroundColor);
+  });
+});
+
+describe('OverlayHost — opener focus restoration (2.3 seam)', () => {
+  it('restores a11y focus to the opener handle when the entry unmounts after dismissal', () => {
+    const focusSpy = jest
+      .spyOn(AccessibilityInfo, 'setAccessibilityFocus')
+      .mockImplementation(() => undefined);
+    try {
+      const stack = createOverlayStack<OverlayPayload>();
+      const popup = new PopupModel('sv-string-viewer', { model: null });
+      registerPopup(popup, stack, { openerHandle: () => 77 });
+      render(<OverlayHost stack={stack} />);
+      act(() => {
+        popup.show();
+      });
+      focusSpy.mockClear();
+      act(() => {
+        popup.hide(); // default presenter acks; entry unmounts
+      });
+      expect(focusSpy).toHaveBeenCalledWith(77);
+    } finally {
+      focusSpy.mockRestore();
+    }
   });
 });

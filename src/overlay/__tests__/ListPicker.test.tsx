@@ -343,4 +343,32 @@ describe('ListPicker — review round 1 (groups, bridges, clear gating, label)',
       jest.useRealTimers();
     }
   });
+
+  it('end-reached is gated on the owner question isReady (lazy-load dedupe, 2.3)', async () => {
+    const { model } = makeList(['a', 'b']);
+    const observed: boolean[] = [];
+    model.isAllDataLoaded = false;
+    model.loadingIndicatorVisibilityObserver = (isVisible: boolean) => {
+      observed.push(isVisible);
+    };
+    (model as unknown as { locOwner: unknown }).locOwner = {
+      isReady: false,
+      getLocale: () => '',
+      getMarkdownHtml: () => null,
+      getRenderer: () => undefined,
+      getRendererContext: (loc: unknown) => loc,
+      getProcessedText: (text: string) => text,
+    };
+    render(<ListPicker model={model} />);
+    await flush();
+    fireEvent(screen.getByTestId('sv-list-flatlist'), 'endReached');
+    expect(observed).toEqual([]); // in-flight: gated
+    act(() => {
+      (
+        model as unknown as { locOwner: { isReady: boolean } }
+      ).locOwner.isReady = true;
+    });
+    fireEvent(screen.getByTestId('sv-list-flatlist'), 'endReached');
+    expect(observed).toEqual([true]); // released
+  });
 });
