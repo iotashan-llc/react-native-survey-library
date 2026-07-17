@@ -223,8 +223,12 @@ export class TagboxQuestion extends QuestionElementBase<TagboxQuestionProps> {
     const entries = Array.isArray(rendered) ? rendered : [];
     const choices = question.selectedChoices;
     return entries.map((entry, i) => {
+      // Case-sensitive, no-trim match — isTwoValueEquals DEFAULTS are
+      // case-insensitive + trim, which would false-match distinct values
+      // like 'A'/'a' that selectedChoices keeps separate (PR #30 review
+      // r4). Args: (a, b, ignoreOrder=false, caseSensitive=true, trim=false).
       const choice = choices.find((c) =>
-        Helpers.isTwoValueEquals(c.value, entry)
+        Helpers.isTwoValueEquals(c.value, entry, false, true, false)
       );
       if (choice) {
         return this.renderChip(

@@ -297,6 +297,30 @@ describe('TagboxQuestion — unmatched-value chips are per-entry (r3)', () => {
   });
 });
 
+describe('TagboxQuestion — case/whitespace-distinct values match core semantics (r4)', () => {
+  it('a matched+unmatched pair differing only by CASE renders distinctly (no false equality)', async () => {
+    const model = new Model({
+      elements: [
+        {
+          type: 'tagbox',
+          name: 'tb',
+          choices: [{ value: 'A', text: 'Upper' }],
+          keepIncorrectValues: true,
+        },
+      ],
+    });
+    const question = model.getQuestionByName('tb')!;
+    question.value = ['A', 'a']; // 'A' matches (text Upper); 'a' does not
+    render(<TagboxQuestion question={question} creator={{}} />);
+    await flush();
+    expect(screen.getByText('Upper')).toBeTruthy(); // the matched 'A'
+    expect(screen.getByText('a')).toBeTruthy(); // the unmatched 'a' — raw
+    // Removing the unmatched lowercase 'a' leaves ['A'].
+    fireEvent.press(screen.getByTestId('sv-tagbox-chip-remove-a'));
+    expect(JSON.parse(JSON.stringify(question.value))).toEqual(['A']);
+  });
+});
+
 describe('TagboxQuestion — multi-select through the overlay', () => {
   it('press opens the overlay; selecting rows ADDS to the array and keeps the sheet open', async () => {
     const { question } = createTagbox();
