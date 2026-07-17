@@ -292,4 +292,46 @@ describe('ListPicker — review round 1 (groups, bridges, clear gating, label)',
       scrollSpy.mockRestore();
     }
   });
+
+  it('scrollToIndex failure falls back to an offset estimate and retries', async () => {
+    jest.useFakeTimers();
+    const scrollSpy = jest
+      .spyOn(FlatList.prototype, 'scrollToIndex')
+      .mockImplementation(() => undefined);
+    const offsetSpy = jest
+      .spyOn(FlatList.prototype, 'scrollToOffset')
+      .mockImplementation(() => undefined);
+    try {
+      const { model } = makeList(
+        Array.from({ length: 30 }, (_, i) => `far${i}`)
+      );
+      model.selectedItem = model.actions[25]!;
+      render(<ListPicker model={model} />);
+      // Under fake timers the debounced visibleActions recompute needs a
+      // tick as well as a microtask flush.
+      await flush();
+      act(() => {
+        jest.advanceTimersByTime(1);
+      });
+      await flush();
+      // Simulate RN's failure path for an unmeasured index.
+      fireEvent(screen.getByTestId('sv-list-flatlist'), 'scrollToIndexFailed', {
+        index: 25,
+        averageItemLength: 40,
+        highestMeasuredFrameIndex: 9,
+      });
+      expect(offsetSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ offset: 1000 })
+      );
+      scrollSpy.mockClear();
+      jest.advanceTimersByTime(60);
+      expect(scrollSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ index: 25 })
+      );
+    } finally {
+      scrollSpy.mockRestore();
+      offsetSpy.mockRestore();
+      jest.useRealTimers();
+    }
+  });
 });

@@ -173,11 +173,14 @@ export function registerPopup(
       requestHide: hide,
       closeFallback: hide,
       showCloseButton: popup.showCloseButton === true,
+      // CONTENT-first precedence — upstream switchFocus
+      // (popup-view-model.ts:240-246) checks isFocusedContent before
+      // isFocusedContainer.
       focusIntent:
-        popup.isFocusedContainer === true
-          ? 'container'
-          : popup.isFocusedContent === true
-            ? 'content'
+        popup.isFocusedContent === true
+          ? 'content'
+          : popup.isFocusedContainer === true
+            ? 'container'
             : 'none',
     };
   }
@@ -258,15 +261,29 @@ export function registerPopup(
       // Semantic close: no presenter remains to ack, so the model
       // lifecycle and stack removal run synchronously — for EVERY live
       // generation (a dismissing predecessor whose ack never arrived
-      // must not survive as a zombie entry).
-      if (popup.isVisible) cancel();
-      for (const rec of [...liveRecords]) {
-        stack.beginDismiss(rec.entry);
-        completeDismissal(rec);
-        // If the ack could not complete (entry already gone), still
-        // finish the model lifecycle exactly once.
-        if (!rec.hidingRan) finishRecord(rec);
+      // must not survive as a zombie entry). Exception-safe: a throwing
+      // consumer callback (onCancel/onHide) must not abort finalization
+      // of the remaining generations — collect and rethrow after.
+      const errors: unknown[] = [];
+      if (popup.isVisible) {
+        try {
+          cancel();
+        } catch (error) {
+          errors.push(error);
+        }
       }
+      for (const rec of [...liveRecords]) {
+        try {
+          stack.beginDismiss(rec.entry);
+          completeDismissal(rec);
+          // If the ack could not complete (entry already gone), still
+          // finish the model lifecycle exactly once.
+          if (!rec.hidingRan) finishRecord(rec);
+        } catch (error) {
+          errors.push(error);
+        }
+      }
+      if (errors.length > 0) throw errors[0];
     },
   };
 }

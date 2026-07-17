@@ -91,6 +91,14 @@ class ListPickerRow extends SurveyElementBase<ListPickerRowProps> {
     return this.props.item as unknown as Base;
   }
 
+  componentDidMount(): void {
+    super.componentDidMount();
+    // A virtualized row materializing LATE (beyond the initial render
+    // window) may carry a popupModel the picker has not seen — notify
+    // on first mount, not just updates.
+    this.props.onItemChanged?.();
+  }
+
   componentDidUpdate(): void {
     super.componentDidUpdate();
     // An Action-level change (setSubItems -> new popupModel) re-renders
@@ -214,13 +222,29 @@ export class ListPicker extends SurveyElementBase<ListPickerProps> {
     const index = items.findIndex((item) => model.isItemSelected(item));
     this.didInitialScroll = true;
     if (index <= 0) return;
-    try {
-      this.flatListRef.current?.scrollToIndex({ index, animated: false });
-    } catch {
-      // Virtualized layout not measured yet — non-fatal; the row is
-      // still reachable by scrolling.
-    }
+    // An unmeasured offscreen index rejects through
+    // onScrollToIndexFailed (handled below with an offset estimate) —
+    // RN throws only when the handler is missing.
+    this.flatListRef.current?.scrollToIndex({ index, animated: false });
   }
+
+  /** scrollToIndex fallback for indices beyond the measured window:
+   * jump by estimate, then retry once layout catches up. */
+  private readonly handleScrollToIndexFailed = (info: {
+    index: number;
+    averageItemLength: number;
+  }): void => {
+    this.flatListRef.current?.scrollToOffset({
+      offset: info.averageItemLength * info.index,
+      animated: false,
+    });
+    setTimeout(() => {
+      this.flatListRef.current?.scrollToIndex({
+        index: info.index,
+        animated: false,
+      });
+    }, 50);
+  };
 
   /** Child popup bridges, LIST-MODEL scope (design D2 round 2) — keyed
    * by the child PopupModel, reconciled against the current action set,
@@ -346,6 +370,7 @@ export class ListPicker extends SurveyElementBase<ListPickerProps> {
             data={items}
             keyExtractor={(item, index) => `${item.id ?? index}`}
             keyboardShouldPersistTaps="handled"
+            onScrollToIndexFailed={this.handleScrollToIndexFailed}
             onEndReached={this.handleEndReached}
             renderItem={({ item }) => (
               <ListPickerRow

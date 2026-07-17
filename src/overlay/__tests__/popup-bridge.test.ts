@@ -392,10 +392,21 @@ describe('popup bridge — focus intent (D8 round 2)', () => {
 
     const container = makePopup();
     container.isFocusedContainer = true;
+    container.isFocusedContent = false;
     const stack2 = createOverlayStack<OverlayPayload>();
     registerPopup(container, stack2);
     container.show();
     expect(stack2.entries()[0]!.payload.focusIntent).toBe('container');
+
+    // BOTH true: content wins (upstream switchFocus precedence,
+    // popup-view-model.ts:240-246 — core defaults both flags true).
+    const both = makePopup();
+    both.isFocusedContent = true;
+    both.isFocusedContainer = true;
+    const stack4 = createOverlayStack<OverlayPayload>();
+    registerPopup(both, stack4);
+    both.show();
+    expect(stack4.entries()[0]!.payload.focusIntent).toBe('content');
 
     const none = makePopup();
     none.isFocusedContent = false;
@@ -404,5 +415,46 @@ describe('popup bridge — focus intent (D8 round 2)', () => {
     registerPopup(none, stack3);
     none.show();
     expect(stack3.entries()[0]!.payload.focusIntent).toBe('none');
+  });
+});
+
+describe('popup bridge — exception-safe multi-generation unregister', () => {
+  it('a predecessor onHide throw does not abort finalizing the successor', () => {
+    let hideCalls = 0;
+    const popup = makePopup({
+      onHide: () => {
+        hideCalls += 1;
+        if (hideCalls === 1) throw new Error('first-generation onHide');
+      },
+    });
+    const stack = createOverlayStack<OverlayPayload>();
+    const registration = registerPopup(popup, stack);
+    popup.show();
+    const firstFooter = stack.entries()[0]!.payload.footerActions.container;
+    popup.hide(); // dismissing, ack withheld
+    popup.show(); // successor
+    const secondFooter = stack.entries()[1]!.payload.footerActions.container;
+    expect(() => registration.unregister()).toThrow('first-generation onHide');
+    expect(stack.entries()).toHaveLength(0);
+    expect(hideCalls).toBe(2); // BOTH generations finalized
+    expect(firstFooter.isDisposed).toBe(true);
+    expect(secondFooter.isDisposed).toBe(true);
+  });
+
+  it('a throwing onCancel still finalizes every generation', () => {
+    const popup = makePopup({
+      onCancel: () => {
+        throw new Error('consumer onCancel blew up');
+      },
+    });
+    const stack = createOverlayStack<OverlayPayload>();
+    const registration = registerPopup(popup, stack);
+    popup.show();
+    const footer = stack.entries()[0]!.payload.footerActions.container;
+    expect(() => registration.unregister()).toThrow(
+      'consumer onCancel blew up'
+    );
+    expect(stack.entries()).toHaveLength(0);
+    expect(footer.isDisposed).toBe(true);
   });
 });
