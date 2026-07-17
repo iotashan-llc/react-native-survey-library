@@ -248,11 +248,20 @@ export function OverlayHost(props: OverlayHostProps): React.JSX.Element {
   // hide→show reselect where the old generation dismisses while a new
   // one is already active (the stack never reaches empty between them,
   // so focus is never stolen from the live Modal) — PR #29 review r1
-  // #5, r2 #5. We remember the live opener while the overlay is open and
-  // fire it on the non-empty→empty transition.
+  // #5, r2 #5.
+  //
+  // Track the SESSION ROOT — the bottommost non-dismissing entry — not
+  // the top active one: with a nested popup B opened over dropdown A,
+  // the opener to restore on full close is A's control (the root), and
+  // if A and B are dismissed in one batch there is no intermediate
+  // render to promote A, so keying on `active` would strand B's now-
+  // unmounted opener (PR #29 review r3 #1). The ref is only overwritten
+  // while a non-dismissing root exists, so it is RETAINED once every
+  // entry is dismissing.
   const openerToRestore = React.useRef<(() => number | null) | null>(null);
-  if (active?.payload.openerHandle) {
-    openerToRestore.current = active.payload.openerHandle;
+  const sessionRoot = entries.find((e) => e.state !== 'dismissing') ?? null;
+  if (sessionRoot?.payload.openerHandle) {
+    openerToRestore.current = sessionRoot.payload.openerHandle;
   }
   const stackEmpty = entries.length === 0;
   React.useEffect(() => {

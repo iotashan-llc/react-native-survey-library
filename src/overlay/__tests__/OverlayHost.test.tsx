@@ -500,4 +500,37 @@ describe('OverlayHost — opener focus restoration (2.3 seam)', () => {
       focusSpy.mockRestore();
     }
   });
+
+  it('a nested popup dismissed together with its host in one batch restores the SESSION ROOT opener (PR #29 review r3 #1)', () => {
+    const focusSpy = jest
+      .spyOn(AccessibilityInfo, 'setAccessibilityFocus')
+      .mockImplementation(() => undefined);
+    try {
+      const stack = createOverlayStack<OverlayPayload>();
+      const host = new PopupModel('sv-string-viewer', { model: null });
+      const nested = new PopupModel('sv-string-viewer', { model: null });
+      // 77 = the ROOT opener (e.g. the dropdown control); 88 = a nested
+      // popup opened over it whose opener lives inside the Modal.
+      registerPopup(host, stack, { openerHandle: () => 77 });
+      registerPopup(nested, stack, { openerHandle: () => 88 });
+      render(<OverlayHost stack={stack} />);
+      act(() => {
+        host.show(); // root entry active
+      });
+      act(() => {
+        nested.show(); // root suspended beneath the nested entry
+      });
+      focusSpy.mockClear();
+      // Both dismissed in ONE batch — no intermediate render promotes the
+      // root, so keying on the top `active` entry would strand 88.
+      act(() => {
+        nested.hide();
+        host.hide();
+      });
+      expect(focusSpy).toHaveBeenCalledWith(77);
+      expect(focusSpy).not.toHaveBeenCalledWith(88);
+    } finally {
+      focusSpy.mockRestore();
+    }
+  });
 });

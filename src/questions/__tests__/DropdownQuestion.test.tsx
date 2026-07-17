@@ -265,6 +265,26 @@ describe('DropdownQuestion — Other adapter reconciles by question identity (r2
     expect(b.comment).toBe('for-b');
     expect(a.comment).toBeFalsy();
   });
+
+  it('an UNCOMMITTED draft typed into A does not bleed into B after a swap (keyed remount, r3 #3)', async () => {
+    const a = createDropdown({ showOtherItem: true }).question;
+    const b = createDropdown({ showOtherItem: true }).question;
+    a.value = 'other';
+    b.value = 'other';
+    b.comment = 'b-existing';
+    const view = render(<DropdownQuestion question={a} creator={{}} />);
+    await flush();
+    // Type into A WITHOUT blurring — a's native draft is uncommitted.
+    fireEvent.changeText(screen.getByTestId('sv-dropdown-other'), 'a-draft');
+    view.rerender(<DropdownQuestion question={b} creator={{}} />);
+    await flush();
+    // The keyed remount gives B a fresh controlled input seeded from B's
+    // own value — never A's abandoned draft.
+    expect(screen.getByTestId('sv-dropdown-other').props.value).toBe(
+      'b-existing'
+    );
+    expect(a.comment).toBeFalsy();
+  });
 });
 
 describe('DropdownQuestion — deferred diagnostics dedupe (r2 #6)', () => {

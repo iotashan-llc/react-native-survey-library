@@ -11,41 +11,39 @@
  *   `inputStringRendered`, then placeholder (plan round-2 fold A).
  * - Mode is keyed on `question.renderAs`, NOT on VM presence: core
  *   RETAINS a previously-built `dropdownListModel` after a runtime
- *   `renderAs = "select"` switch, so `!vm` is not a reliable mode check.
- *   `"select"` has no native RN analog, so the control degrades to a
- *   non-interactive value display + a diagnostic (PR #29 review r1 #1,
- *   r2 #1).
+ *   `renderAs = "select"` switch. `"select"` has no native RN analog, so
+ *   the control degrades to a non-interactive value display + a deferred
+ *   diagnostic (PR #29 review r1 #1, r2 #1).
  * - Value text is rendered defensively: a persisted value ABSENT from
  *   the current choices has no `selectedItemLocText`, so the renderer
  *   never passes `undefined` to `renderLocString` — it falls back to the
  *   raw value string, then the placeholder (PR #29 review r2 #1).
- * - Reactivity: BOTH the question and its `dropdownListModel` are state
- *   elements; the VM re-emits `ariaExpanded` on open/close, which drives
- *   the control's live expansion state (PR #29 review r2 #4). The
- *   popupModel is NOT a state element (shared with the overlay host —
- *   adding it corrupts the render-guard's cross-observer counters).
- * - Popup bridge is QUESTION-scoped and RECONCILED: mount registers
- *   `dropdownListModel.popupModel` into the OverlayContext stack with
- *   the control as opener; `componentDidUpdate` reconciles when the
- *   (popup, stack) identity changes (question/stack prop swap); unmount
- *   unsubscribes FIRST, then closes + disposes in NESTED try/finally so
- *   a throwing `unregister()` cannot skip `adapter.dispose()` (PR #29
- *   review r1 #3, r2 #3).
+ * - Reactivity: the question and its `dropdownListModel` are state
+ *   elements; the VM re-emits `ariaExpanded` on open/close, driving the
+ *   control's live expansion state. The popupModel is NOT a state
+ *   element (shared with the overlay host — adding it corrupts the
+ *   render-guard's cross-observer counters).
+ * - Popup bridge is QUESTION-scoped and RECONCILED from commit
+ *   lifecycles: `componentDidMount`/`componentDidUpdate` re-register when
+ *   the (popup, stack) identity changes; unmount unsubscribes FIRST,
+ *   then closes in a try/finally (PR #29 review r1 #3, r2 #3).
  * - "Other (describe)" opens a choice comment (`isShowingChoiceComment`)
- *   that QuestionChrome does NOT render for dropdown; the control hosts
- *   its own comment `TextInput` backed by the shared
- *   `OtherCommentDraftAdapter`, reconciled by QUESTION identity so a
- *   prop swap never leaves the input bound to the old question (PR #29
- *   review r1 #2, r2 #2).
+ *   that QuestionChrome does NOT render for dropdown. It renders through
+ *   `DropdownOtherComment`, a child KEYED BY QUESTION IDENTITY: the
+ *   adapter is constructed/disposed in an effect (commit-safe, never
+ *   during render), the input is CONTROLLED, and the key forces a
+ *   remount on a question swap so no native draft bleeds across
+ *   questions (PR #29 review r1 #2, r2 #2, r3 #2/#3).
  * - a11y: the control mirrors core's INPUT aria surface
  *   (`vm.ariaInputRole ?? vm.ariaQuestionRole` — `combobox` under the
  *   default `searchEnabled`), the question label, `vm.ariaExpanded`
  *   (a STRING `'true'|'false'`) for open state, and `vm.clearCaption`
  *   for the localized clear label (PR #29 review r1 #4, r2 #4).
  * - Diagnostics (select-mode, custom-component-miss) are RECORDED in
- *   render and FLUSHED from mount/update, deduped per question+key —
- *   never reported from the render phase (repo React 19 commit-phase
- *   rule; PR #29 review r2 #6).
+ *   render (cleared fresh each render) and FLUSHED from mount/update,
+ *   deduped per QUESTION IDENTITY + key via a WeakMap — never reported
+ *   from the render phase (repo React 19 commit-phase rule; PR #29
+ *   review r2 #6, r3 #4).
  * - Clear: `dropdownListModel.onClear(event)` — core dereferences only
  *   preventDefault/stopPropagation (synthetic no-ops).
  */
@@ -102,6 +100,7 @@ interface DropdownQuestionModelLike extends Question {
   isShowingChoiceComment: boolean;
   otherText: string;
   otherPlaceholder: string;
+  otherValue?: unknown;
 }
 
 const noopEvent = {
@@ -115,6 +114,53 @@ const KNOWN_ACCESSIBILITY_ROLES = new Set<AccessibilityRole>([
   'menu',
   'list',
 ]);
+
+/**
+ * "Other (describe)" comment input. Owns its `OtherCommentDraftAdapter`
+ * in an effect (constructed/disposed in the commit phase, never during
+ * render — a suspended/abandoned render must not leak a subscription)
+ * and renders a CONTROLLED `TextInput`. Rendered with `key={question.id}`
+ * so a question prop swap fully remounts it: fresh adapter, fresh value,
+ * no native draft carried from the previous question (PR #29 review r3
+ * #2/#3).
+ */
+function DropdownOtherComment(props: {
+  question: Question;
+}): React.JSX.Element {
+  const { question } = props;
+  const q = question as unknown as DropdownQuestionModelLike;
+  const [, bump] = React.useReducer((n: number) => n + 1, 0);
+  const adapterRef = React.useRef<OtherCommentDraftAdapter | null>(null);
+  React.useEffect(() => {
+    const adapter = new OtherCommentDraftAdapter({
+      question,
+      onRenderedValueChange: bump,
+    });
+    adapterRef.current = adapter;
+    bump(); // reflect the adapter's initial value now it exists
+    return () => {
+      adapter.dispose();
+      adapterRef.current = null;
+    };
+  }, [question]);
+  const adapter = adapterRef.current;
+  // Before the effect runs (first commit), source the initial value from
+  // the model so an existing comment shows without a flash.
+  const value = adapter ? adapter.renderedValue : String(q.otherValue ?? '');
+  return (
+    <TextInput
+      testID="sv-dropdown-other"
+      accessibilityLabel={q.otherText}
+      placeholder={q.otherPlaceholder || undefined}
+      editable={!q.isInputReadOnly}
+      value={value}
+      onChangeText={(text) => adapter?.handleChangeText(text)}
+      onBlur={() => adapter?.handleBlur()}
+      multiline
+      style={localStyles.other}
+    />
+  );
+}
 
 export interface DropdownQuestionElementProps extends QuestionElementBaseProps {}
 
@@ -141,14 +187,14 @@ export class DropdownQuestion extends QuestionElementBase<DropdownQuestionProps>
   private registration: PopupRegistration | null = null;
   private registeredPopup: DropdownListModelLike['popupModel'] | null = null;
   private registeredStack: OverlayStack<OverlayPayload> | null = null;
-  private otherAdapter: OtherCommentDraftAdapter | null = null;
-  private otherAdapterQuestion: Question | null = null;
 
-  // Commit-phase diagnostic buffers (never reported from render).
-  private pendingSelectModeMiss: string | undefined;
-  private lastReportedSelectModeMiss: string | undefined;
+  // Commit-phase diagnostic buffers (never reported from render). Cleared
+  // fresh each render; the originating question travels with them so a
+  // prop swap can't cross-suppress. Dedup is per-question-identity.
+  private pendingSelectMiss: string | undefined;
   private pendingComponentMiss: string | undefined;
-  private lastReportedComponentMiss: string | undefined;
+  private pendingMissQuestion: Question | undefined;
+  private readonly reportedDiagnostics = new WeakMap<Question, Set<string>>();
 
   private readonly controlRef =
     React.createRef<React.ComponentRef<typeof Pressable>>();
@@ -191,29 +237,20 @@ export class DropdownQuestion extends QuestionElementBase<DropdownQuestionProps>
     this.registration = null;
     this.registeredPopup = null;
     this.registeredStack = null;
-    const adapter = this.otherAdapter;
-    this.otherAdapter = null;
-    this.otherAdapterQuestion = null;
     try {
       // Unsubscribe the reactive base FIRST so the semantic-close
       // visibility change below can't drive setState during unmount.
       super.componentWillUnmount();
     } finally {
-      // NESTED so a throwing unregister() (it deliberately rethrows
-      // consumer onCancel/onHide failures) still disposes the adapter.
-      try {
-        reg?.unregister();
-      } finally {
-        adapter?.dispose();
-      }
+      reg?.unregister();
     }
   }
 
-  /** Commit-phase reconciliation: popup bridge identity, Other-adapter
-   * question identity, and deferred diagnostics. */
+  /** Commit-phase reconciliation: popup bridge identity + deferred
+   * diagnostics. (The Other-comment adapter lifecycle lives in the
+   * `DropdownOtherComment` child, keyed by question identity.) */
   private reconcile(): void {
     this.reconcileRegistration();
-    this.reconcileOtherAdapter();
     this.flushDiagnostics();
   }
 
@@ -240,50 +277,32 @@ export class DropdownQuestion extends QuestionElementBase<DropdownQuestionProps>
     }
   }
 
-  /** Dispose an Other-comment adapter bound to a stale question after a
-   * prop swap — otherwise the comment input keeps writing the OLD
-   * question's `otherValue`. */
-  private reconcileOtherAdapter(): void {
-    if (this.otherAdapter && this.otherAdapterQuestion !== this.questionBase) {
-      this.otherAdapter.dispose();
-      this.otherAdapter = null;
-      this.otherAdapterQuestion = null;
-    }
-  }
-
   private flushDiagnostics(): void {
-    if (
-      this.pendingSelectModeMiss &&
-      this.lastReportedSelectModeMiss !== this.pendingSelectModeMiss
-    ) {
-      this.lastReportedSelectModeMiss = this.pendingSelectModeMiss;
+    const question = this.pendingMissQuestion;
+    if (!question) return;
+    let reported = this.reportedDiagnostics.get(question);
+    if (!reported) {
+      reported = new Set<string>();
+      this.reportedDiagnostics.set(question, reported);
+    }
+    if (this.pendingSelectMiss && !reported.has('select')) {
+      reported.add('select');
       reportDiagnostic({
         code: 'dropdown-select-mode-unsupported',
-        questionName: this.pendingSelectModeMiss,
+        questionName: this.pendingSelectMiss,
       });
     }
-    if (
-      this.pendingComponentMiss &&
-      this.lastReportedComponentMiss !== this.pendingComponentMiss
-    ) {
-      this.lastReportedComponentMiss = this.pendingComponentMiss;
-      reportDiagnostic({
-        code: 'dropdown-input-component-missing',
-        questionName: this.dropdown.name,
-        componentName: this.pendingComponentMiss,
-      });
+    if (this.pendingComponentMiss) {
+      const key = `component:${this.pendingComponentMiss}`;
+      if (!reported.has(key)) {
+        reported.add(key);
+        reportDiagnostic({
+          code: 'dropdown-input-component-missing',
+          questionName: this.dropdown.name,
+          componentName: this.pendingComponentMiss,
+        });
+      }
     }
-  }
-
-  private getOtherAdapter(): OtherCommentDraftAdapter {
-    if (!this.otherAdapter || this.otherAdapterQuestion !== this.questionBase) {
-      this.otherAdapter?.dispose();
-      this.otherAdapter = new OtherCommentDraftAdapter({
-        question: this.questionBase,
-      });
-      this.otherAdapterQuestion = this.questionBase;
-    }
-    return this.otherAdapter;
   }
 
   /** Selected-value text, defensive against an unmatched persisted value
@@ -330,7 +349,7 @@ export class DropdownQuestion extends QuestionElementBase<DropdownQuestionProps>
       }
       // Custom component named but unregistered: record for a deferred
       // diagnostic + fall back to the localized value text (never an
-      // empty placeholder). Deduped per component name across renders.
+      // empty placeholder).
       this.pendingComponentMiss = question.inputFieldComponentName;
       return this.renderSelectedText();
     }
@@ -348,30 +367,11 @@ export class DropdownQuestion extends QuestionElementBase<DropdownQuestionProps>
   /** `renderAs:"select"` (no interactive sheet): non-interactive value
    * display + a deferred diagnostic — never crash the survey. */
   private renderSelectModeFallback(): React.JSX.Element {
-    const question = this.dropdown;
-    this.pendingSelectModeMiss = question.name;
+    this.pendingSelectMiss = this.dropdown.name;
     return (
       <View style={localStyles.row} testID="sv-dropdown-select-fallback">
         {this.renderSelectedText()}
       </View>
-    );
-  }
-
-  private renderOtherComment(): React.JSX.Element {
-    const question = this.dropdown;
-    const adapter = this.getOtherAdapter();
-    return (
-      <TextInput
-        testID="sv-dropdown-other"
-        accessibilityLabel={question.otherText}
-        placeholder={question.otherPlaceholder || undefined}
-        editable={!question.isInputReadOnly}
-        defaultValue={adapter.renderedValue}
-        onChangeText={(text) => adapter.handleChangeText(text)}
-        onBlur={() => adapter.handleBlur()}
-        multiline
-        style={localStyles.other}
-      />
     );
   }
 
@@ -435,6 +435,13 @@ export class DropdownQuestion extends QuestionElementBase<DropdownQuestionProps>
   protected renderElement(): React.JSX.Element {
     const question = this.dropdown;
     const vm = question.dropdownListModel;
+    // Clear the deferred-diagnostic buffers fresh each render so an
+    // abandoned render can't leak a stale miss into a later commit; the
+    // originating question travels with the buffers for per-identity
+    // dedup (PR #29 review r3 #4).
+    this.pendingSelectMiss = undefined;
+    this.pendingComponentMiss = undefined;
+    this.pendingMissQuestion = this.questionBase;
     // Mode is keyed on renderAs (a lingering VM after a runtime switch is
     // NOT a reliable signal). The Other-comment input renders in BOTH
     // modes when the "Other" choice is selected.
@@ -445,7 +452,12 @@ export class DropdownQuestion extends QuestionElementBase<DropdownQuestionProps>
     return (
       <View style={localStyles.container}>
         {top}
-        {question.isShowingChoiceComment ? this.renderOtherComment() : null}
+        {question.isShowingChoiceComment ? (
+          <DropdownOtherComment
+            key={String(this.questionBase.id)}
+            question={this.questionBase}
+          />
+        ) : null}
       </View>
     );
   }
