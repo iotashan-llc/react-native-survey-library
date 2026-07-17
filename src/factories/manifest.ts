@@ -187,7 +187,14 @@ export const MODEL_TYPE_CLASSIFICATION: Readonly<
       expectedRoute: 'template',
     },
   },
-  multipletext: { status: 'planned', milestone: 'M2', reason: 'task 2.6' },
+  multipletext: {
+    status: 'supported',
+    milestone: 'M2',
+    runtimeRenderable: {
+      expectedTemplate: 'multipletext',
+      expectedRoute: 'template',
+    },
+  },
   imagepicker: { status: 'planned', milestone: 'M2', reason: 'task 2.7' },
   paneldynamic: {
     status: 'planned',
