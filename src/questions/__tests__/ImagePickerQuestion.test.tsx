@@ -153,6 +153,33 @@ describe('ImagePickerQuestion — image policy + content mode', () => {
   });
 });
 
+describe('ImagePickerQuestion — layout + equality (r1)', () => {
+  it('default colCount (0) is FLOW layout — tiles are not forced to 100% width (r1 #5)', async () => {
+    const { question } = createImagePicker(); // no colCount → getCurrentColCount() 0
+    render(<ImagePickerQuestion question={question} creator={{}} />);
+    await flush();
+    const tile = screen.getByTestId('imagepicker-item-cat');
+    const widths = ([] as unknown[])
+      .concat(tile.props.style)
+      .flat()
+      .map((s) => (s as { width?: unknown } | null)?.width)
+      .filter((w) => w !== undefined);
+    expect(widths).not.toContain('100%');
+  });
+
+  it('a positive colCount sets %-width tiles', async () => {
+    const { question } = createImagePicker({ colCount: 3 });
+    render(<ImagePickerQuestion question={question} creator={{}} />);
+    await flush();
+    const tile = screen.getByTestId('imagepicker-item-cat');
+    const widths = ([] as unknown[])
+      .concat(tile.props.style)
+      .flat()
+      .map((s) => (s as { width?: unknown } | null)?.width);
+    expect(widths).toContain(`${100 / 3}%`);
+  });
+});
+
 describe('ImagePickerQuestion — multi select', () => {
   it('multiSelect toggles array membership per tile', async () => {
     const { question } = createImagePicker({ multiSelect: true });

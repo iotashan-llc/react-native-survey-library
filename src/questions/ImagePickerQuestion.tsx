@@ -29,6 +29,7 @@ import { reportDiagnostic } from '../diagnostics';
 type ImageResizeMode = NonNullable<ImageProps['resizeMode']>;
 
 interface ChoiceLike {
+  id: string | number;
   value: unknown;
   text: string;
   locImageLink?: { renderedHtml: string };
@@ -83,8 +84,12 @@ export class ImagePickerQuestion extends QuestionElementBase<ImagePickerQuestion
       const current = Array.isArray(target.value) ? target.value : [];
       target.value = selected
         ? current.filter(
+            // Match core item equality (Base uses doNotConvertNumbers) so
+            // distinct 1 vs "1" do not both drop (PR #31 review r1 #7).
             (v) =>
-              !Helpers.isTwoValueEquals(v, choice.value, false, true, false)
+              !Helpers.checkIfValuesEqual(v, choice.value, {
+                doNotConvertNumbers: true,
+              })
           )
         : [...current, choice.value];
     } else {
@@ -114,7 +119,7 @@ export class ImagePickerQuestion extends QuestionElementBase<ImagePickerQuestion
     }
     return (
       <Pressable
-        key={String(choice.value)}
+        key={String(choice.id)}
         testID={`imagepicker-item-${String(choice.value)}`}
         accessibilityRole={question.multiSelect ? 'checkbox' : 'radio'}
         accessibilityLabel={choice.text}
@@ -124,7 +129,7 @@ export class ImagePickerQuestion extends QuestionElementBase<ImagePickerQuestion
         onPress={() => this.handlePress(choice)}
         style={[
           localStyles.tile,
-          { width: `${100 / cols}%` as `${number}%` },
+          cols > 0 ? { width: `${100 / cols}%` as `${number}%` } : null,
           selected ? localStyles.tileSelected : null,
         ]}
       >
@@ -157,7 +162,11 @@ export class ImagePickerQuestion extends QuestionElementBase<ImagePickerQuestion
       });
       return <View testID="imagepicker-content-mode-unsupported" />;
     }
-    const cols = Math.max(1, question.getCurrentColCount());
+    // colCount / getCurrentColCount() default to 0 = FLOW layout (natural
+    // tile widths); only a POSITIVE count sets the fixed %-width grid —
+    // Math.max(1, 0) would wrongly force one 100%-wide column (a vertical
+    // list) for the default (PR #31 review r1 #5).
+    const cols = question.getCurrentColCount();
     return (
       <View testID="imagepicker-grid" style={localStyles.grid}>
         {question.visibleChoices.map((choice) => this.renderTile(choice, cols))}
