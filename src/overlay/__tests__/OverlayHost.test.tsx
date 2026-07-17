@@ -334,3 +334,56 @@ describe('OverlayHost — review round 1 regressions', () => {
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
 });
+
+describe('OverlayHost — real sv-list lazy re-arm across reopen (verification matrix)', () => {
+  it('endReached fires the observer per open while data remains; reopen re-arms', async () => {
+    const { Action, ListModel } =
+      jest.requireActual<typeof import('../../core/facade')>(
+        '../../core/facade'
+      );
+    const actions = Array.from(
+      { length: 12 },
+      (_, i) => new Action({ id: `a${i}`, title: `a${i}`, visible: true })
+    );
+    const listModel = new ListModel({
+      items: actions,
+      onSelectionChanged: () => undefined,
+      allowSelection: true,
+    } as never);
+    const observed: boolean[] = [];
+    listModel.isAllDataLoaded = false;
+    listModel.loadingIndicatorVisibilityObserver = (isVisible: boolean) => {
+      observed.push(isVisible);
+    };
+    const stack = createOverlayStack<OverlayPayload>();
+    const popup = new PopupModel('sv-list', { model: listModel });
+    registerPopup(popup, stack);
+    render(<OverlayHost stack={stack} />);
+    await act(async () => {
+      popup.show();
+      await Promise.resolve();
+    });
+    fireEvent(screen.getByTestId('sv-list-flatlist'), 'endReached');
+    expect(observed).toEqual([true]);
+    // Owner loads a page; core marks everything loaded; the gate closes.
+    act(() => {
+      listModel.isAllDataLoaded = true;
+    });
+    fireEvent(screen.getByTestId('sv-list-flatlist'), 'endReached');
+    expect(observed).toEqual([true]);
+    // Close, owner resets for the next open (2.3 adapter behavior),
+    // reopen: a FRESH entry/picker re-arms the same observer.
+    await act(async () => {
+      popup.hide();
+      await Promise.resolve();
+    });
+    expect(stack.entries()).toHaveLength(0);
+    listModel.isAllDataLoaded = false;
+    await act(async () => {
+      popup.show();
+      await Promise.resolve();
+    });
+    fireEvent(screen.getByTestId('sv-list-flatlist'), 'endReached');
+    expect(observed).toEqual([true, true]);
+  });
+});

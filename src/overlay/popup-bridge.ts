@@ -68,6 +68,12 @@ export interface OverlayPayload {
   closeFallback(): void;
   /** Model-driven close affordance (PopupModel.showCloseButton). */
   showCloseButton: boolean;
+  /** D8 focus translation: 'container' = a11y-focus the panel;
+   * 'content' = focus the body (dropdownListModel under IsTouch sets
+   * isFocusedContent=true — row-level targeting lives in the content
+   * component, e.g. ListPicker's selected-row scroll); 'none' = leave
+   * focus alone. */
+  focusIntent: 'container' | 'content' | 'none';
 }
 
 export interface PopupRegistration {
@@ -93,6 +99,9 @@ export function registerPopup(
     hidingRan: boolean;
   }
   let current: PresentationRecord | null = null;
+  /** EVERY unfinished generation (a dismissing predecessor stays live
+   * until its ack) — unregister must finalize them all. */
+  const liveRecords = new Set<PresentationRecord>();
 
   function buildFooter(shape: 'dialog' | 'sheet'): OverlayFooter {
     const raw: IAction[] = [
@@ -164,6 +173,12 @@ export function registerPopup(
       requestHide: hide,
       closeFallback: hide,
       showCloseButton: popup.showCloseButton === true,
+      focusIntent:
+        popup.isFocusedContainer === true
+          ? 'container'
+          : popup.isFocusedContent === true
+            ? 'content'
+            : 'none',
     };
   }
 
@@ -174,13 +189,19 @@ export function registerPopup(
     finishRecord(rec);
   }
 
-  /** Exactly-once per generation: model onHiding + footer disposal. */
+  /** Exactly-once per generation: model onHiding + footer disposal.
+   * Cleanup runs in finally — a throwing consumer onHiding/onHide must
+   * not leak the footer or wedge the record set. */
   function finishRecord(rec: PresentationRecord): void {
     if (rec.hidingRan) return;
     rec.hidingRan = true;
-    popup.onHiding();
-    rec.footer.dispose();
-    if (current === rec) current = null;
+    try {
+      popup.onHiding();
+    } finally {
+      rec.footer.dispose();
+      liveRecords.delete(rec);
+      if (current === rec) current = null;
+    }
   }
 
   function present(): void {
@@ -200,6 +221,7 @@ export function registerPopup(
       popup.contentComponentName,
       buildPayload(footer, () => rec)
     );
+    liveRecords.add(rec);
     current = rec;
   }
 
@@ -233,15 +255,16 @@ export function registerPopup(
     hide,
     unregister() {
       popup.onVisibilityChanged.remove(handleVisibilityChanged);
-      if (current) {
-        // Semantic close: no presenter remains to ack, so the model
-        // lifecycle and stack removal run synchronously.
-        if (popup.isVisible) cancel();
-        const rec = current;
+      // Semantic close: no presenter remains to ack, so the model
+      // lifecycle and stack removal run synchronously — for EVERY live
+      // generation (a dismissing predecessor whose ack never arrived
+      // must not survive as a zombie entry).
+      if (popup.isVisible) cancel();
+      for (const rec of [...liveRecords]) {
         stack.beginDismiss(rec.entry);
         completeDismissal(rec);
-        // Belt-and-suspenders: if the ack could not complete (entry
-        // already gone), still finish the model lifecycle exactly once.
+        // If the ack could not complete (entry already gone), still
+        // finish the model lifecycle exactly once.
         if (!rec.hidingRan) finishRecord(rec);
       }
     },

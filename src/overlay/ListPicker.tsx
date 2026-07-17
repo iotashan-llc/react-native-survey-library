@@ -80,11 +80,23 @@ function rowRole(listItemRole: string): 'menuitem' | 'radio' | undefined {
 interface ListPickerRowProps {
   model: AnyListModel;
   item: ListAction;
+  /** List-model-scope bridge reconcile — rows notify the picker when
+   * their Action changes (e.g. a post-mount setSubItems creates a new
+   * child popupModel the picker must register). Idempotent + cheap. */
+  onItemChanged?: () => void;
 }
 
 class ListPickerRow extends SurveyElementBase<ListPickerRowProps> {
   protected getStateElement(): Base | null {
     return this.props.item as unknown as Base;
+  }
+
+  componentDidUpdate(): void {
+    super.componentDidUpdate();
+    // An Action-level change (setSubItems -> new popupModel) re-renders
+    // only this ROW; surface it so the picker's list-model-scope bridge
+    // map stays reconciled.
+    this.props.onItemChanged?.();
   }
 
   protected getStateElements(): Base[] {
@@ -183,6 +195,33 @@ export class ListPicker extends SurveyElementBase<ListPickerProps> {
   private readonly searchRef =
     React.createRef<React.ComponentRef<typeof TextInput>>();
 
+  private readonly flatListRef = React.createRef<FlatList<ListAction>>();
+
+  /** One-shot initial-scroll guard: renderedActions populate on a
+   * debounced microtask, so the FlatList (and its ref) may not exist
+   * until the SECOND render. */
+  private didInitialScroll = false;
+
+  /** D8: core's focusFirstInputSelector targets the SELECTED (or first)
+   * row under IsTouch (dropdownListModel.ts:35-45). Native translation:
+   * bring the selected row into view on mount. */
+  private scrollToSelected(): void {
+    if (this.didInitialScroll || !this.flatListRef.current) return;
+    const model = this.props.model;
+    const items = model.renderedActions.filter((item) =>
+      model.isItemVisible(item)
+    );
+    const index = items.findIndex((item) => model.isItemSelected(item));
+    this.didInitialScroll = true;
+    if (index <= 0) return;
+    try {
+      this.flatListRef.current?.scrollToIndex({ index, animated: false });
+    } catch {
+      // Virtualized layout not measured yet — non-fatal; the row is
+      // still reachable by scrolling.
+    }
+  }
+
   /** Child popup bridges, LIST-MODEL scope (design D2 round 2) — keyed
    * by the child PopupModel, reconciled against the current action set,
    * torn down only with this picker (never by FlatList row recycling). */
@@ -221,11 +260,13 @@ export class ListPicker extends SurveyElementBase<ListPickerProps> {
   componentDidMount(): void {
     super.componentDidMount();
     this.reconcileChildBridges();
+    this.scrollToSelected();
   }
 
   componentDidUpdate(): void {
     super.componentDidUpdate();
     this.reconcileChildBridges();
+    this.scrollToSelected();
   }
 
   componentWillUnmount(): void {
@@ -235,6 +276,10 @@ export class ListPicker extends SurveyElementBase<ListPickerProps> {
     this.childBridges.clear();
     super.componentWillUnmount();
   }
+
+  private readonly handleItemChanged = (): void => {
+    this.reconcileChildBridges();
+  };
 
   private readonly handleClear = (): void => {
     const model = this.props.model;
@@ -296,13 +341,18 @@ export class ListPicker extends SurveyElementBase<ListPickerProps> {
           <Text style={recipe.fragments.empty}>{model.emptyMessage}</Text>
         ) : (
           <FlatList
+            ref={this.flatListRef}
             testID="sv-list-flatlist"
             data={items}
             keyExtractor={(item, index) => `${item.id ?? index}`}
             keyboardShouldPersistTaps="handled"
             onEndReached={this.handleEndReached}
             renderItem={({ item }) => (
-              <ListPickerRow model={model} item={item} />
+              <ListPickerRow
+                model={model}
+                item={item}
+                onItemChanged={this.handleItemChanged}
+              />
             )}
           />
         )}

@@ -318,8 +318,8 @@ describe('popup bridge — real tagbox integration (verification matrix)', () =>
   });
 });
 
-describe('ListPicker-adjacent lazy generation (verification matrix)', () => {
-  it('reopen re-arms the loading observer after isAllDataLoaded flips back off', () => {
+describe('popup bridge — reopen produces a fresh generation', () => {
+  it('reopen presents a fresh entry with an undisposed footer (real lazy re-arm is pinned in OverlayHost.test)', () => {
     const popup = makePopup();
     const stack = createOverlayStack<OverlayPayload>();
     registerPopup(popup, stack);
@@ -334,5 +334,75 @@ describe('ListPicker-adjacent lazy generation (verification matrix)', () => {
     popup.hide();
     reopened.payload.onDismissAcknowledged();
     expect(stack.entries()).toHaveLength(0);
+  });
+});
+
+describe('popup bridge — round 2 (multi-record teardown, throw safety)', () => {
+  it('unregister finalizes EVERY live generation (predecessor dismissing + successor active)', () => {
+    let hidings = 0;
+    const popup = makePopup({ onHide: () => hidings++ });
+    const stack = createOverlayStack<OverlayPayload>();
+    const registration = registerPopup(popup, stack);
+    popup.show();
+    const first = stack.entries()[0]!;
+    popup.hide(); // dismissing, ack never arrives (delayed presenter)
+    popup.show(); // successor entry
+    expect(stack.entries()).toHaveLength(2);
+    const firstFooter = first.payload.footerActions.container;
+    const secondFooter = stack.entries()[1]!.payload.footerActions.container;
+    registration.unregister();
+    expect(stack.entries()).toHaveLength(0);
+    expect(hidings).toBe(2); // each generation's onHiding exactly once
+    expect(firstFooter.isDisposed).toBe(true);
+    expect(secondFooter.isDisposed).toBe(true);
+  });
+
+  it('a throwing onHide still disposes the footer and clears the record', () => {
+    const popup = makePopup({
+      onHide: () => {
+        throw new Error('consumer onHide blew up');
+      },
+    });
+    const stack = createOverlayStack<OverlayPayload>();
+    registerPopup(popup, stack);
+    popup.show();
+    const entry = stack.entries()[0]!;
+    const footer = entry.payload.footerActions.container;
+    popup.hide();
+    expect(() => entry.payload.onDismissAcknowledged()).toThrow(
+      'consumer onHide blew up'
+    );
+    expect(footer.isDisposed).toBe(true);
+    expect(stack.entries()).toHaveLength(0);
+    // The registration is still usable: a fresh show presents cleanly.
+    popup.show();
+    expect(stack.entries()).toHaveLength(1);
+  });
+});
+
+describe('popup bridge — focus intent (D8 round 2)', () => {
+  it('payload derives focusIntent from the model flags', () => {
+    const stack = createOverlayStack<OverlayPayload>();
+    const content = makePopup();
+    content.isFocusedContent = true;
+    content.isFocusedContainer = false;
+    registerPopup(content, stack);
+    content.show();
+    expect(stack.entries()[0]!.payload.focusIntent).toBe('content');
+
+    const container = makePopup();
+    container.isFocusedContainer = true;
+    const stack2 = createOverlayStack<OverlayPayload>();
+    registerPopup(container, stack2);
+    container.show();
+    expect(stack2.entries()[0]!.payload.focusIntent).toBe('container');
+
+    const none = makePopup();
+    none.isFocusedContent = false;
+    none.isFocusedContainer = false;
+    const stack3 = createOverlayStack<OverlayPayload>();
+    registerPopup(none, stack3);
+    none.show();
+    expect(stack3.entries()[0]!.payload.focusIntent).toBe('none');
   });
 });

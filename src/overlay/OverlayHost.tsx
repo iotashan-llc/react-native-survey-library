@@ -80,15 +80,31 @@ function DefaultPresenter(props: OverlayPresenterProps): React.JSX.Element {
   const payload = entry.payload;
   const dismissing = entry.state === 'dismissing';
   const panelRef = React.useRef<React.ComponentRef<typeof Pressable>>(null);
+  const bodyRef = React.useRef<React.ComponentRef<typeof View>>(null);
+  // Transition guard (review round 2): the host recreates callback props
+  // per render, so the effect keys on the visible TRANSITION, not on
+  // callback identity — focus/onDidShow must not rerun on unrelated
+  // host re-renders.
+  const wasVisible = React.useRef(false);
 
   React.useEffect(() => {
+    if (visible === wasVisible.current) return;
+    wasVisible.current = visible;
     if (!visible) return;
     onDidShow();
-    // D8 focus ownership: move screen-reader focus to the panel on every
-    // active-entry transition (Modal onShow misses top swaps).
-    const handle = findNodeHandle(panelRef.current);
+    // D8 focus ownership on every active-entry TRANSITION (Modal onShow
+    // misses top swaps), honoring the model's intent: 'container' -> the
+    // panel; 'content' -> the body (row-level targeting lives in the
+    // content component); 'none' -> leave focus alone.
+    const target =
+      payload.focusIntent === 'container'
+        ? panelRef.current
+        : payload.focusIntent === 'content'
+          ? bodyRef.current
+          : null;
+    const handle = findNodeHandle(target);
     if (handle != null) AccessibilityInfo.setAccessibilityFocus(handle);
-  }, [visible, onDidShow]);
+  });
 
   React.useEffect(() => {
     if (dismissing) onDidDismiss();
@@ -137,7 +153,13 @@ function DefaultPresenter(props: OverlayPresenterProps): React.JSX.Element {
           {payload.title ? (
             <Text style={fragments.title}>{payload.title}</Text>
           ) : null}
-          <View style={fragments.body}>{payload.renderContent()}</View>
+          <View
+            ref={bodyRef}
+            style={fragments.body}
+            accessible={payload.focusIntent === 'content'}
+          >
+            {payload.renderContent()}
+          </View>
           {payload.contentMiss ? (
             <View style={fragments.footer}>
               <Pressable

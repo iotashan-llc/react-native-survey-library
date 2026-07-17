@@ -178,4 +178,36 @@ describe('Survey shell — device adapter untouched-detection (review round 1)',
       'tablet'
     );
   });
+
+  it('a consumer handler registered AFTER mount runs after the adapter and owns its mutations (core parity: nothing recomputes deviceType)', () => {
+    const model = new Model(JSON_A);
+    render(<Survey model={model} />);
+    // Late consumer: rewrites dims and deviceType wholesale.
+    (
+      model as unknown as {
+        onOpenDropdownMenu: {
+          add(fn: (s: unknown, o: Record<string, unknown>) => void): void;
+        };
+      }
+    ).onOpenDropdownMenu.add((_s, opt) => {
+      opt.screenWidth = 800;
+      opt.screenHeight = 1200;
+      opt.deviceType = 'desktop';
+    });
+    const options = {
+      menuType: 'popup',
+      deviceType: 'mobile',
+      screenWidth: undefined,
+      screenHeight: undefined,
+    } as never;
+    fire(model, options);
+    const seen = options as unknown as {
+      deviceType: string;
+      screenWidth: number;
+    };
+    // The late handler's values stand — same as core, where deviceType
+    // is computed once before the event and never recomputed.
+    expect(seen.deviceType).toBe('desktop');
+    expect(seen.screenWidth).toBe(800);
+  });
 });

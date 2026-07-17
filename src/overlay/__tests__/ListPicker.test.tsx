@@ -9,6 +9,7 @@
  * `isAllDataLoaded`, and the plain-Text empty message.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { FlatList } from 'react-native';
 
 /** ActionContainer.visibleActions recomputes via a debounced microtask
  * (same as SurveyNavigation's contract) — flush before asserting. */
@@ -249,5 +250,46 @@ describe('ListPicker — review round 1 (groups, bridges, clear gating, label)',
     expect(screen.getByTestId('sv-list-item-group-grp')).toBeTruthy();
     expect(screen.getByText('More')).toBeTruthy();
     expect(screen.getByText('›', { includeHiddenElements: true })).toBeTruthy();
+  });
+
+  it('setSubItems AFTER mount still bridges the new child popup (row-level reconcile)', async () => {
+    const { model } = makeList(['plain', 'later']);
+    const stack = createOverlayStack<OverlayPayload>();
+    render(
+      <OverlayContext.Provider value={stack}>
+        <ListPickerElement model={model} />
+      </OverlayContext.Provider>
+    );
+    await flush();
+    const later = model.actions.find((a) => a.id === 'later')! as InstanceType<
+      typeof Action
+    >;
+    act(() => {
+      later.setSubItems({
+        items: [new Action({ id: 'sub-late', title: 'Sub late' })],
+      } as never);
+    });
+    await flush();
+    act(() => {
+      (later as unknown as { showPopup(): void }).showPopup();
+    });
+    expect(stack.entries()).toHaveLength(1);
+  });
+
+  it('scrolls the selected item into view on mount (focusFirstInputSelector native translation)', async () => {
+    const scrollSpy = jest
+      .spyOn(FlatList.prototype, 'scrollToIndex')
+      .mockImplementation(() => undefined);
+    try {
+      const { model } = makeList(Array.from({ length: 15 }, (_, i) => `s${i}`));
+      model.selectedItem = model.actions[7]!;
+      render(<ListPicker model={model} />);
+      await flush();
+      expect(scrollSpy).toHaveBeenCalledWith(
+        expect.objectContaining({ index: 7 })
+      );
+    } finally {
+      scrollSpy.mockRestore();
+    }
   });
 });
