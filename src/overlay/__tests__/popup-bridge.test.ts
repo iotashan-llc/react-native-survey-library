@@ -187,3 +187,152 @@ describe('popup bridge — content dispatch + footer', () => {
     expect(popup.isVisible).toBe(false);
   });
 });
+
+describe('popup bridge — generation records (review round 1)', () => {
+  it('re-show during dismissal pushes a NEW entry; the old ack removes only the old one and runs its onHiding once', () => {
+    let hidings = 0;
+    const popup = makePopup({ onHide: () => hidings++ });
+    const stack = createOverlayStack<OverlayPayload>();
+    registerPopup(popup, stack);
+    popup.show();
+    const first = stack.entries()[0]!;
+    popup.hide(); // begins dismissal; presenter ack is async
+    expect(first.state).toBe('dismissing');
+    popup.show(); // re-show BEFORE the old ack lands
+    expect(stack.entries()).toHaveLength(2);
+    const second = stack.entries()[1]!;
+    expect(second).not.toBe(first);
+    expect(second.state).toBe('active');
+    // Old presenter finally acks its own generation.
+    first.payload.onDismissAcknowledged();
+    expect(stack.entries()).toEqual([second]);
+    expect(hidings).toBe(1); // old generation's onHiding exactly once
+    expect(popup.isVisible).toBe(true); // the re-shown popup survives
+    // New entry's own dismissal still completes normally.
+    popup.hide();
+    second.payload.onDismissAcknowledged();
+    expect(stack.entries()).toHaveLength(0);
+    expect(hidings).toBe(2);
+  });
+
+  it('a stale ack from the OLD generation never dismisses the NEW entry', () => {
+    const popup = makePopup();
+    const stack = createOverlayStack<OverlayPayload>();
+    registerPopup(popup, stack);
+    popup.show();
+    const first = stack.entries()[0]!;
+    const firstPayload = first.payload;
+    popup.hide();
+    popup.show();
+    const second = stack.entries()[1]!;
+    // Double-ack the old generation: second call must be a no-op.
+    firstPayload.onDismissAcknowledged();
+    firstPayload.onDismissAcknowledged();
+    expect(stack.entries()).toEqual([second]);
+    expect(second.state).toBe('active');
+  });
+
+  it('footer ActionContainer is disposed exactly once on completed dismissal, never on suspension', () => {
+    const popup = makePopup();
+    const stack = createOverlayStack<OverlayPayload>();
+    registerPopup(popup, stack);
+    popup.show();
+    const entry = stack.entries()[0]!;
+    const container = entry.payload.footerActions.container;
+    // Suspension (a second popup) must NOT dispose the footer.
+    const other = makePopup();
+    registerPopup(other, stack);
+    other.show();
+    expect(container.isDisposed).toBe(false);
+    other.hide();
+    stack.entries()[1]!.payload.onDismissAcknowledged();
+    // Real dismissal disposes it.
+    popup.hide();
+    entry.payload.onDismissAcknowledged();
+    expect(container.isDisposed).toBe(true);
+  });
+
+  it('unregister-while-visible disposes the footer container', () => {
+    const popup = makePopup();
+    const stack = createOverlayStack<OverlayPayload>();
+    const registration = registerPopup(popup, stack);
+    popup.show();
+    const container = stack.entries()[0]!.payload.footerActions.container;
+    registration.unregister();
+    expect(container.isDisposed).toBe(true);
+  });
+
+  it('payload carries the model showCloseButton flag', () => {
+    const popup = makePopup();
+    popup.showCloseButton = true;
+    const stack = createOverlayStack<OverlayPayload>();
+    registerPopup(popup, stack);
+    popup.show();
+    expect(stack.entries()[0]!.payload.showCloseButton).toBe(true);
+  });
+});
+
+describe('popup bridge — real tagbox integration (verification matrix)', () => {
+  it('a real tagbox popup: Done footer action lands via updateFooterActions; cancel reverts the pre-open value', () => {
+    const { Model } =
+      jest.requireActual<typeof import('../../core/facade')>(
+        '../../core/facade'
+      );
+    const model = new Model({
+      elements: [
+        {
+          type: 'tagbox',
+          name: 'tags',
+          choices: ['a', 'b', 'c'],
+        },
+      ],
+    });
+    const question = model.getQuestionByName('tags') as unknown as {
+      value: string[];
+      renderedValue: string[];
+      dropdownListModel: {
+        popupModel: InstanceType<typeof PopupModel>;
+      };
+    };
+    question.value = ['a'];
+    const popup = question.dropdownListModel.popupModel;
+    const stack = createOverlayStack<OverlayPayload>();
+    registerPopup(popup, stack);
+    popup.show();
+    const entry = stack.entries()[0]!;
+    const footer = entry.payload.footerActions;
+    // Raw consumer action (pushed through onFooterActionsCreated as a
+    // PLAIN IAction) survived the D5 order into the container.
+    const ids = footer.container.actions.map((a) => a.id);
+    expect(ids).toContain('sv-dropdown-done-button');
+    expect(ids).toContain('cancel');
+    // Mutate through the model, then cancel: tagbox's own onCancel
+    // wiring (shouldResetAfterCancel under IsTouch) reverts the value.
+    question.renderedValue = ['a', 'b'];
+    entry.payload.requestCancel();
+    entry.payload.onDismissAcknowledged();
+    expect(stack.entries()).toHaveLength(0);
+    // Core may hand back boxed values that serialize identically —
+    // compare through JSON.
+    expect(JSON.parse(JSON.stringify(question.value))).toEqual(['a']);
+  });
+});
+
+describe('ListPicker-adjacent lazy generation (verification matrix)', () => {
+  it('reopen re-arms the loading observer after isAllDataLoaded flips back off', () => {
+    const popup = makePopup();
+    const stack = createOverlayStack<OverlayPayload>();
+    registerPopup(popup, stack);
+    popup.show();
+    stack.entries()[0]!.payload.requestHide();
+    stack.entries()[0]!.payload.onDismissAcknowledged();
+    // Reopen: a NEW generation presents (fresh entry + footer).
+    popup.show();
+    const reopened = stack.entries()[0]!;
+    expect(reopened.state).toBe('active');
+    expect(reopened.payload.footerActions.container.isDisposed).toBe(false);
+    popup.hide();
+    reopened.payload.onDismissAcknowledged();
+    expect(stack.entries()).toHaveLength(0);
+  });
+});

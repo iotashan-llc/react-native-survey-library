@@ -175,3 +175,162 @@ describe('OverlayHost — presenter injection (D7)', () => {
     expect(stack.entries()).toHaveLength(0);
   });
 });
+
+describe('OverlayHost — review round 1 regressions', () => {
+  it('suspension and restoration preserve content MOUNT IDENTITY (no unmount/remount)', () => {
+    let mounts = 0;
+    function Probe(): React.JSX.Element {
+      React.useEffect(() => {
+        mounts += 1;
+      }, []);
+      return <React.Fragment />;
+    }
+    const stack = createOverlayStack<OverlayPayload>();
+    const popup = new PopupModel('sv-string-viewer', { model: null });
+    registerPopup(popup, stack);
+    render(<OverlayHost stack={stack} />);
+    act(() => {
+      popup.show();
+    });
+    // Splice the probe into the live payload's content.
+    const entry = stack.entries()[0]!;
+    const original = entry.payload.renderContent.bind(entry.payload);
+    entry.payload.renderContent = () => (
+      <React.Fragment>
+        <Probe />
+        {original()}
+      </React.Fragment>
+    );
+    const child = new PopupModel('sv-string-viewer', { model: null });
+    registerPopup(child, stack);
+    act(() => {
+      // Force a re-render so the probe mounts once while active.
+      child.show();
+    });
+    expect(mounts).toBe(1);
+    act(() => {
+      child.hide(); // ack from DefaultPresenter effect restores parent
+    });
+    expect(mounts).toBe(1); // suspend->restore never remounted content
+  });
+
+  it('a popup shown BEFORE the host subscribes still presents (post-subscribe reconciliation)', () => {
+    const stack = createOverlayStack<OverlayPayload>();
+    const popup = new PopupModel('sv-string-viewer', { model: null });
+    registerPopup(popup, stack);
+    popup.show(); // pushed before OverlayHost ever mounts/subscribes
+    render(<OverlayHost stack={stack} />);
+    expect(screen.UNSAFE_getByType(Modal).props.visible).toBe(true);
+    expect(screen.getByTestId('overlay-panel-sheet')).toBeTruthy();
+  });
+
+  it('Android back is a NO-OP while the top entry is dismissing under a delayed presenter', () => {
+    const parentCancel = jest.fn();
+    const stack = createOverlayStack<OverlayPayload>();
+    const parent = new PopupModel(
+      'sv-string-viewer',
+      { model: null },
+      {
+        onCancel: parentCancel,
+      }
+    );
+    const child = new PopupModel('sv-string-viewer', { model: null });
+    registerPopup(parent, stack);
+    registerPopup(child, stack);
+    // Delayed presenter: never acks dismissal on its own.
+    function Frozen(_props: OverlayPresenterProps): React.JSX.Element {
+      return <React.Fragment />;
+    }
+    render(
+      <OverlayPresenterContext.Provider value={Frozen}>
+        <OverlayHost stack={stack} />
+      </OverlayPresenterContext.Provider>
+    );
+    act(() => {
+      parent.show();
+      child.show();
+      child.hide(); // dismissing, ack pending forever
+    });
+    act(() => {
+      fireEvent(screen.UNSAFE_getByType(Modal), 'requestClose');
+    });
+    // The suspended parent must NOT receive the cancel.
+    expect(parentCancel).not.toHaveBeenCalled();
+    expect(parent.isVisible).toBe(true);
+  });
+
+  it('a factory miss renders a fallback panel with a single Close action wired to HIDE', () => {
+    const onCancel = jest.fn();
+    const onHide = jest.fn();
+    const stack = createOverlayStack<OverlayPayload>();
+    const popup = new PopupModel(
+      'sv-no-such-component',
+      { model: null },
+      {
+        onCancel,
+        onHide,
+      }
+    );
+    registerPopup(popup, stack);
+    render(<OverlayHost stack={stack} />);
+    act(() => {
+      popup.show();
+    });
+    const close = screen.getByTestId('overlay-fallback-close');
+    // No cancel/apply footer on the fallback panel.
+    expect(screen.queryByTestId('overlay-action-cancel')).toBeNull();
+    act(() => {
+      fireEvent.press(close);
+    });
+    expect(onCancel).not.toHaveBeenCalled(); // HIDE, not cancel
+    expect(onHide).toHaveBeenCalledTimes(1);
+    expect(stack.entries()).toHaveLength(0);
+  });
+
+  it('showCloseButton renders a header close affordance running the CANCEL sequence', () => {
+    const onCancel = jest.fn();
+    const stack = createOverlayStack<OverlayPayload>();
+    const popup = new PopupModel(
+      'sv-string-viewer',
+      { model: null },
+      {
+        onCancel,
+      }
+    );
+    popup.showCloseButton = true;
+    registerPopup(popup, stack);
+    render(<OverlayHost stack={stack} />);
+    act(() => {
+      popup.show();
+    });
+    act(() => {
+      fireEvent.press(screen.getByTestId('overlay-close'));
+    });
+    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(stack.entries()).toHaveLength(0);
+  });
+
+  it('iOS accessibility escape on the panel runs the cancel sequence', () => {
+    const onCancel = jest.fn();
+    const stack = createOverlayStack<OverlayPayload>();
+    const popup = new PopupModel(
+      'sv-string-viewer',
+      { model: null },
+      {
+        onCancel,
+      }
+    );
+    registerPopup(popup, stack);
+    render(<OverlayHost stack={stack} />);
+    act(() => {
+      popup.show();
+    });
+    act(() => {
+      fireEvent(
+        screen.getByTestId('overlay-panel-sheet'),
+        'accessibilityEscape'
+      );
+    });
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+});

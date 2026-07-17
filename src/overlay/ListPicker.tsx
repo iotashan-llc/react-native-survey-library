@@ -26,20 +26,39 @@
  *   generation re-arm happens through model updates re-rendering this
  *   component.
  * - Empty state: `model.emptyMessage` (plain localized string) in a Text.
+ * - Nested groups (D2 round 2): a group row (`item.hasSubItems`) presses
+ *   into `item.showPopup()` ONLY; its child PopupModel bridge is owned
+ *   at LIST-MODEL scope (`ListPickerElement` reconciles registrations
+ *   against the action set), so FlatList recycling of the ROW can never
+ *   semantic-close an open child popup.
  */
 import * as React from 'react';
-import { FlatList, Pressable, Text, TextInput, View } from 'react-native';
-import type { ListModel } from '../core/facade';
+import {
+  FlatList,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import type { ListModel, PopupModel } from '../core/facade';
 import type { Base } from '../core/facade';
 import { SurveyElementBase } from '../reactivity/SurveyElementBase';
 import { RNElementFactory } from '../factories/ElementFactory';
 import { composeStyles } from '../theme-rn/recipes/types';
+import { OverlayContext } from './OverlayContext';
+import { registerPopup } from './popup-bridge';
+import type { OverlayPayload, PopupRegistration } from './popup-bridge';
+import type { OverlayStack } from './stack';
 
 type AnyListModel = InstanceType<typeof ListModel>;
 type ListAction = AnyListModel['actions'][number];
 
 export interface ListPickerProps {
   model: AnyListModel;
+  /** Per-Survey overlay stack — enables nested subitem popup bridges;
+   * absent in bare unit renders (groups then degrade to no-op popups). */
+  stack?: OverlayStack<OverlayPayload>;
 }
 
 /** Core aria getters return "true" | "false" | undefined; RN wants
@@ -100,7 +119,11 @@ class ListPickerRow extends SurveyElementBase<ListPickerRowProps> {
           checked: ariaToBool(model.getA11yItemAriaChecked(item)),
         }}
         disabled={disabled}
-        onPress={() => model.onItemClick(item)}
+        onPress={() =>
+          (item as { hasSubItems?: boolean }).hasSubItems
+            ? (item as unknown as { showPopup(): void }).showPopup()
+            : model.onItemClick(item)
+        }
         style={composeStyles(styles.row, {
           override: overrides.listItem?.row,
         })}
@@ -119,12 +142,98 @@ class ListPickerRow extends SurveyElementBase<ListPickerRowProps> {
   }
 }
 
+export interface ListItemGroupContentProps {
+  model: AnyListModel;
+  item: ListAction;
+}
+
+/** The registered `"sv-list-item-group"` row content (upstream
+ * list-item-group.tsx renders content + an inline Popup; RN's child
+ * popup mounts through the overlay stack instead, so this is content
+ * only): title + submenu marker. */
+export function ListItemGroupContent(
+  props: ListItemGroupContentProps
+): React.JSX.Element {
+  return (
+    <View
+      testID={`sv-list-item-group-${props.item.id}`}
+      style={localGroupStyles.row}
+    >
+      <Text>{props.item.title}</Text>
+      <Text accessibilityElementsHidden>{'›'}</Text>
+    </View>
+  );
+}
+
+export interface ListPickerElementProps {
+  model: AnyListModel;
+}
+
+/** The registered `"sv-list"` element: binds the per-Survey overlay
+ * stack (OverlayContext) so nested subitem popups can bridge at
+ * list-model scope. */
+export function ListPickerElement(
+  props: ListPickerElementProps
+): React.JSX.Element {
+  const stack = React.useContext(OverlayContext);
+  return <ListPicker model={props.model} stack={stack ?? undefined} />;
+}
+
 export class ListPicker extends SurveyElementBase<ListPickerProps> {
   private readonly searchRef =
     React.createRef<React.ComponentRef<typeof TextInput>>();
 
+  /** Child popup bridges, LIST-MODEL scope (design D2 round 2) — keyed
+   * by the child PopupModel, reconciled against the current action set,
+   * torn down only with this picker (never by FlatList row recycling). */
+  private readonly childBridges = new Map<
+    InstanceType<typeof PopupModel>,
+    PopupRegistration
+  >();
+
   protected getStateElement(): Base | null {
     return this.props.model as unknown as Base;
+  }
+
+  private reconcileChildBridges(): void {
+    const stack = this.props.stack;
+    if (!stack) return;
+    const model = this.props.model;
+    const present = new Set<InstanceType<typeof PopupModel>>();
+    for (const item of model.actions) {
+      const popup = (
+        item as { popupModel?: InstanceType<typeof PopupModel> | null }
+      ).popupModel;
+      if (!popup) continue;
+      present.add(popup);
+      if (!this.childBridges.has(popup)) {
+        this.childBridges.set(popup, registerPopup(popup, stack));
+      }
+    }
+    for (const [popup, registration] of [...this.childBridges]) {
+      if (!present.has(popup)) {
+        registration.unregister();
+        this.childBridges.delete(popup);
+      }
+    }
+  }
+
+  componentDidMount(): void {
+    super.componentDidMount();
+    this.reconcileChildBridges();
+  }
+
+  componentDidUpdate(): void {
+    super.componentDidUpdate();
+    this.reconcileChildBridges();
+  }
+
+  componentWillUnmount(): void {
+    for (const registration of this.childBridges.values()) {
+      registration.unregister();
+    }
+    this.childBridges.clear();
+    super.componentWillUnmount();
   }
 
   private readonly handleClear = (): void => {
@@ -152,7 +261,9 @@ export class ListPicker extends SurveyElementBase<ListPickerProps> {
         testID="sv-list"
         accessibilityRole={containerRole(model.listRole)}
         accessibilityLabel={
-          (model as { listAriaLabel?: string }).listAriaLabel || undefined
+          (model as { listAriaLabel?: string }).listAriaLabel ||
+          (model as { locOwner?: { title?: string } }).locOwner?.title ||
+          undefined
         }
       >
         {model.showFilter ? (
@@ -170,7 +281,7 @@ export class ListPicker extends SurveyElementBase<ListPickerProps> {
                 override: overrides.listItem?.searchInput,
               })}
             />
-            {model.showSearchClearButton || model.filterString ? (
+            {model.showSearchClearButton && model.filterString ? (
               <Pressable
                 testID="sv-list-filter-clear"
                 accessibilityRole="button"
@@ -199,3 +310,12 @@ export class ListPicker extends SurveyElementBase<ListPickerProps> {
     );
   }
 }
+
+const localGroupStyles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flex: 1,
+  },
+});

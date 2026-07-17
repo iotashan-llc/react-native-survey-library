@@ -197,6 +197,7 @@ describe('registerAll (module side effect)', () => {
       'panel',
       'survey-header',
       'sv-list',
+      'sv-list-item-group',
       'sv-logo-image',
       'sv-page',
       'sv-rating-item',

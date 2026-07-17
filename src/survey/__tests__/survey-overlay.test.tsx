@@ -116,3 +116,66 @@ describe('Survey shell — onOpenDropdownMenu device adapter', () => {
     expect(model.onOpenDropdownMenu.length).toBe(baseline);
   });
 });
+
+describe('Survey shell — device adapter untouched-detection (review round 1)', () => {
+  function fire(model: InstanceType<typeof Model>, options: unknown): void {
+    act(() => {
+      (
+        model as unknown as {
+          onOpenDropdownMenu: {
+            fire(sender: unknown, options: unknown): void;
+          };
+        }
+      ).onOpenDropdownMenu.fire(model, options);
+    });
+  }
+
+  it('an explicit consumer screenWidth of 0 is preserved (nullish, not falsy, detection)', () => {
+    const model = new Model(JSON_A);
+    render(<Survey model={model as never} />);
+    const options = {
+      menuType: 'popup',
+      deviceType: 'mobile',
+      screenWidth: 0,
+      screenHeight: undefined,
+    } as never;
+    fire(model, options);
+    const seen = options as unknown as {
+      screenWidth: number;
+      screenHeight: number;
+    };
+    expect(seen.screenWidth).toBe(0);
+    expect(typeof seen.screenHeight).toBe('number');
+    expect(seen.screenHeight).toBeGreaterThan(0);
+  });
+
+  it('a NONDEFAULT consumer deviceType survives even when dims were missing', () => {
+    const model = new Model(JSON_A);
+    render(<Survey model={model as never} />);
+    const options = {
+      menuType: 'dropdown',
+      deviceType: 'desktop', // consumer's explicit choice
+      screenWidth: undefined,
+      screenHeight: undefined,
+    } as never;
+    fire(model, options);
+    expect((options as unknown as { deviceType: string }).deviceType).toBe(
+      'desktop'
+    );
+  });
+
+  it('consumer-supplied dims drive the tablet refinement of a default deviceType', () => {
+    const model = new Model(JSON_A);
+    render(<Survey model={model as never} />);
+    const options = {
+      menuType: 'popup',
+      deviceType: 'mobile', // core blind default
+      screenWidth: 800,
+      screenHeight: 1200,
+    } as never;
+    fire(model, options);
+    expect((options as unknown as { deviceType: string }).deviceType).toBe(
+      'tablet'
+    );
+  });
+});

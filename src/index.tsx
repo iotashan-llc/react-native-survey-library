@@ -173,6 +173,8 @@ export type {
   ProgressStyleOverrides,
   SurveyStateStyleOverrides,
   RatingStyleOverrides,
+  ButtonGroupStyleOverrides,
+  ListItemStyleOverrides,
 } from './theme-rn/overrides';
 export type { NormalizedBackground } from './theme-rn/background';
 

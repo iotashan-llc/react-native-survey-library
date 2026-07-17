@@ -19,7 +19,10 @@ async function flush(): Promise<void> {
 }
 import { Action, ListModel } from '../../core/facade';
 import '../../factories/register-all';
-import { ListPicker } from '../ListPicker';
+import { ListPicker, ListPickerElement } from '../ListPicker';
+import { OverlayContext } from '../OverlayContext';
+import { createOverlayStack } from '../stack';
+import type { OverlayPayload } from '../popup-bridge';
 
 type AnyListModel = InstanceType<typeof ListModel>;
 
@@ -154,5 +157,97 @@ describe('ListPicker — lazy load + empty state', () => {
     render(<ListPicker model={model} />);
     await flush();
     expect(screen.getByText(model.emptyMessage)).toBeTruthy();
+  });
+});
+
+describe('ListPicker — review round 1 (groups, bridges, clear gating, label)', () => {
+  it('clear affordance requires showSearchClearButton AND a nonempty filter (web parity)', async () => {
+    const { model } = makeList(Array.from({ length: 12 }, (_, i) => `z${i}`));
+    model.setSearchEnabled(true); // sets showSearchClearButton = true
+    render(<ListPicker model={model} />);
+    await flush();
+    // Empty filter: hidden even though the model flag is on.
+    expect(screen.queryByTestId('sv-list-filter-clear')).toBeNull();
+    act(() => {
+      model.filterString = 'z1';
+    });
+    expect(screen.getByTestId('sv-list-filter-clear')).toBeTruthy();
+    // Flag off: hidden even with a nonempty filter.
+    act(() => {
+      model.showSearchClearButton = false;
+    });
+    expect(screen.queryByTestId('sv-list-filter-clear')).toBeNull();
+  });
+
+  it('container accessibilityLabel falls back to the owner question title (locOwner)', async () => {
+    const { model } = makeList(['a', 'b']);
+    (model as unknown as { locOwner: unknown }).locOwner = {
+      title: 'Favorite color',
+      getLocale: () => '',
+      getMarkdownHtml: () => null,
+      getRenderer: () => undefined,
+      getRendererContext: (loc: unknown) => loc,
+      getProcessedText: (text: string) => text,
+    };
+    render(<ListPicker model={model} />);
+    await flush();
+    expect(screen.getByTestId('sv-list').props.accessibilityLabel).toBe(
+      'Favorite color'
+    );
+  });
+
+  it('a group row (setSubItems) presses into showPopup ONLY — never onItemClick', async () => {
+    const { model, selected } = makeList(['plain']);
+    const group = new Action({ id: 'grp', title: 'More', visible: true });
+    group.setSubItems({ items: [new Action({ id: 'sub1', title: 'Sub 1' })] });
+    act(() => {
+      model.setItems([...model.actions, group] as never);
+    });
+    const showPopupSpy = jest.spyOn(group, 'showPopup');
+    render(<ListPicker model={model} />);
+    await flush();
+    const row = screen.getByTestId('sv-list-item-grp');
+    fireEvent.press(row);
+    expect(showPopupSpy).toHaveBeenCalledTimes(1);
+    expect(selected).toEqual([]); // onSelectionChanged never fired
+  });
+
+  it('child subitem popups bridge at LIST-MODEL scope into the overlay stack', async () => {
+    const { model } = makeList(['plain']);
+    const group = new Action({ id: 'grp', title: 'More', visible: true });
+    group.setSubItems({ items: [new Action({ id: 'sub1', title: 'Sub 1' })] });
+    act(() => {
+      model.setItems([...model.actions, group] as never);
+    });
+    const stack = createOverlayStack<OverlayPayload>();
+    const view = render(
+      <OverlayContext.Provider value={stack}>
+        <ListPickerElement model={model} />
+      </OverlayContext.Provider>
+    );
+    await flush();
+    act(() => {
+      group.showPopup();
+    });
+    expect(stack.entries()).toHaveLength(1);
+    expect(stack.activeEntry()!.state).toBe('active');
+    // Unmount = list-model scope teardown: semantic close of the child.
+    view.unmount();
+    expect(stack.entries()).toHaveLength(0);
+    expect(group.popupModel.isVisible).toBe(false);
+  });
+
+  it('a group row renders the sv-list-item-group content (title + marker)', async () => {
+    const { model } = makeList(['plain']);
+    const group = new Action({ id: 'grp', title: 'More', visible: true });
+    group.setSubItems({ items: [new Action({ id: 'sub1', title: 'Sub 1' })] });
+    act(() => {
+      model.setItems([...model.actions, group] as never);
+    });
+    render(<ListPicker model={model} />);
+    await flush();
+    expect(screen.getByTestId('sv-list-item-group-grp')).toBeTruthy();
+    expect(screen.getByText('More')).toBeTruthy();
+    expect(screen.getByText('›', { includeHiddenElements: true })).toBeTruthy();
   });
 });

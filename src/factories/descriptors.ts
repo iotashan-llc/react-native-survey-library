@@ -54,7 +54,7 @@ import {
 import { TextQuestion } from '../questions/TextQuestion';
 import { ImageQuestion } from '../questions/ImageQuestion';
 import { ButtonGroupQuestion } from '../questions/ButtonGroupQuestion';
-import { ListPicker } from '../overlay/ListPicker';
+import { ListItemGroupContent, ListPickerElement } from '../overlay/ListPicker';
 
 export type DescriptorRoute = 'template' | 'renderer' | 'element';
 
@@ -215,7 +215,17 @@ export const DESCRIPTOR_TABLE: readonly Descriptor[] = [
     questionType: 'sv-list',
     dispatchKey: 'sv-list',
     route: 'element',
-    component: () => ListPicker,
+    component: () => ListPickerElement,
+    milestone: 'M2',
+  },
+  // Task 2.1 — nested subitem group row content (upstream registry name
+  // "sv-list-item-group"; Action.setSubItems dispatch).
+  {
+    status: 'supported',
+    questionType: 'sv-list-item-group',
+    dispatchKey: 'sv-list-item-group',
+    route: 'element',
+    component: () => ListItemGroupContent,
     milestone: 'M2',
   },
   // Task 2.9 — buttongroup question.

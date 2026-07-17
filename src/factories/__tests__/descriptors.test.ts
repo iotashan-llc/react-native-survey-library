@@ -38,6 +38,7 @@ describe('DESCRIPTOR_TABLE (M0 + M1)', () => {
       'sv-boolean-checkbox',
       'sv-boolean-radio',
       'sv-list',
+      'sv-list-item-group',
       'sv-logo-image',
       'sv-page',
       'sv-rating-item',

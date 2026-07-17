@@ -19,7 +19,10 @@ export interface OverlayPresenterProps {
   requestHide(): void;
   /** Route the CANCEL sequence through the model. */
   requestCancel(): void;
-  /** Presentation acknowledgment (after the show transition settles). */
+  /** INFORMATIONAL show acknowledgment (reserved for animation
+   * presenters). Nothing model-side depends on it — `model.onShow()`
+   * already ran before the entry was pushed — so the host accepts it
+   * without gating; only `onDidDismiss` participates in lifecycle. */
   onDidShow(): void;
   /** Dismissal acknowledgment — gates the exactly-once onHiding(). */
   onDidDismiss(): void;

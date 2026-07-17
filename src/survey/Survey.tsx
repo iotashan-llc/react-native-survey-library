@@ -183,13 +183,19 @@ class SurveyRoot extends SurveyElementBase<SurveyRootProps> {
       screenHeight?: number;
     }
   ): void => {
-    if (!options.screenWidth || !options.screenHeight) {
+    // NULLISH detection — an explicit consumer 0 is a touched value.
+    // Core's DOM-less defaults are undefined dims + deviceType 'mobile'
+    // (calculateIsTablet(NaN) is false under IsTouch — devices.ts:56-64).
+    if (options.screenWidth == null || options.screenHeight == null) {
       const window = Dimensions.get('window');
-      if (!options.screenWidth) options.screenWidth = window.width;
-      if (!options.screenHeight) options.screenHeight = window.height;
-      // Dims were missing, so core derived deviceType blind — refine it
-      // from the real window (same tablet heuristic shape as upstream's
-      // calculateIsTablet: smaller dimension at/above the breakpoint).
+      if (options.screenWidth == null) options.screenWidth = window.width;
+      if (options.screenHeight == null) options.screenHeight = window.height;
+    }
+    // Refine ONLY core's blind default; a consumer-set nondefault
+    // deviceType (e.g. 'desktop') always survives. Same tablet heuristic
+    // shape as upstream calculateIsTablet: smaller dimension at/above
+    // the 600 breakpoint.
+    if (options.deviceType === 'mobile') {
       const isTablet =
         Math.min(options.screenWidth, options.screenHeight) >= 600;
       options.deviceType = isTablet ? 'tablet' : 'mobile';

@@ -32,6 +32,10 @@ export interface DismissAckResult {
 
 export interface OverlayStack<P = unknown> {
   entries(): readonly OverlayEntry<P>[];
+  /** Monotonic change counter — a lost-update-safe snapshot key for
+   * `useSyncExternalStore` (entry STATE mutates in place, so array
+   * identity alone cannot serve as the snapshot). */
+  version(): number;
   activeEntry(): OverlayEntry<P> | null;
   push(key: string, payload?: P): OverlayEntry<P>;
   /** Marks the entry `dismissing`; returns the generation the ack must
@@ -47,9 +51,11 @@ export interface OverlayStack<P = unknown> {
 export function createOverlayStack<P = unknown>(): OverlayStack<P> {
   let entries: OverlayEntry<P>[] = [];
   let nextGeneration = 1;
+  let version = 0;
   const listeners = new Set<() => void>();
 
   function notify(): void {
+    version += 1;
     for (const listener of [...listeners]) listener();
   }
 
@@ -67,6 +73,7 @@ export function createOverlayStack<P = unknown>(): OverlayStack<P> {
 
   return {
     entries: () => entries,
+    version: () => version,
     activeEntry,
     push(key, payload) {
       const current = activeEntry();

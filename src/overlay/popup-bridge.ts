@@ -15,6 +15,11 @@
  * - Unregister-while-visible = semantic close: cancel sequence, then
  *   synchronous removal (the registration is going away — there is no
  *   presenter left to ack; same discipline as 1.1's two-phase dispose).
+ * - Each presentation is a GENERATION RECORD ({entry, footer,
+ *   hidingRan}): a re-show racing a dismissing entry pushes a NEW entry
+ *   with its own record; the old presenter's ack completes only its own
+ *   generation (onHiding once + footer dispose) and never touches the
+ *   replacement.
  * - Content: `RNElementFactory.createElement(contentComponentName,
  *   contentComponentData)`; a miss reports `element-wrapper-missing`
  *   (deduped per componentName) and the payload flags `contentMiss` so
@@ -40,6 +45,8 @@ export interface OverlayFooter {
   container: InstanceType<typeof ActionContainer>;
   actions: IAction[];
   getActionById(id: string): { action(): void; title?: string } | null;
+  /** Idempotent — safe against ack/unregister overlap. */
+  dispose(): void;
 }
 
 export interface OverlayPayload {
@@ -59,6 +66,8 @@ export interface OverlayPayload {
   /** Hide sequence (fallback Close, programmatic close). */
   requestHide(): void;
   closeFallback(): void;
+  /** Model-driven close affordance (PopupModel.showCloseButton). */
+  showCloseButton: boolean;
 }
 
 export interface PopupRegistration {
@@ -78,8 +87,12 @@ export function registerPopup(
   popup: PopupModelLike,
   stack: OverlayStack<OverlayPayload>
 ): PopupRegistration {
-  let entry: OverlayEntry<OverlayPayload> | null = null;
-  let hidingRan = false;
+  interface PresentationRecord {
+    entry: OverlayEntry<OverlayPayload>;
+    footer: OverlayFooter;
+    hidingRan: boolean;
+  }
+  let current: PresentationRecord | null = null;
 
   function buildFooter(shape: 'dialog' | 'sheet'): OverlayFooter {
     const raw: IAction[] = [
@@ -110,10 +123,16 @@ export function registerPopup(
         (container.getActionById(id) as OverlayFooter['actions'][number] & {
           action(): void;
         }) ?? null,
+      dispose: () => {
+        if (!container.isDisposed) container.dispose();
+      },
     };
   }
 
-  function buildPayload(): OverlayPayload {
+  function buildPayload(
+    footer: OverlayFooter,
+    record: () => PresentationRecord | null
+  ): OverlayPayload {
     const shape: 'dialog' | 'sheet' = popup.isModal ? 'dialog' : 'sheet';
     const componentName = popup.contentComponentName;
     const contentMiss = !RNElementFactory.isElementRegistered(componentName);
@@ -137,35 +156,56 @@ export function registerPopup(
               componentName,
               popup.contentComponentData
             ),
-      footerActions: buildFooter(shape),
+      footerActions: footer,
       onDismissAcknowledged: () => {
-        if (!entry) return;
-        const result = stack.acknowledgeDismissed(entry, entry.generation);
-        if (result.completed) runOnHidingOnce();
-        if (result.completed) entry = null;
+        completeDismissal(record());
       },
       requestCancel: cancel,
       requestHide: hide,
       closeFallback: hide,
+      showCloseButton: popup.showCloseButton === true,
     };
   }
 
-  function runOnHidingOnce(): void {
-    if (hidingRan) return;
-    hidingRan = true;
+  function completeDismissal(rec: PresentationRecord | null): void {
+    if (!rec) return;
+    const result = stack.acknowledgeDismissed(rec.entry, rec.entry.generation);
+    if (!result.completed) return;
+    finishRecord(rec);
+  }
+
+  /** Exactly-once per generation: model onHiding + footer disposal. */
+  function finishRecord(rec: PresentationRecord): void {
+    if (rec.hidingRan) return;
+    rec.hidingRan = true;
     popup.onHiding();
+    rec.footer.dispose();
+    if (current === rec) current = null;
   }
 
   function present(): void {
-    if (entry) return;
-    hidingRan = false;
+    if (current && current.entry.state !== 'dismissing') return;
+    // A dismissing predecessor keeps its own record; this show gets a
+    // fresh entry + generation (the old ack cannot touch it).
     popup.onShow();
-    entry = stack.push(popup.contentComponentName, buildPayload());
+    const footer = buildFooter(popup.isModal ? 'dialog' : 'sheet');
+    const rec: PresentationRecord = {
+      // Placeholder — replaced right after push (payload needs the
+      // record via closure; the stack assigns the entry).
+      entry: null as unknown as OverlayEntry<OverlayPayload>,
+      footer,
+      hidingRan: false,
+    };
+    rec.entry = stack.push(
+      popup.contentComponentName,
+      buildPayload(footer, () => rec)
+    );
+    current = rec;
   }
 
   function beginDismiss(): void {
-    if (!entry) return;
-    stack.beginDismiss(entry);
+    if (!current) return;
+    stack.beginDismiss(current.entry);
   }
 
   function cancel(): void {
@@ -193,15 +233,16 @@ export function registerPopup(
     hide,
     unregister() {
       popup.onVisibilityChanged.remove(handleVisibilityChanged);
-      if (entry) {
+      if (current) {
         // Semantic close: no presenter remains to ack, so the model
         // lifecycle and stack removal run synchronously.
         if (popup.isVisible) cancel();
-        const current = entry;
-        entry = null;
-        stack.beginDismiss(current);
-        const result = stack.acknowledgeDismissed(current, current.generation);
-        if (result.completed) runOnHidingOnce();
+        const rec = current;
+        stack.beginDismiss(rec.entry);
+        completeDismissal(rec);
+        // Belt-and-suspenders: if the ack could not complete (entry
+        // already gone), still finish the model lifecycle exactly once.
+        if (!rec.hidingRan) finishRecord(rec);
       }
     },
   };
