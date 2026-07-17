@@ -211,3 +211,41 @@ describe('Survey shell — device adapter untouched-detection (review round 1)',
     expect(seen.screenWidth).toBe(800);
   });
 });
+
+describe('Survey shell — dialog host registration (task 2.2)', () => {
+  it('mounting installs the dialog dispatcher; core confirms route to THIS survey overlay; unmount tears down', () => {
+    const model = new Model({
+      elements: [
+        {
+          type: 'paneldynamic',
+          name: 'pd',
+          confirmDelete: true,
+          panelCount: 2,
+          templateElements: [{ type: 'text', name: 'inner' }],
+        },
+      ],
+    });
+    model.data = { pd: [{ inner: 'a' }, { inner: 'b' }] };
+    const view = render(<Survey model={model as never} />);
+    const question = model.getQuestionByName('pd') as unknown as {
+      panelCount: number;
+      removePanelUI(index: number): void;
+    };
+    act(() => {
+      question.removePanelUI(0);
+    });
+    // The confirm dialog presented through the Survey's own overlay.
+    expect(screen.getByTestId('overlay-panel-dialog')).toBeTruthy();
+    act(() => {
+      // Cancel keeps the panel.
+      screen.getByTestId('overlay-action-cancel').props.onPress?.();
+    });
+    view.unmount();
+    // Post-unmount: a stray confirm resolves cancel (fail-safe), no throw.
+    expect(question.panelCount).toBe(2);
+    act(() => {
+      question.removePanelUI(0);
+    });
+    expect(question.panelCount).toBe(2);
+  });
+});

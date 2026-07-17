@@ -62,6 +62,8 @@ import { createOverlayStack } from '../overlay/stack';
 import type { OverlayStack } from '../overlay/stack';
 import type { OverlayPayload } from '../overlay/popup-bridge';
 import { OverlayContext } from '../overlay/OverlayContext';
+import { registerDialogHost } from '../overlay/dialog-adapter';
+import type { DialogHostToken } from '../overlay/dialog-adapter';
 import { OverlayHost } from '../overlay/OverlayHost';
 
 /**
@@ -171,6 +173,8 @@ class SurveyRoot extends SurveyElementBase<SurveyRootProps> {
 
   /** Per-root overlay stack (design 2.1 D2) — provided to descendants
    * via OverlayContext; the host renders after the ScrollView. */
+  private dialogHostToken: DialogHostToken | undefined;
+
   private readonly overlayStack: OverlayStack<OverlayPayload> =
     createOverlayStack<OverlayPayload>();
 
@@ -241,6 +245,10 @@ class SurveyRoot extends SurveyElementBase<SurveyRootProps> {
     // registration order) are never clobbered. Identity unsubscribe in
     // detachFromModel.
     survey.onOpenDropdownMenu.add(this.handleOpenDropdownMenu);
+    // 2.2 dialog adapter: this root's overlay stack becomes a dialog
+    // host (last-mounted wins). Token disposal is independent of the
+    // `detached` guard — StrictMode remounts register fresh tokens.
+    this.dialogHostToken = registerDialogHost(this.overlayStack);
     this.callAfterRenderPage();
   }
 
@@ -307,6 +315,10 @@ class SurveyRoot extends SurveyElementBase<SurveyRootProps> {
    * by `componentWillUnmount` for the normal path.
    */
   public detachFromModel(): void {
+    // Dialog host teardown sits OUTSIDE the detached guard (2.2 D2 —
+    // StrictMode double-mounts re-register; dispose() is idempotent).
+    this.dialogHostToken?.dispose();
+    this.dialogHostToken = undefined;
     if (this.detached) return;
     this.detached = true;
     const survey = this.props.survey;

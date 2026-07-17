@@ -1179,6 +1179,39 @@ export const API_SURFACE_WATCHLIST: readonly WatchedApiMember[] = [
     resolveHost: (sc) => new sc.Model(undefined),
     reason: '2.1 D3 device adapter (fill-if-untouched).',
   },
+  // Task 2.2 — dialog adapter seams (settings hooks the dispatcher
+  // rides; presence pinned so a core rename breaks loudly).
+  {
+    id: 'settings.showDialog',
+    member: 'showDialog',
+    // undefined until a renderer installs one — presence-only would
+    // fail; watch the OWN property via a probe that installs nothing.
+    expectedKind: 'data',
+    resolveHost: (sc) => {
+      const host = (sc as { settings: Record<string, unknown> }).settings;
+      // The key exists on the settings literal (settings.ts:706).
+      return 'showDialog' in host ? host : {};
+    },
+    reason: '2.2 dialog dispatcher installation point.',
+  },
+  {
+    id: 'settings.confirmActionAsync',
+    member: 'confirmActionAsync',
+    // Core self-installs a FUNCTION default at module eval
+    // (confirm-dialog.ts:61-65) — an assigned function field harvests
+    // as 'method'.
+    expectedKind: 'method',
+    resolveHost: (sc) => (sc as { settings: Record<string, unknown> }).settings,
+    reason:
+      "2.2 — core's self-installed default routes confirms through showDialog (confirm-dialog.ts:61-65).",
+  },
+  {
+    id: 'settings.confirmActionFunc',
+    member: 'confirmActionFunc',
+    expectedKind: 'data',
+    resolveHost: (sc) => (sc as { settings: Record<string, unknown> }).settings,
+    reason: '2.2 — sync consumer hook precedence documented (untouched).',
+  },
   {
     id: 'Base.registerFunctionOnPropertiesValueChanged',
     member: 'registerFunctionOnPropertiesValueChanged',
