@@ -52,6 +52,8 @@ import {
 } from 'react-native';
 import { SurveyThemeContext } from '../theme-rn/provider';
 import { ActionButton } from '../components/ActionButton';
+import { SurveyElementBase } from '../reactivity/SurveyElementBase';
+import type { Base } from '../core/facade';
 import type { OverlayEntry, OverlayStack } from './stack';
 import type { OverlayPayload } from './popup-bridge';
 import {
@@ -61,6 +63,38 @@ import {
 
 export interface OverlayHostProps {
   stack: OverlayStack<OverlayPayload>;
+}
+
+type FooterAction = React.ComponentProps<typeof ActionButton>['action'];
+
+interface OverlayFooterButtonProps {
+  action: FooterAction;
+}
+
+/** Footer button with its own Action subscription: upstream mutates
+ * innerCss post-hoc (confirm-dialog.ts:52 marks destructive buttons
+ * 'sd-btn--danger') and the variant must follow without a host
+ * re-render (2.2 D4). */
+class OverlayFooterButton extends SurveyElementBase<OverlayFooterButtonProps> {
+  protected getStateElement(): Base | null {
+    return this.props.action as unknown as Base;
+  }
+
+  protected renderElement(): React.JSX.Element {
+    const action = this.props.action;
+    const innerCss = (action as { innerCss?: string }).innerCss;
+    return (
+      <ActionButton
+        action={action}
+        variant={
+          typeof innerCss === 'string' && innerCss.includes('sd-btn--danger')
+            ? 'danger'
+            : undefined
+        }
+        testID={`overlay-action-${action.id}`}
+      />
+    );
+  }
 }
 
 /** Built-in presenter: no animation dependency in v1 — show/dismiss ack
@@ -173,16 +207,11 @@ function DefaultPresenter(props: OverlayPresenterProps): React.JSX.Element {
           ) : (
             <View style={fragments.footer}>
               {payload.footerActions.container.actions.map((action) => (
-                <ActionButton
+                <OverlayFooterButton
                   key={action.id}
                   // ActionContainer.setItems wraps into Action at runtime;
                   // its typings surface the BaseAction ancestor.
-                  action={
-                    action as React.ComponentProps<
-                      typeof ActionButton
-                    >['action']
-                  }
-                  testID={`overlay-action-${action.id}`}
+                  action={action as FooterAction}
                 />
               ))}
             </View>

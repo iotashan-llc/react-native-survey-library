@@ -724,3 +724,33 @@ Each item's `editor` renders through the same `TextQuestion` used for
 standalone text questions, so every task-1.9/1.10 difference
 (draft/commit `textUpdateMode`, inputType keyboard mapping, mask
 behavior) applies unchanged inside multipletext cells.
+
+## Confirmation dialogs / `settings.showDialog` (task 2.2)
+
+### The adapter owns `settings.showDialog` while a Survey is mounted
+
+Core's default `confirmActionAsync` routes delete confirmations
+(paneldynamic, matrixdynamic, file) through `settings.showDialog`
+(confirm-dialog.ts) — in RN the renderer installs a dispatcher there on
+the first `<Survey>` mount and presents dialogs through the
+last-mounted Survey's overlay (web renders into `rootElement`). A
+consumer `settings.showDialog` set BEFORE the first mount is displaced
+while Surveys are mounted and restored on the last unmount
+(`dialog-adapter-displaced-show-dialog` diagnostic); opt out entirely
+with `setDialogAdapterEnabled(false)` (pre-mount only). Consumer
+`confirmActionFunc` / `confirmActionAsync` hooks keep their upstream
+precedence untouched.
+
+### `showDialog` returns a compatibility handle, not a `PopupBaseViewModel`
+
+Only `footerToolbar` (the real footer ActionContainer — post-hoc
+title/innerCss mutations re-render), `width` (stored-only, no visual
+effect in v1), and `popupModel` (`null` when no Survey is mounted) are
+provided. Coordinate positioning options (`verticalPosition`,
+`horizontalPosition`, `showPointer`, `setWidthByTarget`,
+`positionMode`, `canShrink`), DOM callbacks (`getTargetCallback`,
+`getAreaCallback`, `onBlur`), and `rootElement`/`cssClass` containment
+are ignored. Consumer `onShow` fires on a microtask AFTER presentation
+(web fires it during the show transition). With NO Survey mounted, a
+dialog call resolves its `onCancel` immediately (fail-safe — never
+auto-confirm a destructive action) and reports `dialog-no-host`.

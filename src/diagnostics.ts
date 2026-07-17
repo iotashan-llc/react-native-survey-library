@@ -278,9 +278,33 @@ export interface ImageContentModeUnsupportedPayload {
   contentMode: string;
 }
 
+/** 2.2 dialog adapter — a consumer `settings.showDialog` was displaced
+ * while Surveys are mounted (restored on last unmount; design
+ * 2.2-dialog-adapter D2). */
+export interface DialogAdapterDisplacedPayload {
+  code: 'dialog-adapter-displaced-show-dialog';
+}
+
+/** 2.2 dialog adapter — `setDialogAdapterEnabled` called while dialog
+ * hosts are live (pre-mount configuration only; the call no-ops). */
+export interface DialogAdapterEnableWhileMountedPayload {
+  code: 'dialog-adapter-enable-while-mounted';
+  requested: boolean;
+}
+
+/** 2.2 dialog adapter — a core dialog arrived with no mounted Survey
+ * host; resolved as cancel (fail-safe, design 2.2-dialog-adapter D3). */
+export interface DialogNoHostPayload {
+  code: 'dialog-no-host';
+  componentName?: string;
+}
+
 export type DiagnosticPayload =
   | UnsupportedQuestionTypePayload
   | CustomWidgetIgnoredPayload
+  | DialogAdapterDisplacedPayload
+  | DialogAdapterEnableWhileMountedPayload
+  | DialogNoHostPayload
   | UnknownCssTokenPayload
   | ThemeDiagnosticPayload
   | SanitizedHtmlDiagnosticPayload

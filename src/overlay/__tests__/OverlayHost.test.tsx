@@ -5,7 +5,7 @@
  * onDidDismiss) is injectable via OverlayPresenterContext.
  */
 import * as React from 'react';
-import { Modal } from 'react-native';
+import { Modal, StyleSheet } from 'react-native';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { PopupModel } from '../../core/facade';
 import '../../factories/register-all';
@@ -385,5 +385,38 @@ describe('OverlayHost — real sv-list lazy re-arm across reopen (verification m
     });
     fireEvent(screen.getByTestId('sv-list-flatlist'), 'endReached');
     expect(observed).toEqual([true, true]);
+  });
+
+  it("a footer action carrying 'sd-btn--danger' innerCss renders the danger variant", () => {
+    const stack = createOverlayStack<OverlayPayload>();
+    const popup = new PopupModel(
+      'sv-string-viewer',
+      { model: null },
+      {
+        isModal: true,
+      }
+    );
+    registerPopup(popup, stack);
+    render(<OverlayHost stack={stack} />);
+    act(() => {
+      popup.show();
+    });
+    const apply = stack
+      .entries()[0]!
+      .payload.footerActions.getActionById('apply')! as unknown as {
+      innerCss: string;
+    };
+    act(() => {
+      apply.innerCss = 'sd-btn--danger';
+    });
+    const button = screen.getByTestId('overlay-action-apply');
+    const dangerStyle = StyleSheet.flatten(button.props.style);
+    // The danger recipe paints the destructive background (red-family),
+    // distinct from the default variant.
+    const other = StyleSheet.flatten(
+      screen.getByTestId('overlay-action-cancel').props.style
+    );
+    expect(dangerStyle.backgroundColor).toBeTruthy();
+    expect(dangerStyle.backgroundColor).not.toBe(other.backgroundColor);
   });
 });

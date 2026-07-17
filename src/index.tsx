@@ -34,6 +34,9 @@ export type {
   LifecycleDiagnosticPayload,
   SurveyRootDiagnosticPayload,
   SurveyJsonBlockedUrlPayload,
+  DialogAdapterDisplacedPayload,
+  DialogAdapterEnableWhileMountedPayload,
+  DialogNoHostPayload,
 } from './diagnostics';
 
 // The <Survey> root (design: docs/design/1.1-survey-root.md; A11, A12) —
@@ -101,6 +104,9 @@ export { TextQuestion } from './questions/TextQuestion';
 // injection point; stack/bridge internals stay library-side until the
 // consumer API stabilizes with 2.3.
 export { OverlayPresenterContext } from './overlay/OverlayPresenterContext';
+// dialog adapter (task 2.2): consumer-facing enablement switch; the
+// dispatcher itself installs/restores with Survey mounts.
+export { setDialogAdapterEnabled } from './overlay/dialog-adapter';
 export type {
   OverlayPresenter,
   OverlayPresenterProps,
