@@ -202,22 +202,93 @@ describe('DropdownQuestion — "Other (describe)" comment (major #2)', () => {
 });
 
 describe('DropdownQuestion — a11y mirrors the input aria surface (major #4)', () => {
-  it('uses core combobox role (default searchEnabled), the question label, and a localized clear caption — not a hardcoded button role', async () => {
+  it('uses core combobox role, the question label, the VM clear caption, and reflects LIVE expansion (string ariaExpanded)', async () => {
     const { question } = createDropdown({ title: 'Fruit', allowClear: true });
     question.value = 'apple';
     render(<DropdownQuestion question={question} creator={{}} />);
     await flush();
     const control = screen.getByTestId('sv-dropdown-control');
-    // The substantive fix: core's INPUT aria role (combobox under the
-    // default searchEnabled), not the previous hardcoded 'button'.
+    // core's INPUT aria role (combobox under the default searchEnabled),
+    // not the previous hardcoded 'button'.
     expect(control.props.accessibilityRole).toBe('combobox');
     expect(control.props.accessibilityLabel).toBe('Fruit');
-    // Closed state reads the input aria surface (not the question surface).
+    // ariaExpanded is a STRING ('true'|'false') — the r1 fix compared it
+    // to boolean true (always false). Closed reads false, open true.
     expect(control.props.accessibilityState?.expanded).toBe(false);
-    // Clear affordance is labeled, not an unlabeled ✕ glyph.
+    // Clear caption comes from the VM (localizable), not a hardcoded label.
     const clear = screen.getByTestId('sv-dropdown-clear');
-    expect(typeof clear.props.accessibilityLabel).toBe('string');
-    expect(clear.props.accessibilityLabel.length).toBeGreaterThan(0);
+    const vm = (
+      question as unknown as { dropdownListModel: { clearCaption: string } }
+    ).dropdownListModel;
+    expect(clear.props.accessibilityLabel).toBe(vm.clearCaption);
+    // Live open transition now re-renders the collapsed control's state.
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('sv-dropdown-control'));
+      await Promise.resolve();
+    });
+    expect(
+      screen.getByTestId('sv-dropdown-control').props.accessibilityState
+        ?.expanded
+    ).toBe(true);
+  });
+});
+
+describe('DropdownQuestion — unmatched persisted value (r2 #1)', () => {
+  it('select-mode fallback does NOT crash on a value absent from choices (no selectedItemLocText)', async () => {
+    const { question } = createDropdown({ renderAs: 'select' });
+    // A value not among the choices — core leaves selectedItemLocText
+    // undefined; renderSelectedText must fall back to the raw value
+    // string instead of passing undefined to renderLocString (crash).
+    question.value = 'ZZZ-not-a-choice';
+    expect(() => {
+      render(<DropdownQuestion question={question} creator={{}} />);
+    }).not.toThrow();
+    await flush();
+    expect(screen.getByTestId('sv-dropdown-select-fallback')).toBeTruthy();
+    expect(screen.getByText('ZZZ-not-a-choice')).toBeTruthy();
+  });
+});
+
+describe('DropdownQuestion — Other adapter reconciles by question identity (r2 #2)', () => {
+  it('after a question prop swap, typing writes the NEW question, never the old one', async () => {
+    const a = createDropdown({ showOtherItem: true }).question;
+    const b = createDropdown({ showOtherItem: true }).question;
+    a.value = 'other';
+    b.value = 'other';
+    const view = render(<DropdownQuestion question={a} creator={{}} />);
+    await flush();
+    view.rerender(<DropdownQuestion question={b} creator={{}} />);
+    await flush();
+    const input = screen.getByTestId('sv-dropdown-other');
+    fireEvent.changeText(input, 'for-b');
+    fireEvent(input, 'blur');
+    expect(b.comment).toBe('for-b');
+    expect(a.comment).toBeFalsy();
+  });
+});
+
+describe('DropdownQuestion — deferred diagnostics dedupe (r2 #6)', () => {
+  it('reports the custom-component miss once across ordinary re-renders (commit phase, not render)', async () => {
+    const codes: string[] = [];
+    setDiagnosticHandler((p: DiagnosticPayload) => codes.push(p.code));
+    try {
+      const { question } = createDropdown({ itemComponent: 'no-such-rn-item' });
+      question.value = 'apple';
+      render(<DropdownQuestion question={question} creator={{}} />);
+      await flush();
+      act(() => {
+        question.value = 'banana';
+      });
+      act(() => {
+        (question as unknown as { allowClear: boolean }).allowClear = true;
+      });
+      await flush();
+      expect(
+        codes.filter((c) => c === 'dropdown-input-component-missing')
+      ).toHaveLength(1);
+    } finally {
+      setDiagnosticHandler(undefined);
+    }
   });
 });
 

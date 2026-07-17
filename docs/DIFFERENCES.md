@@ -804,17 +804,17 @@ question-level feature). The RN dropdown therefore hosts its own comment
 (see the checkbox/radiogroup section). Web renders the same comment as a
 sibling input; the value-level outcome is identical.
 
-### a11y mirrors core's INPUT aria surface, with a caveat on live expansion
+### a11y mirrors core's INPUT aria surface
 
-The collapsed control carries core's **input** aria role
-(`vm.ariaInputRole` — `combobox` under the default `searchEnabled`, not
-a hardcoded `button`), the question label, and a labeled clear
-affordance (not a bare `✕` glyph). Web reads the same input aria surface
-on its inner input element. One caveat: the `expanded` state on the
-collapsed control reflects `ariaExpanded` at render time; because the
-overlay **sheet** (not the collapsed control) receives accessibility
-focus when the list opens, screen readers announce the open list rather
-than a live expansion toggle on the control itself.
+The control carries core's **input** aria role
+(`vm.ariaInputRole ?? vm.ariaQuestionRole` — `combobox` under the
+default `searchEnabled`, not a hardcoded `button`), the question label,
+core's localized clear caption (`vm.clearCaption`, not a bare `✕`
+glyph), and a live `expanded` state driven by `vm.ariaExpanded` (which
+core re-emits on open/close). Web reads the same input aria surface on
+its inner input element. (Note for maintainers: `ariaExpanded` is a
+string `'true'`/`'false'`, so it is compared to `'true'`, not to a
+boolean.)
 
 ### Custom item component: an unregistered name falls back to value text
 

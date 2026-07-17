@@ -144,27 +144,6 @@ function DefaultPresenter(props: OverlayPresenterProps): React.JSX.Element {
     if (dismissing) onDidDismiss();
   }, [dismissing, onDidDismiss]);
 
-  // 2.3 opener-focus restoration (D8 seam): when this entry unmounts
-  // after a GENUINE dismissal, hand a11y focus back to the opener
-  // control. Gated on an actual dismiss (not bare effect cleanup): React
-  // StrictMode runs setup→cleanup→setup on mount, and a show-during-
-  // dismiss swap unmounts a still-active generation — neither must steal
-  // focus from the live Modal (PR #29 review, major #5). The ref latches
-  // when this specific entry enters its dismissing phase.
-  const openerHandle = payload.openerHandle;
-  const dismissedRef = React.useRef(false);
-  React.useEffect(() => {
-    if (dismissing) dismissedRef.current = true;
-  }, [dismissing]);
-  React.useEffect(() => {
-    if (!openerHandle) return undefined;
-    return () => {
-      if (!dismissedRef.current) return;
-      const handle = openerHandle();
-      if (handle != null) AccessibilityInfo.setAccessibilityFocus(handle);
-    };
-  }, [openerHandle]);
-
   const isSheet = payload.shape === 'sheet';
   return (
     <Pressable
@@ -259,6 +238,31 @@ export function OverlayHost(props: OverlayHostProps): React.JSX.Element {
 
   const entries = stack.entries();
   const active = stack.activeEntry();
+
+  // 2.3 opener-focus restoration (D8 seam) — HOST-level, not per-entry:
+  // hand a11y focus back to the opener only when the overlay stack
+  // FULLY empties. Deciding this at the host (not in an unmounting
+  // entry's effect cleanup) is what makes it immune to the races a
+  // per-entry latch couldn't distinguish: React StrictMode's
+  // setup→cleanup→setup on mount (the stack is never empty), and a
+  // hide→show reselect where the old generation dismisses while a new
+  // one is already active (the stack never reaches empty between them,
+  // so focus is never stolen from the live Modal) — PR #29 review r1
+  // #5, r2 #5. We remember the live opener while the overlay is open and
+  // fire it on the non-empty→empty transition.
+  const openerToRestore = React.useRef<(() => number | null) | null>(null);
+  if (active?.payload.openerHandle) {
+    openerToRestore.current = active.payload.openerHandle;
+  }
+  const stackEmpty = entries.length === 0;
+  React.useEffect(() => {
+    if (!stackEmpty) return;
+    const opener = openerToRestore.current;
+    openerToRestore.current = null;
+    if (!opener) return;
+    const handle = opener();
+    if (handle != null) AccessibilityInfo.setAccessibilityFocus(handle);
+  }, [stackEmpty]);
   // Back/escape target ONLY a genuinely active entry — while a dismissal
   // ack is pending the (suspended) ancestor must not be cancellable.
   const trulyActive = active && active.state === 'active' ? active : null;

@@ -9,29 +9,43 @@
  *   touch, so the RN control renders VALUE TEXT — component dispatch
  *   (`showInputFieldComponent`), `selectedItemLocText`,
  *   `inputStringRendered`, then placeholder (plan round-2 fold A).
- * - `renderAs: "select"` has NO `dropdownListModel` (core builds the
- *   overlay model only for the default popup rendering) — the control
- *   degrades to a non-interactive value display + a diagnostic rather
- *   than dereferencing the missing model (PR #29 review, major #1).
+ * - Mode is keyed on `question.renderAs`, NOT on VM presence: core
+ *   RETAINS a previously-built `dropdownListModel` after a runtime
+ *   `renderAs = "select"` switch, so `!vm` is not a reliable mode check.
+ *   `"select"` has no native RN analog, so the control degrades to a
+ *   non-interactive value display + a diagnostic (PR #29 review r1 #1,
+ *   r2 #1).
+ * - Value text is rendered defensively: a persisted value ABSENT from
+ *   the current choices has no `selectedItemLocText`, so the renderer
+ *   never passes `undefined` to `renderLocString` — it falls back to the
+ *   raw value string, then the placeholder (PR #29 review r2 #1).
  * - Reactivity: BOTH the question and its `dropdownListModel` are state
- *   elements (question-level props — allowClear, readOnly, placeholder,
- *   isShowingChoiceComment — live on the question; the VM does not
- *   forward them).
+ *   elements; the VM re-emits `ariaExpanded` on open/close, which drives
+ *   the control's live expansion state (PR #29 review r2 #4). The
+ *   popupModel is NOT a state element (shared with the overlay host —
+ *   adding it corrupts the render-guard's cross-observer counters).
  * - Popup bridge is QUESTION-scoped and RECONCILED: mount registers
  *   `dropdownListModel.popupModel` into the OverlayContext stack with
- *   the control as opener (focus restoration); `componentDidUpdate`
- *   reconciles when the (popup, stack) identity changes (question/stack
- *   prop swap); unmount unsubscribes FIRST, then semantically closes,
- *   in a try/finally so teardown always completes (PR #29 review,
- *   major #3).
+ *   the control as opener; `componentDidUpdate` reconciles when the
+ *   (popup, stack) identity changes (question/stack prop swap); unmount
+ *   unsubscribes FIRST, then closes + disposes in NESTED try/finally so
+ *   a throwing `unregister()` cannot skip `adapter.dispose()` (PR #29
+ *   review r1 #3, r2 #3).
  * - "Other (describe)" opens a choice comment (`isShowingChoiceComment`)
  *   that QuestionChrome does NOT render for dropdown; the control hosts
  *   its own comment `TextInput` backed by the shared
- *   `OtherCommentDraftAdapter` (PR #29 review, major #2).
- * - a11y: the collapsed control mirrors core's INPUT aria surface
- *   (`vm.ariaInputRole` — `combobox` under the default `searchEnabled`,
- *   `vm.ariaExpanded` for open state), not the question surface (PR #29
- *   review, major #4).
+ *   `OtherCommentDraftAdapter`, reconciled by QUESTION identity so a
+ *   prop swap never leaves the input bound to the old question (PR #29
+ *   review r1 #2, r2 #2).
+ * - a11y: the control mirrors core's INPUT aria surface
+ *   (`vm.ariaInputRole ?? vm.ariaQuestionRole` — `combobox` under the
+ *   default `searchEnabled`), the question label, `vm.ariaExpanded`
+ *   (a STRING `'true'|'false'`) for open state, and `vm.clearCaption`
+ *   for the localized clear label (PR #29 review r1 #4, r2 #4).
+ * - Diagnostics (select-mode, custom-component-miss) are RECORDED in
+ *   render and FLUSHED from mount/update, deduped per question+key —
+ *   never reported from the render phase (repo React 19 commit-phase
+ *   rule; PR #29 review r2 #6).
  * - Clear: `dropdownListModel.onClear(event)` — core dereferences only
  *   preventDefault/stopPropagation (synthetic no-ops).
  */
@@ -67,23 +81,27 @@ interface DropdownListModelLike {
   placeholderRendered: string;
   inputStringRendered: string;
   getSelectedAction(): unknown;
+  // core's INPUT aria surface (dropdown-base.tsx). ariaExpanded is a
+  // STRING ('true' | 'false'), NOT a boolean.
   ariaInputRole?: AccessibilityRole | string;
-  ariaExpanded?: boolean;
+  ariaQuestionRole?: AccessibilityRole | string;
+  ariaExpanded?: string;
+  clearCaption?: string;
 }
 
 interface DropdownQuestionModelLike extends Question {
   dropdownListModel?: DropdownListModelLike;
+  renderAs: string;
   allowClear: boolean;
   showInputFieldComponent: boolean;
   inputFieldComponentName: string;
   showSelectedItemLocText: boolean;
-  selectedItemLocText: import('../core/facade').LocalizableString;
+  selectedItemLocText?: import('../core/facade').LocalizableString;
   isInputReadOnly: boolean;
   readOnlyText: string;
   isShowingChoiceComment: boolean;
   otherText: string;
   otherPlaceholder: string;
-  clearCaption?: string;
 }
 
 const noopEvent = {
@@ -124,7 +142,13 @@ export class DropdownQuestion extends QuestionElementBase<DropdownQuestionProps>
   private registeredPopup: DropdownListModelLike['popupModel'] | null = null;
   private registeredStack: OverlayStack<OverlayPayload> | null = null;
   private otherAdapter: OtherCommentDraftAdapter | null = null;
-  private selectModeReported = false;
+  private otherAdapterQuestion: Question | null = null;
+
+  // Commit-phase diagnostic buffers (never reported from render).
+  private pendingSelectModeMiss: string | undefined;
+  private lastReportedSelectModeMiss: string | undefined;
+  private pendingComponentMiss: string | undefined;
+  private lastReportedComponentMiss: string | undefined;
 
   private readonly controlRef =
     React.createRef<React.ComponentRef<typeof Pressable>>();
@@ -136,11 +160,9 @@ export class DropdownQuestion extends QuestionElementBase<DropdownQuestionProps>
   protected getStateElements(): Base[] {
     // Question AND view model: allowClear/readOnly/placeholder/
     // isShowingChoiceComment change on the QUESTION; list state AND
-    // ariaExpanded (the VM re-emits it on open/close) change on the VM
-    // (plan fold 4 + PR #29 review major #4). The popupModel is NOT a
-    // state element — it is SHARED with the overlay host/bridge, and
-    // adding it to the render-guard set corrupts the cross-observer
-    // suppression counters. `renderAs:"select"` has no VM.
+    // ariaExpanded (the VM re-emits it on open/close) change on the VM.
+    // Select mode is non-interactive — the VM (if it lingers) is unused.
+    if (this.isSelectMode) return [this.questionBase];
     const model = this.dropdown.dropdownListModel as unknown as
       Base | undefined;
     return model ? [this.questionBase, model] : [this.questionBase];
@@ -150,14 +172,18 @@ export class DropdownQuestion extends QuestionElementBase<DropdownQuestionProps>
     return this.questionBase as unknown as DropdownQuestionModelLike;
   }
 
+  private get isSelectMode(): boolean {
+    return this.dropdown.renderAs === 'select';
+  }
+
   componentDidMount(): void {
     super.componentDidMount();
-    this.reconcileRegistration();
+    this.reconcile();
   }
 
   componentDidUpdate(): void {
     super.componentDidUpdate();
-    this.reconcileRegistration();
+    this.reconcile();
   }
 
   componentWillUnmount(): void {
@@ -167,22 +193,39 @@ export class DropdownQuestion extends QuestionElementBase<DropdownQuestionProps>
     this.registeredStack = null;
     const adapter = this.otherAdapter;
     this.otherAdapter = null;
+    this.otherAdapterQuestion = null;
     try {
       // Unsubscribe the reactive base FIRST so the semantic-close
       // visibility change below can't drive setState during unmount.
       super.componentWillUnmount();
     } finally {
-      reg?.unregister();
-      adapter?.dispose();
+      // NESTED so a throwing unregister() (it deliberately rethrows
+      // consumer onCancel/onHide failures) still disposes the adapter.
+      try {
+        reg?.unregister();
+      } finally {
+        adapter?.dispose();
+      }
     }
+  }
+
+  /** Commit-phase reconciliation: popup bridge identity, Other-adapter
+   * question identity, and deferred diagnostics. */
+  private reconcile(): void {
+    this.reconcileRegistration();
+    this.reconcileOtherAdapter();
+    this.flushDiagnostics();
   }
 
   /** Register/re-register the popup bridge when the (popup, stack)
    * identity changes — a question or OverlayContext prop swap retargets
-   * the reactive base, and the old registration must not linger. */
+   * the reactive base, and the old registration must not linger. Select
+   * mode never registers (no interactive sheet). */
   private reconcileRegistration(): void {
     const stack = this.props.stack ?? null;
-    const popup = this.dropdown.dropdownListModel?.popupModel ?? null;
+    const popup = this.isSelectMode
+      ? null
+      : (this.dropdown.dropdownListModel?.popupModel ?? null);
     if (popup === this.registeredPopup && stack === this.registeredStack) {
       return;
     }
@@ -197,17 +240,77 @@ export class DropdownQuestion extends QuestionElementBase<DropdownQuestionProps>
     }
   }
 
+  /** Dispose an Other-comment adapter bound to a stale question after a
+   * prop swap — otherwise the comment input keeps writing the OLD
+   * question's `otherValue`. */
+  private reconcileOtherAdapter(): void {
+    if (this.otherAdapter && this.otherAdapterQuestion !== this.questionBase) {
+      this.otherAdapter.dispose();
+      this.otherAdapter = null;
+      this.otherAdapterQuestion = null;
+    }
+  }
+
+  private flushDiagnostics(): void {
+    if (
+      this.pendingSelectModeMiss &&
+      this.lastReportedSelectModeMiss !== this.pendingSelectModeMiss
+    ) {
+      this.lastReportedSelectModeMiss = this.pendingSelectModeMiss;
+      reportDiagnostic({
+        code: 'dropdown-select-mode-unsupported',
+        questionName: this.pendingSelectModeMiss,
+      });
+    }
+    if (
+      this.pendingComponentMiss &&
+      this.lastReportedComponentMiss !== this.pendingComponentMiss
+    ) {
+      this.lastReportedComponentMiss = this.pendingComponentMiss;
+      reportDiagnostic({
+        code: 'dropdown-input-component-missing',
+        questionName: this.dropdown.name,
+        componentName: this.pendingComponentMiss,
+      });
+    }
+  }
+
   private getOtherAdapter(): OtherCommentDraftAdapter {
-    if (!this.otherAdapter) {
+    if (!this.otherAdapter || this.otherAdapterQuestion !== this.questionBase) {
+      this.otherAdapter?.dispose();
       this.otherAdapter = new OtherCommentDraftAdapter({
         question: this.questionBase,
       });
+      this.otherAdapterQuestion = this.questionBase;
     }
     return this.otherAdapter;
   }
 
-  /** The selected value display. `vm` is guaranteed present by the
-   * caller (select-mode branches earlier). */
+  /** Selected-value text, defensive against an unmatched persisted value
+   * (no `selectedItemLocText`): loc string → raw value → placeholder. */
+  private renderSelectedText(): React.JSX.Element {
+    const question = this.dropdown;
+    const loc = question.selectedItemLocText;
+    if (loc) {
+      return (
+        <View testID="sv-dropdown-value">
+          {SurveyElementBase.renderLocString(loc, undefined, 'dd-value')}
+        </View>
+      );
+    }
+    const raw = question.isEmpty()
+      ? ''
+      : String((question as { value?: unknown }).value ?? '');
+    if (raw) return <Text testID="sv-dropdown-value">{raw}</Text>;
+    return (
+      <Text testID="sv-dropdown-placeholder">
+        {question.locPlaceholder?.renderedHtml || ''}
+      </Text>
+    );
+  }
+
+  /** The interactive control's selected-value display. `vm` is present
+   * (control mode only). */
   private renderValue(vm: DropdownListModelLike): React.JSX.Element {
     const question = this.dropdown;
     // Render-order fold (plan round-2 A): component → selected locText
@@ -225,34 +328,14 @@ export class DropdownQuestion extends QuestionElementBase<DropdownQuestionProps>
           </View>
         );
       }
-      // Custom component named but unregistered: don't silently show an
-      // empty placeholder — report + fall back to the localized value
-      // text (PR #29 review, minor #6).
-      reportDiagnostic({
-        code: 'dropdown-input-component-missing',
-        questionName: question.name,
-        componentName: question.inputFieldComponentName,
-      });
-      return (
-        <View testID="sv-dropdown-value">
-          {SurveyElementBase.renderLocString(
-            question.selectedItemLocText,
-            undefined,
-            'dd-value'
-          )}
-        </View>
-      );
+      // Custom component named but unregistered: record for a deferred
+      // diagnostic + fall back to the localized value text (never an
+      // empty placeholder). Deduped per component name across renders.
+      this.pendingComponentMiss = question.inputFieldComponentName;
+      return this.renderSelectedText();
     }
     if (question.showSelectedItemLocText) {
-      return (
-        <View testID="sv-dropdown-value">
-          {SurveyElementBase.renderLocString(
-            question.selectedItemLocText,
-            undefined,
-            'dd-value'
-          )}
-        </View>
-      );
+      return this.renderSelectedText();
     }
     if (vm.inputStringRendered) {
       return <Text testID="sv-dropdown-value">{vm.inputStringRendered}</Text>;
@@ -262,34 +345,14 @@ export class DropdownQuestion extends QuestionElementBase<DropdownQuestionProps>
     );
   }
 
-  /** `renderAs:"select"` (no overlay VM): non-interactive value display
-   * + one-shot diagnostic — never crash the survey (PR #29 review,
-   * major #1). */
+  /** `renderAs:"select"` (no interactive sheet): non-interactive value
+   * display + a deferred diagnostic — never crash the survey. */
   private renderSelectModeFallback(): React.JSX.Element {
     const question = this.dropdown;
-    if (!this.selectModeReported) {
-      this.selectModeReported = true;
-      reportDiagnostic({
-        code: 'dropdown-select-mode-unsupported',
-        questionName: question.name,
-      });
-    }
-    const text = question.isEmpty()
-      ? question.locPlaceholder?.renderedHtml || ''
-      : undefined;
+    this.pendingSelectModeMiss = question.name;
     return (
       <View style={localStyles.row} testID="sv-dropdown-select-fallback">
-        {text !== undefined ? (
-          <Text testID="sv-dropdown-placeholder">{text}</Text>
-        ) : (
-          <View testID="sv-dropdown-value">
-            {SurveyElementBase.renderLocString(
-              question.selectedItemLocText,
-              undefined,
-              'dd-value'
-            )}
-          </View>
-        )}
+        {this.renderSelectedText()}
       </View>
     );
   }
@@ -312,16 +375,14 @@ export class DropdownQuestion extends QuestionElementBase<DropdownQuestionProps>
     );
   }
 
-  protected renderElement(): React.JSX.Element {
+  private renderControl(vm: DropdownListModelLike): React.JSX.Element {
     const question = this.dropdown;
-    const vm = question.dropdownListModel;
-    if (!vm) return this.renderSelectModeFallback();
-
     const readOnly = question.isInputReadOnly;
     const showClear = question.allowClear && !question.isEmpty() && !readOnly;
     // a11y: mirror core's INPUT aria surface (combobox under the default
-    // searchEnabled), not the question surface (PR #29 review, major #4).
-    const roleCandidate = vm.ariaInputRole;
+    // searchEnabled; falls to the question role when search is disabled/
+    // read-only), not a hardcoded button.
+    const roleCandidate = vm.ariaInputRole ?? vm.ariaQuestionRole;
     const accessibilityRole: AccessibilityRole =
       roleCandidate &&
       KNOWN_ACCESSIBILITY_ROLES.has(roleCandidate as AccessibilityRole)
@@ -330,44 +391,60 @@ export class DropdownQuestion extends QuestionElementBase<DropdownQuestionProps>
     const label =
       question.locTitle?.renderedHtml || question.title || question.name;
     return (
-      <View style={localStyles.container}>
-        <View style={localStyles.row}>
+      <View style={localStyles.row}>
+        <Pressable
+          ref={this.controlRef}
+          testID="sv-dropdown-control"
+          accessibilityRole={accessibilityRole}
+          accessibilityLabel={label}
+          accessibilityState={{
+            disabled: readOnly,
+            // ariaExpanded is a STRING ('true' | 'false').
+            expanded: vm.ariaExpanded === 'true',
+          }}
+          disabled={readOnly}
+          onPress={readOnly ? undefined : () => vm.onClick()}
+          style={localStyles.control}
+        >
+          {readOnly &&
+          !question.showInputFieldComponent &&
+          question.readOnlyText ? (
+            <Text testID="sv-dropdown-readonly">{question.readOnlyText}</Text>
+          ) : (
+            this.renderValue(vm)
+          )}
+          <Text accessibilityElementsHidden style={localStyles.chevron}>
+            {'▾'}
+          </Text>
+        </Pressable>
+        {showClear ? (
           <Pressable
-            ref={this.controlRef}
-            testID="sv-dropdown-control"
-            accessibilityRole={accessibilityRole}
-            accessibilityLabel={label}
-            accessibilityState={{
-              disabled: readOnly,
-              expanded: vm.ariaExpanded === true,
-            }}
-            disabled={readOnly}
-            onPress={readOnly ? undefined : () => vm.onClick()}
-            style={localStyles.control}
+            testID="sv-dropdown-clear"
+            accessibilityRole="button"
+            accessibilityLabel={vm.clearCaption || 'Clear'}
+            onPress={() => vm.onClear(noopEvent)}
+            style={localStyles.clear}
           >
-            {readOnly &&
-            !question.showInputFieldComponent &&
-            question.readOnlyText ? (
-              <Text testID="sv-dropdown-readonly">{question.readOnlyText}</Text>
-            ) : (
-              this.renderValue(vm)
-            )}
-            <Text accessibilityElementsHidden style={localStyles.chevron}>
-              {'▾'}
-            </Text>
+            <Text>✕</Text>
           </Pressable>
-          {showClear ? (
-            <Pressable
-              testID="sv-dropdown-clear"
-              accessibilityRole="button"
-              accessibilityLabel={question.clearCaption || 'Clear'}
-              onPress={() => vm.onClear(noopEvent)}
-              style={localStyles.clear}
-            >
-              <Text>✕</Text>
-            </Pressable>
-          ) : null}
-        </View>
+        ) : null}
+      </View>
+    );
+  }
+
+  protected renderElement(): React.JSX.Element {
+    const question = this.dropdown;
+    const vm = question.dropdownListModel;
+    // Mode is keyed on renderAs (a lingering VM after a runtime switch is
+    // NOT a reliable signal). The Other-comment input renders in BOTH
+    // modes when the "Other" choice is selected.
+    const top =
+      this.isSelectMode || !vm
+        ? this.renderSelectModeFallback()
+        : this.renderControl(vm);
+    return (
+      <View style={localStyles.container}>
+        {top}
         {question.isShowingChoiceComment ? this.renderOtherComment() : null}
       </View>
     );

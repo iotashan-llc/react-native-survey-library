@@ -460,9 +460,42 @@ describe('OverlayHost — opener focus restoration (2.3 seam)', () => {
       act(() => {
         popup.show(); // opens; StrictMode double-invokes effects
       });
-      // The opener-focus cleanup must NOT fire while the popup is merely
-      // shown — only a genuine dismissal hands focus back to the opener.
+      // Focus returns to the opener only when the stack fully empties —
+      // never while a popup is merely shown.
       expect(focusSpy).not.toHaveBeenCalledWith(77);
+    } finally {
+      focusSpy.mockRestore();
+    }
+  });
+
+  it('a hide→show reselect (stack never empties) does NOT steal focus to the opener (PR #29 review r2 #5)', () => {
+    const focusSpy = jest
+      .spyOn(AccessibilityInfo, 'setAccessibilityFocus')
+      .mockImplementation(() => undefined);
+    try {
+      const stack = createOverlayStack<OverlayPayload>();
+      const popupA = new PopupModel('sv-string-viewer', { model: null });
+      const popupB = new PopupModel('sv-string-viewer', { model: null });
+      registerPopup(popupA, stack, { openerHandle: () => 77 });
+      registerPopup(popupB, stack, { openerHandle: () => 88 });
+      render(<OverlayHost stack={stack} />);
+      act(() => {
+        popupA.show();
+      });
+      focusSpy.mockClear();
+      // Reselect: open B before A is gone — the stack never reaches
+      // empty, so the opener must NOT be refocused mid-swap.
+      act(() => {
+        popupB.show();
+        popupA.hide();
+      });
+      expect(focusSpy).not.toHaveBeenCalledWith(77);
+      // Now genuinely close everything → the last opener is restored.
+      focusSpy.mockClear();
+      act(() => {
+        popupB.hide();
+      });
+      expect(focusSpy).toHaveBeenCalledWith(88);
     } finally {
       focusSpy.mockRestore();
     }
