@@ -1228,6 +1228,40 @@ export const API_SURFACE_WATCHLIST: readonly WatchedApiMember[] = [
     },
     reason: '2.3 dropdown view-model binding.',
   })),
+  // Task 2.4 — tagbox bindings (multi-select control + view-model).
+  ...(
+    [
+      ['selectedChoices', 'accessor'],
+      ['isOtherSelected', 'accessor'],
+    ] as const
+  ).map(([member, expectedKind]) => ({
+    id: `QuestionTagboxModel.${member}`,
+    member,
+    expectedKind: expectedKind as MemberKind,
+    resolveHost: (sc: typeof FacadeModule) => {
+      const model = new sc.Model({
+        elements: [{ type: 'tagbox', name: 'probe', choices: ['a'] }],
+      });
+      return model.getQuestionByName('probe');
+    },
+    reason: '2.4 tagbox control binding (chips source + Other gate).',
+  })),
+  {
+    id: 'DropdownMultiSelectListModel.deselectItem',
+    member: 'deselectItem',
+    expectedKind: 'method',
+    resolveHost: (sc) => {
+      const model = new sc.Model({
+        elements: [{ type: 'tagbox', name: 'probe', choices: ['a'] }],
+      });
+      return (
+        model.getQuestionByName('probe') as unknown as {
+          dropdownListModel: unknown;
+        }
+      ).dropdownListModel;
+    },
+    reason: '2.4 tagbox chip removal (core data-shape translation).',
+  },
   // Task 2.2 — dialog adapter seams (settings hooks the dispatcher
   // rides; presence pinned so a core rename breaks loudly).
   {

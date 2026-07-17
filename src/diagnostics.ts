@@ -319,11 +319,22 @@ export interface DropdownInputComponentMissingPayload {
   componentName: string;
 }
 
+/** 2.4 tagbox — a `renderAs: "select"` tagbox has no native RN
+ * multi-`<select>` analog; the control degrades to a non-interactive
+ * chips display + this diagnostic. (Unlike dropdown, core builds the VM
+ * regardless of renderAs, so the mode is keyed on `renderAs`, not VM
+ * presence.) */
+export interface TagboxSelectModeUnsupportedPayload {
+  code: 'tagbox-select-mode-unsupported';
+  questionName: string;
+}
+
 export type DiagnosticPayload =
   | UnsupportedQuestionTypePayload
   | CustomWidgetIgnoredPayload
   | DropdownSelectModeUnsupportedPayload
   | DropdownInputComponentMissingPayload
+  | TagboxSelectModeUnsupportedPayload
   | DialogAdapterDisplacedPayload
   | DialogAdapterEnableWhileMountedPayload
   | DialogNoHostPayload

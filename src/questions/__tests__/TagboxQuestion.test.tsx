@@ -11,6 +11,10 @@ import { TagboxQuestion, TagboxQuestionElement } from '../TagboxQuestion';
 import { OverlayContext } from '../../overlay/OverlayContext';
 import { createOverlayStack } from '../../overlay/stack';
 import type { OverlayPayload } from '../../overlay/popup-bridge';
+import {
+  setDiagnosticHandler,
+  type DiagnosticPayload,
+} from '../../diagnostics';
 
 async function flush(): Promise<void> {
   await act(async () => {
@@ -106,6 +110,94 @@ describe('TagboxQuestion — clear + a11y', () => {
     expect(
       screen.getByTestId('sv-tagbox-control').props.accessibilityState?.expanded
     ).toBe(true);
+  });
+});
+
+// PR #30 review regressions (codex sol@max, revise round 1).
+
+describe('TagboxQuestion — review r1 correctness', () => {
+  it('chip source excludes the synthetic Select-All action (r1 #2): no phantom chip', async () => {
+    const { question } = createTagbox({ showSelectAllItem: true });
+    question.value = ['apple', 'banana', 'cherry', 'date']; // all selected
+    render(<TagboxQuestion question={question} creator={{}} />);
+    await flush();
+    // Exactly one chip per real choice — not a "Select All"/"Deselect all" chip.
+    expect(screen.queryByText('Select All')).toBeNull();
+    expect(screen.queryByText('Deselect all')).toBeNull();
+    expect(screen.getByTestId('sv-tagbox-chip-apple')).toBeTruthy();
+    expect(screen.getByTestId('sv-tagbox-chip-date')).toBeTruthy();
+  });
+
+  it('object-valued choices render + remove correctly (r1 #1/#6)', async () => {
+    const model = new Model({
+      elements: [
+        {
+          type: 'tagbox',
+          name: 'tb',
+          choices: [
+            { value: 'x1', text: 'One' },
+            { value: 'x2', text: 'Two' },
+          ],
+        },
+      ],
+    });
+    const question = model.getQuestionByName('tb')!;
+    question.value = ['x1', 'x2'];
+    render(<TagboxQuestion question={question} creator={{}} />);
+    await flush();
+    expect(screen.getByText('One')).toBeTruthy();
+    fireEvent.press(screen.getByTestId('sv-tagbox-chip-remove-x1'));
+    expect(JSON.parse(JSON.stringify(question.value))).toEqual(['x2']);
+  });
+
+  it('renderAs:"select" is non-interactive (VM exists but is not used) + one-shot diagnostic (r1 #3)', async () => {
+    const codes: string[] = [];
+    setDiagnosticHandler((p: DiagnosticPayload) => codes.push(p.code));
+    try {
+      const { question } = createTagbox({ renderAs: 'select' });
+      question.value = ['apple'];
+      render(<TagboxQuestion question={question} creator={{}} />);
+      await flush();
+      expect(screen.getByTestId('sv-tagbox-select-fallback')).toBeTruthy();
+      expect(screen.queryByTestId('sv-tagbox-control')).toBeNull();
+      expect(screen.getByText('apple')).toBeTruthy();
+      act(() => {
+        question.value = ['banana'];
+      });
+      expect(
+        codes.filter((c) => c === 'tagbox-select-mode-unsupported')
+      ).toHaveLength(1);
+    } finally {
+      setDiagnosticHandler(undefined);
+    }
+  });
+
+  it('"Other (describe)" renders a comment input on other-select (r1 #4)', async () => {
+    const { question } = createTagbox({ showOtherItem: true });
+    render(<TagboxQuestion question={question} creator={{}} />);
+    await flush();
+    expect(screen.queryByTestId('sv-dropdown-other')).toBeNull();
+    act(() => {
+      question.value = ['other'];
+    });
+    const input = screen.getByTestId('sv-dropdown-other');
+    fireEvent.changeText(input, 'my reason');
+    fireEvent(input, 'blur');
+    expect(question.comment).toBe('my reason');
+  });
+
+  it('the combobox opener carries the question label; chip remove is a sibling (r1 #5)', async () => {
+    const { question } = createTagbox({ title: 'Langs' });
+    question.value = ['apple'];
+    render(<TagboxQuestion question={question} creator={{}} />);
+    await flush();
+    expect(
+      screen.getByTestId('sv-tagbox-control').props.accessibilityLabel
+    ).toBe('Langs');
+    // The remove button is its own accessible button (not swallowed).
+    expect(
+      screen.getByTestId('sv-tagbox-chip-remove-apple').props.accessibilityRole
+    ).toBe('button');
   });
 });
 

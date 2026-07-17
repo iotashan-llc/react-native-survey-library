@@ -131,7 +131,7 @@ const reportedDropdownDiagnostics = new WeakMap<Question, Set<string>>();
  * native draft carried from the previous question (PR #29 review r3
  * #2/#3, r4 #2).
  */
-function DropdownOtherComment(props: {
+export function DropdownOtherComment(props: {
   question: Question;
 }): React.JSX.Element {
   const { question } = props;

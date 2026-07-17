@@ -39,6 +39,7 @@ export type {
   DialogNoHostPayload,
   DropdownSelectModeUnsupportedPayload,
   DropdownInputComponentMissingPayload,
+  TagboxSelectModeUnsupportedPayload,
 } from './diagnostics';
 
 // The <Survey> root (design: docs/design/1.1-survey-root.md; A11, A12) —
