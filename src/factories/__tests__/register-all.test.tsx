@@ -196,6 +196,7 @@ describe('registerAll (module side effect)', () => {
     expect(RNElementFactory.getAllTypes()).toEqual([
       'panel',
       'survey-header',
+      'sv-list',
       'sv-logo-image',
       'sv-page',
       'sv-rating-item',

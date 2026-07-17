@@ -54,6 +54,7 @@ import {
 import { TextQuestion } from '../questions/TextQuestion';
 import { ImageQuestion } from '../questions/ImageQuestion';
 import { ButtonGroupQuestion } from '../questions/ButtonGroupQuestion';
+import { ListPicker } from '../overlay/ListPicker';
 
 export type DescriptorRoute = 'template' | 'renderer' | 'element';
 
@@ -206,6 +207,16 @@ export const DESCRIPTOR_TABLE: readonly Descriptor[] = [
     route: 'template',
     component: () => RatingQuestion,
     milestone: 'M1',
+  },
+  // Task 2.1 — overlay list picker (upstream registry name "sv-list";
+  // PopupModel contentComponentName dispatch).
+  {
+    status: 'supported',
+    questionType: 'sv-list',
+    dispatchKey: 'sv-list',
+    route: 'element',
+    component: () => ListPicker,
+    milestone: 'M2',
   },
   // Task 2.9 — buttongroup question.
   {

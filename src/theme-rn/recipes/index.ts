@@ -28,6 +28,7 @@ import { buildHeaderRecipe, type HeaderRecipe } from './header';
 import { buildRowRecipe, type RowRecipe } from './row';
 import { buildButtonGroupRecipe, type ButtonGroupRecipe } from './buttonGroup';
 import { buildOverlayRecipe, type OverlayRecipe } from './overlay';
+import { buildListItemRecipe, type ListItemRecipe } from './listItem';
 
 export interface Recipes {
   item: ItemRecipe;
@@ -49,6 +50,8 @@ export interface Recipes {
   buttonGroup: ButtonGroupRecipe;
   /** Overlay host: backdrop/sheet/dialog/title/footer (task 2.1). */
   overlay: OverlayRecipe;
+  /** List-picker rows/search/empty (task 2.1). */
+  listItem: ListItemRecipe;
 }
 
 export function buildRecipes(
@@ -68,6 +71,7 @@ export function buildRecipes(
     row: buildRowRecipe(resolved, buildCtx),
     buttonGroup: buildButtonGroupRecipe(resolved, buildCtx),
     overlay: buildOverlayRecipe(resolved, buildCtx),
+    listItem: buildListItemRecipe(resolved, buildCtx),
   };
 }
 
@@ -84,3 +88,4 @@ export * from './rating';
 export * from './row';
 export * from './buttonGroup';
 export * from './overlay';
+export * from './listItem';
