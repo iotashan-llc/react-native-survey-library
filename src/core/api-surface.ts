@@ -1049,6 +1049,74 @@ export const API_SURFACE_WATCHLIST: readonly WatchedApiMember[] = [
     reason:
       "Rating radiogroup row's accessibilityLabel source (review round 1; falls back to processedTitle).",
   },
+  // Task 2.1 — overlay host bindings (PopupModel / ListModel / Action /
+  // ActionContainer members the bridge, host, and picker consume).
+  ...(
+    [
+      ['isVisible', 'accessor'],
+      ['onVisibilityChanged', 'data'],
+      ['hide', 'method'],
+      ['show', 'method'],
+      ['onHiding', 'method'],
+      ['onShow', 'method'],
+      ['onHide', 'method'],
+      ['onCancel', 'method'],
+      ['onApply', 'method'],
+      ['updateFooterActions', 'method'],
+      ['onFooterActionsCreated', 'data'],
+      ['contentComponentName', 'accessor'],
+      ['contentComponentData', 'accessor'],
+      ['isModal', 'accessor'],
+      ['title', 'accessor'],
+    ] as const
+  ).map(([member, expectedKind]) => ({
+    id: `PopupModel.${member}`,
+    member,
+    expectedKind: expectedKind as MemberKind,
+    // Probe instance for the same reason as ListModel below.
+    resolveHost: (sc: typeof FacadeModule) => new sc.PopupModel('probe', {}),
+    reason: '2.1 overlay bridge/host binding.',
+  })),
+  ...(
+    [
+      ['isItemVisible', 'method'],
+      ['onItemClick', 'method'],
+      ['isItemDisabled', 'method'],
+      ['isItemSelected', 'method'],
+      ['isItemFocused', 'method'],
+      ['showFilter', 'accessor'],
+      ['filterString', 'accessor'],
+      ['filterStringPlaceholder', 'accessor'],
+      ['showSearchClearButton', 'accessor'],
+      ['listRole', 'accessor'],
+      ['listItemRole', 'accessor'],
+      ['getA11yItemAriaSelected', 'method'],
+      ['getA11yItemAriaChecked', 'method'],
+      ['refresh', 'method'],
+      ['emptyMessage', 'accessor'],
+      ['itemComponent', 'accessor'],
+      ['isAllDataLoaded', 'accessor'],
+      ['setSearchEnabled', 'method'],
+    ] as const
+  ).map(([member, expectedKind]) => ({
+    id: `ListModel.${member}`,
+    member,
+    expectedKind: expectedKind as MemberKind,
+    // A probe INSTANCE: several bindings are instance arrow-function
+    // fields; the descriptor walk still reaches prototype members
+    // through the instance's chain.
+    resolveHost: (sc: typeof FacadeModule) =>
+      new sc.ListModel({ items: [] } as never),
+    reason: '2.1 list-picker binding.',
+  })),
+  {
+    id: 'ActionContainer.setItems',
+    member: 'setItems',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.ActionContainer.prototype,
+    reason:
+      '2.1 footer construction (raw -> updateFooterActions -> setItems, D5 order).',
+  },
   // Task 2.1 — device-mode adapter seam (facade applies _setIsTouch(true)).
   {
     id: '_setIsTouch',

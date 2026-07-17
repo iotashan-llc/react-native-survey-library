@@ -22,7 +22,7 @@
  * (typed surface only; DIFFERENCES.md).
  */
 import * as React from 'react';
-import { ScrollView, View } from 'react-native';
+import { Dimensions, ScrollView, View } from 'react-native';
 import type {
   LayoutChangeEvent,
   NativeScrollEvent,
@@ -58,6 +58,11 @@ import { SurveyHeader } from '../components/SurveyHeader';
 import { SurveyProgressBar } from '../components/SurveyProgressBar';
 import { SurveyNavigation } from '../components/SurveyNavigation';
 import { SurveyStateFrame } from '../components/SurveyStateFrame';
+import { createOverlayStack } from '../overlay/stack';
+import type { OverlayStack } from '../overlay/stack';
+import type { OverlayPayload } from '../overlay/popup-bridge';
+import { OverlayContext } from '../overlay/OverlayContext';
+import { OverlayHost } from '../overlay/OverlayHost';
 
 /**
  * The shell's `ISurveyCreator` stand-in, threaded through page → row →
@@ -164,6 +169,33 @@ class SurveyRoot extends SurveyElementBase<SurveyRootProps> {
     return this.props.survey;
   }
 
+  /** Per-root overlay stack (design 2.1 D2) — provided to descendants
+   * via OverlayContext; the host renders after the ScrollView. */
+  private readonly overlayStack: OverlayStack<OverlayPayload> =
+    createOverlayStack<OverlayPayload>();
+
+  /** 2.1 D3 device adapter — fill-if-untouched (see componentDidMount). */
+  private readonly handleOpenDropdownMenu = (
+    _sender: unknown,
+    options: {
+      deviceType?: string;
+      screenWidth?: number;
+      screenHeight?: number;
+    }
+  ): void => {
+    if (!options.screenWidth || !options.screenHeight) {
+      const window = Dimensions.get('window');
+      if (!options.screenWidth) options.screenWidth = window.width;
+      if (!options.screenHeight) options.screenHeight = window.height;
+      // Dims were missing, so core derived deviceType blind — refine it
+      // from the real window (same tablet heuristic shape as upstream's
+      // calculateIsTablet: smaller dimension at/above the breakpoint).
+      const isTablet =
+        Math.min(options.screenWidth, options.screenHeight) >= 600;
+      options.deviceType = isTablet ? 'tablet' : 'mobile';
+    }
+  };
+
   /** Bridge consult -> `onScrollToElement` prop (design note, "Bridge
    * wiring"). Stable identity: installed once per model; reads the
    * LATEST prop so handler swaps never reinstall the bridge. Returning
@@ -197,6 +229,12 @@ class SurveyRoot extends SurveyElementBase<SurveyRootProps> {
     // setSurveyEvents) — covers state/page transitions the property
     // subscription may not surface.
     survey.renderCallback = () => this.forceUpdate();
+    // 2.1 device adapter (design D3): fill-if-untouched — core computed
+    // the dropdown-menu options with no DOM window, so only MISSING
+    // fields are filled from RN Dimensions; consumer listeners (any
+    // registration order) are never clobbered. Identity unsubscribe in
+    // detachFromModel.
+    survey.onOpenDropdownMenu.add(this.handleOpenDropdownMenu);
     this.callAfterRenderPage();
   }
 
@@ -266,6 +304,7 @@ class SurveyRoot extends SurveyElementBase<SurveyRootProps> {
     if (this.detached) return;
     this.detached = true;
     const survey = this.props.survey;
+    survey.onOpenDropdownMenu.remove(this.handleOpenDropdownMenu);
     wireModelEventProps(survey, this.wiredEventProps, {});
     this.wiredEventProps = {};
     survey.renderCallback = undefined as unknown as () => void;
@@ -373,36 +412,39 @@ class SurveyRoot extends SurveyElementBase<SurveyRootProps> {
     const presentingPages = state === 'running' || state === 'starting';
     return (
       <LifecycleContext.Provider value={this.lifecycleValue}>
-        {/* The OUTER root stays unconstrained — it is the layout probe
+        <OverlayContext.Provider value={this.overlayStack}>
+          {/* The OUTER root stays unconstrained — it is the layout probe
             (narrow breakpoint + the width evaluator's percent base). The
             constraint applies to the INNER body only, so a calc()-form
             renderedWidth never feeds its own result back into the base
             (review round 2: 1000dp parent + calc(100% - 40px) must stay
             960, not shrink 960→920→880 across layouts). */}
-        <View testID="survey-root" onLayout={this.handleRootLayout}>
-          <View testID="survey-body" style={this.resolveRootWidthStyle()}>
-            <ScrollView
-              ref={this.scrollRef}
-              testID="survey-scroll"
-              onScroll={this.handleScroll}
-              onLayout={this.handleScrollLayout}
-              scrollEventThrottle={16}
-            >
-              {/* Shell assembly (task 1.17): header always (its own
+          <View testID="survey-root" onLayout={this.handleRootLayout}>
+            <View testID="survey-body" style={this.resolveRootWidthStyle()}>
+              <ScrollView
+                ref={this.scrollRef}
+                testID="survey-scroll"
+                onScroll={this.handleScroll}
+                onLayout={this.handleScrollLayout}
+                scrollEventThrottle={16}
+              >
+                {/* Shell assembly (task 1.17): header always (its own
                   renderedHasHeader gate applies); progress + nav only
                   while pages present; the state frame owns completed/
                   completedBefore/loading/empty. */}
-              <SurveyHeader survey={survey} />
-              {presentingPages ? <SurveyProgressBar survey={survey} /> : null}
-              {presentingPages ? (
-                this.renderActivePage()
-              ) : (
-                <SurveyStateFrame survey={survey} />
-              )}
-              {presentingPages ? <SurveyNavigation survey={survey} /> : null}
-            </ScrollView>
+                <SurveyHeader survey={survey} />
+                {presentingPages ? <SurveyProgressBar survey={survey} /> : null}
+                {presentingPages ? (
+                  this.renderActivePage()
+                ) : (
+                  <SurveyStateFrame survey={survey} />
+                )}
+                {presentingPages ? <SurveyNavigation survey={survey} /> : null}
+              </ScrollView>
+            </View>
+            <OverlayHost stack={this.overlayStack} />
           </View>
-        </View>
+        </OverlayContext.Provider>
       </LifecycleContext.Provider>
     );
   }
