@@ -126,7 +126,10 @@ export class TagboxQuestion extends QuestionElementBase<TagboxQuestionProps> {
   }
 
   protected getStateElements(): Base[] {
-    if (this.isSelectMode) return [this.questionBase];
+    // Keep the VM as a state element in BOTH modes: core emits placeholder
+    // changes only through the model, so a select-mode fallback would go
+    // stale without it (PR #30 review r2 #2). Select mode only suppresses
+    // overlay registration + interaction, not reactivity.
     const model = this.tagbox.dropdownListModel as unknown as Base | undefined;
     return model ? [this.questionBase, model] : [this.questionBase];
   }
@@ -203,68 +206,83 @@ export class TagboxQuestion extends QuestionElementBase<TagboxQuestionProps> {
     this.tagbox.dropdownListModel?.deselectItem(value);
   }
 
-  /** Chips from the PUBLIC selectedChoices (excludes Select-All). */
-  private renderChips(): React.JSX.Element[] {
+  /** Chips for the current selection. From the PUBLIC selectedChoices
+   * (excludes Select-All). A non-empty value NOT represented by
+   * selectedChoices (unmatched persisted value under keepIncorrectValues)
+   * falls back to raw-value chips so stored data is never hidden (PR #30
+   * review r2 #3). `interactive` adds the removable ✕. */
+  private renderChips(interactive: boolean): React.JSX.Element[] {
     const question = this.tagbox;
-    const readOnly = question.isInputReadOnly;
-    return question.selectedChoices.map((choice) => (
+    const removable = interactive && !question.isInputReadOnly;
+    const choices = question.selectedChoices;
+    if (choices.length > 0) {
+      return choices.map((choice) =>
+        this.renderChip(
+          String(choice.renderedId),
+          choice.value,
+          choice.text,
+          removable
+        )
+      );
+    }
+    // Non-empty but unmatched (isEmpty() is false yet no choice matches):
+    // render the raw values so the answer is visible/removable.
+    const raw = (this.questionBase as { value?: unknown }).value;
+    const values = Array.isArray(raw) ? raw : [];
+    return values.map((v, i) =>
+      this.renderChip(`raw-${i}-${String(v)}`, v, String(v), removable)
+    );
+  }
+
+  private renderChip(
+    key: string,
+    value: unknown,
+    text: string,
+    removable: boolean
+  ): React.JSX.Element {
+    return (
       <View
-        key={String(choice.renderedId)}
-        testID={`sv-tagbox-chip-${String(choice.value)}`}
+        key={key}
+        testID={`sv-tagbox-chip-${String(value)}`}
         style={localStyles.chip}
       >
-        <Text style={localStyles.chipText}>{choice.text}</Text>
-        {readOnly ? null : (
+        <Text style={localStyles.chipText}>{text}</Text>
+        {removable ? (
           <Pressable
-            testID={`sv-tagbox-chip-remove-${String(choice.value)}`}
+            testID={`sv-tagbox-chip-remove-${String(value)}`}
             accessibilityRole="button"
-            accessibilityLabel={`Remove ${choice.text}`}
-            onPress={() => this.removeValue(choice.value)}
+            accessibilityLabel={`Remove ${text}`}
+            onPress={() => this.removeValue(value)}
             style={localStyles.chipRemove}
           >
             <Text>✕</Text>
           </Pressable>
-        )}
+        ) : null}
       </View>
-    ));
+    );
   }
 
   /** `renderAs:"select"` (no native multi-select): non-interactive chips
-   * display (read-only) + a deferred one-shot diagnostic. */
-  private renderSelectMode(): React.JSX.Element {
+   * display + a deferred one-shot diagnostic. Placeholder only when the
+   * value is genuinely empty (PR #30 review r2 #3). */
+  private renderSelectTop(): React.JSX.Element {
     this.pendingSelectMiss = true;
     const question = this.tagbox;
-    const chips = question.selectedChoices;
     return (
       <View testID="sv-tagbox-select-fallback" style={localStyles.chipsRow}>
-        {chips.length === 0 ? (
+        {question.isEmpty() ? (
           <Text testID="sv-tagbox-placeholder">
             {question.locPlaceholder?.renderedHtml || ''}
           </Text>
         ) : (
-          chips.map((choice) => (
-            <View
-              key={String(choice.renderedId)}
-              testID={`sv-tagbox-chip-${String(choice.value)}`}
-              style={localStyles.chip}
-            >
-              <Text style={localStyles.chipText}>{choice.text}</Text>
-            </View>
-          ))
+          this.renderChips(false)
         )}
       </View>
     );
   }
 
-  protected renderElement(): React.JSX.Element {
+  private renderInteractive(vm: TagboxListModelLike): React.JSX.Element {
     const question = this.tagbox;
-    this.pendingSelectMiss = false;
-    const vm = question.dropdownListModel;
-    if (this.isSelectMode || !vm) {
-      return (
-        <View style={localStyles.container}>{this.renderSelectMode()}</View>
-      );
-    }
     const readOnly = question.isInputReadOnly;
     const showClear = question.allowClear && !question.isEmpty() && !readOnly;
     const empty = question.isEmpty();
@@ -277,48 +295,63 @@ export class TagboxQuestion extends QuestionElementBase<TagboxQuestionProps> {
     const label =
       question.locTitle?.renderedHtml || question.title || question.name;
     return (
-      <View style={localStyles.container}>
-        <View style={localStyles.row}>
-          {/* Chips are SIBLINGS of the accessible opener so their remove
-              buttons stay independently focusable (RN groups descendants
-              of an accessible Pressable). */}
-          <View style={localStyles.chipsRow}>
-            {this.renderChips()}
-            <Pressable
-              ref={this.controlRef}
-              testID="sv-tagbox-control"
-              accessibilityRole={accessibilityRole}
-              accessibilityLabel={label}
-              accessibilityState={{
-                disabled: readOnly,
-                expanded: vm.ariaExpanded === 'true',
-              }}
-              disabled={readOnly}
-              onPress={readOnly ? undefined : () => vm.onClick()}
-              style={localStyles.opener}
-            >
-              {empty ? (
-                <Text testID="sv-tagbox-placeholder" style={localStyles.flex}>
-                  {vm.placeholderRendered}
-                </Text>
-              ) : null}
-              <Text accessibilityElementsHidden style={localStyles.chevron}>
-                {'▾'}
+      <View style={localStyles.row}>
+        {/* Chips are SIBLINGS of the accessible opener so their remove
+            buttons stay independently focusable (RN groups descendants of
+            an accessible Pressable). */}
+        <View style={localStyles.chipsRow}>
+          {this.renderChips(true)}
+          <Pressable
+            ref={this.controlRef}
+            testID="sv-tagbox-control"
+            accessibilityRole={accessibilityRole}
+            accessibilityLabel={label}
+            accessibilityState={{
+              disabled: readOnly,
+              expanded: vm.ariaExpanded === 'true',
+            }}
+            disabled={readOnly}
+            onPress={readOnly ? undefined : () => vm.onClick()}
+            style={localStyles.opener}
+          >
+            {empty ? (
+              <Text testID="sv-tagbox-placeholder" style={localStyles.flex}>
+                {vm.placeholderRendered}
               </Text>
-            </Pressable>
-          </View>
-          {showClear ? (
-            <Pressable
-              testID="sv-tagbox-clear"
-              accessibilityRole="button"
-              accessibilityLabel={vm.clearCaption || 'Clear'}
-              onPress={() => vm.onClear(noopEvent)}
-              style={localStyles.clear}
-            >
-              <Text>✕</Text>
-            </Pressable>
-          ) : null}
+            ) : null}
+            <Text accessibilityElementsHidden style={localStyles.chevron}>
+              {'▾'}
+            </Text>
+          </Pressable>
         </View>
+        {showClear ? (
+          <Pressable
+            testID="sv-tagbox-clear"
+            accessibilityRole="button"
+            accessibilityLabel={vm.clearCaption || 'Clear'}
+            onPress={() => vm.onClear(noopEvent)}
+            style={localStyles.clear}
+          >
+            <Text>✕</Text>
+          </Pressable>
+        ) : null}
+      </View>
+    );
+  }
+
+  protected renderElement(): React.JSX.Element {
+    const question = this.tagbox;
+    this.pendingSelectMiss = false;
+    const vm = question.dropdownListModel;
+    // Mode-specific top; the "Other" comment renders beneath in BOTH modes
+    // (select-mode Other still needs its editor — PR #30 review r2 #1).
+    const top =
+      this.isSelectMode || !vm
+        ? this.renderSelectTop()
+        : this.renderInteractive(vm);
+    return (
+      <View style={localStyles.container}>
+        {top}
         {question.isOtherSelected ? (
           <DropdownOtherComment
             key={String(

@@ -201,6 +201,56 @@ describe('TagboxQuestion — review r1 correctness', () => {
   });
 });
 
+describe('TagboxQuestion — review r2 correctness', () => {
+  it('select-mode STILL renders the Other-comment editor (r2 #1)', async () => {
+    const { question } = createTagbox({
+      renderAs: 'select',
+      showOtherItem: true,
+    });
+    question.value = ['other'];
+    render(<TagboxQuestion question={question} creator={{}} />);
+    await flush();
+    expect(screen.getByTestId('sv-tagbox-select-fallback')).toBeTruthy();
+    const input = screen.getByTestId('sv-dropdown-other');
+    fireEvent.changeText(input, 'reason');
+    fireEvent(input, 'blur');
+    expect(question.comment).toBe('reason');
+  });
+
+  it('select-mode reflects a post-mount placeholder change (VM stays a state element, r2 #2)', async () => {
+    const { question } = createTagbox({ renderAs: 'select' });
+    render(<TagboxQuestion question={question} creator={{}} />);
+    await flush();
+    expect(screen.getByText('Pick some…')).toBeTruthy();
+    act(() => {
+      (question as unknown as { placeholder: string }).placeholder =
+        'Changed placeholder';
+    });
+    expect(screen.getByText('Changed placeholder')).toBeTruthy();
+  });
+
+  it('a non-empty value absent from choices shows raw chips, not the placeholder (r2 #3)', async () => {
+    const model = new Model({
+      elements: [
+        {
+          type: 'tagbox',
+          name: 'tb',
+          choices: ['a', 'b'],
+          placeholder: 'Pick some…',
+          keepIncorrectValues: true,
+        },
+      ],
+    });
+    const question = model.getQuestionByName('tb')!;
+    question.value = ['ZZZ'];
+    render(<TagboxQuestion question={question} creator={{}} />);
+    await flush();
+    expect(question.isEmpty()).toBe(false);
+    expect(screen.getByText('ZZZ')).toBeTruthy();
+    expect(screen.queryByTestId('sv-tagbox-placeholder')).toBeNull();
+  });
+});
+
 describe('TagboxQuestion — multi-select through the overlay', () => {
   it('press opens the overlay; selecting rows ADDS to the array and keeps the sheet open', async () => {
     const { question } = createTagbox();
