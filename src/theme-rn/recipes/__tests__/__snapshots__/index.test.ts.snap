@@ -80,6 +80,52 @@ exports[`curated recipe golden snapshots ContrastLight: recipes build to a stabl
       },
     },
   },
+  "buttonGroup": {
+    "fragments": {
+      "caption": {
+        "color": "rgba(0, 0, 0, 1)",
+        "fontSize": 16,
+        "fontWeight": "400",
+        "lineHeight": 24,
+      },
+      "captionAfterIcon": {
+        "marginStart": 8,
+      },
+      "captionDisabled": {
+        "fontWeight": "normal",
+        "opacity": 0.25,
+      },
+      "captionSelected": {
+        "color": "rgba(0, 0, 0, 1)",
+        "fontWeight": "600",
+      },
+      "container": {
+        "alignItems": "center",
+        "borderColor": "rgba(0, 0, 0, 1)",
+        "borderWidth": 1,
+        "flexDirection": "row",
+      },
+      "item": {
+        "alignItems": "center",
+        "backgroundColor": "rgba(255, 255, 255, 1)",
+        "flexBasis": 0,
+        "flexDirection": "row",
+        "flexGrow": 1,
+        "justifyContent": "center",
+        "paddingHorizontal": 16,
+        "paddingVertical": 11,
+      },
+      "itemDisabled": {
+        "opacity": 0.25,
+      },
+      "itemDivider": {
+        "borderEndColor": "rgba(0, 0, 0, 1)",
+        "borderEndWidth": 1,
+      },
+    },
+    "iconFill": [Function],
+    "select": [Function],
+  },
   "header": {
     "fragments": {
       "description": {
@@ -926,6 +972,52 @@ exports[`curated recipe golden snapshots DefaultLight: recipes build to a stable
       },
     },
   },
+  "buttonGroup": {
+    "fragments": {
+      "caption": {
+        "color": "rgba(0, 0, 0, 0.91)",
+        "fontSize": 16,
+        "fontWeight": "400",
+        "lineHeight": 24,
+      },
+      "captionAfterIcon": {
+        "marginStart": 8,
+      },
+      "captionDisabled": {
+        "fontWeight": "normal",
+        "opacity": 0.25,
+      },
+      "captionSelected": {
+        "color": "rgba(25, 179, 148, 1)",
+        "fontWeight": "600",
+      },
+      "container": {
+        "alignItems": "center",
+        "borderColor": "rgba(0, 0, 0, 0.16)",
+        "borderWidth": 1,
+        "flexDirection": "row",
+      },
+      "item": {
+        "alignItems": "center",
+        "backgroundColor": "rgba(255, 255, 255, 1)",
+        "flexBasis": 0,
+        "flexDirection": "row",
+        "flexGrow": 1,
+        "justifyContent": "center",
+        "paddingHorizontal": 16,
+        "paddingVertical": 11,
+      },
+      "itemDisabled": {
+        "opacity": 0.25,
+      },
+      "itemDivider": {
+        "borderEndColor": "rgba(0, 0, 0, 0.16)",
+        "borderEndWidth": 1,
+      },
+    },
+    "iconFill": [Function],
+    "select": [Function],
+  },
   "header": {
     "fragments": {
       "description": {
@@ -1771,6 +1863,52 @@ exports[`curated recipe golden snapshots LayeredDark: recipes build to a stable 
         "paddingVertical": 12,
       },
     },
+  },
+  "buttonGroup": {
+    "fragments": {
+      "caption": {
+        "color": "rgba(213, 215, 238, 1)",
+        "fontSize": 16,
+        "fontWeight": "400",
+        "lineHeight": 24,
+      },
+      "captionAfterIcon": {
+        "marginStart": 8,
+      },
+      "captionDisabled": {
+        "fontWeight": "normal",
+        "opacity": 0.25,
+      },
+      "captionSelected": {
+        "color": "rgba(164, 127, 243, 1)",
+        "fontWeight": "600",
+      },
+      "container": {
+        "alignItems": "center",
+        "borderColor": "rgba(67, 69, 85, 1)",
+        "borderWidth": 1,
+        "flexDirection": "row",
+      },
+      "item": {
+        "alignItems": "center",
+        "backgroundColor": "rgba(39, 40, 50, 1)",
+        "flexBasis": 0,
+        "flexDirection": "row",
+        "flexGrow": 1,
+        "justifyContent": "center",
+        "paddingHorizontal": 16,
+        "paddingVertical": 11,
+      },
+      "itemDisabled": {
+        "opacity": 0.25,
+      },
+      "itemDivider": {
+        "borderEndColor": "rgba(67, 69, 85, 1)",
+        "borderEndWidth": 1,
+      },
+    },
+    "iconFill": [Function],
+    "select": [Function],
   },
   "header": {
     "fragments": {
@@ -2714,6 +2852,52 @@ exports[`curated recipe golden snapshots SharpDark: recipes build to a stable sn
       },
     },
   },
+  "buttonGroup": {
+    "fragments": {
+      "caption": {
+        "color": "rgba(255, 255, 255, 0.78)",
+        "fontSize": 16,
+        "fontWeight": "400",
+        "lineHeight": 24,
+      },
+      "captionAfterIcon": {
+        "marginStart": 8,
+      },
+      "captionDisabled": {
+        "fontWeight": "normal",
+        "opacity": 0.25,
+      },
+      "captionSelected": {
+        "color": "rgba(16, 226, 255, 1)",
+        "fontWeight": "600",
+      },
+      "container": {
+        "alignItems": "center",
+        "borderColor": "rgba(255, 255, 255, 0.22)",
+        "borderWidth": 1,
+        "flexDirection": "row",
+      },
+      "item": {
+        "alignItems": "center",
+        "backgroundColor": "rgba(48, 48, 48, 1)",
+        "flexBasis": 0,
+        "flexDirection": "row",
+        "flexGrow": 1,
+        "justifyContent": "center",
+        "paddingHorizontal": 16,
+        "paddingVertical": 11,
+      },
+      "itemDisabled": {
+        "opacity": 0.25,
+      },
+      "itemDivider": {
+        "borderEndColor": "rgba(255, 255, 255, 0.22)",
+        "borderEndWidth": 1,
+      },
+    },
+    "iconFill": [Function],
+    "select": [Function],
+  },
   "header": {
     "fragments": {
       "description": {
@@ -3543,6 +3727,52 @@ exports[`curated recipe golden snapshots ThreeDimensionalLight: recipes build to
         "paddingVertical": 12,
       },
     },
+  },
+  "buttonGroup": {
+    "fragments": {
+      "caption": {
+        "color": "rgba(0, 0, 0, 0.91)",
+        "fontSize": 16,
+        "fontWeight": "400",
+        "lineHeight": 24,
+      },
+      "captionAfterIcon": {
+        "marginStart": 8,
+      },
+      "captionDisabled": {
+        "fontWeight": "normal",
+        "opacity": 0.25,
+      },
+      "captionSelected": {
+        "color": "rgba(217, 74, 100, 1)",
+        "fontWeight": "600",
+      },
+      "container": {
+        "alignItems": "center",
+        "borderColor": "rgba(0, 0, 0, 0.08)",
+        "borderWidth": 1,
+        "flexDirection": "row",
+      },
+      "item": {
+        "alignItems": "center",
+        "backgroundColor": "rgba(248, 248, 248, 1)",
+        "flexBasis": 0,
+        "flexDirection": "row",
+        "flexGrow": 1,
+        "justifyContent": "center",
+        "paddingHorizontal": 16,
+        "paddingVertical": 11,
+      },
+      "itemDisabled": {
+        "opacity": 0.25,
+      },
+      "itemDivider": {
+        "borderEndColor": "rgba(0, 0, 0, 0.08)",
+        "borderEndWidth": 1,
+      },
+    },
+    "iconFill": [Function],
+    "select": [Function],
   },
   "header": {
     "fragments": {

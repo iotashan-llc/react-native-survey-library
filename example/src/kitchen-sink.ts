@@ -155,6 +155,12 @@ export const kitchenSinkJson = {
           rateValues: ['solo', 'small', 'medium', 'large'],
         },
         {
+          type: 'buttongroup',
+          name: 'plan',
+          title: 'Plan (buttongroup)',
+          choices: ['Free', 'Pro', 'Team'],
+        },
+        {
           type: 'image',
           name: 'heroImage',
           imageLink: LOGO_DATA_URI,

@@ -181,6 +181,7 @@ describe('registerAll (module side effect)', () => {
 
     expect(RNQuestionFactory.getAllTypes()).toEqual([
       'boolean',
+      'buttongroup',
       'checkbox',
       'comment',
       'empty',

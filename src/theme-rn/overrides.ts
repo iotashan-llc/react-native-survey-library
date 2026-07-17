@@ -104,6 +104,13 @@ export interface RatingStyleOverrides {
   smileyItem?: StyleProp<ViewStyle>;
 }
 
+/** Button-group slots (task 2.9: `ButtonGroupQuestion`). */
+export interface ButtonGroupStyleOverrides {
+  container?: StyleProp<ViewStyle>;
+  item?: StyleProp<ViewStyle>;
+  caption?: StyleProp<TextStyle>;
+}
+
 /** Per-component slot overrides distributed via `SurveyThemeProvider`'s `styles` prop and `SurveyThemeContext`'s `styles` field. */
 export interface SurveyComponentStyles {
   item?: ItemStyleOverrides;
@@ -118,6 +125,7 @@ export interface SurveyComponentStyles {
   progress?: ProgressStyleOverrides;
   surveyState?: SurveyStateStyleOverrides;
   rating?: RatingStyleOverrides;
+  buttonGroup?: ButtonGroupStyleOverrides;
 }
 
 /** Stable default so an omitted `styles` prop never churns the provider's memoized context value. */

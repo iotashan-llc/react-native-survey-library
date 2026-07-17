@@ -53,6 +53,7 @@ import {
 } from '../questions/RatingQuestion';
 import { TextQuestion } from '../questions/TextQuestion';
 import { ImageQuestion } from '../questions/ImageQuestion';
+import { ButtonGroupQuestion } from '../questions/ButtonGroupQuestion';
 
 export type DescriptorRoute = 'template' | 'renderer' | 'element';
 
@@ -205,6 +206,15 @@ export const DESCRIPTOR_TABLE: readonly Descriptor[] = [
     route: 'template',
     component: () => RatingQuestion,
     milestone: 'M1',
+  },
+  // Task 2.9 — buttongroup question.
+  {
+    status: 'supported',
+    questionType: 'buttongroup',
+    dispatchKey: 'buttongroup',
+    route: 'template',
+    component: () => ButtonGroupQuestion,
+    milestone: 'M2',
   },
   // Task 2.10 — image question (static display + scaling modes).
   {

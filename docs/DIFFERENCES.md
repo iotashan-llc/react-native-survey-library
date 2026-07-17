@@ -697,3 +697,12 @@ mapping as the header logo). Dimensions come from core's
 `auto` dimension is omitted — RN cannot derive intrinsic size
 synchronously, so auto-sized images need explicit `imageWidth`/
 `imageHeight` in the JSON.
+
+
+## Buttongroup question (task 2.9)
+
+### No overflow-to-dropdown until task 2.5
+
+Web swaps the button row for a dropdown when the container is too
+narrow (`buttongroup-dropdown.tsx`, width shrink observer). v0.2 renders a horizontal-scroll row (web parity: overflow-x auto + nowrap); the adaptive dropdown arrives with the 2.5 overlay work. The web `:focus-within` ring is a keyboard-web
+affordance with no RN analog.
