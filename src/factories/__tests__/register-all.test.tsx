@@ -187,6 +187,7 @@ describe('registerAll (module side effect)', () => {
       'empty',
       'expression',
       'image',
+      'multipletext',
       'radiogroup',
       'rating',
       'sv-boolean-checkbox',
