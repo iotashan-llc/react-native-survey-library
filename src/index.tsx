@@ -97,6 +97,14 @@ export type { SurveyStateFrameProps } from './components/SurveyStateFrame';
 // text question (task 1.10, A5) — the DraftCommitAdapter it wires
 // (task 1.9) lives at './inputs/DraftCommitAdapter'.
 export { TextQuestion } from './questions/TextQuestion';
+// overlay primitives (task 2.1, A9): the presenter seam is the public
+// injection point; stack/bridge internals stay library-side until the
+// consumer API stabilizes with 2.3.
+export { OverlayPresenterContext } from './overlay/OverlayPresenterContext';
+export type {
+  OverlayPresenter,
+  OverlayPresenterProps,
+} from './overlay/OverlayPresenterContext';
 // buttongroup question (task 2.9).
 export { ButtonGroupQuestion } from './questions/ButtonGroupQuestion';
 // image question (task 2.10).
@@ -166,6 +174,8 @@ export type {
   ProgressStyleOverrides,
   SurveyStateStyleOverrides,
   RatingStyleOverrides,
+  ButtonGroupStyleOverrides,
+  ListItemStyleOverrides,
 } from './theme-rn/overrides';
 export type { NormalizedBackground } from './theme-rn/background';
 

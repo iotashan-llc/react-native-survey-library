@@ -1049,6 +1049,166 @@ export const API_SURFACE_WATCHLIST: readonly WatchedApiMember[] = [
     reason:
       "Rating radiogroup row's accessibilityLabel source (review round 1; falls back to processedTitle).",
   },
+  // Task 2.1 — overlay host bindings (PopupModel / ListModel / Action /
+  // ActionContainer members the bridge, host, and picker consume).
+  ...(
+    [
+      ['isVisible', 'accessor'],
+      ['onVisibilityChanged', 'data'],
+      ['hide', 'method'],
+      ['show', 'method'],
+      ['onHiding', 'method'],
+      ['onShow', 'method'],
+      ['onHide', 'method'],
+      ['onCancel', 'method'],
+      ['onApply', 'method'],
+      ['updateFooterActions', 'method'],
+      ['onFooterActionsCreated', 'data'],
+      ['contentComponentName', 'accessor'],
+      ['contentComponentData', 'accessor'],
+      ['isModal', 'accessor'],
+      ['title', 'accessor'],
+      ['displayMode', 'accessor'],
+      ['showCloseButton', 'accessor'],
+      ['focusFirstInputSelector', 'data'],
+      ['isFocusedContent', 'accessor'],
+      ['isFocusedContainer', 'accessor'],
+    ] as const
+  ).map(([member, expectedKind]) => ({
+    id: `PopupModel.${member}`,
+    member,
+    expectedKind: expectedKind as MemberKind,
+    // Probe instance for the same reason as ListModel below.
+    resolveHost: (sc: typeof FacadeModule) => new sc.PopupModel('probe', {}),
+    reason: '2.1 overlay bridge/host binding.',
+  })),
+  ...(
+    [
+      ['isItemVisible', 'method'],
+      ['onItemClick', 'method'],
+      ['isItemDisabled', 'method'],
+      ['isItemSelected', 'method'],
+      ['isItemFocused', 'method'],
+      ['showFilter', 'accessor'],
+      ['filterString', 'accessor'],
+      ['filterStringPlaceholder', 'accessor'],
+      ['showSearchClearButton', 'accessor'],
+      ['listRole', 'accessor'],
+      ['listItemRole', 'accessor'],
+      ['getA11yItemAriaSelected', 'method'],
+      ['getA11yItemAriaChecked', 'method'],
+      ['refresh', 'method'],
+      ['emptyMessage', 'accessor'],
+      ['itemComponent', 'accessor'],
+      ['isAllDataLoaded', 'accessor'],
+      ['setSearchEnabled', 'method'],
+      ['renderedActions', 'accessor'],
+      ['listAriaLabel', 'accessor'],
+      ['focusedItem', 'accessor'],
+    ] as const
+  ).map(([member, expectedKind]) => ({
+    id: `ListModel.${member}`,
+    member,
+    expectedKind: expectedKind as MemberKind,
+    // A probe INSTANCE: several bindings are instance arrow-function
+    // fields; the descriptor walk still reaches prototype members
+    // through the instance's chain.
+    resolveHost: (sc: typeof FacadeModule) =>
+      new sc.ListModel({ items: [] } as never),
+    reason: '2.1 list-picker binding.',
+  })),
+  {
+    id: 'ActionContainer.setItems',
+    member: 'setItems',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.ActionContainer.prototype,
+    reason:
+      '2.1 footer construction (raw -> updateFooterActions -> setItems, D5 order).',
+  },
+  {
+    id: 'ListModel.loadingIndicatorVisibilityObserver',
+    member: 'loadingIndicatorVisibilityObserver',
+    // Declared-but-uninitialized instance field: invisible to reflection
+    // until assigned, so the probe initializes it first (review round 1).
+    // An assigned function field harvests as 'method'.
+    expectedKind: 'method',
+    resolveHost: (sc) => {
+      const probe = new sc.ListModel({ items: [] } as never) as unknown as {
+        loadingIndicatorVisibilityObserver?: (v: boolean) => void;
+      };
+      probe.loadingIndicatorVisibilityObserver = () => undefined;
+      return probe;
+    },
+    reason: '2.1 lazy-load trigger (owner adapter dedupes in 2.3).',
+  },
+  ...(
+    [
+      ['component', 'accessor'],
+      ['hasSubItems', 'accessor'],
+      ['popupModel', 'accessor'],
+      ['showPopup', 'method'],
+      ['title', 'accessor'],
+    ] as const
+  ).map(([member, expectedKind]) => ({
+    id: `Action.${member}`,
+    member,
+    expectedKind: expectedKind as MemberKind,
+    resolveHost: (sc: typeof FacadeModule) =>
+      new sc.Action({ id: 'probe', title: 'probe' }),
+    reason: '2.1 nested subitem groups (group rows + child popups).',
+  })),
+  ...(
+    [
+      ['actions', 'accessor'],
+      ['getActionById', 'method'],
+      ['dispose', 'method'],
+    ] as const
+  ).map(([member, expectedKind]) => ({
+    id: `ActionContainer.${member}`,
+    member,
+    expectedKind: expectedKind as MemberKind,
+    resolveHost: (sc: typeof FacadeModule) => sc.ActionContainer.prototype,
+    reason: '2.1 footer container render/lookup/disposal.',
+  })),
+  {
+    id: 'SurveyModel.onOpenDropdownMenu',
+    member: 'onOpenDropdownMenu',
+    // Assigned in the SurveyModel constructor (addEvent) — an OWN data
+    // property on each instance (same pattern as onScrollToTop above).
+    expectedKind: 'data',
+    resolveHost: (sc) => new sc.Model(undefined),
+    reason: '2.1 D3 device adapter (fill-if-untouched).',
+  },
+  {
+    id: 'Base.registerFunctionOnPropertiesValueChanged',
+    member: 'registerFunctionOnPropertiesValueChanged',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.Base.prototype,
+    reason: '2.1 row-level ListModel/Action subscriptions.',
+  },
+  {
+    id: 'Base.unRegisterFunctionOnPropertiesValueChanged',
+    member: 'unRegisterFunctionOnPropertiesValueChanged',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.Base.prototype,
+    reason: '2.1 row-level subscription teardown.',
+  },
+  // Task 2.1 — device-mode adapter seam (facade applies _setIsTouch(true)).
+  {
+    id: '_setIsTouch',
+    member: '_setIsTouch',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc,
+    reason:
+      "2.1 device adapter: pinned-2.5.33 'for tests' seam the facade uses to put core in touch mode (RN classifies desktop otherwise).",
+  },
+  {
+    id: 'IsTouch',
+    member: 'IsTouch',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc,
+    reason: '2.1 device adapter observable (facade asserts touch mode).',
+  },
   // Task 2.9 — buttongroup bindings.
   {
     id: 'ButtonGroupItemModel',

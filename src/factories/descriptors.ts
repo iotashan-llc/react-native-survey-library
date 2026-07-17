@@ -55,6 +55,7 @@ import { TextQuestion } from '../questions/TextQuestion';
 import { MultipleTextQuestion } from '../questions/MultipleTextQuestion';
 import { ImageQuestion } from '../questions/ImageQuestion';
 import { ButtonGroupQuestion } from '../questions/ButtonGroupQuestion';
+import { ListItemGroupContent, ListPickerElement } from '../overlay/ListPicker';
 
 export type DescriptorRoute = 'template' | 'renderer' | 'element';
 
@@ -207,6 +208,26 @@ export const DESCRIPTOR_TABLE: readonly Descriptor[] = [
     route: 'template',
     component: () => RatingQuestion,
     milestone: 'M1',
+  },
+  // Task 2.1 — overlay list picker (upstream registry name "sv-list";
+  // PopupModel contentComponentName dispatch).
+  {
+    status: 'supported',
+    questionType: 'sv-list',
+    dispatchKey: 'sv-list',
+    route: 'element',
+    component: () => ListPickerElement,
+    milestone: 'M2',
+  },
+  // Task 2.1 — nested subitem group row content (upstream registry name
+  // "sv-list-item-group"; Action.setSubItems dispatch).
+  {
+    status: 'supported',
+    questionType: 'sv-list-item-group',
+    dispatchKey: 'sv-list-item-group',
+    route: 'element',
+    component: () => ListItemGroupContent,
+    milestone: 'M2',
   },
   // Task 2.6 — multipletext question.
   {

@@ -111,6 +111,13 @@ export interface ButtonGroupStyleOverrides {
   caption?: StyleProp<TextStyle>;
 }
 
+/** List-picker slots (task 2.1: `ListPicker`). */
+export interface ListItemStyleOverrides {
+  row?: StyleProp<ViewStyle>;
+  text?: StyleProp<TextStyle>;
+  searchInput?: StyleProp<TextStyle>;
+}
+
 /** Per-component slot overrides distributed via `SurveyThemeProvider`'s `styles` prop and `SurveyThemeContext`'s `styles` field. */
 export interface SurveyComponentStyles {
   item?: ItemStyleOverrides;
@@ -126,6 +133,7 @@ export interface SurveyComponentStyles {
   surveyState?: SurveyStateStyleOverrides;
   rating?: RatingStyleOverrides;
   buttonGroup?: ButtonGroupStyleOverrides;
+  listItem?: ListItemStyleOverrides;
 }
 
 /** Stable default so an omitted `styles` prop never churns the provider's memoized context value. */

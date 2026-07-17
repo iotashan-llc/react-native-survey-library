@@ -38,6 +38,8 @@ describe('DESCRIPTOR_TABLE (M0 + M1)', () => {
       'survey-header',
       'sv-boolean-checkbox',
       'sv-boolean-radio',
+      'sv-list',
+      'sv-list-item-group',
       'sv-logo-image',
       'sv-page',
       'sv-rating-item',
@@ -74,6 +76,15 @@ describe('DESCRIPTOR_TABLE (M0 + M1)', () => {
     expect(typeof row.component).toBe('function');
     expect(typeof row.component()).toBe('function');
     expect(row.milestone).toBe('M0');
+  });
+
+  it('"sv-list" (task 2.1) is a supported/element row (overlay picker, M2)', () => {
+    const row = byKey('sv-list');
+    expect(row.status).toBe('supported');
+    expect(row.route).toBe('element');
+    if (row.status !== 'supported') throw new Error('unreachable');
+    expect(typeof row.component()).toBe('function');
+    expect(row.milestone).toBe('M2');
   });
 
   it('"text" (task 1.10) is a supported/template row with a resolvable component thunk', () => {

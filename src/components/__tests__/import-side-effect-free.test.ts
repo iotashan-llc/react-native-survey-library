@@ -44,6 +44,8 @@ describe('component modules are import-side-effect-free', () => {
     ['../../questions/TextQuestion'],
     ['../../questions/ImageQuestion'],
     ['../../questions/ButtonGroupQuestion'],
+    ['../../overlay/ListPicker'],
+    ['../../overlay/OverlayHost'],
   ])('importing %s registers nothing into either factory', (modulePath) => {
     const { questionTypes, elementTypes } =
       factoryStateAfterImporting(modulePath);

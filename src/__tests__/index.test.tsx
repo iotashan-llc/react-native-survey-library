@@ -49,6 +49,8 @@ describe('index.tsx: registrar wiring (design: docs/design/0.5-factories.md)', (
     expect(RNElementFactory.getAllTypes()).toEqual([
       'panel',
       'survey-header',
+      'sv-list',
+      'sv-list-item-group',
       'sv-logo-image',
       'sv-page',
       'sv-rating-item',

@@ -31,7 +31,15 @@ export * from 'survey-core';
 // CJS interop alike), so the shim's global patches still precede
 // survey-core's require-time code, and this statement runs strictly
 // after both.
-import { settings } from 'survey-core';
+import { settings, _setIsTouch } from 'survey-core';
 import { applySurveyCoreShims } from './shim';
 
 applySurveyCoreShims(settings);
+
+// 2.1 device-mode adapter (design D3): RN aliases window===global with no
+// touch-event/matchMedia surface, so core's IsTouch computes FALSE and
+// DropdownListModel picks DESKTOP popup behavior (search availability,
+// tagbox cancel-rollback). `_setIsTouch(true)` is the pinned-2.5.33 seam
+// (utils/devices.ts "for tests" — watchlisted; behaviorally covered by
+// the 2.1 suites). Idempotent, applied once at facade evaluation.
+_setIsTouch(true);

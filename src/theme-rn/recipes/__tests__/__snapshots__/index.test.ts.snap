@@ -383,6 +383,93 @@ exports[`curated recipe golden snapshots ContrastLight: recipes build to a stabl
     },
     "iconSize": 16,
   },
+  "listItem": {
+    "fragments": {
+      "empty": {
+        "color": "rgba(0, 0, 0, 1)",
+        "fontSize": 16,
+        "padding": 16,
+        "textAlign": "center",
+      },
+      "row": {
+        "paddingEnd": 64,
+        "paddingStart": 16,
+        "paddingVertical": 8,
+      },
+      "rowDisabled": {
+        "opacity": 0.25,
+      },
+      "rowFocused": {
+        "borderColor": "rgba(0, 0, 0, 1)",
+        "borderWidth": 1,
+      },
+      "rowSelected": {
+        "backgroundColor": "rgba(0, 0, 0, 1)",
+      },
+      "searchClear": {
+        "color": "rgba(0, 0, 0, 1)",
+        "fontSize": 16,
+        "paddingHorizontal": 8,
+      },
+      "searchInput": {
+        "color": "rgba(0, 0, 0, 1)",
+        "flex": 1,
+        "fontSize": 16,
+      },
+      "searchRow": {
+        "alignItems": "center",
+        "flexDirection": "row",
+        "padding": 12,
+      },
+      "text": {
+        "color": "rgba(0, 0, 0, 1)",
+        "fontSize": 16,
+      },
+      "textSelected": {
+        "color": "rgba(255, 255, 255, 1)",
+      },
+    },
+    "select": [Function],
+  },
+  "overlay": {
+    "fragments": {
+      "backdrop": {
+        "backgroundColor": "rgba(0, 0, 0, 0.75)",
+        "flex": 1,
+        "justifyContent": "flex-end",
+      },
+      "body": {
+        "padding": 32,
+      },
+      "dialog": {
+        "alignSelf": "center",
+        "backgroundColor": "rgba(255, 216, 77, 1)",
+        "borderRadius": 8,
+        "marginVertical": 64,
+        "maxWidth": "90%",
+        "minWidth": "60%",
+      },
+      "footer": {
+        "flexDirection": "row",
+        "gap": 8,
+        "justifyContent": "flex-end",
+        "padding": 8,
+      },
+      "sheet": {
+        "backgroundColor": "rgba(255, 216, 77, 1)",
+        "borderTopEndRadius": 4,
+        "borderTopStartRadius": 4,
+        "maxHeight": "80%",
+      },
+      "title": {
+        "color": "rgba(0, 0, 0, 1)",
+        "fontSize": 20,
+        "fontWeight": "600",
+        "paddingHorizontal": 32,
+        "paddingTop": 24,
+      },
+    },
+  },
   "progress": {
     "fragments": {
       "bar": {
@@ -1242,6 +1329,93 @@ exports[`curated recipe golden snapshots DefaultLight: recipes build to a stable
       "unchecked": "transparent",
     },
     "iconSize": 16,
+  },
+  "listItem": {
+    "fragments": {
+      "empty": {
+        "color": "rgba(0, 0, 0, 0.45)",
+        "fontSize": 16,
+        "padding": 16,
+        "textAlign": "center",
+      },
+      "row": {
+        "paddingEnd": 64,
+        "paddingStart": 16,
+        "paddingVertical": 8,
+      },
+      "rowDisabled": {
+        "opacity": 0.25,
+      },
+      "rowFocused": {
+        "borderColor": "rgba(0, 0, 0, 0.16)",
+        "borderWidth": 1,
+      },
+      "rowSelected": {
+        "backgroundColor": "rgba(25, 179, 148, 1)",
+      },
+      "searchClear": {
+        "color": "rgba(0, 0, 0, 0.45)",
+        "fontSize": 16,
+        "paddingHorizontal": 8,
+      },
+      "searchInput": {
+        "color": "rgba(0, 0, 0, 0.91)",
+        "flex": 1,
+        "fontSize": 16,
+      },
+      "searchRow": {
+        "alignItems": "center",
+        "flexDirection": "row",
+        "padding": 12,
+      },
+      "text": {
+        "color": "rgba(0, 0, 0, 0.91)",
+        "fontSize": 16,
+      },
+      "textSelected": {
+        "color": "rgba(255, 255, 255, 1)",
+      },
+    },
+    "select": [Function],
+  },
+  "overlay": {
+    "fragments": {
+      "backdrop": {
+        "backgroundColor": "rgba(0, 0, 0, 0.75)",
+        "flex": 1,
+        "justifyContent": "flex-end",
+      },
+      "body": {
+        "padding": 32,
+      },
+      "dialog": {
+        "alignSelf": "center",
+        "backgroundColor": "rgba(249, 249, 249, 1)",
+        "borderRadius": 8,
+        "marginVertical": 64,
+        "maxWidth": "90%",
+        "minWidth": "60%",
+      },
+      "footer": {
+        "flexDirection": "row",
+        "gap": 8,
+        "justifyContent": "flex-end",
+        "padding": 8,
+      },
+      "sheet": {
+        "backgroundColor": "rgba(243, 243, 243, 1)",
+        "borderTopEndRadius": 4,
+        "borderTopStartRadius": 4,
+        "maxHeight": "80%",
+      },
+      "title": {
+        "color": "rgba(0, 0, 0, 0.91)",
+        "fontSize": 20,
+        "fontWeight": "600",
+        "paddingHorizontal": 32,
+        "paddingTop": 24,
+      },
+    },
   },
   "progress": {
     "fragments": {
@@ -2166,6 +2340,93 @@ exports[`curated recipe golden snapshots LayeredDark: recipes build to a stable 
       "unchecked": "transparent",
     },
     "iconSize": 16,
+  },
+  "listItem": {
+    "fragments": {
+      "empty": {
+        "color": "rgba(117, 120, 140, 1)",
+        "fontSize": 16,
+        "padding": 16,
+        "textAlign": "center",
+      },
+      "row": {
+        "paddingEnd": 64,
+        "paddingStart": 16,
+        "paddingVertical": 8,
+      },
+      "rowDisabled": {
+        "opacity": 0.25,
+      },
+      "rowFocused": {
+        "borderColor": "rgba(67, 69, 85, 1)",
+        "borderWidth": 1,
+      },
+      "rowSelected": {
+        "backgroundColor": "rgba(164, 127, 243, 1)",
+      },
+      "searchClear": {
+        "color": "rgba(117, 120, 140, 1)",
+        "fontSize": 16,
+        "paddingHorizontal": 8,
+      },
+      "searchInput": {
+        "color": "rgba(213, 215, 238, 1)",
+        "flex": 1,
+        "fontSize": 16,
+      },
+      "searchRow": {
+        "alignItems": "center",
+        "flexDirection": "row",
+        "padding": 12,
+      },
+      "text": {
+        "color": "rgba(213, 215, 238, 1)",
+        "fontSize": 16,
+      },
+      "textSelected": {
+        "color": "rgba(32, 32, 32, 1)",
+      },
+    },
+    "select": [Function],
+  },
+  "overlay": {
+    "fragments": {
+      "backdrop": {
+        "backgroundColor": "rgba(0, 0, 0, 0.75)",
+        "flex": 1,
+        "justifyContent": "flex-end",
+      },
+      "body": {
+        "padding": 32,
+      },
+      "dialog": {
+        "alignSelf": "center",
+        "backgroundColor": "rgba(32, 33, 43, 1)",
+        "borderRadius": 8,
+        "marginVertical": 64,
+        "maxWidth": "90%",
+        "minWidth": "60%",
+      },
+      "footer": {
+        "flexDirection": "row",
+        "gap": 8,
+        "justifyContent": "flex-end",
+        "padding": 8,
+      },
+      "sheet": {
+        "backgroundColor": "rgba(30, 31, 40, 1)",
+        "borderTopEndRadius": 4,
+        "borderTopStartRadius": 4,
+        "maxHeight": "80%",
+      },
+      "title": {
+        "color": "rgba(213, 215, 238, 1)",
+        "fontSize": 20,
+        "fontWeight": "600",
+        "paddingHorizontal": 32,
+        "paddingTop": 24,
+      },
+    },
   },
   "progress": {
     "fragments": {
@@ -3123,6 +3384,93 @@ exports[`curated recipe golden snapshots SharpDark: recipes build to a stable sn
     },
     "iconSize": 16,
   },
+  "listItem": {
+    "fragments": {
+      "empty": {
+        "color": "rgba(255, 255, 255, 0.5)",
+        "fontSize": 16,
+        "padding": 16,
+        "textAlign": "center",
+      },
+      "row": {
+        "paddingEnd": 64,
+        "paddingStart": 16,
+        "paddingVertical": 8,
+      },
+      "rowDisabled": {
+        "opacity": 0.25,
+      },
+      "rowFocused": {
+        "borderColor": "rgba(255, 255, 255, 0.22)",
+        "borderWidth": 1,
+      },
+      "rowSelected": {
+        "backgroundColor": "rgba(16, 226, 255, 1)",
+      },
+      "searchClear": {
+        "color": "rgba(255, 255, 255, 0.5)",
+        "fontSize": 16,
+        "paddingHorizontal": 8,
+      },
+      "searchInput": {
+        "color": "rgba(255, 255, 255, 0.78)",
+        "flex": 1,
+        "fontSize": 16,
+      },
+      "searchRow": {
+        "alignItems": "center",
+        "flexDirection": "row",
+        "padding": 12,
+      },
+      "text": {
+        "color": "rgba(255, 255, 255, 0.78)",
+        "fontSize": 16,
+      },
+      "textSelected": {
+        "color": "rgba(32, 32, 32, 1)",
+      },
+    },
+    "select": [Function],
+  },
+  "overlay": {
+    "fragments": {
+      "backdrop": {
+        "backgroundColor": "rgba(0, 0, 0, 0.75)",
+        "flex": 1,
+        "justifyContent": "flex-end",
+      },
+      "body": {
+        "padding": 32,
+      },
+      "dialog": {
+        "alignSelf": "center",
+        "backgroundColor": "rgba(33, 33, 33, 1)",
+        "borderRadius": 8,
+        "marginVertical": 64,
+        "maxWidth": "90%",
+        "minWidth": "60%",
+      },
+      "footer": {
+        "flexDirection": "row",
+        "gap": 8,
+        "justifyContent": "flex-end",
+        "padding": 8,
+      },
+      "sheet": {
+        "backgroundColor": "rgba(27, 27, 27, 1)",
+        "borderTopEndRadius": 4,
+        "borderTopStartRadius": 4,
+        "maxHeight": "80%",
+      },
+      "title": {
+        "color": "rgba(255, 255, 255, 0.78)",
+        "fontSize": 20,
+        "fontWeight": "600",
+        "paddingHorizontal": 32,
+        "paddingTop": 24,
+      },
+    },
+  },
   "progress": {
     "fragments": {
       "bar": {
@@ -4030,6 +4378,93 @@ exports[`curated recipe golden snapshots ThreeDimensionalLight: recipes build to
       "unchecked": "transparent",
     },
     "iconSize": 16,
+  },
+  "listItem": {
+    "fragments": {
+      "empty": {
+        "color": "rgba(0, 0, 0, 0.45)",
+        "fontSize": 16,
+        "padding": 16,
+        "textAlign": "center",
+      },
+      "row": {
+        "paddingEnd": 64,
+        "paddingStart": 16,
+        "paddingVertical": 8,
+      },
+      "rowDisabled": {
+        "opacity": 0.25,
+      },
+      "rowFocused": {
+        "borderColor": "rgba(0, 0, 0, 0.08)",
+        "borderWidth": 1,
+      },
+      "rowSelected": {
+        "backgroundColor": "rgba(217, 74, 100, 1)",
+      },
+      "searchClear": {
+        "color": "rgba(0, 0, 0, 0.45)",
+        "fontSize": 16,
+        "paddingHorizontal": 8,
+      },
+      "searchInput": {
+        "color": "rgba(0, 0, 0, 0.91)",
+        "flex": 1,
+        "fontSize": 16,
+      },
+      "searchRow": {
+        "alignItems": "center",
+        "flexDirection": "row",
+        "padding": 12,
+      },
+      "text": {
+        "color": "rgba(0, 0, 0, 0.91)",
+        "fontSize": 16,
+      },
+      "textSelected": {
+        "color": "rgba(255, 255, 255, 1)",
+      },
+    },
+    "select": [Function],
+  },
+  "overlay": {
+    "fragments": {
+      "backdrop": {
+        "backgroundColor": "rgba(0, 0, 0, 0.75)",
+        "flex": 1,
+        "justifyContent": "flex-end",
+      },
+      "body": {
+        "padding": 32,
+      },
+      "dialog": {
+        "alignSelf": "center",
+        "backgroundColor": "rgba(255, 255, 255, 1)",
+        "borderRadius": 8,
+        "marginVertical": 64,
+        "maxWidth": "90%",
+        "minWidth": "60%",
+      },
+      "footer": {
+        "flexDirection": "row",
+        "gap": 8,
+        "justifyContent": "flex-end",
+        "padding": 8,
+      },
+      "sheet": {
+        "backgroundColor": "rgba(255, 255, 255, 1)",
+        "borderTopEndRadius": 4,
+        "borderTopStartRadius": 4,
+        "maxHeight": "80%",
+      },
+      "title": {
+        "color": "rgba(0, 0, 0, 0.91)",
+        "fontSize": 20,
+        "fontWeight": "600",
+        "paddingHorizontal": 32,
+        "paddingTop": 24,
+      },
+    },
   },
   "progress": {
     "fragments": {
