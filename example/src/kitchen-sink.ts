@@ -102,6 +102,23 @@ export const kitchenSinkJson = {
           showSelectAllItem: true,
         },
         {
+          type: 'tagbox',
+          name: 'langs',
+          title: 'Languages you use (tagbox)',
+          placeholder: 'Add languages…',
+          allowClear: true,
+          choices: [
+            'TypeScript',
+            'JavaScript',
+            'Swift',
+            'Kotlin',
+            'Objective-C',
+            'Java',
+            'Rust',
+            'Dart',
+          ],
+        },
+        {
           type: 'boolean',
           name: 'newArch',
           title: 'Using the New Architecture?',

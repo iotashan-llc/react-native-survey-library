@@ -779,6 +779,31 @@ skips on rapid scrolling). The RN picker gates its end-reached trigger
 on the owning question's `isReady`, so exactly one page loads at a
 time.
 
+## Tagbox question (task 2.4)
+
+The `tagbox` (multi-select) question reuses the dropdown's overlay
+machinery, so every Dropdown-question difference above applies (overlay
+sheet not an anchored list; search lives in the overlay; combobox a11y;
+no inline filter input). The tagbox-specific differences:
+
+### Selected values render as chips, not inline tokens
+
+Web's tagbox renders selected values as inline tokens inside the input
+box with autocomplete typing. The RN control shows each selected value
+as a **chip** (a pill with the value text + a ✕ remove affordance),
+wrapping onto multiple lines. There is no inline typing in the control —
+adding values happens by opening the overlay sheet and tapping choices
+(core's touch behavior). A chip's ✕ removes just that value; the
+clear-all ✕ (when `allowClear`) empties the whole selection.
+
+### The overlay stays open across selections
+
+Selecting a choice **adds** it to the array and **keeps the sheet open**
+(core toggles membership through `listModel.onItemClick` without hiding
+the popup per-select — the same shared 2.1 ListPicker, unchanged). Re-
+tapping a selected row removes it. Web keeps its dropdown open the same
+way; the difference is only that the RN list is the overlay sheet.
+
 ### `renderAs: "select"` degrades to a non-interactive value display
 
 On web, `renderAs: "select"` renders a native `<select>` element. Core

@@ -45,12 +45,19 @@ interface SelectedActionLike {
 interface TagboxListModelLike {
   popupModel: InstanceType<typeof import('../core/facade').PopupModel>;
   onClick(): void;
+  onClear(event: { preventDefault(): void; stopPropagation(): void }): void;
   getSelectedActions(): SelectedActionLike[];
   placeholderRendered: string;
   ariaInputRole?: AccessibilityRole | string;
   ariaQuestionRole?: AccessibilityRole | string;
   ariaExpanded?: string;
+  clearCaption?: string;
 }
+
+const noopEvent = {
+  preventDefault: () => undefined,
+  stopPropagation: () => undefined,
+};
 
 interface TagboxQuestionModelLike extends Question {
   dropdownListModel?: TagboxListModelLike;
@@ -198,6 +205,7 @@ export class TagboxQuestion extends QuestionElementBase<TagboxQuestionProps> {
       );
     }
     const readOnly = question.isInputReadOnly;
+    const showClear = question.allowClear && !question.isEmpty() && !readOnly;
     const roleCandidate = vm.ariaInputRole ?? vm.ariaQuestionRole;
     const accessibilityRole: AccessibilityRole =
       roleCandidate &&
@@ -205,29 +213,45 @@ export class TagboxQuestion extends QuestionElementBase<TagboxQuestionProps> {
         ? (roleCandidate as AccessibilityRole)
         : 'button';
     return (
-      <Pressable
-        ref={this.controlRef}
-        testID="sv-tagbox-control"
-        accessibilityRole={accessibilityRole}
-        accessibilityState={{
-          disabled: readOnly,
-          expanded: vm.ariaExpanded === 'true',
-        }}
-        disabled={readOnly}
-        onPress={readOnly ? undefined : () => vm.onClick()}
-        style={localStyles.control}
-      >
-        {this.renderChips(vm)}
-        <Text accessibilityElementsHidden style={localStyles.chevron}>
-          {'▾'}
-        </Text>
-      </Pressable>
+      <View style={localStyles.row}>
+        <Pressable
+          ref={this.controlRef}
+          testID="sv-tagbox-control"
+          accessibilityRole={accessibilityRole}
+          accessibilityState={{
+            disabled: readOnly,
+            expanded: vm.ariaExpanded === 'true',
+          }}
+          disabled={readOnly}
+          onPress={readOnly ? undefined : () => vm.onClick()}
+          style={localStyles.control}
+        >
+          {this.renderChips(vm)}
+          <Text accessibilityElementsHidden style={localStyles.chevron}>
+            {'▾'}
+          </Text>
+        </Pressable>
+        {showClear ? (
+          <Pressable
+            testID="sv-tagbox-clear"
+            accessibilityRole="button"
+            accessibilityLabel={vm.clearCaption || 'Clear'}
+            onPress={() => vm.onClear(noopEvent)}
+            style={localStyles.clear}
+          >
+            <Text>✕</Text>
+          </Pressable>
+        ) : null}
+      </View>
     );
   }
 }
 
 const localStyles = StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'center' },
+  clear: { marginLeft: 8, padding: 4 },
   control: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',

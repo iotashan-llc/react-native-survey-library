@@ -67,6 +67,48 @@ describe('TagboxQuestion — chips', () => {
   });
 });
 
+describe('TagboxQuestion — clear + a11y', () => {
+  it('clear-all empties the whole array through vm.onClear', async () => {
+    const { question } = createTagbox({ allowClear: true });
+    question.value = ['apple', 'banana'];
+    render(<TagboxQuestion question={question} creator={{}} />);
+    await flush();
+    fireEvent.press(screen.getByTestId('sv-tagbox-clear'));
+    expect(question.isEmpty()).toBe(true);
+    expect(screen.queryByTestId('sv-tagbox-chip-apple')).toBeNull();
+    expect(screen.getByText('Pick some…')).toBeTruthy();
+  });
+
+  it('no clear button when empty or allowClear is off', async () => {
+    const { question } = createTagbox({ allowClear: false });
+    question.value = ['apple'];
+    render(<TagboxQuestion question={question} creator={{}} />);
+    await flush();
+    expect(screen.queryByTestId('sv-tagbox-clear')).toBeNull();
+  });
+
+  it('uses core combobox role and reflects popup expansion (string ariaExpanded)', async () => {
+    const { question } = createTagbox();
+    const stack = createOverlayStack<OverlayPayload>();
+    render(
+      <OverlayContext.Provider value={stack}>
+        <TagboxQuestionElement question={question} creator={{}} />
+      </OverlayContext.Provider>
+    );
+    await flush();
+    const control = screen.getByTestId('sv-tagbox-control');
+    expect(control.props.accessibilityRole).toBe('combobox');
+    expect(control.props.accessibilityState?.expanded).toBe(false);
+    await act(async () => {
+      fireEvent.press(screen.getByTestId('sv-tagbox-control'));
+      await Promise.resolve();
+    });
+    expect(
+      screen.getByTestId('sv-tagbox-control').props.accessibilityState?.expanded
+    ).toBe(true);
+  });
+});
+
 describe('TagboxQuestion — multi-select through the overlay', () => {
   it('press opens the overlay; selecting rows ADDS to the array and keeps the sheet open', async () => {
     const { question } = createTagbox();
