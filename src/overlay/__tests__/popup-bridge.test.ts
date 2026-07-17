@@ -458,3 +458,19 @@ describe('popup bridge — exception-safe multi-generation unregister', () => {
     expect(footer.isDisposed).toBe(true);
   });
 });
+
+describe('popup bridge — round 4 (cancel-throw hide, bounded scroll retry)', () => {
+  it('a throwing onCancel still hides the model (semantic-close state consistency)', () => {
+    const popup = makePopup({
+      onCancel: () => {
+        throw new Error('onCancel exploded');
+      },
+    });
+    const stack = createOverlayStack<OverlayPayload>();
+    const registration = registerPopup(popup, stack);
+    popup.show();
+    expect(() => registration.unregister()).toThrow('onCancel exploded');
+    expect(popup.isVisible).toBe(false);
+    expect(stack.entries()).toHaveLength(0);
+  });
+});

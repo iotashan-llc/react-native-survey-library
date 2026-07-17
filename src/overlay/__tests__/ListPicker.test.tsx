@@ -328,6 +328,15 @@ describe('ListPicker — review round 1 (groups, bridges, clear gating, label)',
       expect(scrollSpy).toHaveBeenCalledWith(
         expect.objectContaining({ index: 25 })
       );
+      // Bounded: a second failure event schedules NO further retry.
+      scrollSpy.mockClear();
+      fireEvent(screen.getByTestId('sv-list-flatlist'), 'scrollToIndexFailed', {
+        index: 25,
+        averageItemLength: 40,
+        highestMeasuredFrameIndex: 9,
+      });
+      jest.advanceTimersByTime(60);
+      expect(scrollSpy).not.toHaveBeenCalled();
     } finally {
       scrollSpy.mockRestore();
       offsetSpy.mockRestore();

@@ -234,8 +234,14 @@ export function registerPopup(
   }
 
   function cancel(): void {
-    popup.onCancel();
-    popup.hide();
+    // Upstream order (onCancel THEN hide) — but a throwing consumer
+    // onCancel must not leave the model stranded visible (round 4:
+    // semantic close guarantees isVisible=false afterward).
+    try {
+      popup.onCancel();
+    } finally {
+      popup.hide();
+    }
   }
 
   function hide(): void {

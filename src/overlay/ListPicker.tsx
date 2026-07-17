@@ -228,8 +228,15 @@ export class ListPicker extends SurveyElementBase<ListPickerProps> {
     this.flatListRef.current?.scrollToIndex({ index, animated: false });
   }
 
+  /** Single-retry guard — RN re-invokes onScrollToIndexFailed
+   * synchronously while the index stays unmeasured; without the bound
+   * the timer retry loops. */
+  private scrollRetryDone = false;
+
   /** scrollToIndex fallback for indices beyond the measured window:
-   * jump by estimate, then retry once layout catches up. */
+   * jump by estimate, then retry ONCE after layout catches up (the
+   * offset jump already lands approximately right if the retry also
+   * fails). */
   private readonly handleScrollToIndexFailed = (info: {
     index: number;
     averageItemLength: number;
@@ -238,6 +245,8 @@ export class ListPicker extends SurveyElementBase<ListPickerProps> {
       offset: info.averageItemLength * info.index,
       animated: false,
     });
+    if (this.scrollRetryDone) return;
+    this.scrollRetryDone = true;
     setTimeout(() => {
       this.flatListRef.current?.scrollToIndex({
         index: info.index,
