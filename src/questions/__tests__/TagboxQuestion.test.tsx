@@ -251,6 +251,52 @@ describe('TagboxQuestion — review r2 correctness', () => {
   });
 });
 
+describe('TagboxQuestion — unmatched-value chips are per-entry (r3)', () => {
+  it('a MIXED matched+unmatched value shows a chip for EACH entry (r3 #1)', async () => {
+    const model = new Model({
+      elements: [
+        {
+          type: 'tagbox',
+          name: 'tb',
+          choices: ['a', 'b'],
+          keepIncorrectValues: true,
+        },
+      ],
+    });
+    const question = model.getQuestionByName('tb')!;
+    question.value = ['a', 'ZZZ']; // 'a' matches, 'ZZZ' does not
+    render(<TagboxQuestion question={question} creator={{}} />);
+    await flush();
+    expect(screen.getByText('a')).toBeTruthy();
+    expect(screen.getByText('ZZZ')).toBeTruthy(); // not hidden
+  });
+
+  it('valuePropertyName storage objects render + remove by the rendered id (r3 #2)', async () => {
+    const model = new Model({
+      elements: [
+        {
+          type: 'tagbox',
+          name: 'tb',
+          choices: ['a'],
+          valuePropertyName: 'id',
+          keepIncorrectValues: true,
+        },
+      ],
+    });
+    const question = model.getQuestionByName('tb')!;
+    question.value = [{ id: 'ZZZ' }, { id: 'YYY' }];
+    render(<TagboxQuestion question={question} creator={{}} />);
+    await flush();
+    // Rendered as ZZZ/YYY, not [object Object].
+    expect(screen.getByText('ZZZ')).toBeTruthy();
+    expect(screen.getByText('YYY')).toBeTruthy();
+    expect(screen.queryByText('[object Object]')).toBeNull();
+    // Removing ZZZ leaves only {id:'YYY'} — not the wrong entry.
+    fireEvent.press(screen.getByTestId('sv-tagbox-chip-remove-ZZZ'));
+    expect(JSON.parse(JSON.stringify(question.value))).toEqual([{ id: 'YYY' }]);
+  });
+});
+
 describe('TagboxQuestion — multi-select through the overlay', () => {
   it('press opens the overlay; selecting rows ADDS to the array and keeps the sheet open', async () => {
     const { question } = createTagbox();

@@ -37,6 +37,7 @@ import {
 } from 'react-native';
 import type { AccessibilityRole } from 'react-native';
 import type { Base, Question } from '../core/facade';
+import { Helpers } from '../core/facade';
 import { QuestionElementBase } from '../reactivity/QuestionElementBase';
 import type { QuestionElementBaseProps } from '../reactivity/QuestionElementBase';
 import { OverlayContext } from '../overlay/OverlayContext';
@@ -206,32 +207,40 @@ export class TagboxQuestion extends QuestionElementBase<TagboxQuestionProps> {
     this.tagbox.dropdownListModel?.deselectItem(value);
   }
 
-  /** Chips for the current selection. From the PUBLIC selectedChoices
-   * (excludes Select-All). A non-empty value NOT represented by
-   * selectedChoices (unmatched persisted value under keepIncorrectValues)
-   * falls back to raw-value chips so stored data is never hidden (PR #30
-   * review r2 #3). `interactive` adds the removable ✕. */
+  /** One chip PER `renderedValue` entry (the normalized primitive array
+   * core's `deselectItem` operates on). Each entry is matched to a
+   * `selectedChoices` item for its display text/id; an UNMATCHED entry
+   * (persisted value absent from choices, under keepIncorrectValues) gets
+   * a raw chip — so a mixed matched/unmatched value never hides stored
+   * data, and valuePropertyName storage objects never leak as
+   * `[object Object]` (PR #30 review r2 #3, r3 #1/#2). Removal always
+   * passes the `renderedValue` entry to `deselectItem`. `interactive`
+   * adds the ✕. */
   private renderChips(interactive: boolean): React.JSX.Element[] {
     const question = this.tagbox;
     const removable = interactive && !question.isInputReadOnly;
+    const rendered = question.renderedValue;
+    const entries = Array.isArray(rendered) ? rendered : [];
     const choices = question.selectedChoices;
-    if (choices.length > 0) {
-      return choices.map((choice) =>
-        this.renderChip(
+    return entries.map((entry, i) => {
+      const choice = choices.find((c) =>
+        Helpers.isTwoValueEquals(c.value, entry)
+      );
+      if (choice) {
+        return this.renderChip(
           String(choice.renderedId),
-          choice.value,
+          entry,
           choice.text,
           removable
-        )
+        );
+      }
+      return this.renderChip(
+        `raw-${i}-${String(entry)}`,
+        entry,
+        String(entry),
+        removable
       );
-    }
-    // Non-empty but unmatched (isEmpty() is false yet no choice matches):
-    // render the raw values so the answer is visible/removable.
-    const raw = (this.questionBase as { value?: unknown }).value;
-    const values = Array.isArray(raw) ? raw : [];
-    return values.map((v, i) =>
-      this.renderChip(`raw-${i}-${String(v)}`, v, String(v), removable)
-    );
+    });
   }
 
   private renderChip(
