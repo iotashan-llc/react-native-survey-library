@@ -197,9 +197,12 @@ export const MODEL_TYPE_CLASSIFICATION: Readonly<
   },
   imagepicker: { status: 'planned', milestone: 'M2', reason: 'task 2.7' },
   paneldynamic: {
-    status: 'planned',
+    status: 'supported',
     milestone: 'M2',
-    reason: 'task 2.8a/2.8b/2.8c',
+    runtimeRenderable: {
+      expectedTemplate: 'paneldynamic',
+      expectedRoute: 'template',
+    },
   },
   image: {
     status: 'supported',

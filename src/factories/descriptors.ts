@@ -55,6 +55,7 @@ import { TextQuestion } from '../questions/TextQuestion';
 import { MultipleTextQuestion } from '../questions/MultipleTextQuestion';
 import { ImageQuestion } from '../questions/ImageQuestion';
 import { ButtonGroupQuestion } from '../questions/ButtonGroupQuestion';
+import { PanelDynamicQuestion } from '../questions/PanelDynamicQuestion';
 import { ListItemGroupContent, ListPickerElement } from '../overlay/ListPicker';
 
 export type DescriptorRoute = 'template' | 'renderer' | 'element';
@@ -254,6 +255,15 @@ export const DESCRIPTOR_TABLE: readonly Descriptor[] = [
     dispatchKey: 'image',
     route: 'template',
     component: () => ImageQuestion,
+    milestone: 'M2',
+  },
+  // Task 2.8a — paneldynamic (LIST mode + add/remove).
+  {
+    status: 'supported',
+    questionType: 'paneldynamic',
+    dispatchKey: 'paneldynamic',
+    route: 'template',
+    component: () => PanelDynamicQuestion,
     milestone: 'M2',
   },
   {

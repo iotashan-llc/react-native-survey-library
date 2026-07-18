@@ -66,6 +66,7 @@ describe('component modules are import-side-effect-free', () => {
       'expression',
       'image',
       'multipletext',
+      'paneldynamic',
       'radiogroup',
       'rating',
       'sv-boolean-checkbox',
