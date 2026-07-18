@@ -8,6 +8,9 @@ import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { Model } from '../../core/facade';
 import '../../factories/register-all';
 import { PanelDynamicQuestion } from '../PanelDynamicQuestion';
+import { createOverlayStack } from '../../overlay/stack';
+import type { OverlayPayload } from '../../overlay/popup-bridge';
+import { registerDialogHost } from '../../overlay/dialog-adapter';
 import {
   setDiagnosticHandler,
   type DiagnosticPayload,
@@ -103,6 +106,103 @@ describe('PanelDynamicQuestion — add/remove', () => {
   });
 });
 
+describe('PanelDynamicQuestion — disabled-but-shown (enable* false)', () => {
+  it('enableAddPanel false → add button present but disabled (press is a no-op)', async () => {
+    const { question } = createPaneldynamic({
+      maxPanelCount: 5,
+      readOnly: false,
+      allowAddPanel: true,
+    });
+    // Force the enabled-but-disabled state without hiding: enableAddPanel is
+    // driven by enableIf-style gates; emulate via the property directly.
+    (question as unknown as { enableAddPanel: boolean }).enableAddPanel = false;
+    render(<PanelDynamicQuestion question={question} creator={{}} />);
+    await flush();
+    const add = screen.getByTestId('paneldynamic-add');
+    expect(add.props.accessibilityState?.disabled).toBe(true);
+    fireEvent.press(add);
+    await flush();
+    expect((question as unknown as { panelCount: number }).panelCount).toBe(2);
+  });
+});
+
+describe('PanelDynamicQuestion — confirmDelete via the RN dialog adapter', () => {
+  it('the remove Pressable with confirmDelete routes through settings.showDialog (apply removes)', async () => {
+    const stack = createOverlayStack<OverlayPayload>();
+    const token = registerDialogHost(stack);
+    try {
+      const model = new Model({
+        elements: [
+          {
+            type: 'paneldynamic',
+            name: 'pd',
+            confirmDelete: true,
+            minPanelCount: 0,
+            panelCount: 2,
+            templateElements: [{ type: 'text', name: 'inner' }],
+          },
+        ],
+      });
+      const question = model.getQuestionByName('pd')!;
+      // Confirm fires only for a non-empty panel value
+      // (isRequireConfirmOnDelete).
+      model.data = { pd: [{ inner: 'a' }, { inner: 'b' }] };
+      render(<PanelDynamicQuestion question={question} creator={{}} />);
+      await flush();
+      const removes = screen.getAllByTestId(/^paneldynamic-remove-/);
+      fireEvent.press(removes[0]!);
+      await flush();
+      // A confirmation dialog is queued (NOT an immediate removal).
+      expect(stack.entries()).toHaveLength(1);
+      expect((question as unknown as { panelCount: number }).panelCount).toBe(
+        2
+      );
+      // Applying the dialog removes the panel.
+      const payload = stack.entries()[0]!.payload;
+      act(() => {
+        payload.footerActions.getActionById('apply')!.action();
+        payload.onDismissAcknowledged();
+      });
+      expect((question as unknown as { panelCount: number }).panelCount).toBe(
+        1
+      );
+    } finally {
+      token.dispose();
+    }
+  });
+});
+
+describe('PanelDynamicQuestion — model retarget (r major #2)', () => {
+  it('swapping the question prop rebinds callbacks; the OLD question no longer drives', async () => {
+    const a = createPaneldynamic({ maxPanelCount: 5 }).question;
+    const b = createPaneldynamic({ maxPanelCount: 5, panelCount: 3 }).question;
+    const view = render(<PanelDynamicQuestion question={a} creator={{}} />);
+    await flush();
+    expect(screen.getAllByTestId(/^paneldynamic-panel-/).length).toBe(2);
+    // Retarget to b (3 panels).
+    view.rerender(<PanelDynamicQuestion question={b} creator={{}} />);
+    await flush();
+    expect(screen.getAllByTestId(/^paneldynamic-panel-/).length).toBe(3);
+    // The OLD question's callback must be detached — its structural change no
+    // longer re-renders this component (guarded clear).
+    expect(
+      (a as unknown as { panelCountChangedCallback?: () => void })
+        .panelCountChangedCallback
+    ).toBeUndefined();
+    // The NEW question is wired.
+    expect(
+      (b as unknown as { panelCountChangedCallback?: () => void })
+        .panelCountChangedCallback
+    ).toBeDefined();
+    view.unmount();
+    // Unmount detaches b too (no setState-after-unmount).
+    expect(
+      (b as unknown as { panelCountChangedCallback?: () => void })
+        .panelCountChangedCallback
+    ).toBeUndefined();
+  });
+});
+
 describe('PanelDynamicQuestion — empty state', () => {
   it('with 0 panels renders the empty placeholder + an add button', async () => {
     const { question } = createPaneldynamic({
@@ -113,6 +213,46 @@ describe('PanelDynamicQuestion — empty state', () => {
     await flush();
     expect(screen.getByTestId('paneldynamic-empty')).toBeTruthy();
     expect(screen.getByTestId('paneldynamic-add')).toBeTruthy();
+  });
+});
+
+describe('PanelDynamicQuestion — collapse (panelsState, r major #1)', () => {
+  it('default panelsState: panels are expanded, NO toggle (content always shown)', async () => {
+    const { question } = createPaneldynamic({ templateTitle: 'Item' });
+    render(<PanelDynamicQuestion question={question} creator={{}} />);
+    await flush();
+    expect(screen.queryAllByTestId(/^paneldynamic-toggle-/)).toHaveLength(0);
+    // nested content is present (a SurveyPanel content region renders).
+    expect(screen.getAllByTestId('sv-panel-content').length).toBeGreaterThan(0);
+  });
+
+  it('collapsed panels get a toggle that expands them (content becomes reachable)', async () => {
+    const { question } = createPaneldynamic({
+      templateTitle: 'Item',
+      panelsState: 'collapsed',
+    });
+    render(<PanelDynamicQuestion question={question} creator={{}} />);
+    await flush();
+    // collapsed → SurveyPanel hides its content; a toggle exists per panel.
+    expect(screen.queryByTestId('sv-panel-content')).toBeNull();
+    const toggles = screen.getAllByTestId(/^paneldynamic-toggle-/);
+    expect(toggles).toHaveLength(2);
+    // pressing a toggle expands that panel → its content becomes reachable.
+    fireEvent.press(toggles[0]!);
+    await flush();
+    expect(screen.getAllByTestId('sv-panel-content').length).toBe(1);
+  });
+
+  it('firstExpanded: first panel expanded, rest collapsed-with-toggle', async () => {
+    const { question } = createPaneldynamic({
+      templateTitle: 'Item',
+      panelsState: 'firstExpanded',
+    });
+    render(<PanelDynamicQuestion question={question} creator={{}} />);
+    await flush();
+    // one panel's content is shown; both panels are collapsible → 2 toggles.
+    expect(screen.getAllByTestId('sv-panel-content').length).toBe(1);
+    expect(screen.getAllByTestId(/^paneldynamic-toggle-/)).toHaveLength(2);
   });
 });
 

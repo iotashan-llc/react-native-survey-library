@@ -158,9 +158,35 @@ export class PanelDynamicQuestion extends QuestionElementBase<QuestionElementBas
     const question = this.pd;
     const showRemove = question.canRemovePanel;
     const removeDisabled = !question.enableRemovePanel;
-    const panelId = String((panel as unknown as { id: string }).id);
+    const view = panel as unknown as {
+      id: string;
+      state: string;
+      renderedIsExpanded: boolean;
+      toggleState(): void;
+    };
+    const panelId = String(view.id);
+    // A `panelsState` of collapsed/firstExpanded/expanded makes panels
+    // collapsible (`state !== 'default'`); the existing SurveyPanel hides its
+    // rows when not expanded and has NO expand affordance, so add a toggle
+    // here — otherwise a collapsed panel's inputs are unreachable (codex r
+    // major #1). `default` panels are always expanded and need no toggle.
+    const collapsible = view.state !== 'default';
     return (
       <View key={panelId} testID={`paneldynamic-panel-${panelId}`}>
+        {collapsible ? (
+          <Pressable
+            testID={`paneldynamic-toggle-${panelId}`}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: view.renderedIsExpanded }}
+            onPress={() => {
+              view.toggleState();
+              this.handleStructuralChange();
+            }}
+            style={localStyles.toggle}
+          >
+            <Text>{view.renderedIsExpanded ? '▾' : '▸'}</Text>
+          </Pressable>
+        ) : null}
         <SurveyPanel
           survey={question.survey}
           creator={this.creator}
@@ -211,4 +237,5 @@ export class PanelDynamicQuestion extends QuestionElementBase<QuestionElementBas
 const localStyles = StyleSheet.create({
   addButton: { paddingVertical: 8, alignSelf: 'flex-start' },
   removeButton: { paddingVertical: 6, alignSelf: 'flex-end' },
+  toggle: { paddingVertical: 4, alignSelf: 'flex-start' },
 });
