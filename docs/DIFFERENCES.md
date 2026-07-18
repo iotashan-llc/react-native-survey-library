@@ -754,3 +754,21 @@ are ignored. Consumer `onShow` fires on a microtask AFTER presentation
 (web fires it during the show transition). With NO Survey mounted, a
 dialog call resolves its `onCancel` immediately (fail-safe — never
 auto-confirm a destructive action) and reports `dialog-no-host`.
+
+## Dynamic panels (`paneldynamic`, task 2.8a)
+
+### v0.2 supports `displayMode: "list"` only
+
+The list renderer stacks all visible panels with an add-panel button and a
+per-panel remove button (delete confirmation routes through the 2.2 dialog
+adapter). `displayMode` `"carousel"`/`"tab"` and the progress bar are deferred
+to 2.8b/2.8c; a non-list survey renders an unsupported fallback and reports the
+`paneldynamic-mode-unsupported` diagnostic rather than a broken frame
+(invariant 9).
+
+### Collapsible panels get an explicit toggle
+
+When `panelsState` is `collapsed`/`firstExpanded`/`expanded`, each panel is
+collapsible; the RN renderer adds a per-panel expand/collapse toggle (web
+collapses via a clickable panel title). `panelsState: "default"` panels are
+always expanded and get no toggle.
