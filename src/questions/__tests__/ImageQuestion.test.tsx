@@ -145,6 +145,24 @@ describe('ImageQuestion — core load-state contract', () => {
       payloads.some((p) => p.code === 'image-content-mode-unsupported')
     ).toBe(true);
   });
+
+  it('an empty (non-image) contentMode still reports unsupported (falsy-guard gap)', () => {
+    const payloads: DiagnosticPayload[] = [];
+    setDiagnosticHandler((p) => payloads.push(p));
+    // survey-core preserves contentMode "" (renderedMode "") — it does not
+    // default to "image". A falsy `!mode` guard dropped the diagnostic.
+    const question = createImageQuestion({ contentMode: '' });
+    expect((question as unknown as { renderedMode: string }).renderedMode).toBe(
+      ''
+    );
+    const { toJSON } = render(
+      <ImageQuestion question={question} creator={{}} />
+    );
+    expect(toJSON()).toBeNull();
+    expect(
+      payloads.some((p) => p.code === 'image-content-mode-unsupported')
+    ).toBe(true);
+  });
 });
 
 describe('ImageQuestion — review round 1 regressions', () => {

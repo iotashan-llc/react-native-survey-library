@@ -193,7 +193,10 @@ export class ImageQuestion extends QuestionElementBase<ImageQuestionProps> {
 
   private flushModeDiagnostic(): void {
     const mode = this.pendingMode;
-    if (!mode || this.reportedMode === mode) return;
+    // `mode === undefined` (not `!mode`): survey-core preserves an empty
+    // `contentMode: ""` (renderedMode "" — an unsupported non-image mode
+    // that must still report); a falsy guard silently dropped it.
+    if (mode === undefined || this.reportedMode === mode) return;
     this.reportedMode = mode;
     reportDiagnostic({
       code: 'image-content-mode-unsupported',
