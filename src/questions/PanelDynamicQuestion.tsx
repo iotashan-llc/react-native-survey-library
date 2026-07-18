@@ -35,7 +35,7 @@
  *   prop swap (attach/detach on identity change; guarded clear).
  */
 import * as React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type {
   Base,
   LocalizableString,
@@ -67,8 +67,10 @@ interface PanelDynamicModelLike {
   name: string;
   survey: SurveyModel;
   isRenderModeList: boolean;
+  isRenderModeTab: boolean;
   displayMode: string;
   renderedPanels: PanelModel[];
+  visiblePanels: PanelModel[];
   canAddPanel: boolean;
   enableAddPanel: boolean;
   canRemovePanel: boolean;
@@ -380,11 +382,67 @@ export class PanelDynamicQuestion extends QuestionElementBase<QuestionElementBas
     );
   }
 
+  /** Tab (2.8c): a horizontal scrollable tab strip (RN idiom for survey-core's
+   * adaptive tab overflow — see DIFFERENCES) + the single current panel. A tab
+   * tap sets `currentIndex`, firing `currentIndexChangedCallback` → re-render. */
+  private renderTab(): React.JSX.Element {
+    const question = this.pd;
+    const current = question.renderedPanels[0];
+    const currentIndex = question.currentIndex;
+    return (
+      <View>
+        <ScrollView
+          testID="paneldynamic-tabs"
+          horizontal
+          showsHorizontalScrollIndicator={false}
+        >
+          {question.visiblePanels.map((panel, i) => {
+            const view = panel as unknown as PanelViewLike & {
+              locTitle?: { renderedHtml: string };
+            };
+            const label = view.locTitle?.renderedHtml || String(i + 1);
+            const selected = i === currentIndex;
+            return (
+              <Pressable
+                key={String(view.id)}
+                testID={`paneldynamic-tab-${i}`}
+                role="tab"
+                accessibilityState={{ selected }}
+                onPress={() => {
+                  (
+                    question as unknown as { currentIndex: number }
+                  ).currentIndex = i;
+                }}
+                style={[
+                  localStyles.tab,
+                  selected ? localStyles.tabSelected : null,
+                ]}
+              >
+                <Text>{label}</Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+        {current ? (
+          <PanelDynamicItem
+            key={String((current as unknown as PanelViewLike).id)}
+            question={question}
+            panel={current}
+            survey={question.survey}
+            creator={this.creator}
+          />
+        ) : null}
+        {this.renderAddButton()}
+      </View>
+    );
+  }
+
   protected renderElement(): React.JSX.Element {
     const question = this.pd;
     this.pendingMode = undefined;
     if (!question.isRenderModeList) {
       if (question.displayMode === 'carousel') return this.renderCarousel();
+      if (question.isRenderModeTab) return this.renderTab();
       this.pendingMode = question.displayMode;
       return <View testID="paneldynamic-mode-unsupported" />;
     }
@@ -424,4 +482,6 @@ const localStyles = StyleSheet.create({
   toggle: { paddingVertical: 4, alignSelf: 'flex-start' },
   nav: { flexDirection: 'row', justifyContent: 'space-between' },
   navButton: { paddingVertical: 6, paddingHorizontal: 12 },
+  tab: { paddingVertical: 6, paddingHorizontal: 12 },
+  tabSelected: { borderBottomWidth: 2 },
 });

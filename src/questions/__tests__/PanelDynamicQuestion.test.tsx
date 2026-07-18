@@ -78,11 +78,12 @@ describe('PanelDynamicQuestion — LIST render', () => {
     expect(screen.getAllByTestId('first-input')).toHaveLength(2);
   });
 
-  it('an unsupported (tab) displayMode renders a fallback + a deferred diagnostic', async () => {
+  it('an unknown displayMode renders a fallback + a deferred diagnostic', async () => {
     const codes: string[] = [];
     setDiagnosticHandler((p: DiagnosticPayload) => codes.push(p.code));
-    // 'tab' is still unsupported (2.8c); 'carousel' is supported as of 2.8b.
-    const { question } = createPaneldynamic({ displayMode: 'tab' });
+    // list/carousel/tab are all supported (2.8a/2.8b/2.8c); an UNKNOWN mode
+    // still degrades to the fallback (invariant 9).
+    const { question } = createPaneldynamic({ displayMode: 'bogus' });
     render(<PanelDynamicQuestion question={question} creator={{}} />);
     await flush();
     expect(screen.getByTestId('paneldynamic-mode-unsupported')).toBeTruthy();
@@ -370,16 +371,78 @@ describe('PanelDynamicQuestion — carousel (2.8b)', () => {
     );
     expect(screen.getByTestId('paneldynamic-add')).toBeTruthy();
   });
+});
 
-  it('a tab displayMode is still unsupported (2.8c boundary)', async () => {
-    const codes: string[] = [];
-    setDiagnosticHandler((p: DiagnosticPayload) => codes.push(p.code));
-    const { question } = createPaneldynamic({ displayMode: 'tab' });
+describe('PanelDynamicQuestion — tab (2.8c)', () => {
+  it('tab mode renders a tab strip (one per panel) + the single current panel', async () => {
+    const { question } = createPaneldynamic({
+      displayMode: 'tab',
+      panelCount: 3,
+    });
     render(<PanelDynamicQuestion question={question} creator={{}} />);
     await flush();
-    expect(screen.getByTestId('paneldynamic-mode-unsupported')).toBeTruthy();
+    expect(screen.getByTestId('paneldynamic-tabs')).toBeTruthy();
+    expect(screen.queryByTestId('paneldynamic-list')).toBeNull();
     expect(screen.queryByTestId('paneldynamic-carousel')).toBeNull();
-    expect(codes).toContain('paneldynamic-mode-unsupported');
+    // one tab per panel; a single current panel.
+    expect(screen.getAllByTestId(/^paneldynamic-tab-/)).toHaveLength(3);
+    expect(screen.getAllByTestId(/^paneldynamic-panel-/)).toHaveLength(1);
+    // the first tab is selected.
+    expect(
+      screen.getByTestId('paneldynamic-tab-0').props.accessibilityState
+        ?.selected
+    ).toBe(true);
+    expect(
+      screen.getByTestId('paneldynamic-tab-1').props.accessibilityState
+        ?.selected
+    ).toBe(false);
+  });
+
+  it('tapping a tab navigates to that panel', async () => {
+    const { question } = createPaneldynamic({
+      displayMode: 'tab',
+      panelCount: 3,
+    });
+    const q = question as unknown as {
+      currentIndex: number;
+      renderedPanels: { id: string | number }[];
+    };
+    render(<PanelDynamicQuestion question={question} creator={{}} />);
+    await flush();
+    const firstId = String(q.renderedPanels[0]!.id);
+    fireEvent.press(screen.getByTestId('paneldynamic-tab-2'));
+    await flush();
+    expect(q.currentIndex).toBe(2);
+    const thirdId = String(q.renderedPanels[0]!.id);
+    expect(thirdId).not.toBe(firstId);
+    expect(screen.getByTestId(`paneldynamic-panel-${thirdId}`)).toBeTruthy();
+    expect(screen.queryByTestId(`paneldynamic-panel-${firstId}`)).toBeNull();
+    expect(
+      screen.getByTestId('paneldynamic-tab-2').props.accessibilityState
+        ?.selected
+    ).toBe(true);
+  });
+
+  it('add/remove work in tab mode (Add gated to the last tab, like carousel)', async () => {
+    const { question } = createPaneldynamic({
+      displayMode: 'tab',
+      panelCount: 2,
+      minPanelCount: 0,
+      maxPanelCount: 5,
+    });
+    render(<PanelDynamicQuestion question={question} creator={{}} />);
+    await flush();
+    const q = question as unknown as { panelCount: number };
+    // survey-core gates Add to the last panel — navigate to the last tab first.
+    expect(screen.queryByTestId('paneldynamic-add')).toBeNull();
+    fireEvent.press(screen.getByTestId('paneldynamic-tab-1'));
+    await flush();
+    fireEvent.press(screen.getByTestId('paneldynamic-add'));
+    await flush();
+    expect(q.panelCount).toBe(3);
+    fireEvent.press(screen.getAllByTestId(/^paneldynamic-remove-/)[0]!);
+    await flush();
+    expect(q.panelCount).toBe(2);
   });
 });
 
@@ -433,8 +496,8 @@ describe('PanelDynamicQuestion — reactivity', () => {
   it('a same-mode retarget re-emits the diagnostic for the new question — minor #4', async () => {
     const codes: string[] = [];
     setDiagnosticHandler((p: DiagnosticPayload) => codes.push(p.code));
-    const a = createPaneldynamic({ displayMode: 'tab' }).question;
-    const b = createPaneldynamic({ displayMode: 'tab' }).question;
+    const a = createPaneldynamic({ displayMode: 'bogus' }).question;
+    const b = createPaneldynamic({ displayMode: 'bogus' }).question;
     const view = render(<PanelDynamicQuestion question={a} creator={{}} />);
     await flush();
     view.rerender(<PanelDynamicQuestion question={b} creator={{}} />);
