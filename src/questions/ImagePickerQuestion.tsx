@@ -4,39 +4,69 @@
  * array membership). Standalone: no overlay. Plan:
  * docs/design/2.7-imagepicker-plan.md.
  *
- * - Each tile is a Pressable with an `Image` loaded through the central
- *   URI policy (invariant 8: `validateUri(rawUri, 'image', policy)`,
- *   fail-closed) — same policy path as ImageQuestion (2.10); a blocked/
- *   failed image falls back to the choice text so a tile is never blank.
- * - `resizeMode` from `question.imageFit`; tile size from
- *   `renderedImageWidth`/`renderedImageHeight`.
- * - Selection state per tile from core's `question.isItemSelected(item)`;
- *   a11y role radio (single) / checkbox (multi) + selected/checked state.
- * - Grid: `getCurrentColCount()` columns, each tile `${100/cols}%` wide
- *   in a flex-wrap row (the simple grid the 1.12 choice columns use;
- *   upstream's column balancing is not reproduced — see DIFFERENCES).
+ * Structure (PR #31 review r1): each tile is its OWN reactive component
+ * (`ImagePickerTile extends SurveyElementBase`, state elements
+ * `[item, question]` — like ButtonGroupItemRow) so per-ITEM changes
+ * (isEnabled via choicesEnableIf, selection, contentNotLoaded) and the
+ * separate `locImageLink`/`locText` LocString channels all re-render the
+ * right tile. The image itself is a FUNCTION child (`TilePolicyImage`)
+ * so it can `useContext(UriPolicyContext)` — SurveyElementBase's single
+ * contextType is the theme.
+ *
+ * - Image loads through the central URI policy (invariant 8:
+ *   `validateUri(rawUri, 'image', uriConfig ?? contextPolicy)`,
+ *   fail-closed → `image-uri-blocked` diagnostic + choice-text fallback).
+ *   `onLoad`/`onError` route into core (`onContentLoaded` for the
+ *   aspect-ratio state; `item.onErrorHandler()`); a `contentNotLoaded`
+ *   item (allowed-but-failed) shows the choice text (same fail-closed
+ *   posture as ImageQuestion, task 2.10).
+ * - Selection is gated on core `getItemEnabled(item)` (choicesEnableIf +
+ *   image-availability) AND `isInputReadOnly`; single-select sets
+ *   `question.value` (toggle-clear when allowClear); multi toggles the
+ *   array with core's item equality (`checkIfValuesEqual`,
+ *   doNotConvertNumbers). Selection state from core `isItemSelected`.
+ * - a11y: the grid is a `radiogroup` (single-select) with the model
+ *   label; each tile carries the choice text + `checked`/`disabled`.
+ * - Grid: `getCurrentColCount()` columns (0 = flow layout); a positive
+ *   count sets `${100/cols}%`-wide tiles (flex-wrap).
  */
 import * as React from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
-import type { ImageProps } from 'react-native';
-import type { Base, Question } from '../core/facade';
+import type { ImageProps, ImageLoadEvent } from 'react-native';
+import type { Base } from '../core/facade';
 import { Helpers } from '../core/facade';
 import { QuestionElementBase } from '../reactivity/QuestionElementBase';
 import type { QuestionElementBaseProps } from '../reactivity/QuestionElementBase';
+import { SurveyElementBase } from '../reactivity/SurveyElementBase';
 import { validateUri } from '../security/uri-policy';
+import type { UriPolicyConfig } from '../security/uri-policy';
+import { UriPolicyContext } from '../security/UriPolicyContext';
 import { reportDiagnostic } from '../diagnostics';
 
 type ImageResizeMode = NonNullable<ImageProps['resizeMode']>;
+
+interface LocStringLike {
+  renderedHtml: string;
+  onStringChanged: {
+    add(cb: () => void): void;
+    remove(cb: () => void): void;
+  };
+}
 
 interface ChoiceLike {
   id: string | number;
   value: unknown;
   text: string;
-  locImageLink?: { renderedHtml: string };
+  contentNotLoaded?: boolean;
+  onErrorHandler?: () => void;
+  locImageLink?: LocStringLike;
+  locText?: LocStringLike;
   imageLink?: string;
 }
 
-interface ImagePickerModelLike extends Question {
+interface ImagePickerModelLike {
+  name: string;
+  isInputReadOnly: boolean;
   multiSelect: boolean;
   showLabel: boolean;
   imageFit: string;
@@ -45,7 +75,14 @@ interface ImagePickerModelLike extends Question {
   renderedImageHeight?: number | string;
   visibleChoices: ChoiceLike[];
   isItemSelected(item: ChoiceLike): boolean;
+  getItemEnabled(item: ChoiceLike): boolean;
   getCurrentColCount(): number;
+  onContentLoaded(
+    item: ChoiceLike,
+    content: { naturalWidth: number; naturalHeight: number }
+  ): void;
+  a11y_input_ariaLabel?: string;
+  processedTitle?: string;
 }
 
 const FIT_TO_RESIZE: Record<string, ImageResizeMode> = {
@@ -64,7 +101,191 @@ function toDimension(v: number | string | undefined): number | undefined {
   return undefined;
 }
 
-export interface ImagePickerQuestionProps extends QuestionElementBaseProps {}
+/**
+ * The tile's image, gated by the URI policy — a FUNCTION component so it
+ * can consume `UriPolicyContext` (the enclosing tile class already spends
+ * its contextType on the theme). Mirrors ImageQuestion's PolicyGatedImage.
+ */
+function TilePolicyImage(props: {
+  question: ImagePickerModelLike;
+  item: ChoiceLike;
+  uriConfig: UriPolicyConfig | undefined;
+}): React.JSX.Element {
+  const { question, item, uriConfig } = props;
+  const contextPolicy = React.useContext(UriPolicyContext);
+  const effectivePolicy = uriConfig ?? contextPolicy;
+  const rawUri = item.locImageLink?.renderedHtml || item.imageLink || '';
+  const result = validateUri(rawUri, 'image', effectivePolicy);
+  const lastErroredUriRef = React.useRef<string | null>(null);
+  const blockedReason = result.ok ? undefined : result.reason;
+  React.useEffect(() => {
+    if (blockedReason !== undefined && rawUri) {
+      reportDiagnostic({
+        code: 'image-uri-blocked',
+        source: 'imagepicker',
+        uri: rawUri,
+        reason: blockedReason,
+      });
+    }
+  }, [rawUri, blockedReason, effectivePolicy]);
+
+  const fallback = (
+    <Text testID={`imagepicker-fallback-${String(item.value)}`}>
+      {item.text}
+    </Text>
+  );
+  if (!result.ok) return fallback;
+  // Allowed but failed to load (core marks the item contentNotLoaded) —
+  // show the choice text while THIS link is still the failed one.
+  if (item.contentNotLoaded && lastErroredUriRef.current === rawUri) {
+    return fallback;
+  }
+  const resizeMode = FIT_TO_RESIZE[question.imageFit] ?? 'contain';
+  const width = toDimension(question.renderedImageWidth) ?? 120;
+  const height = toDimension(question.renderedImageHeight) ?? 90;
+  return (
+    <Image
+      testID={`imagepicker-image-${String(item.value)}`}
+      source={{ uri: result.canonical }}
+      resizeMode={resizeMode}
+      accessibilityIgnoresInvertColors
+      onLoad={(e: ImageLoadEvent) => {
+        lastErroredUriRef.current = null;
+        const src = e.nativeEvent?.source;
+        if (src) {
+          question.onContentLoaded(item, {
+            naturalWidth: src.width,
+            naturalHeight: src.height,
+          });
+        }
+      }}
+      onError={() => {
+        lastErroredUriRef.current = rawUri;
+        item.onErrorHandler?.();
+      }}
+      style={{ width, height }}
+    />
+  );
+}
+
+interface ImagePickerTileProps {
+  question: ImagePickerModelLike;
+  item: ChoiceLike;
+  cols: number;
+  uriConfig: UriPolicyConfig | undefined;
+}
+
+/** Per-item reactive tile — state elements [item, question]. Also
+ * subscribes the separate locImageLink/locText LocString channels
+ * (image-link / label mutations don't fire an item property change). */
+class ImagePickerTile extends SurveyElementBase<ImagePickerTileProps> {
+  private subscribedLink: LocStringLike | null = null;
+  private subscribedText: LocStringLike | null = null;
+  private readonly handleLocChanged = (): void => {
+    this.forceUpdate();
+  };
+
+  protected getStateElement(): Base | null {
+    return this.props.item as unknown as Base;
+  }
+
+  protected getStateElements(): Base[] {
+    return [
+      this.props.item as unknown as Base,
+      this.props.question as unknown as Base,
+    ];
+  }
+
+  private syncLocSubscriptions(): void {
+    const nextLink = this.props.item.locImageLink ?? null;
+    if (nextLink !== this.subscribedLink) {
+      this.subscribedLink?.onStringChanged.remove(this.handleLocChanged);
+      nextLink?.onStringChanged.add(this.handleLocChanged);
+      this.subscribedLink = nextLink;
+    }
+    const nextText = this.props.item.locText ?? null;
+    if (nextText !== this.subscribedText) {
+      this.subscribedText?.onStringChanged.remove(this.handleLocChanged);
+      nextText?.onStringChanged.add(this.handleLocChanged);
+      this.subscribedText = nextText;
+    }
+  }
+
+  componentDidMount(): void {
+    super.componentDidMount();
+    this.syncLocSubscriptions();
+  }
+
+  componentDidUpdate(): void {
+    super.componentDidUpdate();
+    this.syncLocSubscriptions();
+  }
+
+  componentWillUnmount(): void {
+    this.subscribedLink?.onStringChanged.remove(this.handleLocChanged);
+    this.subscribedText?.onStringChanged.remove(this.handleLocChanged);
+    this.subscribedLink = null;
+    this.subscribedText = null;
+    super.componentWillUnmount();
+  }
+
+  private handlePress(): void {
+    const { question, item } = this.props;
+    if (!question.getItemEnabled(item) || question.isInputReadOnly) return;
+    const selected = question.isItemSelected(item);
+    const target = question as unknown as { value?: unknown };
+    if (question.multiSelect) {
+      const current = Array.isArray(target.value) ? target.value : [];
+      target.value = selected
+        ? current.filter(
+            (v) =>
+              !Helpers.checkIfValuesEqual(v, item.value, {
+                doNotConvertNumbers: true,
+              })
+          )
+        : [...current, item.value];
+    } else {
+      target.value =
+        selected && (question as { allowClear?: boolean }).allowClear
+          ? undefined
+          : item.value;
+    }
+  }
+
+  protected renderElement(): React.JSX.Element {
+    const { question, item, cols, uriConfig } = this.props;
+    const selected = question.isItemSelected(item);
+    const enabled = question.getItemEnabled(item) && !question.isInputReadOnly;
+    return (
+      <Pressable
+        testID={`imagepicker-item-${String(item.value)}`}
+        accessibilityRole={question.multiSelect ? 'checkbox' : 'radio'}
+        accessibilityLabel={item.text}
+        accessibilityState={{ checked: selected, disabled: !enabled }}
+        disabled={!enabled}
+        onPress={() => this.handlePress()}
+        style={[
+          localStyles.tile,
+          cols > 0 ? { width: `${100 / cols}%` as `${number}%` } : null,
+          selected ? localStyles.tileSelected : null,
+        ]}
+      >
+        <TilePolicyImage
+          question={question}
+          item={item}
+          uriConfig={uriConfig}
+        />
+        {question.showLabel ? (
+          <Text style={localStyles.label}>{item.text}</Text>
+        ) : null}
+      </Pressable>
+    );
+  }
+}
+
+export interface ImagePickerQuestionProps extends QuestionElementBaseProps {
+  uriConfig?: UriPolicyConfig;
+}
 
 export class ImagePickerQuestion extends QuestionElementBase<ImagePickerQuestionProps> {
   protected getStateElement(): Base {
@@ -73,83 +294,6 @@ export class ImagePickerQuestion extends QuestionElementBase<ImagePickerQuestion
 
   private get imagepicker(): ImagePickerModelLike {
     return this.questionBase as unknown as ImagePickerModelLike;
-  }
-
-  private handlePress(choice: ChoiceLike): void {
-    const question = this.imagepicker;
-    if (question.isInputReadOnly) return;
-    const selected = question.isItemSelected(choice);
-    const target = question as unknown as { value?: unknown };
-    if (question.multiSelect) {
-      const current = Array.isArray(target.value) ? target.value : [];
-      target.value = selected
-        ? current.filter(
-            // Match core item equality (Base uses doNotConvertNumbers) so
-            // distinct 1 vs "1" do not both drop (PR #31 review r1 #7).
-            (v) =>
-              !Helpers.checkIfValuesEqual(v, choice.value, {
-                doNotConvertNumbers: true,
-              })
-          )
-        : [...current, choice.value];
-    } else {
-      // Single-select: toggle-to-clear when allowClear, else set.
-      target.value =
-        selected && (question as { allowClear?: boolean }).allowClear
-          ? undefined
-          : choice.value;
-    }
-  }
-
-  private renderTile(choice: ChoiceLike, cols: number): React.JSX.Element {
-    const question = this.imagepicker;
-    const selected = question.isItemSelected(choice);
-    const rawUri = choice.locImageLink?.renderedHtml || choice.imageLink || '';
-    const policy = validateUri(rawUri, 'image', undefined);
-    const resizeMode = FIT_TO_RESIZE[question.imageFit] ?? 'contain';
-    const width = toDimension(question.renderedImageWidth) ?? 120;
-    const height = toDimension(question.renderedImageHeight) ?? 90;
-    if (!policy.ok && rawUri) {
-      reportDiagnostic({
-        code: 'image-uri-blocked',
-        source: 'imagepicker',
-        uri: rawUri,
-        reason: policy.reason,
-      });
-    }
-    return (
-      <Pressable
-        key={String(choice.id)}
-        testID={`imagepicker-item-${String(choice.value)}`}
-        accessibilityRole={question.multiSelect ? 'checkbox' : 'radio'}
-        accessibilityLabel={choice.text}
-        accessibilityState={
-          question.multiSelect ? { checked: selected } : { selected }
-        }
-        onPress={() => this.handlePress(choice)}
-        style={[
-          localStyles.tile,
-          cols > 0 ? { width: `${100 / cols}%` as `${number}%` } : null,
-          selected ? localStyles.tileSelected : null,
-        ]}
-      >
-        {policy.ok ? (
-          <Image
-            source={{ uri: policy.canonical }}
-            resizeMode={resizeMode}
-            style={{ width, height }}
-            accessibilityIgnoresInvertColors
-          />
-        ) : (
-          <Text testID={`imagepicker-fallback-${String(choice.value)}`}>
-            {choice.text}
-          </Text>
-        )}
-        {question.showLabel ? (
-          <Text style={localStyles.label}>{choice.text}</Text>
-        ) : null}
-      </Pressable>
-    );
   }
 
   protected renderElement(): React.JSX.Element {
@@ -162,14 +306,29 @@ export class ImagePickerQuestion extends QuestionElementBase<ImagePickerQuestion
       });
       return <View testID="imagepicker-content-mode-unsupported" />;
     }
-    // colCount / getCurrentColCount() default to 0 = FLOW layout (natural
-    // tile widths); only a POSITIVE count sets the fixed %-width grid —
-    // Math.max(1, 0) would wrongly force one 100%-wide column (a vertical
-    // list) for the default (PR #31 review r1 #5).
+    // 0 = flow layout (natural tile widths); a positive count sets the
+    // fixed %-width grid (PR #31 review r1 #5).
     const cols = question.getCurrentColCount();
     return (
-      <View testID="imagepicker-grid" style={localStyles.grid}>
-        {question.visibleChoices.map((choice) => this.renderTile(choice, cols))}
+      <View
+        testID="imagepicker-grid"
+        style={localStyles.grid}
+        accessibilityRole={question.multiSelect ? undefined : 'radiogroup'}
+        accessibilityLabel={
+          question.multiSelect
+            ? undefined
+            : (question.a11y_input_ariaLabel ?? question.processedTitle)
+        }
+      >
+        {question.visibleChoices.map((item) => (
+          <ImagePickerTile
+            key={String(item.id)}
+            question={question}
+            item={item}
+            cols={cols}
+            uriConfig={this.props.uriConfig}
+          />
+        ))}
       </View>
     );
   }

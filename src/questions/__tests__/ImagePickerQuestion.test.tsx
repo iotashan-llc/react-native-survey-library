@@ -59,13 +59,15 @@ describe('ImagePickerQuestion — grid + single select', () => {
     await flush();
     fireEvent.press(screen.getByTestId('imagepicker-item-dog'));
     expect(question.value).toBe('dog');
+    // radio a11y uses `checked` (not `selected`) — matches the approved
+    // Radiogroup/ButtonGroup renderers (r1 #6).
     expect(
       screen.getByTestId('imagepicker-item-dog').props.accessibilityState
-        ?.selected
+        ?.checked
     ).toBe(true);
     expect(
       screen.getByTestId('imagepicker-item-cat').props.accessibilityState
-        ?.selected
+        ?.checked
     ).toBe(false);
   });
 
@@ -78,7 +80,7 @@ describe('ImagePickerQuestion — grid + single select', () => {
     });
     expect(
       screen.getByTestId('imagepicker-item-fox').props.accessibilityState
-        ?.selected
+        ?.checked
     ).toBe(true);
   });
 });
@@ -177,6 +179,82 @@ describe('ImagePickerQuestion — layout + equality (r1)', () => {
       .flat()
       .map((s) => (s as { width?: unknown } | null)?.width);
     expect(widths).toContain(`${100 / 3}%`);
+  });
+});
+
+describe('ImagePickerQuestion — structural (r1 rewrite)', () => {
+  it('single-select grid is a radiogroup with the question label (r1 #6)', async () => {
+    const { question } = createImagePicker({ title: 'Animals' });
+    render(<ImagePickerQuestion question={question} creator={{}} />);
+    await flush();
+    const grid = screen.getByTestId('imagepicker-grid');
+    expect(grid.props.accessibilityRole).toBe('radiogroup');
+    expect(grid.props.accessibilityLabel).toBe('Animals');
+  });
+
+  it('a choicesEnableIf-disabled tile is not pressable + announces disabled (r1 #4)', async () => {
+    const model = new Model({
+      elements: [
+        {
+          type: 'imagepicker',
+          name: 'ip',
+          choicesEnableIf: '{item} = "cat"',
+          choices: [
+            { value: 'cat', imageLink: IMG, text: 'Cat' },
+            { value: 'dog', imageLink: IMG, text: 'Dog' },
+          ],
+        },
+      ],
+    });
+    const question = model.getQuestionByName('ip')!;
+    render(<ImagePickerQuestion question={question} creator={{}} />);
+    await flush();
+    const dog = screen.getByTestId('imagepicker-item-dog');
+    expect(dog.props.accessibilityState?.disabled).toBe(true);
+    fireEvent.press(dog);
+    expect(question.isEmpty()).toBe(true); // press ignored
+    // the enabled one still works.
+    fireEvent.press(screen.getByTestId('imagepicker-item-cat'));
+    expect(question.value).toBe('cat');
+  });
+
+  it('an image onError shows the choice text + routes to core onErrorHandler (r1 #2)', async () => {
+    const { question } = createImagePicker({ showLabel: false });
+    render(<ImagePickerQuestion question={question} creator={{}} />);
+    await flush();
+    const img = screen.getByTestId('imagepicker-image-cat');
+    act(() => {
+      fireEvent(img, 'error', { nativeEvent: { error: 'boom' } });
+    });
+    // Core marks the item contentNotLoaded → the tile falls back to text.
+    expect(screen.getByTestId('imagepicker-fallback-cat')).toBeTruthy();
+  });
+
+  it('an in-place item enable change re-renders that tile (per-item reactivity, r1 #3)', async () => {
+    const model = new Model({
+      elements: [
+        {
+          type: 'imagepicker',
+          name: 'ip',
+          choicesEnableIf: '{trigger} = 1',
+          choices: [{ value: 'cat', imageLink: IMG, text: 'Cat' }],
+        },
+      ],
+    });
+    const question = model.getQuestionByName('ip')!;
+    render(<ImagePickerQuestion question={question} creator={{}} />);
+    await flush();
+    expect(
+      screen.getByTestId('imagepicker-item-cat').props.accessibilityState
+        ?.disabled
+    ).toBe(true);
+    act(() => {
+      model.setValue('trigger', 1);
+    });
+    expect(
+      screen.getByTestId('imagepicker-item-cat').props.accessibilityState
+        ?.disabled
+    ).toBe(false);
   });
 });
 
