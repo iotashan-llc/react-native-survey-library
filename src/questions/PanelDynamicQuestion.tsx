@@ -6,21 +6,29 @@
  * Carousel/tab/progress modes are 2.8b/2.8c. Plan:
  * docs/design/2.8a-paneldynamic-plan.md.
  *
- * Key design points (three-way reviewed — codex sol@max r + gemini):
+ * Key design points (three-way reviewed + implementation-reviewed):
  * - Iterate `renderedPanels` (LIST = all visible; single-panel in 2.8b/2.8c).
- * - Each dynamic panel is a full `PanelModel` → render its nested content with
- *   the EXISTING `SurveyPanel` composition (no new nested-render code); the
- *   renderer NEVER reads/writes panel values (each `panel.data` proxies value
- *   into the question's array).
+ * - Each panel is rendered by a per-panel REACTIVE component
+ *   (`PanelDynamicItem extends SurveyElementBase`, state elements
+ *   `[panel, question]` — like ButtonGroupItemRow/ImagePickerTile) so an
+ *   EXTERNAL collapse/expand (survey-core emits it on the PanelModel, not the
+ *   question) re-renders the right item and its content stays reachable (impl
+ *   review major #1). Nested content reuses the EXISTING `SurveyPanel`
+ *   composition; the renderer NEVER reads/writes panel values (each
+ *   `panel.data` proxies value into the question's array).
+ * - Localizable captions (add/remove/noEntries) render through
+ *   `renderLocString` (reactive viewer + HTML-safe) AND their `onStringChanged`
+ *   channel is subscribed so accessibility labels stay fresh on locale/text
+ *   changes (impl review major #3) — the base property subscription does not
+ *   observe LocalizableString channels.
  * - Visibility vs enabled are DISTINCT: `canAddPanel`/`canRemovePanel` gate
  *   PRESENCE (absent at max/min); `enableAddPanel`/`enableRemovePanel` gate the
  *   disabled-but-shown state.
  * - Add/remove go through the UI wrappers `addPanelUI()`/`removePanelUI(panel)`
  *   (guards + confirm decision live in core), never the raw `addPanel`/
  *   `removePanel`.
- * - React key sits on the OUTERMOST mapped wrapper (`panel.id`), not the nested
- *   `SurveyPanel`, or reconciliation transfers draft/native state across panels.
- * - Reactivity: three single-assignment core callbacks
+ * - React key sits on the OUTERMOST mapped item (`panel.id`).
+ * - Structural reactivity: three single-assignment core callbacks
  *   (`panelCountChangedCallback`/`renderModeChangedCallback`/
  *   `currentIndexChangedCallback`) share ONE stable handler that bumps state
  *   (functional `setState`, not `forceUpdate`); retarget-safe across a `question`
@@ -28,14 +36,31 @@
  */
 import * as React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import type { Base, PanelModel, SurveyModel } from '../core/facade';
+import type {
+  Base,
+  LocalizableString,
+  PanelModel,
+  SurveyModel,
+} from '../core/facade';
 import { QuestionElementBase } from '../reactivity/QuestionElementBase';
 import type { QuestionElementBaseProps } from '../reactivity/QuestionElementBase';
+import { SurveyElementBase } from '../reactivity/SurveyElementBase';
 import { SurveyPanel } from '../components/composition/SurveyPanel';
 import { reportDiagnostic } from '../diagnostics';
 
 interface LocStringLike {
   renderedHtml: string;
+  onStringChanged: {
+    add(cb: () => void): void;
+    remove(cb: () => void): void;
+  };
+}
+
+interface PanelViewLike {
+  id: string | number;
+  state: string;
+  renderedIsExpanded: boolean;
+  toggleState(): void;
 }
 
 interface PanelDynamicModelLike {
@@ -59,6 +84,118 @@ interface PanelDynamicModelLike {
   currentIndexChangedCallback?: () => void;
 }
 
+/** Subscribe/unsubscribe a LocalizableString's `onStringChanged` channel to a
+ * handler, tracking the currently-subscribed instance (idempotent, swap-safe).
+ * The base property subscription does NOT observe these channels. */
+function syncLocSub(
+  next: LocStringLike | null,
+  current: LocStringLike | null,
+  handler: () => void
+): LocStringLike | null {
+  if (next === current) return current;
+  current?.onStringChanged.remove(handler);
+  next?.onStringChanged.add(handler);
+  return next;
+}
+
+interface PanelDynamicItemProps {
+  question: PanelDynamicModelLike;
+  panel: PanelModel;
+  survey: SurveyModel;
+  creator: unknown;
+}
+
+/** One dynamic panel — reactive to BOTH the panel (external collapse/expand,
+ * per-panel property changes) and the question (can/enable Remove). */
+class PanelDynamicItem extends SurveyElementBase<PanelDynamicItemProps> {
+  private subscribedRemove: LocStringLike | null = null;
+  private readonly handleLocChanged = (): void => {
+    this.forceUpdate();
+  };
+
+  protected getStateElement(): Base | null {
+    return this.props.panel as unknown as Base;
+  }
+
+  protected getStateElements(): Base[] {
+    return [
+      this.props.panel as unknown as Base,
+      this.props.question as unknown as Base,
+    ];
+  }
+
+  private syncSubs(): void {
+    this.subscribedRemove = syncLocSub(
+      this.props.question.locRemovePanelText,
+      this.subscribedRemove,
+      this.handleLocChanged
+    );
+  }
+
+  componentDidMount(): void {
+    super.componentDidMount();
+    this.syncSubs();
+  }
+
+  componentDidUpdate(): void {
+    super.componentDidUpdate();
+    this.syncSubs();
+  }
+
+  componentWillUnmount(): void {
+    this.subscribedRemove?.onStringChanged.remove(this.handleLocChanged);
+    this.subscribedRemove = null;
+    super.componentWillUnmount();
+  }
+
+  protected renderElement(): React.JSX.Element {
+    const { question, panel, survey, creator } = this.props;
+    const view = panel as unknown as PanelViewLike;
+    const panelId = String(view.id);
+    const showRemove = question.canRemovePanel;
+    const removeDisabled = !question.enableRemovePanel;
+    // `panelsState` collapsed/firstExpanded/expanded → collapsible
+    // (`state !== 'default'`). SurveyPanel hides its rows when not expanded and
+    // has no expand affordance, so a collapsible panel gets a toggle here —
+    // otherwise collapsed content is unreachable (review major #1). The item
+    // subscribes the panel, so an EXTERNAL state change also re-renders it.
+    const collapsible = view.state !== 'default';
+    return (
+      <View testID={`paneldynamic-panel-${panelId}`}>
+        {collapsible ? (
+          <Pressable
+            testID={`paneldynamic-toggle-${panelId}`}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: view.renderedIsExpanded }}
+            onPress={() => view.toggleState()}
+            style={localStyles.toggle}
+          >
+            <Text>{view.renderedIsExpanded ? '▾' : '▸'}</Text>
+          </Pressable>
+        ) : null}
+        <SurveyPanel survey={survey} creator={creator} element={panel} />
+        {showRemove ? (
+          <Pressable
+            testID={`paneldynamic-remove-${panelId}`}
+            accessibilityRole="button"
+            accessibilityLabel={question.locRemovePanelText.renderedHtml}
+            accessibilityState={{ disabled: removeDisabled }}
+            disabled={removeDisabled}
+            onPress={() => question.removePanelUI(panel)}
+            style={localStyles.removeButton}
+          >
+            {SurveyElementBase.renderLocString(
+              question.locRemovePanelText as unknown as LocalizableString,
+              undefined,
+              'remove'
+            )}
+          </Pressable>
+        ) : null}
+      </View>
+    );
+  }
+}
+
 export class PanelDynamicQuestion extends QuestionElementBase<QuestionElementBaseProps> {
   protected getStateElement(): Base {
     return this.questionBase;
@@ -69,12 +206,17 @@ export class PanelDynamicQuestion extends QuestionElementBase<QuestionElementBas
   }
 
   /** ONE stable handler shared by the three structural-change callbacks;
-   * bumps the base's reserved render counter via functional setState (codex
+   * bumps the base's reserved render counter via functional setState (review
    * major #2 — setState, not forceUpdate). */
   private boundQuestion: PanelDynamicModelLike | null = null;
   private readonly handleStructuralChange = (): void => {
     this.setState((state) => ({ __svRev: (state.__svRev ?? 0) + 1 }));
   };
+
+  /** Add/no-entries captions are LocalizableString channels — subscribe them
+   * so a locale/text change re-renders (fresh a11y labels). */
+  private subscribedAdd: LocStringLike | null = null;
+  private subscribedNoEntries: LocStringLike | null = null;
 
   private attachCallbacks(q: PanelDynamicModelLike): void {
     q.panelCountChangedCallback = this.handleStructuralChange;
@@ -84,7 +226,7 @@ export class PanelDynamicQuestion extends QuestionElementBase<QuestionElementBas
   }
 
   /** Guarded clear: only null a field that still points at OUR handler, so a
-   * newer owner (after a prop swap) is never clobbered (codex major #2). */
+   * newer owner (after a prop swap) is never clobbered (review major #2). */
   private detachCallbacks(q: PanelDynamicModelLike): void {
     if (q.panelCountChangedCallback === this.handleStructuralChange) {
       q.panelCountChangedCallback = undefined;
@@ -97,9 +239,23 @@ export class PanelDynamicQuestion extends QuestionElementBase<QuestionElementBas
     }
   }
 
+  private syncLocSubs(): void {
+    this.subscribedAdd = syncLocSub(
+      this.pd.locAddPanelText,
+      this.subscribedAdd,
+      this.handleStructuralChange
+    );
+    this.subscribedNoEntries = syncLocSub(
+      this.pd.locNoEntriesText,
+      this.subscribedNoEntries,
+      this.handleStructuralChange
+    );
+  }
+
   componentDidMount(): void {
     super.componentDidMount();
     this.attachCallbacks(this.pd);
+    this.syncLocSubs();
     this.flushModeDiagnostic();
   }
 
@@ -109,18 +265,29 @@ export class PanelDynamicQuestion extends QuestionElementBase<QuestionElementBas
     if (this.boundQuestion && this.boundQuestion !== q) {
       this.detachCallbacks(this.boundQuestion);
       this.attachCallbacks(q);
+      // A retarget is a new question — its diagnostic must not be suppressed
+      // by the old question's reported mode (review minor #4).
+      this.reportedMode = undefined;
     }
+    this.syncLocSubs();
     this.flushModeDiagnostic();
   }
 
   componentWillUnmount(): void {
     if (this.boundQuestion) this.detachCallbacks(this.boundQuestion);
     this.boundQuestion = null;
+    this.subscribedAdd?.onStringChanged.remove(this.handleStructuralChange);
+    this.subscribedNoEntries?.onStringChanged.remove(
+      this.handleStructuralChange
+    );
+    this.subscribedAdd = null;
+    this.subscribedNoEntries = null;
     super.componentWillUnmount();
   }
 
   /** Unsupported (non-list) displayMode diagnostic — staged in render,
-   * flushed+deduped in the commit phase (never emitted from render). */
+   * flushed+deduped in the commit phase (never emitted from render). Dedup is
+   * keyed by (question identity via retarget reset) + mode. */
   private pendingMode: string | undefined;
   private reportedMode: string | undefined;
 
@@ -149,63 +316,12 @@ export class PanelDynamicQuestion extends QuestionElementBase<QuestionElementBas
         onPress={() => question.addPanelUI()}
         style={localStyles.addButton}
       >
-        <Text>{question.locAddPanelText.renderedHtml}</Text>
+        {SurveyElementBase.renderLocString(
+          question.locAddPanelText as unknown as LocalizableString,
+          undefined,
+          'add'
+        )}
       </Pressable>
-    );
-  }
-
-  private renderPanel(panel: PanelModel): React.JSX.Element {
-    const question = this.pd;
-    const showRemove = question.canRemovePanel;
-    const removeDisabled = !question.enableRemovePanel;
-    const view = panel as unknown as {
-      id: string;
-      state: string;
-      renderedIsExpanded: boolean;
-      toggleState(): void;
-    };
-    const panelId = String(view.id);
-    // A `panelsState` of collapsed/firstExpanded/expanded makes panels
-    // collapsible (`state !== 'default'`); the existing SurveyPanel hides its
-    // rows when not expanded and has NO expand affordance, so add a toggle
-    // here — otherwise a collapsed panel's inputs are unreachable (codex r
-    // major #1). `default` panels are always expanded and need no toggle.
-    const collapsible = view.state !== 'default';
-    return (
-      <View key={panelId} testID={`paneldynamic-panel-${panelId}`}>
-        {collapsible ? (
-          <Pressable
-            testID={`paneldynamic-toggle-${panelId}`}
-            accessibilityRole="button"
-            accessibilityState={{ expanded: view.renderedIsExpanded }}
-            onPress={() => {
-              view.toggleState();
-              this.handleStructuralChange();
-            }}
-            style={localStyles.toggle}
-          >
-            <Text>{view.renderedIsExpanded ? '▾' : '▸'}</Text>
-          </Pressable>
-        ) : null}
-        <SurveyPanel
-          survey={question.survey}
-          creator={this.creator}
-          element={panel}
-        />
-        {showRemove ? (
-          <Pressable
-            testID={`paneldynamic-remove-${panelId}`}
-            accessibilityRole="button"
-            accessibilityLabel={question.locRemovePanelText.renderedHtml}
-            accessibilityState={{ disabled: removeDisabled }}
-            disabled={removeDisabled}
-            onPress={() => question.removePanelUI(panel)}
-            style={localStyles.removeButton}
-          >
-            <Text>{question.locRemovePanelText.renderedHtml}</Text>
-          </Pressable>
-        ) : null}
-      </View>
     );
   }
 
@@ -220,14 +336,26 @@ export class PanelDynamicQuestion extends QuestionElementBase<QuestionElementBas
     if (panels.length === 0 && question.getShowNoEntriesPlaceholder()) {
       return (
         <View testID="paneldynamic-empty">
-          <Text>{question.locNoEntriesText.renderedHtml}</Text>
+          {SurveyElementBase.renderLocString(
+            question.locNoEntriesText as unknown as LocalizableString,
+            undefined,
+            'no-entries'
+          )}
           {this.renderAddButton()}
         </View>
       );
     }
     return (
       <View testID="paneldynamic-list">
-        {panels.map((panel) => this.renderPanel(panel))}
+        {panels.map((panel) => (
+          <PanelDynamicItem
+            key={String((panel as unknown as PanelViewLike).id)}
+            question={question}
+            panel={panel}
+            survey={question.survey}
+            creator={this.creator}
+          />
+        ))}
         {this.renderAddButton()}
       </View>
     );

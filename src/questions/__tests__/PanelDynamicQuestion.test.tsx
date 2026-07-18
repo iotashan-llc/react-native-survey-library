@@ -22,6 +22,19 @@ async function flush(): Promise<void> {
   });
 }
 
+/** Nested row elements defer one frame until onLayout measures the row
+ * (SurveyRow 1.3-design D3). Fire a layout on every row so nested questions
+ * render (mirrors SurveyPanel.test). */
+function layoutRows(): void {
+  act(() => {
+    for (const row of screen.queryAllByTestId('sv-row')) {
+      fireEvent(row, 'layout', {
+        nativeEvent: { layout: { x: 0, y: 0, width: 700, height: 0 } },
+      });
+    }
+  });
+}
+
 function createPaneldynamic(extra: Record<string, unknown> = {}) {
   const model = new Model({
     elements: [
@@ -51,10 +64,12 @@ describe('PanelDynamicQuestion — LIST render', () => {
     const panels = (question as unknown as { renderedPanels: { id: string }[] })
       .renderedPanels;
     expect(panels).toHaveLength(2);
-    // nested text inputs from the template appear (name-derived testIDs from
-    // the text question renderer); assert the panel containers exist.
     expect(screen.getByTestId('paneldynamic-list')).toBeTruthy();
     expect(screen.getAllByTestId(/^paneldynamic-panel-/).length).toBe(2);
+    // The nested template questions actually render (one 'first-input' per
+    // panel) after the row measures — not just the panel wrappers.
+    layoutRows();
+    expect(screen.getAllByTestId('first-input')).toHaveLength(2);
   });
 
   it('non-list displayMode renders an unsupported fallback + a deferred diagnostic', async () => {
@@ -266,6 +281,104 @@ describe('PanelDynamicQuestion — reactivity', () => {
       (question as unknown as { addPanel: () => void }).addPanel();
     });
     await flush();
+    expect(screen.getAllByTestId(/^paneldynamic-panel-/).length).toBe(3);
+  });
+
+  it('an EXTERNAL panel collapse re-renders that item (content hidden) — major #1', async () => {
+    const { question } = createPaneldynamic({
+      templateTitle: 'Item',
+      panelsState: 'expanded',
+    });
+    render(<PanelDynamicQuestion question={question} creator={{}} />);
+    await flush();
+    expect(screen.getAllByTestId('sv-panel-content').length).toBe(2);
+    // Collapse the first panel PROGRAMMATICALLY (survey-core emits on the
+    // PanelModel, not the question). The per-panel item subscribes the panel,
+    // so it re-renders and hides content — no stranded inputs.
+    act(() => {
+      (
+        question as unknown as { renderedPanels: { collapse(): void }[] }
+      ).renderedPanels[0]!.collapse();
+    });
+    await flush();
+    expect(screen.getAllByTestId('sv-panel-content').length).toBe(1);
+  });
+
+  it('changing panelAddText re-renders with a fresh a11y label (loc subscription) — major #3', async () => {
+    const { question } = createPaneldynamic({ maxPanelCount: 5 });
+    render(<PanelDynamicQuestion question={question} creator={{}} />);
+    await flush();
+    act(() => {
+      (question as unknown as { panelAddText: string }).panelAddText =
+        'Add another';
+    });
+    await flush();
+    expect(
+      screen.getByTestId('paneldynamic-add').props.accessibilityLabel
+    ).toBe('Add another');
+  });
+
+  it('a same-mode retarget re-emits the diagnostic for the new question — minor #4', async () => {
+    const codes: string[] = [];
+    setDiagnosticHandler((p: DiagnosticPayload) => codes.push(p.code));
+    const a = createPaneldynamic({ displayMode: 'carousel' }).question;
+    const b = createPaneldynamic({ displayMode: 'carousel' }).question;
+    const view = render(<PanelDynamicQuestion question={a} creator={{}} />);
+    await flush();
+    view.rerender(<PanelDynamicQuestion question={b} creator={{}} />);
+    await flush();
+    // Dedup is reset on retarget → both A and B emit (not suppressed by mode).
+    expect(
+      codes.filter((c) => c === 'paneldynamic-mode-unsupported')
+    ).toHaveLength(2);
+  });
+
+  it('editing same-named nested fields writes to the correct array slot — major #2', async () => {
+    const { question } = createPaneldynamic();
+    render(<PanelDynamicQuestion question={question} creator={{}} />);
+    await flush();
+    layoutRows();
+    // Each panel renders the template's 'first' text field → one input each.
+    const inputs = screen.getAllByTestId('first-input');
+    expect(inputs).toHaveLength(2);
+    act(() => {
+      fireEvent.changeText(inputs[0]!, 'alpha');
+      fireEvent(inputs[0]!, 'blur');
+    });
+    act(() => {
+      fireEvent.changeText(inputs[1]!, 'beta');
+      fireEvent(inputs[1]!, 'blur');
+    });
+    const value = JSON.parse(
+      JSON.stringify((question as unknown as { value: unknown }).value)
+    ) as { first?: string }[];
+    // Slot-isolated: panel 0's edit lands in value[0], panel 1's in value[1] —
+    // the renderer never touches panel values (panel.data proxies them).
+    expect(value[0]?.first).toBe('alpha');
+    expect(value[1]?.first).toBe('beta');
+  });
+
+  it('panel keys are panel.id — id-keyed items survive a middle insertion — major #2', async () => {
+    const { question } = createPaneldynamic({ maxPanelCount: 5 });
+    render(<PanelDynamicQuestion question={question} creator={{}} />);
+    await flush();
+    const ids = (
+      question as unknown as { renderedPanels: { id: string | number }[] }
+    ).renderedPanels.map((p) => String(p.id));
+    expect(ids).toHaveLength(2);
+    ids.forEach((id) =>
+      expect(screen.getByTestId(`paneldynamic-panel-${id}`)).toBeTruthy()
+    );
+    // Insert a panel in the MIDDLE (external addPanel(index)).
+    act(() => {
+      (question as unknown as { addPanel: (i: number) => void }).addPanel(1);
+    });
+    await flush();
+    // The original panels keep their id-keyed items (identity preserved, not
+    // shifted by index — draft/native state stays with the same PanelModel).
+    ids.forEach((id) =>
+      expect(screen.getByTestId(`paneldynamic-panel-${id}`)).toBeTruthy()
+    );
     expect(screen.getAllByTestId(/^paneldynamic-panel-/).length).toBe(3);
   });
 });
