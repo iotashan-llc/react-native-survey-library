@@ -324,6 +324,12 @@ export class ListPicker extends SurveyElementBase<ListPickerProps> {
   private readonly handleEndReached = (): void => {
     const model = this.props.model;
     if (model.isAllDataLoaded) return;
+    // Lazy-load dedupe (2.3 plan, round-3 fold): core has no in-flight
+    // guard of its own — `question.isReady` (the list's locOwner is the
+    // owning question) goes false around each page load; don't request
+    // the next page while one is in flight.
+    const owner = (model as { locOwner?: { isReady?: boolean } }).locOwner;
+    if (owner && owner.isReady === false) return;
     model.loadingIndicatorVisibilityObserver?.(true);
   };
 

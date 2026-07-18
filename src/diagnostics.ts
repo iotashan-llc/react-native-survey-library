@@ -299,9 +299,42 @@ export interface DialogNoHostPayload {
   componentName?: string;
 }
 
+/** 2.3 dropdown — a `renderAs: "select"` dropdown has no
+ * `dropdownListModel` (the overlay/touch view model core builds only for
+ * the default popup rendering), so there is no interactive sheet to open.
+ * The RN control degrades to a non-interactive value display + this
+ * diagnostic rather than crashing on the missing model. */
+export interface DropdownSelectModeUnsupportedPayload {
+  code: 'dropdown-select-mode-unsupported';
+  questionName: string;
+}
+
+/** 2.3 dropdown — `showInputFieldComponent` named a custom item
+ * component (`inputFieldComponentName`) that is not registered in
+ * RNElementFactory, so the selected value falls back to its localized
+ * text instead of the custom renderer. */
+export interface DropdownInputComponentMissingPayload {
+  code: 'dropdown-input-component-missing';
+  questionName: string;
+  componentName: string;
+}
+
+/** 2.4 tagbox — a `renderAs: "select"` tagbox has no native RN
+ * multi-`<select>` analog; the control degrades to a non-interactive
+ * chips display + this diagnostic. (Unlike dropdown, core builds the VM
+ * regardless of renderAs, so the mode is keyed on `renderAs`, not VM
+ * presence.) */
+export interface TagboxSelectModeUnsupportedPayload {
+  code: 'tagbox-select-mode-unsupported';
+  questionName: string;
+}
+
 export type DiagnosticPayload =
   | UnsupportedQuestionTypePayload
   | CustomWidgetIgnoredPayload
+  | DropdownSelectModeUnsupportedPayload
+  | DropdownInputComponentMissingPayload
+  | TagboxSelectModeUnsupportedPayload
   | DialogAdapterDisplacedPayload
   | DialogAdapterEnableWhileMountedPayload
   | DialogNoHostPayload

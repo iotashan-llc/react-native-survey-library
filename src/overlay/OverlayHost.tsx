@@ -238,6 +238,50 @@ export function OverlayHost(props: OverlayHostProps): React.JSX.Element {
 
   const entries = stack.entries();
   const active = stack.activeEntry();
+
+  // 2.3 opener-focus restoration (D8 seam) — HOST-level, not per-entry:
+  // hand a11y focus back to the opener only when the overlay stack
+  // FULLY empties. Deciding this at the host (not in an unmounting
+  // entry's effect cleanup) is what makes it immune to the races a
+  // per-entry latch couldn't distinguish: React StrictMode's
+  // setup→cleanup→setup on mount (the stack is never empty), and a
+  // hide→show reselect where the old generation dismisses while a new
+  // one is already active (the stack never reaches empty between them,
+  // so focus is never stolen from the live Modal) — PR #29 review r1
+  // #5, r2 #5.
+  //
+  // Track the SESSION ROOT — the bottommost non-dismissing entry — not
+  // the top active one: with a nested popup B opened over dropdown A,
+  // the opener to restore on full close is A's control (the root), and
+  // if A and B are dismissed in one batch there is no intermediate
+  // render to promote A, so keying on `active` would strand B's now-
+  // unmounted opener (PR #29 review r3 #1). The ref is only overwritten
+  // while a non-dismissing root WITH an opener exists, so it is RETAINED
+  // once every entry is dismissing.
+  //
+  // Two-phase to satisfy competing hazards (PR #29 review r4 #1, r5 #1):
+  //  - The scalars are READ during render (pure — no ref mutation, so an
+  //    abandoned/suspended render leaves nothing behind) from THIS
+  //    render's committed entry view.
+  //  - The ref write + focus fire happen in a COMMIT-PHASE effect keyed
+  //    on those scalar snapshots. `OverlayEntry.state` mutates in place
+  //    and React runs descendant passive effects BEFORE the parent's, so
+  //    a descendant/custom-Presenter effect that hides the just-shown
+  //    popup could flip the live entry to `dismissing` before a
+  //    read-in-effect ran — the render-time snapshot is immune to that.
+  const openerToRestore = React.useRef<(() => number | null) | null>(null);
+  const sessionRootOpener =
+    entries.find((e) => e.state !== 'dismissing')?.payload.openerHandle ?? null;
+  const stackEmpty = entries.length === 0;
+  React.useEffect(() => {
+    if (sessionRootOpener) openerToRestore.current = sessionRootOpener;
+    if (!stackEmpty) return;
+    const opener = openerToRestore.current;
+    openerToRestore.current = null;
+    if (!opener) return;
+    const handle = opener();
+    if (handle != null) AccessibilityInfo.setAccessibilityFocus(handle);
+  }, [sessionRootOpener, stackEmpty]);
   // Back/escape target ONLY a genuinely active entry — while a dismissal
   // ack is pending the (suspended) ancestor must not be cancellable.
   const trulyActive = active && active.state === 'active' ? active : null;

@@ -68,6 +68,9 @@ export interface OverlayPayload {
   closeFallback(): void;
   /** Model-driven close affordance (PopupModel.showCloseButton). */
   showCloseButton: boolean;
+  /** 2.3 opener-focus seam: resolves the opener control's native
+   * handle so the host can restore a11y focus after final removal. */
+  openerHandle?: () => number | null;
   /** D8 focus translation: 'container' = a11y-focus the panel;
    * 'content' = focus the body (dropdownListModel under IsTouch sets
    * isFocusedContent=true — row-level targeting lives in the content
@@ -89,9 +92,16 @@ export function resetReportedContentMisses(): void {
   reportedMisses.clear();
 }
 
+export interface RegisterPopupOptions {
+  /** Opener control's native-handle resolver (a11y focus restoration
+   * on final dismissal — 2.1 D8 seam, first consumer 2.3). */
+  openerHandle?: () => number | null;
+}
+
 export function registerPopup(
   popup: PopupModelLike,
-  stack: OverlayStack<OverlayPayload>
+  stack: OverlayStack<OverlayPayload>,
+  options?: RegisterPopupOptions
 ): PopupRegistration {
   interface PresentationRecord {
     entry: OverlayEntry<OverlayPayload>;
@@ -173,6 +183,7 @@ export function registerPopup(
       requestHide: hide,
       closeFallback: hide,
       showCloseButton: popup.showCloseButton === true,
+      openerHandle: options?.openerHandle,
       // CONTENT-first precedence — upstream switchFocus
       // (popup-view-model.ts:240-246) checks isFocusedContent before
       // isFocusedContainer.
@@ -250,9 +261,9 @@ export function registerPopup(
 
   const handleVisibilityChanged = (
     _sender: unknown,
-    options: { isVisible: boolean }
+    visibility: { isVisible: boolean }
   ): void => {
-    if (options.isVisible) present();
+    if (visibility.isVisible) present();
     else beginDismiss();
   };
 

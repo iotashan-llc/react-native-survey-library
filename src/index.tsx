@@ -37,6 +37,9 @@ export type {
   DialogAdapterDisplacedPayload,
   DialogAdapterEnableWhileMountedPayload,
   DialogNoHostPayload,
+  DropdownSelectModeUnsupportedPayload,
+  DropdownInputComponentMissingPayload,
+  TagboxSelectModeUnsupportedPayload,
 } from './diagnostics';
 
 // The <Survey> root (design: docs/design/1.1-survey-root.md; A11, A12) —
@@ -116,6 +119,14 @@ export { ButtonGroupQuestion } from './questions/ButtonGroupQuestion';
 // image question (task 2.10).
 export { ImageQuestion } from './questions/ImageQuestion';
 export { MultipleTextQuestion } from './questions/MultipleTextQuestion';
+export {
+  DropdownQuestion,
+  DropdownQuestionElement,
+} from './questions/DropdownQuestion';
+export {
+  TagboxQuestion,
+  TagboxQuestionElement,
+} from './questions/TagboxQuestion';
 export type { ImageQuestionProps } from './questions/ImageQuestion';
 export type { TextQuestionProps } from './questions/TextQuestion';
 export { DraftCommitAdapter } from './inputs/DraftCommitAdapter';

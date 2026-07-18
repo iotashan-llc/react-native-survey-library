@@ -754,3 +754,100 @@ are ignored. Consumer `onShow` fires on a microtask AFTER presentation
 (web fires it during the show transition). With NO Survey mounted, a
 dialog call resolves its `onCancel` immediately (fail-safe — never
 auto-confirm a destructive action) and reports `dialog-no-host`.
+
+## Dropdown question (task 2.3)
+
+### The control never hosts an inline filter input
+
+Web's dropdown control embeds a text input (`inputMode='none'` on
+touch) with hint prefix/suffix autocomplete affordances
+(dropdown-base.tsx). The RN control is a button showing the selected
+item's text (or `inputStringRendered`, or the placeholder); typing
+happens in the overlay's search box (core's own touch behavior —
+`setSearchEnabled` on open). Hint strings are dropped.
+
+### Popup is the 2.1 overlay sheet, never an anchored list
+
+No coordinate anchoring (won't-support): the choice list presents as
+the overlay sheet with search/lazy-load/nested-group behavior from the
+shared ListPicker.
+
+### Lazy-load paging is serialized
+
+Core fires `onChoicesLazyLoad` with no in-flight guard (concurrent
+skips on rapid scrolling). The RN picker gates its end-reached trigger
+on the owning question's `isReady`, so exactly one page loads at a
+time.
+
+## Tagbox question (task 2.4)
+
+The `tagbox` (multi-select) question reuses the dropdown's overlay
+machinery, so every Dropdown-question difference above applies (overlay
+sheet not an anchored list; search lives in the overlay; combobox a11y;
+no inline filter input). The tagbox-specific differences:
+
+### Selected values render as chips, not inline tokens
+
+Web's tagbox renders selected values as inline tokens inside the input
+box with autocomplete typing. The RN control shows each selected value
+as a **chip** (a pill with the value text + a ✕ remove affordance),
+wrapping onto multiple lines. There is no inline typing in the control —
+adding values happens by opening the overlay sheet and tapping choices
+(core's touch behavior). A chip's ✕ removes just that value; the
+clear-all ✕ (when `allowClear`) empties the whole selection.
+
+### The overlay stays open across selections
+
+Selecting a choice **adds** it to the array and **keeps the sheet open**
+(core toggles membership through `listModel.onItemClick` without hiding
+the popup per-select — the same shared 2.1 ListPicker, unchanged). Re-
+tapping a selected row removes it. Web keeps its dropdown open the same
+way; the difference is only that the RN list is the overlay sheet.
+
+### `renderAs: "select"` degrades to a non-interactive value display
+
+On web, `renderAs: "select"` renders a native `<select>` element. Core
+builds the overlay/touch view model (`dropdownListModel`) only for the
+default popup rendering, so a `"select"` dropdown has **no**
+`dropdownListModel` and there is no sheet to open. Rather than crash on
+the missing model (`getTemplate()` still routes the question to this
+component), the RN control degrades to a **non-interactive** display of
+the selected value (or placeholder) and emits a one-shot
+`dropdown-select-mode-unsupported` diagnostic. There is no native
+`<select>` analog in React Native; use the default dropdown rendering
+for an interactive picker.
+
+### The "Other (describe)" comment renders inside the control
+
+Selecting the "Other" choice sets the question's
+`isShowingChoiceComment`, which the shared `QuestionChrome` does **not**
+render for dropdown (`showCommentArea` stays false — that is a separate
+question-level feature). The RN dropdown therefore hosts its own comment
+`TextInput` directly below the control, backed by the same
+`OtherCommentDraftAdapter` used by checkbox/radiogroup — so
+`textUpdateMode`/`storeOthersAsComment` behavior matches those types
+(see the checkbox/radiogroup section). Web renders the same comment as a
+sibling input; the value-level outcome is identical.
+
+### a11y mirrors core's INPUT aria surface
+
+The control carries core's **input** aria role
+(`vm.ariaInputRole ?? vm.ariaQuestionRole` — `combobox` under the
+default `searchEnabled`, not a hardcoded `button`), the question label,
+core's localized clear caption (`vm.clearCaption`, not a bare `✕`
+glyph), and a live `expanded` state driven by `vm.ariaExpanded` (which
+core re-emits on open/close). Web reads the same input aria surface on
+its inner input element. (Note for maintainers: `ariaExpanded` is a
+string `'true'`/`'false'`, so it is compared to `'true'`, not to a
+boolean.)
+
+### Custom item component: an unregistered name falls back to value text
+
+`showInputFieldComponent` names a custom item component
+(`inputFieldComponentName`) for the selected value. If that name is not
+registered in `RNElementFactory`, the control does **not** show an empty
+placeholder (core suppresses `showSelectedItemLocText` when a component
+name exists, and its DOM-cleaning fallback leaves `inputStringRendered`
+empty on RN); instead it renders the selected item's localized text and
+emits a `dropdown-input-component-missing` diagnostic. Register the
+custom component before rendering for the intended custom UI.

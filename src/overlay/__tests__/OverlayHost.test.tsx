@@ -5,7 +5,7 @@
  * onDidDismiss) is injectable via OverlayPresenterContext.
  */
 import * as React from 'react';
-import { Modal, StyleSheet } from 'react-native';
+import { AccessibilityInfo, Modal, StyleSheet, View } from 'react-native';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { PopupModel } from '../../core/facade';
 import '../../factories/register-all';
@@ -418,5 +418,158 @@ describe('OverlayHost — real sv-list lazy re-arm across reopen (verification m
     );
     expect(dangerStyle.backgroundColor).toBeTruthy();
     expect(dangerStyle.backgroundColor).not.toBe(other.backgroundColor);
+  });
+});
+
+describe('OverlayHost — opener focus restoration (2.3 seam)', () => {
+  it('restores a11y focus to the opener handle when the entry unmounts after dismissal', () => {
+    const focusSpy = jest
+      .spyOn(AccessibilityInfo, 'setAccessibilityFocus')
+      .mockImplementation(() => undefined);
+    try {
+      const stack = createOverlayStack<OverlayPayload>();
+      const popup = new PopupModel('sv-string-viewer', { model: null });
+      registerPopup(popup, stack, { openerHandle: () => 77 });
+      render(<OverlayHost stack={stack} />);
+      act(() => {
+        popup.show();
+      });
+      focusSpy.mockClear();
+      act(() => {
+        popup.hide(); // default presenter acks; entry unmounts
+      });
+      expect(focusSpy).toHaveBeenCalledWith(77);
+    } finally {
+      focusSpy.mockRestore();
+    }
+  });
+
+  it('does NOT restore opener focus on a StrictMode setup→cleanup→setup mount (PR #29 review, major #5)', () => {
+    const focusSpy = jest
+      .spyOn(AccessibilityInfo, 'setAccessibilityFocus')
+      .mockImplementation(() => undefined);
+    try {
+      const stack = createOverlayStack<OverlayPayload>();
+      const popup = new PopupModel('sv-string-viewer', { model: null });
+      registerPopup(popup, stack, { openerHandle: () => 77 });
+      render(
+        <React.StrictMode>
+          <OverlayHost stack={stack} />
+        </React.StrictMode>
+      );
+      act(() => {
+        popup.show(); // opens; StrictMode double-invokes effects
+      });
+      // Focus returns to the opener only when the stack fully empties —
+      // never while a popup is merely shown.
+      expect(focusSpy).not.toHaveBeenCalledWith(77);
+    } finally {
+      focusSpy.mockRestore();
+    }
+  });
+
+  it('a hide→show reselect (stack never empties) does NOT steal focus to the opener (PR #29 review r2 #5)', () => {
+    const focusSpy = jest
+      .spyOn(AccessibilityInfo, 'setAccessibilityFocus')
+      .mockImplementation(() => undefined);
+    try {
+      const stack = createOverlayStack<OverlayPayload>();
+      const popupA = new PopupModel('sv-string-viewer', { model: null });
+      const popupB = new PopupModel('sv-string-viewer', { model: null });
+      registerPopup(popupA, stack, { openerHandle: () => 77 });
+      registerPopup(popupB, stack, { openerHandle: () => 88 });
+      render(<OverlayHost stack={stack} />);
+      act(() => {
+        popupA.show();
+      });
+      focusSpy.mockClear();
+      // Reselect: open B before A is gone — the stack never reaches
+      // empty, so the opener must NOT be refocused mid-swap.
+      act(() => {
+        popupB.show();
+        popupA.hide();
+      });
+      expect(focusSpy).not.toHaveBeenCalledWith(77);
+      // Now genuinely close everything → the last opener is restored.
+      focusSpy.mockClear();
+      act(() => {
+        popupB.hide();
+      });
+      expect(focusSpy).toHaveBeenCalledWith(88);
+    } finally {
+      focusSpy.mockRestore();
+    }
+  });
+
+  it('a nested popup dismissed together with its host in one batch restores the SESSION ROOT opener (PR #29 review r3 #1)', () => {
+    const focusSpy = jest
+      .spyOn(AccessibilityInfo, 'setAccessibilityFocus')
+      .mockImplementation(() => undefined);
+    try {
+      const stack = createOverlayStack<OverlayPayload>();
+      const host = new PopupModel('sv-string-viewer', { model: null });
+      const nested = new PopupModel('sv-string-viewer', { model: null });
+      // 77 = the ROOT opener (e.g. the dropdown control); 88 = a nested
+      // popup opened over it whose opener lives inside the Modal.
+      registerPopup(host, stack, { openerHandle: () => 77 });
+      registerPopup(nested, stack, { openerHandle: () => 88 });
+      render(<OverlayHost stack={stack} />);
+      act(() => {
+        host.show(); // root entry active
+      });
+      act(() => {
+        nested.show(); // root suspended beneath the nested entry
+      });
+      focusSpy.mockClear();
+      // Both dismissed in ONE batch — no intermediate render promotes the
+      // root, so keying on the top `active` entry would strand 88.
+      act(() => {
+        nested.hide();
+        host.hide();
+      });
+      expect(focusSpy).toHaveBeenCalledWith(77);
+      expect(focusSpy).not.toHaveBeenCalledWith(88);
+    } finally {
+      focusSpy.mockRestore();
+    }
+  });
+
+  it('restores the opener even when a descendant presenter effect hides the popup on mount (PR #29 review r5 #1)', () => {
+    const focusSpy = jest
+      .spyOn(AccessibilityInfo, 'setAccessibilityFocus')
+      .mockImplementation(() => undefined);
+    try {
+      // A presenter that hides its entry immediately from a mount effect
+      // (descendant passive effects run BEFORE the host's), flipping the
+      // live entry to dismissing. The host's render-time opener snapshot
+      // must still drive the restore.
+      function HidingPresenter(
+        props: OverlayPresenterProps
+      ): React.JSX.Element {
+        const { visible, requestHide, entry, onDidDismiss } = props;
+        React.useEffect(() => {
+          if (visible) requestHide();
+        }, [visible, requestHide]);
+        // Ack the dismissal so the entry actually leaves the stack.
+        React.useEffect(() => {
+          if (entry.state === 'dismissing') onDidDismiss();
+        }, [entry.state, onDidDismiss]);
+        return <View testID="hiding-presenter" />;
+      }
+      const stack = createOverlayStack<OverlayPayload>();
+      const popup = new PopupModel('sv-string-viewer', { model: null });
+      registerPopup(popup, stack, { openerHandle: () => 77 });
+      render(
+        <OverlayPresenterContext.Provider value={HidingPresenter}>
+          <OverlayHost stack={stack} />
+        </OverlayPresenterContext.Provider>
+      );
+      act(() => {
+        popup.show();
+      });
+      expect(focusSpy).toHaveBeenCalledWith(77);
+    } finally {
+      focusSpy.mockRestore();
+    }
   });
 });

@@ -177,8 +177,22 @@ export const MODEL_TYPE_CLASSIFICATION: Readonly<
   },
 
   // Phase 2 — v0.2 (M2).
-  dropdown: { status: 'planned', milestone: 'M2', reason: 'task 2.3' },
-  tagbox: { status: 'planned', milestone: 'M2', reason: 'task 2.4' },
+  dropdown: {
+    status: 'supported',
+    milestone: 'M2',
+    runtimeRenderable: {
+      expectedTemplate: 'dropdown',
+      expectedRoute: 'template',
+    },
+  },
+  tagbox: {
+    status: 'supported',
+    milestone: 'M2',
+    runtimeRenderable: {
+      expectedTemplate: 'tagbox',
+      expectedRoute: 'template',
+    },
+  },
   buttongroup: {
     status: 'supported',
     milestone: 'M2',

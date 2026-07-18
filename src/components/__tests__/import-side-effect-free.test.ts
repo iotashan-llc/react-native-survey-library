@@ -62,6 +62,7 @@ describe('component modules are import-side-effect-free', () => {
       'buttongroup',
       'checkbox',
       'comment',
+      'dropdown',
       'empty',
       'expression',
       'image',
@@ -70,6 +71,7 @@ describe('component modules are import-side-effect-free', () => {
       'rating',
       'sv-boolean-checkbox',
       'sv-boolean-radio',
+      'tagbox',
       'text',
     ]);
   });

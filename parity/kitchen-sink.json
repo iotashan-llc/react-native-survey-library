@@ -90,6 +90,23 @@
           "showSelectAllItem": true
         },
         {
+          "type": "tagbox",
+          "name": "langs",
+          "title": "Languages you use (tagbox)",
+          "placeholder": "Add languages…",
+          "allowClear": true,
+          "choices": [
+            "TypeScript",
+            "JavaScript",
+            "Swift",
+            "Kotlin",
+            "Objective-C",
+            "Java",
+            "Rust",
+            "Dart"
+          ]
+        },
+        {
           "type": "boolean",
           "name": "newArch",
           "title": "Using the New Architecture?"
@@ -155,6 +172,27 @@
             "Free",
             "Pro",
             "Team"
+          ]
+        },
+        {
+          "type": "dropdown",
+          "name": "fruit",
+          "title": "Favorite fruit (dropdown)",
+          "placeholder": "Pick a fruit…",
+          "allowClear": true,
+          "choices": [
+            "Apple",
+            "Banana",
+            "Cherry",
+            "Dragonfruit",
+            "Elderberry",
+            "Fig",
+            "Grape",
+            "Honeydew",
+            "Kiwi",
+            "Lemon",
+            "Mango",
+            "Nectarine"
           ]
         },
         {

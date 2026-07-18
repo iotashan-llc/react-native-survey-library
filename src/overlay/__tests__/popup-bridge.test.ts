@@ -474,3 +474,13 @@ describe('popup bridge — round 4 (cancel-throw hide, bounded scroll retry)', (
     expect(stack.entries()).toHaveLength(0);
   });
 });
+
+describe('popup bridge — opener focus seam (2.3 fold 5)', () => {
+  it('registerPopup stores openerHandle on the payload; the host restores focus on final removal', () => {
+    const popup = makePopup();
+    const stack = createOverlayStack<OverlayPayload>();
+    registerPopup(popup, stack, { openerHandle: () => 42 });
+    popup.show();
+    expect(stack.entries()[0]!.payload.openerHandle?.()).toBe(42);
+  });
+});
