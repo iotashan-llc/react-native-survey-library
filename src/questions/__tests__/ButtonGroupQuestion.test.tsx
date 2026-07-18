@@ -5,11 +5,23 @@
  * icon/selected/readOnly/onChange → selectItem — invariant 6: consumed,
  * never re-derived).
  */
+import { Modal } from 'react-native';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
-import { Model } from '../../core/facade';
+import { Model, RendererFactory } from '../../core/facade';
 import type { Question } from '../../core/facade';
 import '../../factories/register-all';
-import { ButtonGroupQuestion } from '../ButtonGroupQuestion';
+import {
+  ButtonGroupQuestion,
+  ButtonGroupQuestionElement,
+} from '../ButtonGroupQuestion';
+import { Survey } from '../../survey/Survey';
+import { OverlayContext } from '../../overlay/OverlayContext';
+import { createOverlayStack } from '../../overlay/stack';
+import type { OverlayStack } from '../../overlay/stack';
+import type { OverlayPayload } from '../../overlay/popup-bridge';
+import { DESCRIPTOR_TABLE } from '../../factories/descriptors';
+import type { SupportedDescriptor } from '../../factories/descriptors';
+import { resolveQuestionDispatchKey } from '../../factories/dispatch-key';
 
 function createButtonGroup(
   extra: Record<string, unknown> = {},
@@ -213,5 +225,402 @@ describe('ButtonGroupQuestion — review round 1 regressions', () => {
       IconComponent as never
     ) as unknown as Array<{ props: { fill?: string } }>;
     expect(icons.map((icon) => icon.props.fill)).toEqual([primary, foreground]);
+  });
+});
+
+// ————— Task 2.5b — overflow-to-dropdown via core processResponsiveness —————
+
+interface ResponsiveButtonGroup {
+  renderAs: string;
+  processResponsiveness(requiredWidth: number, availableWidth: number): boolean;
+  isDefaultRendering(): boolean;
+  readOnlyText: string;
+  dropdownListModelValue?: {
+    popupModel: { isVisible: boolean };
+    onPropChangeFunctions?: unknown[];
+  };
+  dropdownListModel?: {
+    popupModel: { isVisible: boolean };
+    listModel: {
+      actions: Array<{ id: string; title: string }>;
+      onItemClick(item: unknown): void;
+    };
+    onPropChangeFunctions?: unknown[];
+    ariaExpanded?: string;
+  };
+}
+
+const resp = (q: Question): ResponsiveButtonGroup =>
+  q as unknown as ResponsiveButtonGroup;
+
+function createButtonGroupModel(
+  extra: Record<string, unknown> = {},
+  name = 'bg'
+): { model: Model; question: Question } {
+  const model = new Model({
+    elements: [
+      {
+        type: 'buttongroup',
+        name,
+        choices: ['alpha', 'beta', 'gamma'],
+        ...extra,
+      },
+    ],
+  });
+  return { model, question: model.getQuestionByName(name)! };
+}
+
+async function flush(): Promise<void> {
+  await act(async () => {
+    await Promise.resolve();
+  });
+}
+
+/** The ALWAYS-mounted wrapper's live viewport width (R2). */
+function fireLayout(width: number, name = 'bg'): void {
+  fireEvent(screen.getByTestId(`sv-buttongroup-wrapper-${name}`), 'layout', {
+    nativeEvent: { layout: { x: 0, y: 0, width, height: 48 } },
+  });
+}
+
+/** The row ScrollView's intrinsic content width (row mode only). */
+function fireContentWidth(width: number, name = 'bg'): void {
+  fireEvent(
+    screen.getByTestId(`sv-buttongroup-scroll-${name}`),
+    'contentSizeChange',
+    width,
+    48
+  );
+}
+
+function spyOnResponsiveness(question: Question): jest.SpyInstance {
+  return jest.spyOn(
+    question as unknown as {
+      processResponsiveness(r: number, a: number): boolean;
+    },
+    'processResponsiveness'
+  );
+}
+
+function renderElement(
+  question: Question,
+  stack: OverlayStack<OverlayPayload> = createOverlayStack<OverlayPayload>()
+): {
+  stack: OverlayStack<OverlayPayload>;
+  rerenderWith: (next: Question) => void;
+} {
+  const view = render(
+    <OverlayContext.Provider value={stack}>
+      <ButtonGroupQuestionElement question={question} creator={{}} />
+    </OverlayContext.Provider>
+  );
+  return {
+    stack,
+    rerenderWith: (next: Question) =>
+      view.rerender(
+        <OverlayContext.Provider value={stack}>
+          <ButtonGroupQuestionElement question={next} creator={{}} />
+        </OverlayContext.Provider>
+      ),
+  };
+}
+
+describe('ButtonGroupQuestion — 2.5b overflow measurement (R2/R3 gates)', () => {
+  it('flips to the compact dropdown control when content overflows (layout → content order)', () => {
+    const question = createButtonGroup();
+    renderElement(question);
+    fireLayout(300);
+    fireContentWidth(800);
+    expect(resp(question).renderAs).toBe('dropdown');
+    expect(screen.getByTestId('sv-buttongroup-dropdown-bg')).toBeTruthy();
+    expect(screen.queryByTestId('sv-buttongroup-scroll-bg')).toBeNull();
+  });
+
+  it('flips to compact with the callbacks in the opposite order (content → layout)', () => {
+    const question = createButtonGroup();
+    renderElement(question);
+    fireContentWidth(800);
+    fireLayout(300);
+    expect(resp(question).renderAs).toBe('dropdown');
+    expect(screen.getByTestId('sv-buttongroup-dropdown-bg')).toBeTruthy();
+  });
+
+  it('widening the wrapper WHILE COMPACT flips back to the row without a new content event (cached required width)', () => {
+    const question = createButtonGroup();
+    renderElement(question);
+    fireLayout(300);
+    fireContentWidth(800);
+    expect(resp(question).renderAs).toBe('dropdown');
+    // Compact mode renders no ScrollView, so NO content event is
+    // possible — flip-back must compare the CACHED required width
+    // against the live wrapper width (R2).
+    fireLayout(900);
+    expect(resp(question).renderAs).toBe('default');
+    expect(screen.getByTestId('sv-buttongroup-scroll-bg')).toBeTruthy();
+    expect(screen.queryByTestId('sv-buttongroup-dropdown-bg')).toBeNull();
+  });
+
+  it('calls the adapter only on changed finite pairs — exact call count over a scripted resize', () => {
+    const question = createButtonGroup();
+    const spy = spyOnResponsiveness(question);
+    renderElement(question);
+    fireLayout(300); // only one width known → no call
+    expect(spy).not.toHaveBeenCalled();
+    fireContentWidth(500); // call 1 → compact
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy).toHaveBeenLastCalledWith(500, 300);
+    fireLayout(300); // identical pair → no call
+    expect(spy).toHaveBeenCalledTimes(1);
+    fireLayout(301); // changed pair → call 2 (no flip)
+    expect(spy).toHaveBeenCalledTimes(2);
+    expect(spy).toHaveBeenLastCalledWith(500, 301);
+    fireLayout(600); // call 3 → back to row
+    expect(spy).toHaveBeenCalledTimes(3);
+    expect(spy).toHaveBeenLastCalledWith(500, 600);
+    expect(resp(question).renderAs).toBe('default');
+    fireContentWidth(500); // pair (500, 600) unchanged → no call
+    expect(spy).toHaveBeenCalledTimes(3);
+  });
+
+  it('never calls the adapter for non-finite or non-positive widths', () => {
+    const question = createButtonGroup();
+    const spy = spyOnResponsiveness(question);
+    renderElement(question);
+    fireLayout(0);
+    fireLayout(Number.NaN);
+    fireLayout(Number.POSITIVE_INFINITY);
+    fireLayout(-50);
+    fireContentWidth(800); // valid required, but no valid available yet
+    expect(spy).not.toHaveBeenCalled();
+    fireLayout(300);
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy).toHaveBeenCalledWith(800, 300);
+  });
+
+  it('rounds fractional widths before the adapter and dedupes on the ROUNDED pair', () => {
+    const question = createButtonGroup();
+    const spy = spyOnResponsiveness(question);
+    renderElement(question);
+    fireContentWidth(800.6);
+    fireLayout(300.4);
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(spy).toHaveBeenCalledWith(801, 300);
+    fireLayout(300.2); // rounds to 300 → pair unchanged → no call
+    fireLayout(299.7); // rounds to 300 → pair unchanged → no call
+    expect(spy).toHaveBeenCalledTimes(1);
+    for (const args of spy.mock.calls) {
+      for (const n of args as number[]) {
+        expect(Number.isInteger(n)).toBe(true);
+      }
+    }
+  });
+
+  it('design mode never measures into the adapter', () => {
+    const { model, question } = createButtonGroupModel();
+    model.setDesignMode(true);
+    const spy = spyOnResponsiveness(question);
+    renderElement(question);
+    fireLayout(300);
+    fireContentWidth(800);
+    expect(spy).not.toHaveBeenCalled();
+    expect(resp(question).renderAs).not.toBe('dropdown');
+    expect(screen.getByTestId('sv-buttongroup-scroll-bg')).toBeTruthy();
+  });
+});
+
+describe('ButtonGroupQuestion — 2.5b compact control (R5/R7)', () => {
+  it('a fitting row never instantiates the dropdownListModel', () => {
+    const question = createButtonGroup();
+    const spy = spyOnResponsiveness(question);
+    renderElement(question);
+    fireLayout(300);
+    fireContentWidth(290); // fits → desktop branch, no VM
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(resp(question).renderAs).toBe('default');
+    expect(resp(question).dropdownListModelValue).toBeUndefined();
+  });
+
+  it('compact creates the VM once; flip-back retains it; re-compact REUSES it without duplicate subscriptions', () => {
+    const question = createButtonGroup();
+    const { stack } = renderElement(question);
+    expect(resp(question).dropdownListModelValue).toBeUndefined();
+    fireLayout(300);
+    fireContentWidth(800);
+    expect(resp(question).renderAs).toBe('dropdown');
+    const vm1 = resp(question).dropdownListModel!;
+    expect(vm1).toBeDefined();
+    const subs = vm1.onPropChangeFunctions?.length ?? 0;
+    fireLayout(900); // flip back — core retains the VM (R5)
+    expect(resp(question).renderAs).toBe('default');
+    expect(resp(question).dropdownListModelValue).toBe(vm1);
+    fireLayout(300); // re-compact from the CACHED required width
+    expect(resp(question).renderAs).toBe('dropdown');
+    expect(resp(question).dropdownListModel).toBe(vm1);
+    expect(vm1.onPropChangeFunctions?.length ?? 0).toBe(subs);
+    fireEvent.press(screen.getByTestId('sv-buttongroup-dropdown-bg'));
+    expect(stack.entries()).toHaveLength(1);
+  });
+
+  it('shows the localized placeholder when empty', () => {
+    const question = createButtonGroup();
+    renderElement(question);
+    fireLayout(300);
+    fireContentWidth(800);
+    expect(screen.getByTestId('sv-buttongroup-placeholder')).toBeTruthy();
+    // buttongroup's core default placeholder (buttongroupOptionsCaption).
+    expect(screen.getByText('Select...')).toBeTruthy();
+  });
+
+  it("shows the selected item's localized caption when a value is set", () => {
+    const question = createButtonGroup({
+      choices: [
+        { value: 'a', text: 'Alpha' },
+        { value: 'b', text: 'Beta' },
+      ],
+    });
+    renderElement(question);
+    act(() => {
+      question.value = 'a';
+    });
+    fireLayout(300);
+    fireContentWidth(800);
+    expect(screen.getByTestId('sv-buttongroup-value')).toBeTruthy();
+    expect(screen.getByText('Alpha')).toBeTruthy();
+    expect(screen.queryByTestId('sv-buttongroup-placeholder')).toBeNull();
+  });
+
+  it('read-only compact control shows readOnlyText and blocks presses', () => {
+    const question = createButtonGroup({
+      readOnly: true,
+      defaultValue: 'alpha',
+    });
+    const { stack } = renderElement(question);
+    fireLayout(300);
+    fireContentWidth(800);
+    const control = screen.getByTestId('sv-buttongroup-dropdown-bg');
+    expect(control.props.accessibilityState?.disabled).toBe(true);
+    expect(screen.getByTestId('sv-buttongroup-readonly')).toBeTruthy();
+    expect(screen.getByText(resp(question).readOnlyText)).toBeTruthy();
+    fireEvent.press(control);
+    expect(stack.entries()).toHaveLength(0);
+  });
+
+  it('press opens the popup through the overlay stack; ariaExpanded drives accessibilityState.expanded', async () => {
+    const question = createButtonGroup();
+    const { stack } = renderElement(question);
+    fireLayout(300);
+    fireContentWidth(800);
+    expect(
+      screen.getByTestId('sv-buttongroup-dropdown-bg').props.accessibilityState
+        ?.expanded
+    ).toBe(false);
+    fireEvent.press(screen.getByTestId('sv-buttongroup-dropdown-bg'));
+    await flush();
+    expect(stack.entries()).toHaveLength(1);
+    expect(
+      screen.getByTestId('sv-buttongroup-dropdown-bg').props.accessibilityState
+        ?.expanded
+    ).toBe(true);
+  });
+
+  it('flip-back WHILE THE POPUP IS OPEN unregisters and semantically closes it', () => {
+    const question = createButtonGroup();
+    const { stack } = renderElement(question);
+    fireLayout(300);
+    fireContentWidth(800);
+    fireEvent.press(screen.getByTestId('sv-buttongroup-dropdown-bg'));
+    expect(stack.entries()).toHaveLength(1);
+    fireLayout(900); // wrapper widens while the sheet is up
+    expect(resp(question).renderAs).toBe('default');
+    expect(stack.entries()).toHaveLength(0);
+    expect(resp(question).dropdownListModelValue!.popupModel.isVisible).toBe(
+      false
+    );
+    expect(screen.getByTestId('sv-buttongroup-scroll-bg')).toBeTruthy();
+  });
+
+  it('a question prop swap resets the cached required width and retargets popup ownership', () => {
+    const questionA = createButtonGroup({}, 'bgA');
+    const questionB = createButtonGroup({}, 'bgB');
+    const { stack, rerenderWith } = renderElement(questionA);
+    fireLayout(300, 'bgA');
+    fireContentWidth(800, 'bgA');
+    fireEvent.press(screen.getByTestId('sv-buttongroup-dropdown-bgA'));
+    expect(stack.entries()).toHaveLength(1);
+    const spyB = spyOnResponsiveness(questionB);
+    rerenderWith(questionB);
+    // A's registration retargeted away → semantic close.
+    expect(stack.entries()).toHaveLength(0);
+    expect(resp(questionA).dropdownListModelValue!.popupModel.isVisible).toBe(
+      false
+    );
+    // B starts with NO cached required width: a layout alone can't call.
+    fireLayout(300, 'bgB');
+    expect(spyB).not.toHaveBeenCalled();
+    fireContentWidth(900, 'bgB');
+    expect(spyB).toHaveBeenCalledTimes(1);
+    expect(spyB).toHaveBeenCalledWith(900, 300);
+    expect(screen.getByTestId('sv-buttongroup-dropdown-bgB')).toBeTruthy();
+  });
+});
+
+describe('ButtonGroupQuestion — 2.5b dispatch (R1)', () => {
+  it('the descriptor table keeps ONE buttongroup row (template route) pointing at the element wrapper', () => {
+    const rows = DESCRIPTOR_TABLE.filter(
+      (d) => d.questionType === 'buttongroup'
+    );
+    expect(rows).toHaveLength(1);
+    const row = rows[0] as SupportedDescriptor;
+    expect(row.route).toBe('template');
+    expect(row.dispatchKey).toBe('buttongroup');
+    expect(typeof ButtonGroupQuestionElement).toBe('function');
+    expect(row.component()).toBe(ButtonGroupQuestionElement);
+  });
+
+  it('no RendererFactory registration: a compact question still dispatches through the buttongroup row', () => {
+    expect(
+      RendererFactory.Instance.getRenderer('buttongroup', 'dropdown')
+    ).toBe('default');
+    const question = createButtonGroup();
+    resp(question).processResponsiveness(800, 300);
+    expect(resp(question).renderAs).toBe('dropdown');
+    expect(resp(question).isDefaultRendering()).toBe(true);
+    expect(resolveQuestionDispatchKey(question as never)).toBe('buttongroup');
+  });
+});
+
+describe('ButtonGroupQuestion — 2.5b end-to-end through <Survey>', () => {
+  it('overflow inside a real Survey compacts, opens the shell Modal, and commits a selection', async () => {
+    const model = new Model({
+      elements: [
+        {
+          type: 'buttongroup',
+          name: 'plan',
+          choices: ['Basic', 'Pro', 'Enterprise'],
+        },
+      ],
+    });
+    const question = model.getQuestionByName('plan')!;
+    render(<Survey model={model as never} />);
+    // The shell's rows defer children until their first onLayout (1.3 D3).
+    for (const row of screen.getAllByTestId('sv-row')) {
+      fireEvent(row, 'layout', {
+        nativeEvent: { layout: { x: 0, y: 0, width: 320, height: 120 } },
+      });
+    }
+    fireLayout(300, 'plan');
+    fireContentWidth(800, 'plan');
+    expect(screen.getByTestId('sv-buttongroup-dropdown-plan')).toBeTruthy();
+    fireEvent.press(screen.getByTestId('sv-buttongroup-dropdown-plan'));
+    await flush();
+    expect(screen.UNSAFE_getByType(Modal).props.visible).toBe(true);
+    const vm = resp(question).dropdownListModel!;
+    const pro = vm.listModel.actions.find((a) => a.title === 'Pro')!;
+    act(() => {
+      vm.listModel.onItemClick(pro);
+    });
+    expect(JSON.parse(JSON.stringify(question.value))).toBe('Pro');
+    await flush();
+    expect(vm.popupModel.isVisible).toBe(false);
   });
 });

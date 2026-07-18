@@ -178,6 +178,17 @@ export const kitchenSinkJson = {
           choices: ['Free', 'Pro', 'Team'],
         },
         {
+          type: 'buttongroup',
+          name: 'tier',
+          title: 'Support tier (buttongroup, overflows to dropdown on phones)',
+          choices: [
+            'Community (free forever)',
+            'Professional (priority email)',
+            'Enterprise (24/7 phone + dedicated TAM)',
+            'Government (FedRAMP + compliance pack)',
+          ],
+        },
+        {
           type: 'dropdown',
           name: 'fruit',
           title: 'Favorite fruit (dropdown)',

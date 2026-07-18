@@ -1336,6 +1336,49 @@ export const API_SURFACE_WATCHLIST: readonly WatchedApiMember[] = [
     reason:
       "ButtonGroupQuestion (2.9) constructs core's per-item view-model (value/caption/icon/selected/readOnly/onChange).",
   },
+  // Task 2.5b — buttongroup overflow-to-dropdown. CORE decides the
+  // compact threshold; the renderer feeds rounded widths through ONE
+  // cast (design R3). Behavior pinned in
+  // core/__tests__/process-responsiveness-compat.test.ts.
+  {
+    id: 'Question.processResponsiveness',
+    member: 'processResponsiveness',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.Question.prototype,
+    reason:
+      '2.5b overflow adapter: protected-in-typings threshold method (±2 deadband; rounds availableWidth but NOT requiredWidth; flips renderAs via getCompactRenderAs/getDesktopRenderAs).',
+  },
+  {
+    id: 'QuestionButtonGroupModel.dropdownListModel',
+    member: 'dropdownListModel',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.QuestionButtonGroupModel.prototype,
+    reason:
+      '2.5b compact control: LAZY DropdownListModel (created only by the compact branch, RETAINED across flip-back — R5 registration reconciles on renderAs, not VM presence).',
+  },
+  {
+    id: 'QuestionButtonGroupModel.selectedItemLocText',
+    member: 'selectedItemLocText',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.QuestionButtonGroupModel.prototype,
+    reason:
+      "2.5b collapsed display: the selected item's localized caption (dropdown-parity value fold).",
+  },
+  {
+    id: 'QuestionButtonGroupModel.showSelectedItemLocText',
+    member: 'showSelectedItemLocText',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.QuestionButtonGroupModel.prototype,
+    reason:
+      '2.5b collapsed display gate (folds readOnly/inputHasValue/locText presence).',
+  },
+  {
+    id: 'QuestionButtonGroupModel.readOnlyText',
+    member: 'readOnlyText',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.QuestionButtonGroupModel.prototype,
+    reason: '2.5b read-only collapsed display text (displayValue fold).',
+  },
   // Task 2.7 — imagepicker bindings (QuestionImagePickerModel + ImageItemValue).
   ...(
     [

@@ -57,7 +57,7 @@ import { DropdownQuestionElement } from '../questions/DropdownQuestion';
 import { TagboxQuestionElement } from '../questions/TagboxQuestion';
 import { ImageQuestion } from '../questions/ImageQuestion';
 import { ImagePickerQuestion } from '../questions/ImagePickerQuestion';
-import { ButtonGroupQuestion } from '../questions/ButtonGroupQuestion';
+import { ButtonGroupQuestionElement } from '../questions/ButtonGroupQuestion';
 import { PanelDynamicQuestion } from '../questions/PanelDynamicQuestion';
 import { CustomQuestion } from '../questions/CustomQuestion';
 import { CompositeQuestion } from '../questions/CompositeQuestion';
@@ -263,13 +263,17 @@ export const DESCRIPTOR_TABLE: readonly Descriptor[] = [
     component: () => MultipleTextQuestion,
     milestone: 'M2',
   },
-  // Task 2.9 — buttongroup question.
+  // Task 2.9 — buttongroup question. ONE template row in BOTH modes
+  // (2.5b R1): overflow compaction flips `renderAs` to 'dropdown' but
+  // registers NOTHING in RendererFactory, so `isDefaultRendering()`
+  // stays true and dispatch stays on `getTemplate()` === 'buttongroup';
+  // the element wrapper self-branches on renderAs.
   {
     status: 'supported',
     questionType: 'buttongroup',
     dispatchKey: 'buttongroup',
     route: 'template',
-    component: () => ButtonGroupQuestion,
+    component: () => ButtonGroupQuestionElement,
     milestone: 'M2',
   },
   // Task 2.10 — image question (static display + scaling modes).
