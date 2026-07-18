@@ -34,7 +34,6 @@ import * as React from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { ImageProps, ImageLoadEvent } from 'react-native';
 import type { Base } from '../core/facade';
-import { Helpers } from '../core/facade';
 import { QuestionElementBase } from '../reactivity/QuestionElementBase';
 import type { QuestionElementBaseProps } from '../reactivity/QuestionElementBase';
 import { SurveyElementBase } from '../reactivity/SurveyElementBase';
@@ -55,6 +54,7 @@ interface LocStringLike {
 
 interface ChoiceLike {
   id: string | number;
+  uniqueId: string | number;
   value: unknown;
   text: string;
   contentNotLoaded?: boolean;
@@ -77,9 +77,11 @@ interface ImagePickerModelLike {
   isItemSelected(item: ChoiceLike): boolean;
   getItemEnabled(item: ChoiceLike): boolean;
   getCurrentColCount(): number;
+  isTwoValueEquals(a: unknown, b: unknown): boolean;
   onContentLoaded(
     item: ChoiceLike,
-    content: { naturalWidth: number; naturalHeight: number }
+    // Core reads event.target.naturalWidth/Height (survey.core.js:66119).
+    content: { target: { naturalWidth: number; naturalHeight: number } }
   ): void;
   a11y_input_ariaLabel?: string;
   processedTitle?: string;
@@ -154,8 +156,7 @@ function TilePolicyImage(props: {
         const src = e.nativeEvent?.source;
         if (src) {
           question.onContentLoaded(item, {
-            naturalWidth: src.width,
-            naturalHeight: src.height,
+            target: { naturalWidth: src.width, naturalHeight: src.height },
           });
         }
       }}
@@ -237,12 +238,10 @@ class ImagePickerTile extends SurveyElementBase<ImagePickerTileProps> {
     if (question.multiSelect) {
       const current = Array.isArray(target.value) ? target.value : [];
       target.value = selected
-        ? current.filter(
-            (v) =>
-              !Helpers.checkIfValuesEqual(v, item.value, {
-                doNotConvertNumbers: true,
-              })
-          )
+        ? // Use the model's OWN item equality (case-sensitive, no-trim,
+          // doNotConvertNumbers) so 'A'/'a' and 1/'1' stay distinct
+          // (PR #31 review r2 #2).
+          current.filter((v) => !question.isTwoValueEquals(v, item.value))
         : [...current, item.value];
     } else {
       target.value =
@@ -315,14 +314,12 @@ export class ImagePickerQuestion extends QuestionElementBase<ImagePickerQuestion
         style={localStyles.grid}
         accessibilityRole={question.multiSelect ? undefined : 'radiogroup'}
         accessibilityLabel={
-          question.multiSelect
-            ? undefined
-            : (question.a11y_input_ariaLabel ?? question.processedTitle)
+          question.a11y_input_ariaLabel ?? question.processedTitle
         }
       >
         {question.visibleChoices.map((item) => (
           <ImagePickerTile
-            key={String(item.id)}
+            key={String(item.uniqueId)}
             question={question}
             item={item}
             cols={cols}

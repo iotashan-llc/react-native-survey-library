@@ -1260,10 +1260,13 @@ export const API_SURFACE_WATCHLIST: readonly WatchedApiMember[] = [
       ['showLabel', 'accessor'],
       ['imageFit', 'accessor'],
       ['contentMode', 'accessor'],
+      ['renderedImageWidth', 'accessor'],
+      ['renderedImageHeight', 'accessor'],
       ['visibleChoices', 'accessor'],
       ['isItemSelected', 'method'],
       ['getItemEnabled', 'method'],
       ['getCurrentColCount', 'method'],
+      ['isTwoValueEquals', 'method'],
       ['onContentLoaded', 'method'],
     ] as const
   ).map(([member, expectedKind]) => ({
@@ -1285,6 +1288,8 @@ export const API_SURFACE_WATCHLIST: readonly WatchedApiMember[] = [
       ['contentNotLoaded', 'accessor'],
       ['onErrorHandler', 'method'],
       ['locImageLink', 'accessor'],
+      ['locText', 'accessor'],
+      ['imageLink', 'accessor'],
     ] as const
   ).map(([member, expectedKind]) => ({
     id: `ImageItemValue.${member}`,

@@ -230,6 +230,28 @@ describe('ImagePickerQuestion — structural (r1 rewrite)', () => {
     expect(screen.getByTestId('imagepicker-fallback-cat')).toBeTruthy();
   });
 
+  it('a successful image load routes RN source dims into core onContentLoaded without throwing (r2 #1)', async () => {
+    const { question } = createImagePicker({ showLabel: false });
+    render(<ImagePickerQuestion question={question} creator={{}} />);
+    await flush();
+    const img = screen.getByTestId('imagepicker-image-cat');
+    // RN Image onLoad shape: { nativeEvent: { source: { width, height } } }.
+    // Core reads event.target.naturalWidth/Height — a flat payload throws.
+    act(() => {
+      fireEvent(img, 'load', {
+        nativeEvent: { source: { width: 10, height: 20 } },
+      });
+    });
+    // No throw + the tile is still enabled + the image (not the fallback)
+    // remains mounted.
+    expect(screen.getByTestId('imagepicker-image-cat')).toBeTruthy();
+    expect(screen.queryByTestId('imagepicker-fallback-cat')).toBeNull();
+    expect(
+      screen.getByTestId('imagepicker-item-cat').props.accessibilityState
+        ?.disabled
+    ).toBe(false);
+  });
+
   it('an in-place item enable change re-renders that tile (per-item reactivity, r1 #3)', async () => {
     const model = new Model({
       elements: [
