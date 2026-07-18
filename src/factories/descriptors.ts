@@ -55,6 +55,8 @@ import { TextQuestion } from '../questions/TextQuestion';
 import { MultipleTextQuestion } from '../questions/MultipleTextQuestion';
 import { ImageQuestion } from '../questions/ImageQuestion';
 import { ButtonGroupQuestion } from '../questions/ButtonGroupQuestion';
+import { CustomQuestion } from '../questions/CustomQuestion';
+import { CompositeQuestion } from '../questions/CompositeQuestion';
 import { ListItemGroupContent, ListPickerElement } from '../overlay/ListPicker';
 
 export type DescriptorRoute = 'template' | 'renderer' | 'element';
@@ -288,31 +290,26 @@ export const DESCRIPTOR_TABLE: readonly Descriptor[] = [
     component: () => TextQuestion,
     milestone: 'M1',
   },
+  // Task 2.11 — ComponentCollection custom adapter. getTemplate() === 'custom'
+  // regardless of the registered type name; renders contentQuestion (input-only)
+  // through the normal dispatcher.
   {
-    status: 'planned',
+    status: 'supported',
     questionType: 'custom',
     dispatchKey: 'custom',
     route: 'template',
+    component: () => CustomQuestion,
     milestone: 'M2',
-    reason:
-      'ComponentCollection custom-question adapter lands in task 2.11 (A4). ' +
-      'QuestionCustomModel.getTemplate() returns "custom" regardless of the ' +
-      "registered custom type's own name — until the adapter exists, a " +
-      'dispatch miss on this key falls through to the unsupported-type ' +
-      'fallback + diagnostic.',
   },
+  // Task 2.11 — ComponentCollection composite adapter. getTemplate() ===
+  // 'composite'; renders contentPanel through the SurveyPanel composition.
   {
-    status: 'planned',
+    status: 'supported',
     questionType: 'composite',
     dispatchKey: 'composite',
     route: 'template',
+    component: () => CompositeQuestion,
     milestone: 'M2',
-    reason:
-      'ComponentCollection composite-question adapter lands in task 2.11 ' +
-      '(A4). QuestionCompositeModel.getTemplate() returns "composite" ' +
-      "regardless of the registered custom type's own name — until the " +
-      'adapter exists, a dispatch miss on this key falls through to the ' +
-      'unsupported-type fallback + diagnostic.',
   },
   // Phase 1 — v0.1 (M1). getTemplate() === getType() for all three (no
   // override; verified against a live fixture in manifest.ts's

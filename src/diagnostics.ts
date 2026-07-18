@@ -278,6 +278,16 @@ export interface ImageContentModeUnsupportedPayload {
   contentMode: string;
 }
 
+/** 2.11 custom adapter — a ComponentCollection `createQuestion` callback
+ * returned null, so the custom question has no inner `contentQuestion` to
+ * render. The adapter shows a non-throwing fallback instead of crashing
+ * (invariant 9). */
+export interface CustomContentMissingPayload {
+  code: 'custom-content-missing';
+  questionName: string;
+  questionType: string;
+}
+
 /** 2.2 dialog adapter — a consumer `settings.showDialog` was displaced
  * while Surveys are mounted (restored on last unmount; design
  * 2.2-dialog-adapter D2). */
@@ -320,7 +330,8 @@ export type DiagnosticPayload =
   | DateTimeFallbackInvalidDiscardedPayload
   | LayoutDiagnosticPayload
   | ProgressBarTypeUnsupportedPayload
-  | ImageContentModeUnsupportedPayload;
+  | ImageContentModeUnsupportedPayload
+  | CustomContentMissingPayload;
 
 export type DiagnosticHandler = (payload: DiagnosticPayload) => void;
 

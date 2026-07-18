@@ -184,6 +184,8 @@ describe('registerAll (module side effect)', () => {
       'buttongroup',
       'checkbox',
       'comment',
+      'composite',
+      'custom',
       'empty',
       'expression',
       'image',

@@ -98,15 +98,14 @@ describe('DESCRIPTOR_TABLE (M0 + M1)', () => {
     expect(row.milestone).toBe('M1');
   });
 
-  it('"custom" and "composite" are planned/template rows with no component field, carrying a reason and milestone', () => {
+  it('"custom" and "composite" (task 2.11) are supported/template rows with resolvable component thunks', () => {
     for (const key of ['custom', 'composite'] as const) {
       const row = byKey(key);
-      expect(row.status).toBe('planned');
+      expect(row.status).toBe('supported');
       expect(row.route).toBe('template');
       expect(row.questionType).toBe(key);
-      expect('component' in row).toBe(false);
-      if (row.status !== 'planned') throw new Error('unreachable');
-      expect(row.reason.length).toBeGreaterThan(0);
+      if (row.status !== 'supported') throw new Error('unreachable');
+      expect(typeof row.component()).toBe('function');
       expect(row.milestone).toBe('M2');
     }
   });

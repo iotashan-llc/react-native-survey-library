@@ -62,6 +62,8 @@ describe('component modules are import-side-effect-free', () => {
       'buttongroup',
       'checkbox',
       'comment',
+      'composite',
+      'custom',
       'empty',
       'expression',
       'image',

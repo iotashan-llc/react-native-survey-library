@@ -26,6 +26,8 @@ export type {
   UnsupportedQuestionRenderer,
 } from './components/UnsupportedQuestion';
 export { QuestionChrome } from './components/QuestionChrome';
+export { CustomQuestion } from './questions/CustomQuestion';
+export { CompositeQuestion } from './questions/CompositeQuestion';
 export type { QuestionChromeProps } from './components/QuestionChrome';
 export { setDiagnosticHandler, reportDiagnostic } from './diagnostics';
 export type {
