@@ -212,6 +212,30 @@
               "startWithNewLine": false
             }
           ]
+        },
+        {
+          "type": "paneldynamic",
+          "name": "devices",
+          "title": "Test devices (paneldynamic, task 2.8a)",
+          "panelCount": 1,
+          "minPanelCount": 0,
+          "maxPanelCount": 3,
+          "confirmDelete": true,
+          "panelAddText": "Add device",
+          "panelRemoveText": "Remove device",
+          "templateElements": [
+            {
+              "type": "text",
+              "name": "model",
+              "title": "Model"
+            },
+            {
+              "type": "text",
+              "name": "os",
+              "title": "OS version",
+              "startWithNewLine": false
+            }
+          ]
         }
       ]
     },
