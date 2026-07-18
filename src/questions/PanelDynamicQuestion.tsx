@@ -79,6 +79,14 @@ interface PanelDynamicModelLike {
   locAddPanelText: LocStringLike;
   locRemovePanelText: LocStringLike;
   locNoEntriesText: LocStringLike;
+  // Carousel (2.8b): renderedPanels is [currentPanel] in carousel mode.
+  currentIndex: number;
+  goToNextPanel(): void;
+  goToPrevPanel(): void;
+  isNextButtonShowing: boolean;
+  isPrevButtonShowing: boolean;
+  progressText: string;
+  showProgressBar: boolean;
   panelCountChangedCallback?: () => void;
   renderModeChangedCallback?: () => void;
   currentIndexChangedCallback?: () => void;
@@ -325,10 +333,58 @@ export class PanelDynamicQuestion extends QuestionElementBase<QuestionElementBas
     );
   }
 
+  /** Carousel (2.8b): a single current panel + prev/next nav + progress text.
+   * `currentIndexChangedCallback` (wired in attachCallbacks) re-renders on a
+   * nav. `tab` mode is 2.8c and still falls through to the unsupported view. */
+  private renderCarousel(): React.JSX.Element {
+    const question = this.pd;
+    const current = question.renderedPanels[0];
+    return (
+      <View testID="paneldynamic-carousel">
+        {question.showProgressBar ? (
+          <Text testID="paneldynamic-progress">{question.progressText}</Text>
+        ) : null}
+        {current ? (
+          <PanelDynamicItem
+            key={String((current as unknown as PanelViewLike).id)}
+            question={question}
+            panel={current}
+            survey={question.survey}
+            creator={this.creator}
+          />
+        ) : null}
+        <View style={localStyles.nav}>
+          {question.isPrevButtonShowing ? (
+            <Pressable
+              testID="paneldynamic-prev"
+              accessibilityRole="button"
+              onPress={() => question.goToPrevPanel()}
+              style={localStyles.navButton}
+            >
+              <Text>‹</Text>
+            </Pressable>
+          ) : null}
+          {question.isNextButtonShowing ? (
+            <Pressable
+              testID="paneldynamic-next"
+              accessibilityRole="button"
+              onPress={() => question.goToNextPanel()}
+              style={localStyles.navButton}
+            >
+              <Text>›</Text>
+            </Pressable>
+          ) : null}
+        </View>
+        {this.renderAddButton()}
+      </View>
+    );
+  }
+
   protected renderElement(): React.JSX.Element {
     const question = this.pd;
     this.pendingMode = undefined;
     if (!question.isRenderModeList) {
+      if (question.displayMode === 'carousel') return this.renderCarousel();
       this.pendingMode = question.displayMode;
       return <View testID="paneldynamic-mode-unsupported" />;
     }
@@ -366,4 +422,6 @@ const localStyles = StyleSheet.create({
   addButton: { paddingVertical: 8, alignSelf: 'flex-start' },
   removeButton: { paddingVertical: 6, alignSelf: 'flex-end' },
   toggle: { paddingVertical: 4, alignSelf: 'flex-start' },
+  nav: { flexDirection: 'row', justifyContent: 'space-between' },
+  navButton: { paddingVertical: 6, paddingHorizontal: 12 },
 });

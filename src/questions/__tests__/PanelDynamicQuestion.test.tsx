@@ -78,10 +78,11 @@ describe('PanelDynamicQuestion — LIST render', () => {
     expect(screen.getAllByTestId('first-input')).toHaveLength(2);
   });
 
-  it('non-list displayMode renders an unsupported fallback + a deferred diagnostic', async () => {
+  it('an unsupported (tab) displayMode renders a fallback + a deferred diagnostic', async () => {
     const codes: string[] = [];
     setDiagnosticHandler((p: DiagnosticPayload) => codes.push(p.code));
-    const { question } = createPaneldynamic({ displayMode: 'carousel' });
+    // 'tab' is still unsupported (2.8c); 'carousel' is supported as of 2.8b.
+    const { question } = createPaneldynamic({ displayMode: 'tab' });
     render(<PanelDynamicQuestion question={question} creator={{}} />);
     await flush();
     expect(screen.getByTestId('paneldynamic-mode-unsupported')).toBeTruthy();
@@ -277,6 +278,72 @@ describe('PanelDynamicQuestion — collapse (panelsState, r major #1)', () => {
   });
 });
 
+describe('PanelDynamicQuestion — carousel (2.8b)', () => {
+  it('carousel renders exactly ONE panel (the current), with next but no prev at index 0', async () => {
+    const { question } = createPaneldynamic({
+      displayMode: 'carousel',
+      panelCount: 3,
+    });
+    render(<PanelDynamicQuestion question={question} creator={{}} />);
+    await flush();
+    expect(screen.getByTestId('paneldynamic-carousel')).toBeTruthy();
+    expect(screen.queryByTestId('paneldynamic-list')).toBeNull();
+    // Single current panel, not all three.
+    expect(screen.getAllByTestId(/^paneldynamic-panel-/)).toHaveLength(1);
+    expect(screen.getByTestId('paneldynamic-next')).toBeTruthy();
+    expect(screen.queryByTestId('paneldynamic-prev')).toBeNull();
+  });
+
+  it('pressing next advances the current panel; last panel shows prev, not next', async () => {
+    const { question } = createPaneldynamic({
+      displayMode: 'carousel',
+      panelCount: 3,
+    });
+    render(<PanelDynamicQuestion question={question} creator={{}} />);
+    await flush();
+    expect((question as unknown as { currentIndex: number }).currentIndex).toBe(
+      0
+    );
+    fireEvent.press(screen.getByTestId('paneldynamic-next'));
+    await flush();
+    expect((question as unknown as { currentIndex: number }).currentIndex).toBe(
+      1
+    );
+    // advance to the last panel.
+    fireEvent.press(screen.getByTestId('paneldynamic-next'));
+    await flush();
+    expect((question as unknown as { currentIndex: number }).currentIndex).toBe(
+      2
+    );
+    expect(screen.queryByTestId('paneldynamic-next')).toBeNull();
+    expect(screen.getByTestId('paneldynamic-prev')).toBeTruthy();
+  });
+
+  it('shows the progress text when showProgressBar', async () => {
+    const { question } = createPaneldynamic({
+      displayMode: 'carousel',
+      panelCount: 3,
+    });
+    render(<PanelDynamicQuestion question={question} creator={{}} />);
+    await flush();
+    const progress = screen.getByTestId('paneldynamic-progress');
+    expect(progress.props.children).toBe(
+      (question as unknown as { progressText: string }).progressText
+    );
+  });
+
+  it('a tab displayMode is still unsupported (2.8c boundary)', async () => {
+    const codes: string[] = [];
+    setDiagnosticHandler((p: DiagnosticPayload) => codes.push(p.code));
+    const { question } = createPaneldynamic({ displayMode: 'tab' });
+    render(<PanelDynamicQuestion question={question} creator={{}} />);
+    await flush();
+    expect(screen.getByTestId('paneldynamic-mode-unsupported')).toBeTruthy();
+    expect(screen.queryByTestId('paneldynamic-carousel')).toBeNull();
+    expect(codes).toContain('paneldynamic-mode-unsupported');
+  });
+});
+
 describe('PanelDynamicQuestion — reactivity', () => {
   it('an external addPanel re-renders (panelCountChangedCallback → setState)', async () => {
     const { question } = createPaneldynamic({ maxPanelCount: 5 });
@@ -327,8 +394,8 @@ describe('PanelDynamicQuestion — reactivity', () => {
   it('a same-mode retarget re-emits the diagnostic for the new question — minor #4', async () => {
     const codes: string[] = [];
     setDiagnosticHandler((p: DiagnosticPayload) => codes.push(p.code));
-    const a = createPaneldynamic({ displayMode: 'carousel' }).question;
-    const b = createPaneldynamic({ displayMode: 'carousel' }).question;
+    const a = createPaneldynamic({ displayMode: 'tab' }).question;
+    const b = createPaneldynamic({ displayMode: 'tab' }).question;
     const view = render(<PanelDynamicQuestion question={a} creator={{}} />);
     await flush();
     view.rerender(<PanelDynamicQuestion question={b} creator={{}} />);
