@@ -58,6 +58,7 @@ import { TagboxQuestionElement } from '../questions/TagboxQuestion';
 import { ImageQuestion } from '../questions/ImageQuestion';
 import { ImagePickerQuestion } from '../questions/ImagePickerQuestion';
 import { ButtonGroupQuestion } from '../questions/ButtonGroupQuestion';
+import { PanelDynamicQuestion } from '../questions/PanelDynamicQuestion';
 import { ListItemGroupContent, ListPickerElement } from '../overlay/ListPicker';
 
 export type DescriptorRoute = 'template' | 'renderer' | 'element';
@@ -285,6 +286,15 @@ export const DESCRIPTOR_TABLE: readonly Descriptor[] = [
     dispatchKey: 'imagepicker',
     route: 'template',
     component: () => ImagePickerQuestion,
+    milestone: 'M2',
+  },
+  // Task 2.8a — paneldynamic (LIST mode + add/remove).
+  {
+    status: 'supported',
+    questionType: 'paneldynamic',
+    dispatchKey: 'paneldynamic',
+    route: 'template',
+    component: () => PanelDynamicQuestion,
     milestone: 'M2',
   },
   {

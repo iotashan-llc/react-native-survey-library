@@ -884,3 +884,33 @@ name exists, and its DOM-cleaning fallback leaves `inputStringRendered`
 empty on RN); instead it renders the selected item's localized text and
 emits a `dropdown-input-component-missing` diagnostic. Register the
 custom component before rendering for the intended custom UI.
+
+## Dynamic panels — carousel & tab modes (task 2.8b/2.8c)
+
+### Tab overflow is a horizontal scroll, not an overflow-to-popup
+
+Web's paneldynamic `displayMode: "tab"` adaptively measures which tabs fit and
+overflows the rest into a popup action container. This renderer has no DOM
+measurement loop, so the tab strip is a horizontal `ScrollView`: overflowing tabs
+scroll into view instead of collapsing into a popup. Carousel mode shows a single
+panel with prev/next controls + a text progress indicator ("N of M"); `tab` mode
+shows a scrollable tab strip + the current panel. In both modes survey-core gates
+the Add button to the LAST panel (matching web).
+
+## Dynamic panels (`paneldynamic`, task 2.8a)
+
+### v0.2 supports `displayMode: "list"` only
+
+The list renderer stacks all visible panels with an add-panel button and a
+per-panel remove button (delete confirmation routes through the 2.2 dialog
+adapter). `displayMode` `"carousel"`/`"tab"` and the progress bar are deferred
+to 2.8b/2.8c; a non-list survey renders an unsupported fallback and reports the
+`paneldynamic-mode-unsupported` diagnostic rather than a broken frame
+(invariant 9).
+
+### Collapsible panels get an explicit toggle
+
+When `panelsState` is `collapsed`/`firstExpanded`/`expanded`, each panel is
+collapsible; the RN renderer adds a per-panel expand/collapse toggle (web
+collapses via a clickable panel title). `panelsState: "default"` panels are
+always expanded and get no toggle.

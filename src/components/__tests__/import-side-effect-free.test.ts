@@ -68,6 +68,7 @@ describe('component modules are import-side-effect-free', () => {
       'image',
       'imagepicker',
       'multipletext',
+      'paneldynamic',
       'radiogroup',
       'rating',
       'sv-boolean-checkbox',

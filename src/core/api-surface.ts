@@ -1461,6 +1461,49 @@ export const API_SURFACE_WATCHLIST: readonly WatchedApiMember[] = [
     resolveHost: (sc) => sc.QuestionImageModel.prototype,
     reason: 'ImageQuestion (2.10) RN Image onError routes into core.',
   },
+  // Task 2.8a — paneldynamic (LIST mode + add/remove) bindings.
+  ...(
+    [
+      ['renderedPanels', 'accessor'],
+      ['isRenderModeList', 'accessor'],
+      ['displayMode', 'accessor'],
+      ['canAddPanel', 'accessor'],
+      ['enableAddPanel', 'accessor'],
+      ['canRemovePanel', 'accessor'],
+      ['enableRemovePanel', 'accessor'],
+      ['addPanelUI', 'method'],
+      ['removePanelUI', 'method'],
+      ['getShowNoEntriesPlaceholder', 'method'],
+      ['locAddPanelText', 'accessor'],
+      ['locRemovePanelText', 'accessor'],
+      ['locNoEntriesText', 'accessor'],
+    ] as const
+  ).map(([member, expectedKind]) => ({
+    id: `QuestionPanelDynamicModel.${member}`,
+    member,
+    expectedKind: expectedKind as MemberKind,
+    resolveHost: (sc: typeof FacadeModule) =>
+      (sc as { QuestionPanelDynamicModel: { prototype: unknown } })
+        .QuestionPanelDynamicModel.prototype,
+    reason: '2.8a paneldynamic list-mode render + add/remove binding.',
+  })),
+  // Task 2.8a — per-panel item reads (collapse state + toggle affordance).
+  ...(
+    [
+      ['id', 'accessor'],
+      ['state', 'accessor'],
+      ['renderedIsExpanded', 'accessor'],
+      ['toggleState', 'method'],
+    ] as const
+  ).map(([member, expectedKind]) => ({
+    id: `PanelModel.${member}`,
+    member,
+    expectedKind: expectedKind as MemberKind,
+    resolveHost: (sc: typeof FacadeModule) =>
+      (sc as { PanelModel: { prototype: unknown } }).PanelModel.prototype,
+    reason:
+      '2.8a PanelDynamicItem keys/subscribes each panel + drives its collapse toggle.',
+  })),
   {
     id: 'QuestionRatingModel.itemStarIcon',
     member: 'itemStarIcon',

@@ -190,6 +190,7 @@ describe('registerAll (module side effect)', () => {
       'image',
       'imagepicker',
       'multipletext',
+      'paneldynamic',
       'radiogroup',
       'rating',
       'sv-boolean-checkbox',

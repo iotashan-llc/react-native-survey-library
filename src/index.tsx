@@ -26,6 +26,7 @@ export type {
   UnsupportedQuestionRenderer,
 } from './components/UnsupportedQuestion';
 export { QuestionChrome } from './components/QuestionChrome';
+export { PanelDynamicQuestion } from './questions/PanelDynamicQuestion';
 export type { QuestionChromeProps } from './components/QuestionChrome';
 export { setDiagnosticHandler, reportDiagnostic } from './diagnostics';
 export type {

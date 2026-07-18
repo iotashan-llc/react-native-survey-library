@@ -278,6 +278,15 @@ export interface ImageContentModeUnsupportedPayload {
   contentMode: string;
 }
 
+/** 2.8a paneldynamic — a non-list `displayMode` (carousel/tab/progress) is
+ * not yet supported (tasks 2.8b/2.8c); the list renderer degrades to an
+ * unsupported fallback + this diagnostic rather than a broken frame. */
+export interface PanelDynamicModeUnsupportedPayload {
+  code: 'paneldynamic-mode-unsupported';
+  questionName: string;
+  displayMode: string;
+}
+
 /** 2.2 dialog adapter — a consumer `settings.showDialog` was displaced
  * while Surveys are mounted (restored on last unmount; design
  * 2.2-dialog-adapter D2). */
@@ -353,7 +362,8 @@ export type DiagnosticPayload =
   | DateTimeFallbackInvalidDiscardedPayload
   | LayoutDiagnosticPayload
   | ProgressBarTypeUnsupportedPayload
-  | ImageContentModeUnsupportedPayload;
+  | ImageContentModeUnsupportedPayload
+  | PanelDynamicModeUnsupportedPayload;
 
 export type DiagnosticHandler = (payload: DiagnosticPayload) => void;
 

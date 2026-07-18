@@ -35,6 +35,7 @@ describe('DESCRIPTOR_TABLE (M0 + M1)', () => {
       'imagepicker',
       'multipletext',
       'panel',
+      'paneldynamic',
       'radiogroup',
       'rating',
       'survey-header',
