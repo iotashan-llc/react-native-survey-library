@@ -63,6 +63,15 @@ interface PanelViewLike {
   toggleState(): void;
 }
 
+/** A core-built tab action (tabbedMenu). `locTitle` carries the resolved tab
+ * title (templateTabTitle + placeholder + onGetDynamicPanelTabTitle);
+ * `action()` navigates to the tab's panel. */
+interface TabActionLike {
+  id: string | number;
+  locTitle: LocStringLike;
+  action?: () => void;
+}
+
 interface PanelDynamicModelLike {
   name: string;
   survey: SurveyModel;
@@ -89,6 +98,9 @@ interface PanelDynamicModelLike {
   isPrevButtonShowing: boolean;
   progressText: string;
   showProgressBar: boolean;
+  // Tab (2.8c): the core-built tab ActionContainer — each action carries the
+  // resolved tab title + navigates via action().
+  tabbedMenu: { actions: TabActionLike[] };
   panelCountChangedCallback?: () => void;
   renderModeChangedCallback?: () => void;
   currentIndexChangedCallback?: () => void;
@@ -396,29 +408,30 @@ export class PanelDynamicQuestion extends QuestionElementBase<QuestionElementBas
           horizontal
           showsHorizontalScrollIndicator={false}
         >
-          {question.visiblePanels.map((panel, i) => {
-            const view = panel as unknown as PanelViewLike & {
-              locTitle?: { renderedHtml: string };
-            };
-            const label = view.locTitle?.renderedHtml || String(i + 1);
+          {question.tabbedMenu.actions.map((tab, i) => {
+            // The core tab action owns the RESOLVED title (templateTabTitle +
+            // placeholder + onGetDynamicPanelTabTitle) and the navigation —
+            // NOT panel.locTitle (which is templateTitle). Rendered through
+            // renderLocString (HTML-safe). (2.8c review r1.)
             const selected = i === currentIndex;
             return (
               <Pressable
-                key={String(view.id)}
+                key={String(tab.id)}
                 testID={`paneldynamic-tab-${i}`}
                 role="tab"
+                accessibilityLabel={tab.locTitle.renderedHtml}
                 accessibilityState={{ selected }}
-                onPress={() => {
-                  (
-                    question as unknown as { currentIndex: number }
-                  ).currentIndex = i;
-                }}
+                onPress={() => tab.action?.()}
                 style={[
                   localStyles.tab,
                   selected ? localStyles.tabSelected : null,
                 ]}
               >
-                <Text>{label}</Text>
+                {SurveyElementBase.renderLocString(
+                  tab.locTitle as unknown as LocalizableString,
+                  undefined,
+                  `tab-${i}`
+                )}
               </Pressable>
             );
           })}

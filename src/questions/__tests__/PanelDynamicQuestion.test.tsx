@@ -385,17 +385,31 @@ describe('PanelDynamicQuestion — tab (2.8c)', () => {
     expect(screen.queryByTestId('paneldynamic-list')).toBeNull();
     expect(screen.queryByTestId('paneldynamic-carousel')).toBeNull();
     // one tab per panel; a single current panel.
-    expect(screen.getAllByTestId(/^paneldynamic-tab-/)).toHaveLength(3);
+    const tabs = screen.getAllByTestId(/^paneldynamic-tab-/);
+    expect(tabs).toHaveLength(3);
     expect(screen.getAllByTestId(/^paneldynamic-panel-/)).toHaveLength(1);
-    // the first tab is selected.
-    expect(
-      screen.getByTestId('paneldynamic-tab-0').props.accessibilityState
-        ?.selected
-    ).toBe(true);
-    expect(
-      screen.getByTestId('paneldynamic-tab-1').props.accessibilityState
-        ?.selected
-    ).toBe(false);
+    // each tab has role="tab"; the first is selected.
+    expect(tabs[0]!.props.role).toBe('tab');
+    expect(tabs[0]!.props.accessibilityState?.selected).toBe(true);
+    expect(tabs[1]!.props.accessibilityState?.selected).toBe(false);
+    // Tab labels come from the CORE tab-title contract — default "Panel N"
+    // (NOT the panel index or templateTitle). (2.8c review r1.)
+    expect(screen.getByText('Panel 1')).toBeTruthy();
+    expect(screen.getByText('Panel 3')).toBeTruthy();
+  });
+
+  it('tab labels honor templateTabTitle interpolation (core tab-title contract)', async () => {
+    const { question } = createPaneldynamic({
+      displayMode: 'tab',
+      panelCount: 2,
+      templateTabTitle: 'Item {panelIndex}',
+    });
+    render(<PanelDynamicQuestion question={question} creator={{}} />);
+    await flush();
+    expect(screen.getByText('Item 1')).toBeTruthy();
+    expect(screen.getByText('Item 2')).toBeTruthy();
+    // panel.locTitle (templateTitle) is NOT the tab label.
+    expect(screen.queryByText('1')).toBeNull();
   });
 
   it('tapping a tab navigates to that panel', async () => {
@@ -443,6 +457,48 @@ describe('PanelDynamicQuestion — tab (2.8c)', () => {
     fireEvent.press(screen.getAllByTestId(/^paneldynamic-remove-/)[0]!);
     await flush();
     expect(q.panelCount).toBe(2);
+  });
+
+  it('an external currentIndex change re-renders the tab strip + panel', async () => {
+    const { question } = createPaneldynamic({
+      displayMode: 'tab',
+      panelCount: 3,
+    });
+    const q = question as unknown as {
+      currentIndex: number;
+      renderedPanels: { id: string | number }[];
+    };
+    render(<PanelDynamicQuestion question={question} creator={{}} />);
+    await flush();
+    const firstId = String(q.renderedPanels[0]!.id);
+    // Programmatic navigation (not a tap) — currentIndexChangedCallback drives
+    // the re-render.
+    act(() => {
+      q.currentIndex = 1;
+    });
+    await flush();
+    const secondId = String(q.renderedPanels[0]!.id);
+    expect(secondId).not.toBe(firstId);
+    expect(screen.getByTestId(`paneldynamic-panel-${secondId}`)).toBeTruthy();
+    expect(
+      screen.getByTestId('paneldynamic-tab-1').props.accessibilityState
+        ?.selected
+    ).toBe(true);
+  });
+
+  it('an empty tab set: no tabs/panel, add button present', async () => {
+    const { question } = createPaneldynamic({
+      displayMode: 'tab',
+      panelCount: 0,
+      minPanelCount: 0,
+      maxPanelCount: 5,
+    });
+    render(<PanelDynamicQuestion question={question} creator={{}} />);
+    await flush();
+    expect(screen.getByTestId('paneldynamic-tabs')).toBeTruthy();
+    expect(screen.queryAllByTestId(/^paneldynamic-tab-/)).toHaveLength(0);
+    expect(screen.queryAllByTestId(/^paneldynamic-panel-/)).toHaveLength(0);
+    expect(screen.getByTestId('paneldynamic-add')).toBeTruthy();
   });
 });
 
