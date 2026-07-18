@@ -22,7 +22,7 @@
  *   posture as ImageQuestion, task 2.10).
  * - Selection is gated on core `getItemEnabled(item)` (choicesEnableIf +
  *   image-availability) AND `isInputReadOnly`; single-select sets
- *   `question.value` (toggle-clear when allowClear); multi toggles the
+ *   `question.value` (no toggle-clear — core has no allowClear); multi toggles the
  *   array with core's item equality (`checkIfValuesEqual`,
  *   doNotConvertNumbers). Selection state from core `isItemSelected`.
  * - a11y: the grid is a `radiogroup` (single-select) with the model
@@ -32,7 +32,7 @@
  */
 import * as React from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
-import type { ImageProps, ImageLoadEvent } from 'react-native';
+import type { ImageProps, ImageLoadEvent, TextStyle } from 'react-native';
 import type { Base } from '../core/facade';
 import { QuestionElementBase } from '../reactivity/QuestionElementBase';
 import type { QuestionElementBaseProps } from '../reactivity/QuestionElementBase';
@@ -112,8 +112,9 @@ function TilePolicyImage(props: {
   question: ImagePickerModelLike;
   item: ChoiceLike;
   uriConfig: UriPolicyConfig | undefined;
+  fallbackTextStyle: TextStyle;
 }): React.JSX.Element {
-  const { question, item, uriConfig } = props;
+  const { question, item, uriConfig, fallbackTextStyle } = props;
   const contextPolicy = React.useContext(UriPolicyContext);
   const effectivePolicy = uriConfig ?? contextPolicy;
   const rawUri = item.locImageLink?.renderedHtml || item.imageLink || '';
@@ -132,7 +133,10 @@ function TilePolicyImage(props: {
   }, [rawUri, blockedReason, effectivePolicy]);
 
   const fallback = (
-    <Text testID={`imagepicker-fallback-${String(item.value)}`}>
+    <Text
+      testID={`imagepicker-fallback-${String(item.value)}`}
+      style={fallbackTextStyle}
+    >
       {item.text}
     </Text>
   );
@@ -244,10 +248,11 @@ class ImagePickerTile extends SurveyElementBase<ImagePickerTileProps> {
           current.filter((v) => !question.isTwoValueEquals(v, item.value))
         : [...current, item.value];
     } else {
-      target.value =
-        selected && (question as { allowClear?: boolean }).allowClear
-          ? undefined
-          : item.value;
+      // Single-select: tapping always commits this value. survey-core
+      // 2.5.33's QuestionImagePickerModel has no allowClear affordance
+      // (no such member/serializer prop), so re-tapping a selected tile
+      // keeps it selected — there is no toggle-clear (PR #31 review r3).
+      target.value = item.value;
     }
   }
 
@@ -255,6 +260,15 @@ class ImagePickerTile extends SurveyElementBase<ImagePickerTileProps> {
     const { question, item, cols, uriConfig } = this.props;
     const selected = question.isItemSelected(item);
     const enabled = question.getItemEnabled(item) && !question.isInputReadOnly;
+    // Theme pipeline (invariant 5/6): reuse the per-theme choice-item
+    // recipe rather than hardcoding colors — its `label` fragment carries
+    // the themed text color/font and `decoratorChecked.backgroundColor` is
+    // the resolved primary accent (so dark/contrast themes get the right
+    // selection color + readable text; PR #31 review r3).
+    const { recipes } = this.themeContext;
+    const labelStyle = recipes.item.fragments.label;
+    const selectedBorderColor =
+      recipes.item.fragments.decoratorChecked.backgroundColor;
     return (
       <Pressable
         testID={`imagepicker-item-${String(item.value)}`}
@@ -266,16 +280,17 @@ class ImagePickerTile extends SurveyElementBase<ImagePickerTileProps> {
         style={[
           localStyles.tile,
           cols > 0 ? { width: `${100 / cols}%` as `${number}%` } : null,
-          selected ? localStyles.tileSelected : null,
+          selected ? { borderColor: selectedBorderColor } : null,
         ]}
       >
         <TilePolicyImage
           question={question}
           item={item}
           uriConfig={uriConfig}
+          fallbackTextStyle={labelStyle}
         />
         {question.showLabel ? (
-          <Text style={localStyles.label}>{item.text}</Text>
+          <Text style={[localStyles.label, labelStyle]}>{item.text}</Text>
         ) : null}
       </Pressable>
     );
@@ -295,14 +310,39 @@ export class ImagePickerQuestion extends QuestionElementBase<ImagePickerQuestion
     return this.questionBase as unknown as ImagePickerModelLike;
   }
 
+  /** Unsupported content-mode diagnostic — model-driven, staged in render
+   * and flushed (deduped) from the commit phase, never emitted during
+   * render (invariant: no diagnostics from render). Mirrors ImageQuestion
+   * (PR #31 review r3). */
+  private pendingMode: string | undefined;
+  private reportedMode: string | undefined;
+
+  componentDidMount(): void {
+    super.componentDidMount();
+    this.flushModeDiagnostic();
+  }
+
+  componentDidUpdate(): void {
+    super.componentDidUpdate();
+    this.flushModeDiagnostic();
+  }
+
+  private flushModeDiagnostic(): void {
+    const mode = this.pendingMode;
+    if (!mode || this.reportedMode === mode) return;
+    this.reportedMode = mode;
+    reportDiagnostic({
+      code: 'image-content-mode-unsupported',
+      questionName: this.imagepicker.name,
+      contentMode: mode,
+    });
+  }
+
   protected renderElement(): React.JSX.Element {
     const question = this.imagepicker;
+    this.pendingMode = undefined;
     if (question.contentMode !== 'image') {
-      reportDiagnostic({
-        code: 'image-content-mode-unsupported',
-        questionName: question.name,
-        contentMode: question.contentMode,
-      });
+      this.pendingMode = question.contentMode;
       return <View testID="imagepicker-content-mode-unsupported" />;
     }
     // 0 = flow layout (natural tile widths); a positive count sets the
@@ -340,6 +380,5 @@ const localStyles = StyleSheet.create({
     borderColor: 'transparent',
     borderRadius: 8,
   },
-  tileSelected: { borderColor: '#19b394' },
   label: { marginTop: 4, textAlign: 'center' },
 });

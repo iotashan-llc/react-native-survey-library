@@ -4,14 +4,28 @@
  * 2.10 image-loading (URI policy) + 1.12 choice semantics (plan:
  * docs/design/2.7-imagepicker-plan.md).
  */
+import { StyleSheet } from 'react-native';
+import type { StyleProp, TextStyle, ViewStyle } from 'react-native';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { Model } from '../../core/facade';
 import '../../factories/register-all';
 import { ImagePickerQuestion } from '../ImagePickerQuestion';
+import { SurveyThemeProvider } from '../../theme-rn/provider';
+import { resolveTheme } from '../../theme-core/resolve';
+import { buildItemRecipe } from '../../theme-rn/recipes/item';
 import {
   setDiagnosticHandler,
   type DiagnosticPayload,
 } from '../../diagnostics';
+
+function flatStyle(node: {
+  props: { style?: StyleProp<ViewStyle | TextStyle> };
+}) {
+  return (StyleSheet.flatten(node.props.style) ?? {}) as Record<
+    string,
+    unknown
+  >;
+}
 
 // 1x1 PNGs (data: — no network; URI policy allows strict inline data images).
 const IMG =
@@ -277,6 +291,80 @@ describe('ImagePickerQuestion — structural (r1 rewrite)', () => {
       screen.getByTestId('imagepicker-item-cat').props.accessibilityState
         ?.disabled
     ).toBe(false);
+  });
+});
+
+describe('ImagePickerQuestion — theme + diagnostics (r3)', () => {
+  it('re-tapping a selected single-select tile keeps it selected (no allowClear, r3 #3)', async () => {
+    const { question } = createImagePicker();
+    render(<ImagePickerQuestion question={question} creator={{}} />);
+    await flush();
+    fireEvent.press(screen.getByTestId('imagepicker-item-dog'));
+    expect(question.value).toBe('dog');
+    // survey-core 2.5.33 imagepicker has no allowClear — re-tap does NOT clear.
+    fireEvent.press(screen.getByTestId('imagepicker-item-dog'));
+    expect(question.value).toBe('dog');
+  });
+
+  it('the unsupported-content-mode diagnostic is emitted once from commit phase, not render (r3 #1)', async () => {
+    const codes: string[] = [];
+    setDiagnosticHandler((p: DiagnosticPayload) => codes.push(p.code));
+    try {
+      const model = new Model({
+        elements: [
+          {
+            type: 'imagepicker',
+            name: 'ip',
+            contentMode: 'video',
+            choices: [{ value: 'a' }],
+          },
+        ],
+      });
+      const question = model.getQuestionByName('ip')!;
+      const view = render(
+        <ImagePickerQuestion question={question} creator={{}} />
+      );
+      await flush();
+      // A re-render must NOT re-emit — deduped by reportedMode.
+      view.rerender(<ImagePickerQuestion question={question} creator={{}} />);
+      await flush();
+      expect(
+        codes.filter((c) => c === 'image-content-mode-unsupported')
+      ).toHaveLength(1);
+    } finally {
+      setDiagnosticHandler(undefined);
+    }
+  });
+
+  it('selection accent + label color are theme-derived, not hardcoded (r3 #2, under a theme provider)', async () => {
+    const { question } = createImagePicker();
+    act(() => {
+      question.value = 'cat';
+    });
+    render(
+      <SurveyThemeProvider theme={{ themeName: 'DefaultDark' }}>
+        <ImagePickerQuestion question={question} creator={{}} />
+      </SurveyThemeProvider>
+    );
+    await flush();
+    // Expected values come from the SAME theme's recipe build the component
+    // consumes. The recipe emits `rgba(...)` tokens, so these `.toBe`
+    // assertions fail if the code reverts to a hardcoded hex (e.g. the old
+    // '#19b394' border) — that literal is not equal to 'rgba(25,179,148,1)'.
+    const recipe = buildItemRecipe(resolveTheme({ themeName: 'DefaultDark' }), {
+      platform: { os: 'ios' },
+    });
+    const expectedBorder = (
+      StyleSheet.flatten(recipe.fragments.decoratorChecked) as ViewStyle
+    ).backgroundColor;
+    const expectedLabelColor = (
+      StyleSheet.flatten(recipe.fragments.label) as TextStyle
+    ).color;
+    const selectedTile = flatStyle(screen.getByTestId('imagepicker-item-cat'));
+    expect(selectedTile.borderColor).toBe(expectedBorder);
+    expect(String(expectedBorder)).toMatch(/^rgba?\(/); // not a hex hardcode
+    const label = flatStyle(screen.getByText('Cat'));
+    expect(label.color).toBe(expectedLabelColor);
   });
 });
 
