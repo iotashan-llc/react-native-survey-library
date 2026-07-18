@@ -329,7 +329,10 @@ export class ImagePickerQuestion extends QuestionElementBase<ImagePickerQuestion
 
   private flushModeDiagnostic(): void {
     const mode = this.pendingMode;
-    if (!mode || this.reportedMode === mode) return;
+    // `mode === undefined` (not `!mode`): survey-core preserves an empty
+    // `contentMode: ""` (an unsupported non-image mode that must still
+    // report) — a falsy guard would silently drop it (PR #31 review r4).
+    if (mode === undefined || this.reportedMode === mode) return;
     this.reportedMode = mode;
     reportDiagnostic({
       code: 'image-content-mode-unsupported',

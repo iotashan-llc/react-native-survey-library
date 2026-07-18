@@ -336,6 +336,34 @@ describe('ImagePickerQuestion — theme + diagnostics (r3)', () => {
     }
   });
 
+  it('an empty (non-image) contentMode still reports unsupported (r4 — falsy-guard gap)', async () => {
+    const codes: string[] = [];
+    setDiagnosticHandler((p: DiagnosticPayload) => codes.push(p.code));
+    try {
+      const model = new Model({
+        elements: [
+          {
+            type: 'imagepicker',
+            name: 'ip',
+            // survey-core preserves '' (does not default it to 'image').
+            contentMode: '',
+            choices: [{ value: 'a' }],
+          },
+        ],
+      });
+      const question = model.getQuestionByName('ip')!;
+      expect(question.contentMode).toBe('');
+      render(<ImagePickerQuestion question={question} creator={{}} />);
+      await flush();
+      expect(
+        screen.getByTestId('imagepicker-content-mode-unsupported')
+      ).toBeTruthy();
+      expect(codes).toContain('image-content-mode-unsupported');
+    } finally {
+      setDiagnosticHandler(undefined);
+    }
+  });
+
   it('selection accent + label color are theme-derived, not hardcoded (r3 #2, under a theme provider)', async () => {
     const { question } = createImagePicker();
     act(() => {
