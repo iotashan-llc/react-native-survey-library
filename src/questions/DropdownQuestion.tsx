@@ -23,10 +23,10 @@
  *   control's live expansion state. The popupModel is NOT a state
  *   element (shared with the overlay host — adding it corrupts the
  *   render-guard's cross-observer counters).
- * - Popup bridge is QUESTION-scoped and RECONCILED from commit
- *   lifecycles: `componentDidMount`/`componentDidUpdate` re-register when
- *   the (popup, stack) identity changes; unmount unsubscribes FIRST,
- *   then closes in a try/finally (PR #29 review r1 #3, r2 #3).
+ * - Popup bridge lifecycle (register/reconcile/teardown), `controlRef`,
+ *   and the combobox role clamp live in `OverlayControlBase` (task 2.5
+ *   R6); this class supplies `isOverlayMode` (`renderAs !== 'select'`)
+ *   and `flushOverlayDiagnostics` (PR #29 review r1 #3, r2 #3).
  * - "Other (describe)" opens a choice comment (`isShowingChoiceComment`)
  *   that QuestionChrome does NOT render for dropdown. It renders through
  *   `DropdownOtherComment`, a child KEYED BY QUESTION IDENTITY: the
@@ -48,28 +48,19 @@
  *   preventDefault/stopPropagation (synthetic no-ops).
  */
 import * as React from 'react';
-import {
-  findNodeHandle,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { AccessibilityRole } from 'react-native';
 import type { Base, Question } from '../core/facade';
 import { Helpers } from '../core/facade';
-import { QuestionElementBase } from '../reactivity/QuestionElementBase';
 import type { QuestionElementBaseProps } from '../reactivity/QuestionElementBase';
 import { SurveyElementBase } from '../reactivity/SurveyElementBase';
+import {
+  OverlayControlBase,
+  overlayNoopEvent,
+} from '../reactivity/OverlayControlBase';
+import type { OverlayControlProps } from '../reactivity/OverlayControlBase';
 import { RNElementFactory } from '../factories/ElementFactory';
 import { OverlayContext } from '../overlay/OverlayContext';
-import { registerPopup } from '../overlay/popup-bridge';
-import type {
-  OverlayPayload,
-  PopupRegistration,
-} from '../overlay/popup-bridge';
-import type { OverlayStack } from '../overlay/stack';
 import { OtherCommentDraftAdapter } from '../inputs/OtherCommentDraftAdapter';
 import { reportDiagnostic } from '../diagnostics';
 
@@ -103,18 +94,6 @@ interface DropdownQuestionModelLike extends Question {
   otherPlaceholder: string;
   otherValue?: unknown;
 }
-
-const noopEvent = {
-  preventDefault: () => undefined,
-  stopPropagation: () => undefined,
-};
-
-const KNOWN_ACCESSIBILITY_ROLES = new Set<AccessibilityRole>([
-  'button',
-  'combobox',
-  'menu',
-  'list',
-]);
 
 // Module-scoped so dedup survives unmount/remount of the SAME core
 // Question (or two renderer instances over one question) — an
@@ -193,24 +172,15 @@ export function DropdownQuestionElement(
   );
 }
 
-interface DropdownQuestionProps extends QuestionElementBaseProps {
-  stack?: OverlayStack<OverlayPayload>;
-}
+interface DropdownQuestionProps extends OverlayControlProps {}
 
-export class DropdownQuestion extends QuestionElementBase<DropdownQuestionProps> {
-  private registration: PopupRegistration | null = null;
-  private registeredPopup: DropdownListModelLike['popupModel'] | null = null;
-  private registeredStack: OverlayStack<OverlayPayload> | null = null;
-
+export class DropdownQuestion extends OverlayControlBase<DropdownQuestionProps> {
   // Commit-phase diagnostic buffers (never reported from render). Cleared
   // fresh each render; the originating question travels with them so a
   // prop swap can't cross-suppress. Dedup is per-question-identity.
   private pendingSelectMiss: string | undefined;
   private pendingComponentMiss: string | undefined;
   private pendingMissQuestion: Question | undefined;
-
-  private readonly controlRef =
-    React.createRef<React.ComponentRef<typeof Pressable>>();
 
   protected getStateElement(): Base {
     return this.questionBase;
@@ -235,62 +205,17 @@ export class DropdownQuestion extends QuestionElementBase<DropdownQuestionProps>
     return this.dropdown.renderAs === 'select';
   }
 
-  componentDidMount(): void {
-    super.componentDidMount();
-    this.reconcile();
+  /** Overlay-mode gate for `OverlayControlBase` — keyed on `renderAs`
+   * (a lingering VM after a runtime `renderAs:"select"` switch is NOT a
+   * reliable signal; R5). Select mode never registers a sheet. */
+  protected isOverlayMode(): boolean {
+    return !this.isSelectMode;
   }
 
-  componentDidUpdate(): void {
-    super.componentDidUpdate();
-    this.reconcile();
-  }
-
-  componentWillUnmount(): void {
-    const reg = this.registration;
-    this.registration = null;
-    this.registeredPopup = null;
-    this.registeredStack = null;
-    try {
-      // Unsubscribe the reactive base FIRST so the semantic-close
-      // visibility change below can't drive setState during unmount.
-      super.componentWillUnmount();
-    } finally {
-      reg?.unregister();
-    }
-  }
-
-  /** Commit-phase reconciliation: popup bridge identity + deferred
-   * diagnostics. (The Other-comment adapter lifecycle lives in the
+  /** Deferred diagnostics, flushed by the base from the commit phase.
+   * (The Other-comment adapter lifecycle lives in the
    * `DropdownOtherComment` child, keyed by question identity.) */
-  private reconcile(): void {
-    this.reconcileRegistration();
-    this.flushDiagnostics();
-  }
-
-  /** Register/re-register the popup bridge when the (popup, stack)
-   * identity changes — a question or OverlayContext prop swap retargets
-   * the reactive base, and the old registration must not linger. Select
-   * mode never registers (no interactive sheet). */
-  private reconcileRegistration(): void {
-    const stack = this.props.stack ?? null;
-    const popup = this.isSelectMode
-      ? null
-      : (this.dropdown.dropdownListModel?.popupModel ?? null);
-    if (popup === this.registeredPopup && stack === this.registeredStack) {
-      return;
-    }
-    this.registration?.unregister();
-    this.registration = null;
-    this.registeredPopup = popup;
-    this.registeredStack = stack;
-    if (stack && popup) {
-      this.registration = registerPopup(popup, stack, {
-        openerHandle: () => findNodeHandle(this.controlRef.current) ?? null,
-      });
-    }
-  }
-
-  private flushDiagnostics(): void {
+  protected flushOverlayDiagnostics(): void {
     const question = this.pendingMissQuestion;
     if (!question) return;
     let reported = reportedDropdownDiagnostics.get(question);
@@ -395,12 +320,7 @@ export class DropdownQuestion extends QuestionElementBase<DropdownQuestionProps>
     // a11y: mirror core's INPUT aria surface (combobox under the default
     // searchEnabled; falls to the question role when search is disabled/
     // read-only), not a hardcoded button.
-    const roleCandidate = vm.ariaInputRole ?? vm.ariaQuestionRole;
-    const accessibilityRole: AccessibilityRole =
-      roleCandidate &&
-      KNOWN_ACCESSIBILITY_ROLES.has(roleCandidate as AccessibilityRole)
-        ? (roleCandidate as AccessibilityRole)
-        : 'button';
+    const accessibilityRole = this.resolveComboboxRole(vm);
     const label =
       question.locTitle?.renderedHtml || question.title || question.name;
     return (
@@ -435,7 +355,7 @@ export class DropdownQuestion extends QuestionElementBase<DropdownQuestionProps>
             testID="sv-dropdown-clear"
             accessibilityRole="button"
             accessibilityLabel={vm.clearCaption || 'Clear'}
-            onPress={() => vm.onClear(noopEvent)}
+            onPress={() => vm.onClear(overlayNoopEvent)}
             style={localStyles.clear}
           >
             <Text>✕</Text>

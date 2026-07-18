@@ -3,9 +3,10 @@
  * over the same 2.1 overlay primitives. Plan:
  * docs/design/2.4-tagbox-plan.md.
  *
- * Reuses 2.3's overlay machinery (bridge register/reconcile,
+ * Shares 2.3's overlay machinery (bridge register/reconcile,
  * opener-focus, unsubscribe-then-close teardown, combobox a11y with the
- * STRING `ariaExpanded`). Tagbox-specific (PR #30 review r1):
+ * STRING `ariaExpanded`) via `OverlayControlBase` (task 2.5 R6).
+ * Tagbox-specific (PR #30 review r1):
  * - `question.value` is an ARRAY. Chips come from the PUBLIC
  *   `question.selectedChoices` (ItemValues — excludes the synthetic
  *   Select-All action `getSelectedActions()` would include, and carries
@@ -28,25 +29,17 @@
  *   accessible Pressable).
  */
 import * as React from 'react';
-import {
-  findNodeHandle,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { AccessibilityRole } from 'react-native';
 import type { Base, Question } from '../core/facade';
 import { Helpers } from '../core/facade';
-import { QuestionElementBase } from '../reactivity/QuestionElementBase';
 import type { QuestionElementBaseProps } from '../reactivity/QuestionElementBase';
+import {
+  OverlayControlBase,
+  overlayNoopEvent,
+} from '../reactivity/OverlayControlBase';
+import type { OverlayControlProps } from '../reactivity/OverlayControlBase';
 import { OverlayContext } from '../overlay/OverlayContext';
-import { registerPopup } from '../overlay/popup-bridge';
-import type {
-  OverlayPayload,
-  PopupRegistration,
-} from '../overlay/popup-bridge';
-import type { OverlayStack } from '../overlay/stack';
 import { DropdownOtherComment } from './DropdownQuestion';
 import { reportDiagnostic } from '../diagnostics';
 
@@ -78,18 +71,6 @@ interface TagboxQuestionModelLike extends Question {
   selectedItemLocText?: import('../core/facade').LocalizableString;
 }
 
-const noopEvent = {
-  preventDefault: () => undefined,
-  stopPropagation: () => undefined,
-};
-
-const KNOWN_ACCESSIBILITY_ROLES = new Set<AccessibilityRole>([
-  'button',
-  'combobox',
-  'menu',
-  'list',
-]);
-
 const reportedTagboxSelectMode = new WeakMap<Question, boolean>();
 
 export interface TagboxQuestionElementProps extends QuestionElementBaseProps {}
@@ -109,18 +90,10 @@ export function TagboxQuestionElement(
   );
 }
 
-interface TagboxQuestionProps extends QuestionElementBaseProps {
-  stack?: OverlayStack<OverlayPayload>;
-}
+interface TagboxQuestionProps extends OverlayControlProps {}
 
-export class TagboxQuestion extends QuestionElementBase<TagboxQuestionProps> {
-  private registration: PopupRegistration | null = null;
-  private registeredPopup: TagboxListModelLike['popupModel'] | null = null;
-  private registeredStack: OverlayStack<OverlayPayload> | null = null;
+export class TagboxQuestion extends OverlayControlBase<TagboxQuestionProps> {
   private pendingSelectMiss = false;
-
-  private readonly controlRef =
-    React.createRef<React.ComponentRef<typeof Pressable>>();
 
   protected getStateElement(): Base {
     return this.questionBase;
@@ -143,54 +116,13 @@ export class TagboxQuestion extends QuestionElementBase<TagboxQuestionProps> {
     return this.tagbox.renderAs === 'select';
   }
 
-  componentDidMount(): void {
-    super.componentDidMount();
-    this.reconcile();
+  /** Overlay-mode gate for `OverlayControlBase` — keyed on `renderAs`
+   * (select mode never registers an overlay; non-interactive). */
+  protected isOverlayMode(): boolean {
+    return !this.isSelectMode;
   }
 
-  componentDidUpdate(): void {
-    super.componentDidUpdate();
-    this.reconcile();
-  }
-
-  componentWillUnmount(): void {
-    const reg = this.registration;
-    this.registration = null;
-    this.registeredPopup = null;
-    this.registeredStack = null;
-    try {
-      super.componentWillUnmount();
-    } finally {
-      reg?.unregister();
-    }
-  }
-
-  private reconcile(): void {
-    this.reconcileRegistration();
-    this.flushDiagnostics();
-  }
-
-  private reconcileRegistration(): void {
-    const stack = this.props.stack ?? null;
-    // Select mode never registers an overlay (non-interactive).
-    const popup = this.isSelectMode
-      ? null
-      : (this.tagbox.dropdownListModel?.popupModel ?? null);
-    if (popup === this.registeredPopup && stack === this.registeredStack) {
-      return;
-    }
-    this.registration?.unregister();
-    this.registration = null;
-    this.registeredPopup = popup;
-    this.registeredStack = stack;
-    if (stack && popup) {
-      this.registration = registerPopup(popup, stack, {
-        openerHandle: () => findNodeHandle(this.controlRef.current) ?? null,
-      });
-    }
-  }
-
-  private flushDiagnostics(): void {
+  protected flushOverlayDiagnostics(): void {
     if (!this.pendingSelectMiss) return;
     const q = this.questionBase;
     if (reportedTagboxSelectMode.get(q)) return;
@@ -299,12 +231,7 @@ export class TagboxQuestion extends QuestionElementBase<TagboxQuestionProps> {
     const readOnly = question.isInputReadOnly;
     const showClear = question.allowClear && !question.isEmpty() && !readOnly;
     const empty = question.isEmpty();
-    const roleCandidate = vm.ariaInputRole ?? vm.ariaQuestionRole;
-    const accessibilityRole: AccessibilityRole =
-      roleCandidate &&
-      KNOWN_ACCESSIBILITY_ROLES.has(roleCandidate as AccessibilityRole)
-        ? (roleCandidate as AccessibilityRole)
-        : 'button';
+    const accessibilityRole = this.resolveComboboxRole(vm);
     const label =
       question.locTitle?.renderedHtml || question.title || question.name;
     return (
@@ -342,7 +269,7 @@ export class TagboxQuestion extends QuestionElementBase<TagboxQuestionProps> {
             testID="sv-tagbox-clear"
             accessibilityRole="button"
             accessibilityLabel={vm.clearCaption || 'Clear'}
-            onPress={() => vm.onClear(noopEvent)}
+            onPress={() => vm.onClear(overlayNoopEvent)}
             style={localStyles.clear}
           >
             <Text>✕</Text>
