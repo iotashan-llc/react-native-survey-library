@@ -294,42 +294,81 @@ describe('PanelDynamicQuestion — carousel (2.8b)', () => {
     expect(screen.queryByTestId('paneldynamic-prev')).toBeNull();
   });
 
-  it('pressing next advances the current panel; last panel shows prev, not next', async () => {
+  it('pressing next advances to the next PANEL + progress; last panel shows prev, not next', async () => {
     const { question } = createPaneldynamic({
       displayMode: 'carousel',
       panelCount: 3,
     });
+    const q = question as unknown as {
+      currentIndex: number;
+      renderedPanels: { id: string | number }[];
+    };
     render(<PanelDynamicQuestion question={question} creator={{}} />);
     await flush();
-    expect((question as unknown as { currentIndex: number }).currentIndex).toBe(
-      0
+    expect(q.currentIndex).toBe(0);
+    const firstId = String(q.renderedPanels[0]!.id);
+    expect(screen.getByTestId(`paneldynamic-panel-${firstId}`)).toBeTruthy();
+    expect(screen.getByTestId('paneldynamic-progress').props.children).toBe(
+      '1 of 3'
     );
     fireEvent.press(screen.getByTestId('paneldynamic-next'));
     await flush();
-    expect((question as unknown as { currentIndex: number }).currentIndex).toBe(
-      1
+    expect(q.currentIndex).toBe(1);
+    // The RENDERED panel is now the SECOND one (not the first), progress
+    // advanced — proving the carousel actually swapped panels.
+    const secondId = String(q.renderedPanels[0]!.id);
+    expect(secondId).not.toBe(firstId);
+    expect(screen.getByTestId(`paneldynamic-panel-${secondId}`)).toBeTruthy();
+    expect(screen.queryByTestId(`paneldynamic-panel-${firstId}`)).toBeNull();
+    expect(screen.getByTestId('paneldynamic-progress').props.children).toBe(
+      '2 of 3'
     );
-    // advance to the last panel.
     fireEvent.press(screen.getByTestId('paneldynamic-next'));
     await flush();
-    expect((question as unknown as { currentIndex: number }).currentIndex).toBe(
-      2
-    );
+    expect(q.currentIndex).toBe(2);
     expect(screen.queryByTestId('paneldynamic-next')).toBeNull();
     expect(screen.getByTestId('paneldynamic-prev')).toBeTruthy();
   });
 
-  it('shows the progress text when showProgressBar', async () => {
+  it('add/remove work in carousel mode (Add shows only on the last panel)', async () => {
     const { question } = createPaneldynamic({
       displayMode: 'carousel',
-      panelCount: 3,
+      panelCount: 2,
+      minPanelCount: 0,
+      maxPanelCount: 5,
     });
     render(<PanelDynamicQuestion question={question} creator={{}} />);
     await flush();
-    const progress = screen.getByTestId('paneldynamic-progress');
-    expect(progress.props.children).toBe(
-      (question as unknown as { progressText: string }).progressText
+    const q = question as unknown as { panelCount: number };
+    // survey-core gates carousel Add to the LAST panel — absent at index 0.
+    expect(screen.queryByTestId('paneldynamic-add')).toBeNull();
+    fireEvent.press(screen.getByTestId('paneldynamic-next'));
+    await flush();
+    fireEvent.press(screen.getByTestId('paneldynamic-add'));
+    await flush();
+    expect(q.panelCount).toBe(3);
+    fireEvent.press(screen.getAllByTestId(/^paneldynamic-remove-/)[0]!);
+    await flush();
+    expect(q.panelCount).toBe(2);
+  });
+
+  it('an empty carousel: no panel/nav, add button present, "0 of 0" progress', async () => {
+    const { question } = createPaneldynamic({
+      displayMode: 'carousel',
+      panelCount: 0,
+      minPanelCount: 0,
+      maxPanelCount: 5,
+    });
+    render(<PanelDynamicQuestion question={question} creator={{}} />);
+    await flush();
+    expect(screen.getByTestId('paneldynamic-carousel')).toBeTruthy();
+    expect(screen.queryAllByTestId(/^paneldynamic-panel-/)).toHaveLength(0);
+    expect(screen.queryByTestId('paneldynamic-next')).toBeNull();
+    expect(screen.queryByTestId('paneldynamic-prev')).toBeNull();
+    expect(screen.getByTestId('paneldynamic-progress').props.children).toBe(
+      '0 of 0'
     );
+    expect(screen.getByTestId('paneldynamic-add')).toBeTruthy();
   });
 
   it('a tab displayMode is still unsupported (2.8c boundary)', async () => {
