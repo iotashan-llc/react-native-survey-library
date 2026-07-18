@@ -56,7 +56,7 @@ describe('manifest: model-type inventory', () => {
     }
   });
 
-  it('"empty"/"text"/"rating" are classified supported (M0/M1); "imagepicker" is still classified planned with a milestone', () => {
+  it('"empty"/"text"/"rating" are classified supported (M0/M1); "matrix" is still classified planned with a milestone', () => {
     expect(MODEL_TYPE_CLASSIFICATION.empty).toMatchObject({
       status: 'supported',
       milestone: 'M0',
@@ -69,9 +69,9 @@ describe('manifest: model-type inventory', () => {
       status: 'supported',
       milestone: 'M1',
     });
-    expect(MODEL_TYPE_CLASSIFICATION.imagepicker).toMatchObject({
+    expect(MODEL_TYPE_CLASSIFICATION.matrix).toMatchObject({
       status: 'planned',
-      milestone: 'M2',
+      milestone: 'M3',
     });
   });
 
@@ -180,18 +180,18 @@ describe('manifest: classification/descriptor status consistency', () => {
       ...DESCRIPTOR_TABLE,
       {
         status: 'supported',
-        questionType: 'imagepicker',
-        dispatchKey: 'imagepicker',
+        questionType: 'matrix',
+        dispatchKey: 'matrix',
         route: 'template',
         component: () => (() => null) as never,
-        milestone: 'M2',
+        milestone: 'M3',
       },
     ];
     const violations = diffManifestConsistency(
       MODEL_TYPE_CLASSIFICATION,
       descriptors
     );
-    expect(violations.some((v) => v.includes('imagepicker'))).toBe(true);
+    expect(violations.some((v) => v.includes('matrix'))).toBe(true);
   });
 
   it('detects a supported classification entry lacking runtimeRenderable safe-construction metadata', () => {

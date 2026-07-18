@@ -39,6 +39,7 @@ import { PixelRatio, View } from 'react-native';
 import type { Base, Question, SurveyModel } from '../../core/facade';
 import { RNElementFactory } from '../../factories/ElementFactory';
 import { RNQuestionFactory } from '../../factories/QuestionFactory';
+import { resolveQuestionDispatchKey } from '../../factories/dispatch-key';
 import { resolveWidthStyle } from '../../layout/width-resolver';
 import type {
   ResolvedWidthStyle,
@@ -194,13 +195,9 @@ export class SurveyRowElement extends SurveyElementBase<SurveyRowElementProps> {
       });
     }
 
-    // The manifest construction gate's own dispatch-key derivation
-    // (factories/__tests__/manifest.test.ts): default rendering uses the
-    // template key; a renderAs override uses getComponentName().
-    const dispatchKey =
-      model.isDefaultRendering?.() !== false
-        ? (model.getTemplate?.() ?? model.getType())
-        : (model.getComponentName?.() ?? model.getType());
+    // Shared dispatch-key rule (default rendering → template key; renderAs
+    // override → getComponentName()) — see factories/dispatch-key.ts.
+    const dispatchKey = resolveQuestionDispatchKey(model);
 
     const questionProps = { question: element as Question, creator };
     const inner =

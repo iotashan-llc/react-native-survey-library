@@ -1525,4 +1525,31 @@ export const API_SURFACE_WATCHLIST: readonly WatchedApiMember[] = [
     resolveHost: (sc) => sc.QuestionRatingModel.prototype,
     reason: "RatingSmileyItem's (task 1.14) icon-name resolution.",
   },
+  // Task 2.11 — ComponentCollection adapters read the LIVE inner instance the
+  // model builds. (Registration + getTemplate() semantics are behaviorally
+  // tested — the class-name gate exempts custom/composite, and the descriptor
+  // walker accepts inherited getTemplate, so it can't verify the override.)
+  {
+    id: 'QuestionCustomModel.contentQuestion',
+    member: 'contentQuestion',
+    expectedKind: 'accessor',
+    resolveHost: (
+      sc: typeof FacadeModule & {
+        QuestionCustomModel: { prototype: unknown };
+      }
+    ) => sc.QuestionCustomModel.prototype,
+    reason: 'CustomQuestion (2.11) dispatches the live inner contentQuestion.',
+  },
+  {
+    id: 'QuestionCompositeModel.contentPanel',
+    member: 'contentPanel',
+    expectedKind: 'accessor',
+    resolveHost: (
+      sc: typeof FacadeModule & {
+        QuestionCompositeModel: { prototype: unknown };
+      }
+    ) => sc.QuestionCompositeModel.prototype,
+    reason:
+      'CompositeQuestion (2.11) renders the live contentPanel via SurveyPanel.',
+  },
 ];

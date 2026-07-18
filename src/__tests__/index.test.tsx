@@ -36,6 +36,8 @@ describe('index.tsx: registrar wiring (design: docs/design/0.5-factories.md)', (
       'buttongroup',
       'checkbox',
       'comment',
+      'composite',
+      'custom',
       'dropdown',
       'empty',
       'expression',

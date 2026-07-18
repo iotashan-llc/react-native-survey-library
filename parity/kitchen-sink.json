@@ -300,6 +300,15 @@
               "startWithNewLine": false
             }
           ]
+        },
+        {
+          "type": "ks-custom-slug",
+          "name": "projectSlug"
+        },
+        {
+          "type": "ks-composite-fullname",
+          "name": "reporter",
+          "title": "Reporter (composite)"
         }
       ]
     },

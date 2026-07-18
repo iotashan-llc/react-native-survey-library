@@ -914,3 +914,19 @@ When `panelsState` is `collapsed`/`firstExpanded`/`expanded`, each panel is
 collapsible; the RN renderer adds a per-panel expand/collapse toggle (web
 collapses via a clickable panel title). `panelsState: "default"` panels are
 always expanded and get no toggle.
+
+## Custom & composite questions (ComponentCollection, task 2.11)
+
+### After-render callbacks are not fired
+
+`ComponentCollection`'s `onAfterRender` / `onAfterRenderContentElement`
+callbacks receive a DOM `HTMLElement` on web. This renderer has no DOM and
+does not fire them (the repo-wide no-`afterRender` posture — see the custom
+widgets note). Custom/composite otherwise render fully: a `custom` question
+renders its inner `contentQuestion`'s input (the outer question owns the
+title/description/errors chrome); a `composite` renders its `contentPanel`
+(each inner question renders its own title). Value shapes match core: a
+`custom` value is the inner scalar; a `composite` value is an object keyed by
+inner element names. A malformed custom (a `createQuestion` callback returning
+null) renders nothing renderable rather than crashing, with a
+`custom-content-missing` diagnostic.

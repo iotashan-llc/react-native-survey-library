@@ -287,6 +287,16 @@ export interface PanelDynamicModeUnsupportedPayload {
   displayMode: string;
 }
 
+/** 2.11 custom adapter — a ComponentCollection `createQuestion` callback
+ * returned null, so the custom question has no inner `contentQuestion` to
+ * render. The adapter shows a non-throwing fallback instead of crashing
+ * (invariant 9). */
+export interface CustomContentMissingPayload {
+  code: 'custom-content-missing';
+  questionName: string;
+  questionType: string;
+}
+
 /** 2.2 dialog adapter — a consumer `settings.showDialog` was displaced
  * while Surveys are mounted (restored on last unmount; design
  * 2.2-dialog-adapter D2). */
@@ -363,7 +373,8 @@ export type DiagnosticPayload =
   | LayoutDiagnosticPayload
   | ProgressBarTypeUnsupportedPayload
   | ImageContentModeUnsupportedPayload
-  | PanelDynamicModeUnsupportedPayload;
+  | PanelDynamicModeUnsupportedPayload
+  | CustomContentMissingPayload;
 
 export type DiagnosticHandler = (payload: DiagnosticPayload) => void;
 
@@ -447,6 +458,21 @@ export function reportCustomWidgetIgnoredOnce(
 ): void {
   if (customWidgetIgnoredEmitted.has(question)) return;
   customWidgetIgnoredEmitted.add(question);
+  reportDiagnostic(payload);
+}
+
+/** Once per (outer custom) QUESTION — a malformed custom whose
+ * `createQuestion` returned null. Keyed by the OUTER question so a remount of
+ * the same question does not re-emit and a retarget A→B emits once for EACH
+ * (2.11 impl review). */
+const customContentMissingEmitted = new WeakSet<Question>();
+
+export function reportCustomContentMissingOnce(
+  question: Question,
+  payload: CustomContentMissingPayload
+): void {
+  if (customContentMissingEmitted.has(question)) return;
+  customContentMissingEmitted.add(question);
   reportDiagnostic(payload);
 }
 
