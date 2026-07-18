@@ -10,6 +10,7 @@ import {
   setDiagnosticHandler,
 } from '@iotashan-llc/react-native-survey-library';
 import type { ITheme } from 'survey-core';
+import { ComponentCollection } from 'survey-core';
 import {
   DefaultLight,
   DefaultDark,
@@ -18,6 +19,13 @@ import {
 } from 'survey-core/themes';
 
 import { kitchenSinkJson } from './kitchen-sink';
+import { registerKitchenSinkComponents } from './register-components';
+
+// Register the ComponentCollection custom/composite types the kitchen-sink
+// uses (task 2.11) BEFORE the <Survey> builds its model. Module scope runs at
+// import time, ahead of the first render. The parity web page registers the
+// SAME definitions in its own script.
+registerKitchenSinkComponents(ComponentCollection.Instance);
 
 // Host-owned diagnostics (the recommended pattern): route the library's
 // structured diagnostics wherever your app logs. Without a handler the

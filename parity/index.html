@@ -46,6 +46,33 @@
         window.innerWidth +
         '×' +
         window.innerHeight;
+      // ComponentCollection custom/composite types (task 2.11) — the SAME
+      // definitions as example/src/register-components.ts, registered before
+      // the model is built so the web reference renders the identical survey.
+      [
+        {
+          name: 'ks-custom-slug',
+          title: 'URL slug (custom)',
+          questionJSON: { type: 'text', placeholder: 'my-survey', title: 'Slug' },
+        },
+        {
+          name: 'ks-composite-fullname',
+          title: 'Full name (composite)',
+          elementsJSON: [
+            { type: 'text', name: 'firstName', title: 'First name' },
+            {
+              type: 'text',
+              name: 'lastName',
+              title: 'Last name',
+              startWithNewLine: false,
+            },
+          ],
+        },
+      ].forEach((def) => {
+        if (!Survey.ComponentCollection.Instance.getCustomQuestionByName(def.name)) {
+          Survey.ComponentCollection.Instance.add(def);
+        }
+      });
       fetch('./kitchen-sink.json')
         .then((r) => r.json())
         .then((json) => {

@@ -201,6 +201,21 @@ export const kitchenSinkJson = {
             },
           ],
         },
+        {
+          // ComponentCollection custom (task 2.11) — a wrapped text question;
+          // registered in App.tsx (RN) + parity/index.html (web) as a real
+          // serializer type. Dispatches on getTemplate() === 'custom'.
+          type: 'ks-custom-slug',
+          name: 'projectSlug',
+        },
+        {
+          // ComponentCollection composite (task 2.11) — a panel of two texts;
+          // value is an object keyed by inner names. getTemplate() ===
+          // 'composite'.
+          type: 'ks-composite-fullname',
+          name: 'reporter',
+          title: 'Reporter (composite)',
+        },
       ],
     },
     {
