@@ -90,6 +90,20 @@ describe('CustomQuestion (task 2.11)', () => {
     expect(screen.getByTestId('custom-question-q1')).toBeTruthy();
   });
 
+  it('an OUTER-set value flows into the controlled inner input (custom)', async () => {
+    registerComponent({ name: 'seededtext', questionJSON: { type: 'text' } });
+    const model = new Model({ elements: [{ type: 'seededtext', name: 'q1' }] });
+    const question = model.getQuestionByName('q1')!;
+    render(<CustomQuestion question={question} creator={{}} />);
+    await flush();
+    act(() => {
+      (question as unknown as { value: unknown }).value = 'seeded';
+    });
+    await flush();
+    // The controlled inner input reflects the outer value (proxy round-trip).
+    expect(screen.getByTestId('question-input').props.value).toBe('seeded');
+  });
+
   it('a malformed custom (null contentQuestion) renders a fallback + diagnostic, no crash', async () => {
     const codes: string[] = [];
     setDiagnosticHandler((p: DiagnosticPayload) => codes.push(p.code));
@@ -141,6 +155,25 @@ describe('CompositeQuestion (task 2.11)', () => {
     ) as { first?: string; last?: string };
     expect(value.first).toBe('Ada');
     expect(value.last).toBe('Lovelace');
+  });
+
+  it('a createElements-callback composite renders its inner elements (not just JSON)', async () => {
+    registerComponent({
+      name: 'cbcomposite',
+      createElements: (panel: {
+        addNewQuestion(type: string, name: string): unknown;
+      }) => {
+        panel.addNewQuestion('text', 'only');
+      },
+    });
+    const model = new Model({
+      elements: [{ type: 'cbcomposite', name: 'q1' }],
+    });
+    const question = model.getQuestionByName('q1')!;
+    render(<CompositeQuestion question={question} creator={{}} />);
+    await flush();
+    layoutRows();
+    expect(screen.getByTestId('only-input')).toBeTruthy();
   });
 
   it('the composite wrapper is a group with the outer title as its label', async () => {
