@@ -755,6 +755,18 @@ are ignored. Consumer `onShow` fires on a microtask AFTER presentation
 dialog call resolves its `onCancel` immediately (fail-safe — never
 auto-confirm a destructive action) and reports `dialog-no-host`.
 
+## Dynamic panels — carousel & tab modes (task 2.8b/2.8c)
+
+### Tab overflow is a horizontal scroll, not an overflow-to-popup
+
+Web's paneldynamic `displayMode: "tab"` adaptively measures which tabs fit and
+overflows the rest into a popup action container. This renderer has no DOM
+measurement loop, so the tab strip is a horizontal `ScrollView`: overflowing tabs
+scroll into view instead of collapsing into a popup. Carousel mode shows a single
+panel with prev/next controls + a text progress indicator ("N of M"); `tab` mode
+shows a scrollable tab strip + the current panel. In both modes survey-core gates
+the Add button to the LAST panel (matching web).
+
 ## Dynamic panels (`paneldynamic`, task 2.8a)
 
 ### v0.2 supports `displayMode: "list"` only
