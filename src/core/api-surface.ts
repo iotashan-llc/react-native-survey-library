@@ -1336,6 +1336,66 @@ export const API_SURFACE_WATCHLIST: readonly WatchedApiMember[] = [
     reason:
       "ButtonGroupQuestion (2.9) constructs core's per-item view-model (value/caption/icon/selected/readOnly/onChange).",
   },
+  // Task 2.7 — imagepicker bindings (QuestionImagePickerModel + ImageItemValue).
+  ...(
+    [
+      ['multiSelect', 'accessor'],
+      ['showLabel', 'accessor'],
+      ['imageFit', 'accessor'],
+      ['contentMode', 'accessor'],
+      ['renderedImageWidth', 'accessor'],
+      ['renderedImageHeight', 'accessor'],
+      ['visibleChoices', 'accessor'],
+      ['isItemSelected', 'method'],
+      ['getItemEnabled', 'method'],
+      ['getCurrentColCount', 'method'],
+      ['isTwoValueEquals', 'method'],
+      ['onContentLoaded', 'method'],
+    ] as const
+  ).map(([member, expectedKind]) => ({
+    id: `QuestionImagePickerModel.${member}`,
+    member,
+    expectedKind: expectedKind as MemberKind,
+    resolveHost: (sc: typeof FacadeModule) => {
+      const model = new sc.Model({
+        elements: [
+          { type: 'imagepicker', name: 'probe', choices: [{ value: 'a' }] },
+        ],
+      });
+      return model.getQuestionByName('probe');
+    },
+    reason: '2.7 imagepicker control binding.',
+  })),
+  ...(
+    [
+      ['contentNotLoaded', 'accessor'],
+      ['onErrorHandler', 'method'],
+      ['locImageLink', 'accessor'],
+      ['locText', 'accessor'],
+      ['imageLink', 'accessor'],
+    ] as const
+  ).map(([member, expectedKind]) => ({
+    id: `ImageItemValue.${member}`,
+    member,
+    expectedKind: expectedKind as MemberKind,
+    resolveHost: (sc: typeof FacadeModule) => {
+      const model = new sc.Model({
+        elements: [
+          {
+            type: 'imagepicker',
+            name: 'probe',
+            choices: [{ value: 'a', imageLink: 'data:,' }],
+          },
+        ],
+      });
+      return (
+        model.getQuestionByName('probe') as unknown as {
+          choices: unknown[];
+        }
+      ).choices[0];
+    },
+    reason: '2.7 imagepicker per-item media binding (image load/error state).',
+  })),
   // Task 2.10 — image question bindings (QuestionImageModel).
   {
     id: 'QuestionImageModel.locImageLink',

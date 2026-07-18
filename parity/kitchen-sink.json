@@ -232,6 +232,32 @@
           "altText": "Sample image (task 2.10)"
         },
         {
+          "type": "imagepicker",
+          "name": "swatches",
+          "title": "Pick swatches (imagepicker)",
+          "multiSelect": true,
+          "showLabel": true,
+          "imageWidth": 80,
+          "imageHeight": 60,
+          "choices": [
+            {
+              "value": "one",
+              "imageLink": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPj/HwADBwIAMCbHYQAAAABJRU5ErkJggg==",
+              "text": "One"
+            },
+            {
+              "value": "two",
+              "imageLink": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPj/HwADBwIAMCbHYQAAAABJRU5ErkJggg==",
+              "text": "Two"
+            },
+            {
+              "value": "three",
+              "imageLink": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPj/HwADBwIAMCbHYQAAAABJRU5ErkJggg==",
+              "text": "Three"
+            }
+          ]
+        },
+        {
           "type": "panel",
           "name": "scores",
           "title": "Computed (expression)",

@@ -220,6 +220,20 @@ export const kitchenSinkJson = {
           altText: 'Sample image (task 2.10)',
         },
         {
+          type: 'imagepicker',
+          name: 'swatches',
+          title: 'Pick swatches (imagepicker)',
+          multiSelect: true,
+          showLabel: true,
+          imageWidth: 80,
+          imageHeight: 60,
+          choices: [
+            { value: 'one', imageLink: LOGO_DATA_URI, text: 'One' },
+            { value: 'two', imageLink: LOGO_DATA_URI, text: 'Two' },
+            { value: 'three', imageLink: LOGO_DATA_URI, text: 'Three' },
+          ],
+        },
+        {
           type: 'panel',
           name: 'scores',
           title: 'Computed (expression)',

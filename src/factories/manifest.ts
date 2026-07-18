@@ -209,7 +209,15 @@ export const MODEL_TYPE_CLASSIFICATION: Readonly<
       expectedRoute: 'template',
     },
   },
-  imagepicker: { status: 'planned', milestone: 'M2', reason: 'task 2.7' },
+  imagepicker: {
+    status: 'supported',
+    milestone: 'M2',
+    runtimeRenderable: {
+      expectedTemplate: 'imagepicker',
+      expectedRoute: 'template',
+      fixtureJson: { type: 'imagepicker', choices: ['a', 'b'] },
+    },
+  },
   paneldynamic: {
     status: 'planned',
     milestone: 'M2',

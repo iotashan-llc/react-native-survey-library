@@ -56,6 +56,7 @@ import { MultipleTextQuestion } from '../questions/MultipleTextQuestion';
 import { DropdownQuestionElement } from '../questions/DropdownQuestion';
 import { TagboxQuestionElement } from '../questions/TagboxQuestion';
 import { ImageQuestion } from '../questions/ImageQuestion';
+import { ImagePickerQuestion } from '../questions/ImagePickerQuestion';
 import { ButtonGroupQuestion } from '../questions/ButtonGroupQuestion';
 import { ListItemGroupContent, ListPickerElement } from '../overlay/ListPicker';
 
@@ -275,6 +276,15 @@ export const DESCRIPTOR_TABLE: readonly Descriptor[] = [
     dispatchKey: 'image',
     route: 'template',
     component: () => ImageQuestion,
+    milestone: 'M2',
+  },
+  // Task 2.7 — imagepicker question (image-choice grid; single/multi select).
+  {
+    status: 'supported',
+    questionType: 'imagepicker',
+    dispatchKey: 'imagepicker',
+    route: 'template',
+    component: () => ImagePickerQuestion,
     milestone: 'M2',
   },
   {

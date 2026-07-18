@@ -118,6 +118,7 @@ export type {
 export { ButtonGroupQuestion } from './questions/ButtonGroupQuestion';
 // image question (task 2.10).
 export { ImageQuestion } from './questions/ImageQuestion';
+export { ImagePickerQuestion } from './questions/ImagePickerQuestion';
 export { MultipleTextQuestion } from './questions/MultipleTextQuestion';
 export {
   DropdownQuestion,

@@ -66,6 +66,7 @@ describe('component modules are import-side-effect-free', () => {
       'empty',
       'expression',
       'image',
+      'imagepicker',
       'multipletext',
       'radiogroup',
       'rating',
