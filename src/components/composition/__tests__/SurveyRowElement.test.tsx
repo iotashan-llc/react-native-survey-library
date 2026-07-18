@@ -53,11 +53,12 @@ describe('SurveyRowElement — dispatch', () => {
     expect(screen.queryByTestId('unsupported-question-panel')).toBeNull();
   });
 
-  it('falls back to UnsupportedQuestion on a dispatch miss (planned type "imagepicker"), never throwing', () => {
-    // 'imagepicker' stays planned until M2 (task 2.7) — 'text' landed as
-    // supported in task 1.10, so it can no longer model a dispatch miss.
+  it('falls back to UnsupportedQuestion on a dispatch miss (planned type "matrix"), never throwing', () => {
+    // 'matrix' stays planned until M3 (task 3.2) — the M1/M2 types (text,
+    // imagepicker, …) have since landed as supported, so they can no longer
+    // model a dispatch miss.
     const { model, question } = firstQuestion({
-      elements: [{ type: 'imagepicker', name: 'q-text' }],
+      elements: [{ type: 'matrix', name: 'q-text' }],
     });
     render(
       <SurveyRowElement
@@ -98,7 +99,7 @@ describe('SurveyRowElement — QuestionChrome at the dispatch boundary (M1 dispa
 
   it('the unsupported fallback is wrapped in chrome too (title chrome renders around the fallback panel)', () => {
     const { model, question } = firstQuestion({
-      elements: [{ type: 'imagepicker', name: 'q-text', title: 'Text Title' }],
+      elements: [{ type: 'matrix', name: 'q-text', title: 'Text Title' }],
     });
     render(
       <SurveyRowElement
