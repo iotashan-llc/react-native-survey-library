@@ -4,7 +4,13 @@
  * merged 2.2 dialog adapter), empty-state placeholder. Carousel/tab/progress
  * are 2.8b/2.8c. Plan: docs/design/2.8a-paneldynamic-plan.md.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react-native';
 import { Model } from '../../core/facade';
 import '../../factories/register-all';
 import { PanelDynamicQuestion } from '../PanelDynamicQuestion';
@@ -380,5 +386,36 @@ describe('PanelDynamicQuestion — reactivity', () => {
       expect(screen.getByTestId(`paneldynamic-panel-${id}`)).toBeTruthy()
     );
     expect(screen.getAllByTestId(/^paneldynamic-panel-/).length).toBe(3);
+  });
+
+  it('an uncommitted draft stays with its PanelModel across a front insertion (panel.id keys, not index) — major #2', async () => {
+    const { question } = createPaneldynamic({ maxPanelCount: 5 });
+    render(<PanelDynamicQuestion question={question} creator={{}} />);
+    await flush();
+    layoutRows();
+    const panels = (
+      question as unknown as { renderedPanels: { id: string | number }[] }
+    ).renderedPanels;
+    const secondId = String(panels[1]!.id);
+    // Uncommitted draft (changeText, no blur) in the SECOND panel's input.
+    const input2 = within(
+      screen.getByTestId(`paneldynamic-panel-${secondId}`)
+    ).getByTestId('first-input');
+    act(() => {
+      fireEvent.changeText(input2, 'DRAFT');
+    });
+    expect(input2.props.value).toBe('DRAFT');
+    // Insert a panel at the FRONT (indices shift; panel.id stays). With index
+    // keys React would retarget components and the draft would move; with
+    // panel.id keys the draft stays with the SAME PanelModel.
+    act(() => {
+      (question as unknown as { addPanel: (i: number) => void }).addPanel(0);
+    });
+    await flush();
+    layoutRows();
+    const stillInput2 = within(
+      screen.getByTestId(`paneldynamic-panel-${secondId}`)
+    ).getByTestId('first-input');
+    expect(stillInput2.props.value).toBe('DRAFT');
   });
 });
