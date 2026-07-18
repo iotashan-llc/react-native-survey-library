@@ -17,10 +17,10 @@
  * `dispatchKey`, so `question.getComponentName()` resolves to the same
  * key); `element` goes to `RNElementFactory` (a disjoint keyspace).
  *
- * M0 rows: `empty` (supported/template) and `custom`/`composite` (planned
- * — ComponentCollection adapters land in task 2.11; until then a dispatch
- * miss on either falls through to the unsupported-type fallback +
- * diagnostic, which is honest: no adapter exists yet). M1 rows so far:
+ * M0 rows: `empty` (supported/template). `custom`/`composite` are
+ * ComponentCollection runtime templates — supported as of task 2.11
+ * (`getTemplate()` === "custom"/"composite", not the registered type name;
+ * they render the live `contentQuestion`/`contentPanel`). M1 rows so far:
  * the task-1.6 element-route rows (`sv-string-viewer`, `survey-header`,
  * `sv-logo-image`), `boolean` (template + two renderer-route rows for
  * `checkbox`/`radio` renderAs modes, task 1.13), `expression`

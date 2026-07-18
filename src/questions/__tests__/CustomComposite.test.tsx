@@ -81,13 +81,11 @@ describe('CustomQuestion (task 2.11)', () => {
     const question = model.getQuestionByName('q1')!;
     render(<CustomQuestion question={question} creator={{}} />);
     await flush();
-    // The inner boolean's checkbox renderer body renders (renderAs=checkbox →
-    // dispatched via getComponentName, proving the full dispatch-key rule).
-    expect(
-      (question as unknown as { contentQuestion: { renderAs: string } })
-        .contentQuestion.renderAs
-    ).toBe('checkbox');
-    expect(screen.getByTestId('custom-question-q1')).toBeTruthy();
+    // The inner boolean's CHECKBOX renderer body renders — proving dispatch
+    // went through getComponentName() (renderer route), NOT getTemplate()
+    // (which would render the default boolean switch). Inner name is 'question'.
+    expect(screen.getByTestId('sv-boolean-checkbox-question')).toBeTruthy();
+    expect(screen.queryByTestId('sv-boolean-switch-question')).toBeNull();
   });
 
   it('an OUTER-set value flows into the controlled inner input (custom)', async () => {
@@ -104,6 +102,26 @@ describe('CustomQuestion (task 2.11)', () => {
     expect(screen.getByTestId('question-input').props.value).toBe('seeded');
   });
 
+  it('valueToQuestion/valueFromQuestion converters round-trip through the outer', async () => {
+    registerComponent({
+      name: 'doubler',
+      questionJSON: { type: 'text' },
+      // outer stores N; inner shows 2N; committing inner 2N stores N.
+      valueToQuestion: (v: number) => (v == null ? v : v * 2),
+      valueFromQuestion: (v: number) => (v == null ? v : v / 2),
+    });
+    const model = new Model({ elements: [{ type: 'doubler', name: 'q1' }] });
+    const question = model.getQuestionByName('q1')!;
+    render(<CustomQuestion question={question} creator={{}} />);
+    await flush();
+    act(() => {
+      (question as unknown as { value: unknown }).value = 5;
+    });
+    await flush();
+    // inner input shows the converted value (5 → 10).
+    expect(screen.getByTestId('question-input').props.value).toBe('10');
+  });
+
   it('a malformed custom (null contentQuestion) renders a fallback + diagnostic, no crash', async () => {
     const codes: string[] = [];
     setDiagnosticHandler((p: DiagnosticPayload) => codes.push(p.code));
@@ -118,6 +136,31 @@ describe('CustomQuestion (task 2.11)', () => {
     await flush();
     expect(screen.getByTestId('custom-question-malformed')).toBeTruthy();
     expect(codes).toContain('custom-content-missing');
+  });
+
+  it('malformed diagnostic dedups by the OUTER question (retarget A→B emits each; remount once)', async () => {
+    const payloads: DiagnosticPayload[] = [];
+    setDiagnosticHandler((p: DiagnosticPayload) => payloads.push(p));
+    registerComponent({ name: 'nca', createQuestion: () => null });
+    registerComponent({ name: 'ncb', createQuestion: () => null });
+    const a = new Model({
+      elements: [{ type: 'nca', name: 'a' }],
+    }).getQuestionByName('a')!;
+    const b = new Model({
+      elements: [{ type: 'ncb', name: 'b' }],
+    }).getQuestionByName('b')!;
+    const count = () =>
+      payloads.filter((p) => p.code === 'custom-content-missing').length;
+    const view = render(<CustomQuestion question={a} creator={{}} />);
+    await flush();
+    view.rerender(<CustomQuestion question={b} creator={{}} />);
+    await flush();
+    // A and B are distinct outer questions → one emit each.
+    expect(count()).toBe(2);
+    // Retargeting back to A does NOT re-emit (WeakSet keyed by outer question).
+    view.rerender(<CustomQuestion question={a} creator={{}} />);
+    await flush();
+    expect(count()).toBe(2);
   });
 });
 
@@ -155,6 +198,31 @@ describe('CompositeQuestion (task 2.11)', () => {
     ) as { first?: string; last?: string };
     expect(value.first).toBe('Ada');
     expect(value.last).toBe('Lovelace');
+  });
+
+  it('an outer-set composite object distributes into the inner inputs', async () => {
+    registerComponent({
+      name: 'outername',
+      elementsJSON: [
+        { type: 'text', name: 'first' },
+        { type: 'text', name: 'last' },
+      ],
+    });
+    const model = new Model({ elements: [{ type: 'outername', name: 'q1' }] });
+    const question = model.getQuestionByName('q1')!;
+    render(<CompositeQuestion question={question} creator={{}} />);
+    await flush();
+    layoutRows();
+    act(() => {
+      (question as unknown as { value: unknown }).value = {
+        first: 'Grace',
+        last: 'Hopper',
+      };
+    });
+    await flush();
+    layoutRows();
+    expect(screen.getByTestId('first-input').props.value).toBe('Grace');
+    expect(screen.getByTestId('last-input').props.value).toBe('Hopper');
   });
 
   it('a createElements-callback composite renders its inner elements (not just JSON)', async () => {

@@ -418,6 +418,21 @@ export function reportCustomWidgetIgnoredOnce(
   reportDiagnostic(payload);
 }
 
+/** Once per (outer custom) QUESTION — a malformed custom whose
+ * `createQuestion` returned null. Keyed by the OUTER question so a remount of
+ * the same question does not re-emit and a retarget A→B emits once for EACH
+ * (2.11 impl review). */
+const customContentMissingEmitted = new WeakSet<Question>();
+
+export function reportCustomContentMissingOnce(
+  question: Question,
+  payload: CustomContentMissingPayload
+): void {
+  if (customContentMissingEmitted.has(question)) return;
+  customContentMissingEmitted.add(question);
+  reportDiagnostic(payload);
+}
+
 /** Once per QUESTION, full stop (same dedup shape as
  * `reportCustomWidgetIgnoredOnce`): adapter replacement/recreation on the
  * same question must not re-emit. */

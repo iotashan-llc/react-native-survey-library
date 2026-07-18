@@ -754,3 +754,19 @@ are ignored. Consumer `onShow` fires on a microtask AFTER presentation
 (web fires it during the show transition). With NO Survey mounted, a
 dialog call resolves its `onCancel` immediately (fail-safe — never
 auto-confirm a destructive action) and reports `dialog-no-host`.
+
+## Custom & composite questions (ComponentCollection, task 2.11)
+
+### After-render callbacks are not fired
+
+`ComponentCollection`'s `onAfterRender` / `onAfterRenderContentElement`
+callbacks receive a DOM `HTMLElement` on web. This renderer has no DOM and
+does not fire them (the repo-wide no-`afterRender` posture — see the custom
+widgets note). Custom/composite otherwise render fully: a `custom` question
+renders its inner `contentQuestion`'s input (the outer question owns the
+title/description/errors chrome); a `composite` renders its `contentPanel`
+(each inner question renders its own title). Value shapes match core: a
+`custom` value is the inner scalar; a `composite` value is an object keyed by
+inner element names. A malformed custom (a `createQuestion` callback returning
+null) renders nothing renderable rather than crashing, with a
+`custom-content-missing` diagnostic.

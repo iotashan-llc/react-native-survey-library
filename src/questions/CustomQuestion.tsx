@@ -25,7 +25,7 @@ import type { QuestionElementBaseProps } from '../reactivity/QuestionElementBase
 import { RNQuestionFactory } from '../factories/QuestionFactory';
 import { resolveQuestionDispatchKey } from '../factories/dispatch-key';
 import { createUnsupportedQuestion } from '../components/UnsupportedQuestion';
-import { reportDiagnostic } from '../diagnostics';
+import { reportCustomContentMissingOnce } from '../diagnostics';
 
 interface CustomModelLike {
   name: string;
@@ -42,10 +42,11 @@ export class CustomQuestion extends QuestionElementBase<QuestionElementBaseProps
     return this.questionBase as unknown as CustomModelLike;
   }
 
-  /** Malformed-content diagnostic — staged in render, flushed+deduped in the
-   * commit phase (never emitted from render). */
+  /** Malformed-content diagnostic — staged in render, flushed in the commit
+   * phase (never from render), deduped by the OUTER question identity via a
+   * module WeakSet so a remount does not re-emit and a retarget A→B emits once
+   * for each (2.11 impl review). */
   private pendingMissing = false;
-  private reportedMissing = false;
 
   componentDidMount(): void {
     super.componentDidMount();
@@ -58,9 +59,8 @@ export class CustomQuestion extends QuestionElementBase<QuestionElementBaseProps
   }
 
   private flushMissingDiagnostic(): void {
-    if (!this.pendingMissing || this.reportedMissing) return;
-    this.reportedMissing = true;
-    reportDiagnostic({
+    if (!this.pendingMissing) return;
+    reportCustomContentMissingOnce(this.questionBase, {
       code: 'custom-content-missing',
       questionName: this.custom.name,
       questionType: this.custom.getType(),
