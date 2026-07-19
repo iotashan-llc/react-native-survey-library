@@ -1357,6 +1357,38 @@ export const API_SURFACE_WATCHLIST: readonly WatchedApiMember[] = [
       '2.5b compact control: LAZY DropdownListModel (created only by the compact branch, RETAINED across flip-back — R5 registration reconciles on renderAs, not VM presence).',
   },
   {
+    id: 'QuestionButtonGroupModel.dropdownListModelValue',
+    member: 'dropdownListModelValue',
+    // A lazily-assigned OWN data property on each INSTANCE (not on the
+    // prototype) — probed on a question flipped compact so the CREATING
+    // getter has assigned it (same probe-instance pattern as
+    // QuestionCustomWidget.name).
+    expectedKind: 'data',
+    resolveHost: (sc) => {
+      const model = new sc.Model({
+        elements: [
+          {
+            type: 'buttongroup',
+            name: '__api-surface-probe__',
+            choices: ['a'],
+          },
+        ],
+      });
+      const question = model.getQuestionByName(
+        '__api-surface-probe__'
+      ) as unknown as {
+        renderAs: string;
+        dropdownListModel?: unknown;
+      };
+      question.renderAs = 'dropdown';
+      // The CREATING getter assigns the backing field; a failed creation
+      // surfaces as 'missing' (null host) rather than a false 'data'.
+      return question.dropdownListModel ? question : null;
+    },
+    reason:
+      '2.5b render purity: render/getStateElements/getOverlayPopup read the NON-CREATING backing field; the CREATING dropdownListModel getter is touched only outside render (measurement handlers / core flip path).',
+  },
+  {
     id: 'QuestionButtonGroupModel.selectedItemLocText',
     member: 'selectedItemLocText',
     expectedKind: 'accessor',

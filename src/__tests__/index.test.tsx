@@ -9,6 +9,12 @@ import {
   createUnsupportedQuestion,
   RNIcon,
   ActionButton,
+  ButtonGroupQuestion,
+  ButtonGroupQuestionElement,
+  DropdownQuestion,
+  DropdownQuestionElement,
+  TagboxQuestion,
+  TagboxQuestionElement,
 } from '../index';
 import { Model } from '../core/facade';
 import type { Question } from '../core/facade';
@@ -21,6 +27,15 @@ describe('test rails', () => {
   it('exports the 1.5 icon/action primitives from the package root', () => {
     expect(RNIcon).toBeDefined();
     expect(ActionButton).toBeDefined();
+  });
+
+  it('every overlay question class exports WITH its OverlayContext element wrapper (the raw class alone cannot bridge a Modal)', () => {
+    expect(typeof DropdownQuestion).toBe('function');
+    expect(typeof DropdownQuestionElement).toBe('function');
+    expect(typeof TagboxQuestion).toBe('function');
+    expect(typeof TagboxQuestionElement).toBe('function');
+    expect(typeof ButtonGroupQuestion).toBe('function');
+    expect(typeof ButtonGroupQuestionElement).toBe('function');
   });
 
   it('renders react-native components', () => {

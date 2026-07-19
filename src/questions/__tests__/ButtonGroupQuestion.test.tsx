@@ -5,10 +5,17 @@
  * icon/selected/readOnly/onChange → selectItem — invariant 6: consumed,
  * never re-derived).
  */
-import { Modal } from 'react-native';
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import { Modal, StyleSheet } from 'react-native';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react-native';
 import { Model, RendererFactory } from '../../core/facade';
 import type { Question } from '../../core/facade';
+import * as popupBridge from '../../overlay/popup-bridge';
 import '../../factories/register-all';
 import {
   ButtonGroupQuestion,
@@ -235,18 +242,14 @@ interface ResponsiveButtonGroup {
   processResponsiveness(requiredWidth: number, availableWidth: number): boolean;
   isDefaultRendering(): boolean;
   readOnlyText: string;
+  choices: unknown[];
+  /** The NON-CREATING backing field (render-purity contract). */
   dropdownListModelValue?: {
-    popupModel: { isVisible: boolean };
-    onPropChangeFunctions?: unknown[];
-  };
-  dropdownListModel?: {
-    popupModel: { isVisible: boolean };
-    listModel: {
-      actions: Array<{ id: string; title: string }>;
-      onItemClick(item: unknown): void;
+    popupModel: {
+      isVisible: boolean;
+      onVisibilityChanged: { length: number };
     };
-    onPropChangeFunctions?: unknown[];
-    ariaExpanded?: string;
+    onPropertyValueCoreChanged?: { length: number };
   };
 }
 
@@ -283,10 +286,14 @@ function fireLayout(width: number, name = 'bg'): void {
   });
 }
 
-/** The row ScrollView's intrinsic content width (row mode only). */
+/** The row ScrollView's intrinsic content width. The measuring row is
+ * MOUNTED in BOTH modes (hidden while compact — remount-while-compact
+ * regression), so the query must include a11y-hidden elements. */
 function fireContentWidth(width: number, name = 'bg'): void {
   fireEvent(
-    screen.getByTestId(`sv-buttongroup-scroll-${name}`),
+    screen.getByTestId(`sv-buttongroup-scroll-${name}`, {
+      includeHiddenElements: true,
+    }),
     'contentSizeChange',
     width,
     48
@@ -351,9 +358,10 @@ describe('ButtonGroupQuestion — 2.5b overflow measurement (R2/R3 gates)', () =
     fireLayout(300);
     fireContentWidth(800);
     expect(resp(question).renderAs).toBe('dropdown');
-    // Compact mode renders no ScrollView, so NO content event is
-    // possible — flip-back must compare the CACHED required width
-    // against the live wrapper width (R2).
+    // Flip-back must not REQUIRE a fresh content event: it compares the
+    // CACHED required width against the live wrapper width (R2). (The
+    // hidden measuring row can still re-emit — see the review-findings
+    // suite — but an unchanged row won't, so the cache must suffice.)
     fireLayout(900);
     expect(resp(question).renderAs).toBe('default');
     expect(screen.getByTestId('sv-buttongroup-scroll-bg')).toBeTruthy();
@@ -440,23 +448,41 @@ describe('ButtonGroupQuestion — 2.5b compact control (R5/R7)', () => {
     expect(resp(question).dropdownListModelValue).toBeUndefined();
   });
 
-  it('compact creates the VM once; flip-back retains it; re-compact REUSES it without duplicate subscriptions', () => {
+  it('default→compact→default→compact REUSES the retained VM with no duplicate popup registrations or model subscriptions', () => {
+    const registerSpy = jest.spyOn(popupBridge, 'registerPopup');
     const question = createButtonGroup();
     const { stack } = renderElement(question);
     expect(resp(question).dropdownListModelValue).toBeUndefined();
     fireLayout(300);
     fireContentWidth(800);
     expect(resp(question).renderAs).toBe('dropdown');
-    const vm1 = resp(question).dropdownListModel!;
+    const vm1 = resp(question).dropdownListModelValue!;
     expect(vm1).toBeDefined();
-    const subs = vm1.onPropChangeFunctions?.length ?? 0;
+    // ONE real popup-bridge registration for the first compact entry.
+    expect(registerSpy).toHaveBeenCalledTimes(1);
+    // REAL channels: the reactive base's core-callback registration on
+    // the VM, and the bridge's visibility listener on the popup model.
+    const vmSubs = () => vm1.onPropertyValueCoreChanged?.length ?? 0;
+    const visSubs = () => vm1.popupModel.onVisibilityChanged.length;
+    const compactSubs = vmSubs();
+    const compactVis = visSubs();
+    expect(compactSubs).toBeGreaterThan(0);
     fireLayout(900); // flip back — core retains the VM (R5)
     expect(resp(question).renderAs).toBe('default');
     expect(resp(question).dropdownListModelValue).toBe(vm1);
+    // Leaving compact DETACHES — the counts MOVE (tautology guard: a
+    // channel the layer never wrote could not decrement here).
+    expect(vmSubs()).toBe(compactSubs - 1);
+    expect(visSubs()).toBe(compactVis - 1);
     fireLayout(300); // re-compact from the CACHED required width
     expect(resp(question).renderAs).toBe('dropdown');
-    expect(resp(question).dropdownListModel).toBe(vm1);
-    expect(vm1.onPropChangeFunctions?.length ?? 0).toBe(subs);
+    expect(resp(question).dropdownListModelValue).toBe(vm1);
+    // Re-entering restores EXACTLY the compact-mode counts: the retained
+    // VM is reused with no duplicate attachments…
+    expect(vmSubs()).toBe(compactSubs);
+    expect(visSubs()).toBe(compactVis);
+    // …through exactly one FRESH bridge registration (2 total).
+    expect(registerSpy).toHaveBeenCalledTimes(2);
     fireEvent.press(screen.getByTestId('sv-buttongroup-dropdown-bg'));
     expect(stack.entries()).toHaveLength(1);
   });
@@ -590,7 +616,7 @@ describe('ButtonGroupQuestion — 2.5b dispatch (R1)', () => {
 });
 
 describe('ButtonGroupQuestion — 2.5b end-to-end through <Survey>', () => {
-  it('overflow inside a real Survey compacts, opens the shell Modal, and commits a selection', async () => {
+  it('overflow inside a real Survey compacts; the sheet RENDERS the choices; pressing a rendered row commits and closes', async () => {
     const model = new Model({
       elements: [
         {
@@ -614,13 +640,161 @@ describe('ButtonGroupQuestion — 2.5b end-to-end through <Survey>', () => {
     fireEvent.press(screen.getByTestId('sv-buttongroup-dropdown-plan'));
     await flush();
     expect(screen.UNSAFE_getByType(Modal).props.visible).toBe(true);
-    const vm = resp(question).dropdownListModel!;
-    const pro = vm.listModel.actions.find((a) => a.title === 'Pro')!;
-    act(() => {
-      vm.listModel.onItemClick(pro);
-    });
-    expect(JSON.parse(JSON.stringify(question.value))).toBe('Pro');
+    // The opened sheet RENDERS the real sv-list row for EVERY choice —
+    // the collapsed control's hidden measuring row is a11y-hidden, so
+    // these can only match the sheet's content.
+    for (const title of ['Basic', 'Pro', 'Enterprise']) {
+      expect(screen.getByTestId(`sv-list-item-${title}`)).toBeTruthy();
+    }
+    // Select by PRESSING the rendered row — never by driving the VM.
+    fireEvent.press(screen.getByTestId('sv-list-item-Pro'));
     await flush();
-    expect(vm.popupModel.isVisible).toBe(false);
+    expect(JSON.parse(JSON.stringify(question.value))).toBe('Pro');
+    // The sheet closed (model hidden, shell Modal down)…
+    expect(resp(question).dropdownListModelValue!.popupModel.isVisible).toBe(
+      false
+    );
+    expect(screen.UNSAFE_queryByType(Modal)?.props.visible ?? false).toBe(
+      false
+    );
+    // …and the collapsed control shows the committed selection.
+    within(screen.getByTestId('sv-buttongroup-value')).getByText('Pro');
+  });
+});
+
+describe('ButtonGroupQuestion — 2.5b review-findings regressions', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('a question that MOUNTS already compact (persisted renderAs) still measures and flips back to the row', () => {
+    // renderAs is a serialized core property — a survey persisted while
+    // compact REMOUNTS compact, with no cached required width.
+    const question = createButtonGroup({ renderAs: 'dropdown' });
+    renderElement(question);
+    // The wrapper's first layout materializes the compact control…
+    fireLayout(300);
+    expect(screen.getByTestId('sv-buttongroup-dropdown-bg')).toBeTruthy();
+    // …and the measuring row is MOUNTED (hidden) while compact, so the
+    // intrinsic content event is still possible after the remount.
+    fireContentWidth(800);
+    expect(resp(question).renderAs).toBe('dropdown');
+    fireLayout(900);
+    expect(resp(question).renderAs).toBe('default');
+    expect(screen.getByTestId('sv-buttongroup-scroll-bg')).toBeTruthy();
+    expect(screen.queryByTestId('sv-buttongroup-dropdown-bg')).toBeNull();
+  });
+
+  it('while compact the measuring row is hidden from accessibility and touch but stays mounted', () => {
+    const question = createButtonGroup();
+    renderElement(question);
+    fireLayout(300);
+    fireContentWidth(800);
+    expect(resp(question).renderAs).toBe('dropdown');
+    // Hidden from default (accessibility-respecting) queries…
+    expect(screen.queryByTestId('sv-buttongroup-scroll-bg')).toBeNull();
+    // …but mounted, with the hide + no-touch contract on the host.
+    const measure = screen.getByTestId('sv-buttongroup-measure-bg', {
+      includeHiddenElements: true,
+    });
+    expect(measure.props.accessibilityElementsHidden).toBe(true);
+    expect(measure.props.importantForAccessibility).toBe('no-hide-descendants');
+    const flat = StyleSheet.flatten(measure.props.style) as {
+      opacity?: number;
+      position?: string;
+      pointerEvents?: string;
+    };
+    expect(flat.opacity).toBe(0);
+    expect(flat.position).toBe('absolute');
+    expect(flat.pointerEvents).toBe('none');
+    // Row mode: the same host is visible and interactive again.
+    fireLayout(900);
+    const rowHost = screen.getByTestId('sv-buttongroup-measure-bg');
+    expect(rowHost.props.accessibilityElementsHidden).toBe(false);
+  });
+
+  it('mounting ALREADY compact constructs the lazy VM exactly once and NEVER during a render pass', () => {
+    const question = createButtonGroup({ renderAs: 'dropdown' });
+    const events: string[] = [];
+    let backing: unknown;
+    // Intercept the backing-field WRITE (creation) and stamp whether a
+    // render pass was live via the shared D2 render guard.
+    Object.defineProperty(question, 'dropdownListModelValue', {
+      configurable: true,
+      get: () => backing,
+      set: (value: unknown) => {
+        if (value !== undefined && backing === undefined) {
+          const guard =
+            (question as unknown as { reactRendering?: number })
+              .reactRendering ?? 0;
+          events.push(
+            guard > 0
+              ? 'constructed-during-render'
+              : 'constructed-outside-render'
+          );
+        }
+        backing = value;
+      },
+    });
+    renderElement(question);
+    // Mount (render + commit) reads only the non-creating backing field.
+    expect(events).toEqual([]);
+    fireLayout(300);
+    expect(events).toEqual(['constructed-outside-render']);
+    expect(screen.getByTestId('sv-buttongroup-dropdown-bg')).toBeTruthy();
+    fireContentWidth(800);
+    fireLayout(301);
+    expect(events).toHaveLength(1); // exactly once, ever
+  });
+
+  it('content growth WHILE COMPACT re-measures through the hidden row: flip-back uses the UPDATED required width', () => {
+    const question = createButtonGroup();
+    renderElement(question);
+    fireLayout(300);
+    fireContentWidth(800);
+    expect(resp(question).renderAs).toBe('dropdown');
+    // Content changes while compact (a long choice appended): the hidden
+    // measuring row re-renders and re-emits its intrinsic width.
+    act(() => {
+      resp(question).choices = [
+        'alpha',
+        'beta',
+        'gamma',
+        'a much longer caption that widens the row',
+      ];
+    });
+    fireContentWidth(1000);
+    // 900 clears the STALE 800 but not the UPDATED 1000 — stays compact.
+    fireLayout(900);
+    expect(resp(question).renderAs).toBe('dropdown');
+    fireLayout(1100);
+    expect(resp(question).renderAs).toBe('default');
+  });
+
+  it('measurement bookkeeping (syncMeasurementTarget) never runs during a render pass', () => {
+    const proto = ButtonGroupQuestion.prototype as unknown as {
+      syncMeasurementTarget(this: unknown): void;
+    };
+    const original = proto.syncMeasurementTarget;
+    const renderPhaseCalls: string[] = [];
+    jest
+      .spyOn(proto, 'syncMeasurementTarget' as never)
+      .mockImplementation(function (this: {
+        questionBase: { reactRendering?: number; name: string };
+      }) {
+        if ((this.questionBase.reactRendering ?? 0) > 0) {
+          renderPhaseCalls.push(this.questionBase.name);
+        }
+        return original.call(this);
+      } as never);
+    const questionA = createButtonGroup({}, 'bgA');
+    const questionB = createButtonGroup({}, 'bgB');
+    const { rerenderWith } = renderElement(questionA);
+    fireLayout(300, 'bgA');
+    fireContentWidth(800, 'bgA'); // compacts A
+    rerenderWith(questionB); // swap while A is compact
+    fireLayout(300, 'bgB');
+    fireContentWidth(900, 'bgB');
+    expect(renderPhaseCalls).toEqual([]);
   });
 });

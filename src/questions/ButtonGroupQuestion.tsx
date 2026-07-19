@@ -30,11 +30,15 @@
  *   (protected in typings — isolated in ONE module-level cast, R3);
  *   core applies the ±2 deadband and flips `renderAs` to its
  *   `getCompactRenderAs()` ('dropdown') / back to 'default'.
- * - Measurement (R2): the ALWAYS-mounted wrapper View reports the live
- *   available width via onLayout in BOTH modes; the row ScrollView's
- *   onContentSizeChange caches the intrinsic REQUIRED width (row mode
- *   only — the cache survives compaction so flip-back keeps working
- *   without a content event, which compact mode cannot produce).
+ * - Measurement (R2, strengthened by the review-findings pass): the
+ *   ALWAYS-mounted wrapper View reports the live available width via
+ *   onLayout in BOTH modes; the row renders inside an always-mounted
+ *   measure host — visible in row mode, hidden while compact (absolute,
+ *   opacity 0, pointerEvents none, a11y-hidden on both platforms) — so
+ *   the ScrollView's onContentSizeChange keeps caching the intrinsic
+ *   REQUIRED width in BOTH modes. That makes flip-back possible even
+ *   when the question MOUNTS already compact (renderAs is serialized)
+ *   and keeps the cache fresh when content changes while compact.
  * - Caller gates: both widths known/finite/positive, ROUNDED before the
  *   adapter (web scrollWidth is integral; core rounds only
  *   availableWidth — compat-pinned), pair-changed dedupe, and never in
@@ -49,6 +53,15 @@
  *   collapsed value = readOnlyText → selected item locText →
  *   `placeholderRendered`, mirroring DropdownQuestion's fold minus the
  *   input-component tier (buttongroup has none upstream).
+ * - Render purity (review-findings pass): render, `getStateElements`,
+ *   and `getOverlayPopup` read ONLY the non-creating
+ *   `dropdownListModelValue` backing field. The CREATING
+ *   `dropdownListModel` getter is touched exclusively OUTSIDE render —
+ *   by core's own processResponsiveness flip path, or by
+ *   `ensureCompactViewModel` in the measurement handlers when a
+ *   question mounts already compact (that keeps VM construction — which
+ *   fires core property notifications — out of render AND out of the
+ *   mount-commit window, where subscribed item rows would flag it).
  *
  * Error association (`hasErrors`/`describedBy`) has no RN aria
  * equivalent — errors surface through question chrome (same documented
@@ -62,6 +75,7 @@ import type {
   Base,
   ItemValue,
   LocalizableString,
+  PopupModel,
   Question,
 } from '../core/facade';
 import type { QuestionElementBaseProps } from '../reactivity/QuestionElementBase';
@@ -76,6 +90,7 @@ import { composeStyles } from '../theme-rn/recipes/types';
 interface ButtonGroupListVM {
   onClick(): void;
   placeholderRendered: string;
+  popupModel?: PopupModel;
   ariaInputRole?: string;
   ariaQuestionRole?: string;
   /** A STRING ('true' | 'false'), same as dropdown. */
@@ -93,8 +108,13 @@ interface ButtonGroupQuestionModel {
   readOnlyText: string;
   showSelectedItemLocText: boolean;
   selectedItemLocText?: LocalizableString;
-  /** Lazy: the getter CREATES only on the compact branch (compat test). */
+  /** Lazy CREATING getter — touched only OUTSIDE render (compat test;
+   * render-purity contract in the header comment). */
   dropdownListModel?: ButtonGroupListVM;
+  /** Core's NON-CREATING backing field — the only VM read that render,
+   * `getStateElements`, and `getOverlayPopup` ever make. Watchlisted as
+   * `QuestionButtonGroupModel.dropdownListModelValue`. */
+  dropdownListModelValue?: ButtonGroupListVM;
 }
 
 interface ButtonGroupItemVM {
@@ -236,11 +256,13 @@ export class ButtonGroupQuestion extends OverlayControlBase<OverlayControlProps>
   }
 
   protected getStateElements(): Base[] {
-    // Compact mode adds the VM (ariaExpanded re-emits on open/close);
-    // row mode must NOT touch the lazy getter (it would not create —
-    // default branch — but keeping the surface minimal is the rule).
+    // Compact mode adds the VM (ariaExpanded re-emits on open/close) —
+    // read through the NON-CREATING backing field: this runs from the
+    // commit lifecycles, but must never be a construction point (render
+    // purity; construction lives in ensureCompactViewModel / core's
+    // flip path).
     if (!this.isCompactMode) return [this.questionBase];
-    const vm = this.buttonGroup.dropdownListModel as unknown as
+    const vm = this.buttonGroup.dropdownListModelValue as unknown as
       Base | undefined;
     return vm ? [this.questionBase, vm] : [this.questionBase];
   }
@@ -257,6 +279,29 @@ export class ButtonGroupQuestion extends OverlayControlBase<OverlayControlProps>
    * never on VM presence (core RETAINS the VM after flip-back, R5). */
   protected isOverlayMode(): boolean {
     return this.isCompactMode;
+  }
+
+  /** NON-CREATING override of the base default (which reads the lazy
+   * CREATING getter): reconcile runs in the commit phase, and VM
+   * construction there would fire core property notifications into
+   * already-subscribed observers mid-commit. Construction belongs to
+   * `ensureCompactViewModel` / core's flip path exclusively. */
+  protected getOverlayPopup(): PopupModel | null {
+    return this.buttonGroup.dropdownListModelValue?.popupModel ?? null;
+  }
+
+  /** Materializes the lazy VM when a question is ALREADY compact but the
+   * VM does not exist yet — the remount-while-compact case (`renderAs`
+   * is serialized; core's flip path never ran, so nothing else would
+   * ever construct it). Called from the measurement handlers (event
+   * context — never render, never the mount commit). The forceUpdate is
+   * deliberate: construction notifications alone are core-version
+   * incidentals, not a re-render contract. */
+  private ensureCompactViewModel(): void {
+    const question = this.buttonGroup;
+    if (!this.isCompactMode || question.dropdownListModelValue) return;
+    // The CREATING getter — re-render only if it actually materialized.
+    if (question.dropdownListModel) this.forceUpdate();
   }
 
   /** Finite, rounded, positive — or null (never fed to the adapter). */
@@ -276,6 +321,7 @@ export class ButtonGroupQuestion extends OverlayControlBase<OverlayControlProps>
 
   private handleWrapperLayout = (event: LayoutChangeEvent): void => {
     this.syncMeasurementTarget();
+    this.ensureCompactViewModel();
     const width = ButtonGroupQuestion.normalizeWidth(
       event.nativeEvent.layout.width
     );
@@ -286,6 +332,7 @@ export class ButtonGroupQuestion extends OverlayControlBase<OverlayControlProps>
 
   private handleContentSizeChange = (contentWidth: number): void => {
     this.syncMeasurementTarget();
+    this.ensureCompactViewModel();
     const width = ButtonGroupQuestion.normalizeWidth(contentWidth);
     if (width === null) return;
     this.cachedRequiredWidth = width;
@@ -343,12 +390,8 @@ export class ButtonGroupQuestion extends OverlayControlBase<OverlayControlProps>
     );
   }
 
-  private renderCompactControl(): React.JSX.Element {
+  private renderCompactControl(vm: ButtonGroupListVM): React.JSX.Element {
     const question = this.buttonGroup;
-    // The getter CREATES the VM on the first compact render (and only
-    // then — compat-pinned); later compacts REUSE the retained instance.
-    const vm = question.dropdownListModel;
-    if (!vm) return this.renderRow();
     const readOnly = question.isInputReadOnly;
     return (
       <Pressable
@@ -414,19 +457,34 @@ export class ButtonGroupQuestion extends OverlayControlBase<OverlayControlProps>
   }
 
   protected renderElement(): React.JSX.Element {
-    this.syncMeasurementTarget();
     const question = this.buttonGroup;
+    // NON-CREATING read (render purity): a question that mounts already
+    // compact renders the row until the first measurement event
+    // materializes the VM via ensureCompactViewModel.
+    const vm = this.isCompactMode ? question.dropdownListModelValue : undefined;
+    const compact = !!vm;
     // The wrapper is ALWAYS mounted (R2): it keeps reporting the live
-    // available width while compact, so widening flips back against the
-    // CACHED required width (compact mode has no ScrollView to re-emit
-    // a content-size event).
+    // available width in BOTH modes. The measure host below keeps the
+    // row — and with it the ScrollView's content-size events — mounted
+    // in BOTH modes too: visible in row mode, hidden (absolute,
+    // opacity 0, no touch, a11y-hidden) while compact, so flip-back
+    // works after a remount-while-compact and the REQUIRED cache stays
+    // fresh when content changes while compact.
     return (
       <View
         testID={`sv-buttongroup-wrapper-${question.name}`}
         onLayout={this.handleWrapperLayout}
         style={localStyles.wrapper}
       >
-        {this.isCompactMode ? this.renderCompactControl() : this.renderRow()}
+        {vm ? this.renderCompactControl(vm) : null}
+        <View
+          testID={`sv-buttongroup-measure-${question.name}`}
+          style={compact ? localStyles.hiddenRow : undefined}
+          accessibilityElementsHidden={compact}
+          importantForAccessibility={compact ? 'no-hide-descendants' : 'auto'}
+        >
+          {this.renderRow()}
+        </View>
       </View>
     );
   }
@@ -440,4 +498,15 @@ const localStyles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   chevron: { marginLeft: 8 },
+  /** Compact-mode measure host: mounted for measurement only —
+   * invisible, untouchable, and (with the paired a11y props) hidden
+   * from both platforms' accessibility trees. */
+  hiddenRow: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    opacity: 0,
+    pointerEvents: 'none',
+  },
 });
