@@ -14,21 +14,33 @@
  *   (`onDidDismiss` → bridge → exactly-once `onHiding()`); the DEFAULT
  *   presenter (no animation dependency, v1) acks from a commit-phase
  *   effect as soon as it observes the `dismissing` state.
- * - Backdrop tap cancels a SHEET; a modal DIALOG requires an explicit
- *   action (upstream parity). `Modal.onRequestClose` (Android back) runs
- *   the CANCEL sequence on the active entry ONLY while it is genuinely
- *   `active` — during an in-flight dismissal (async presenter) back is a
- *   no-op so a suspended ancestor can't be cancelled out from under the
- *   pending ack. `KeyboardAvoidingView` keeps search inputs/dialog
+ * - DISMISS semantics (upstream parity, 2.5.33): backdrop tap on a
+ *   SHEET runs the HIDE sequence — upstream click-outside plain-hides
+ *   with NO onCancel (popup-view-model.ts:286-289; the revert lives
+ *   only in the footer Cancel button's cancel() — 293-296 — e.g. the
+ *   tagbox previousValue rollback, dropdownMultiSelectListModel.ts:
+ *   105-110). A modal DIALOG ignores the backdrop (modal clickOutside
+ *   no-ops — popup-modal-view-model.ts:60-62). `Modal.onRequestClose`
+ *   (Android back) maps to upstream Escape: sheets HIDE (base onKeyDown
+ *   — popup-view-model.ts:213-218), dialogs CANCEL (modal override —
+ *   popup-modal-view-model.ts:63-68); it targets the active entry ONLY
+ *   while it is genuinely `active` — during an in-flight dismissal
+ *   (async presenter) back is a no-op so a suspended ancestor can't be
+ *   closed out from under the pending ack. `KeyboardAvoidingView`
+ *   keeps search inputs/dialog
  *   content above the keyboard (iOS `padding` / Android `height`; no
  *   extra offset — the Modal fills the window, so the keyboard metrics
  *   need no compensation).
  * - Factory miss (payload.contentMiss): a fallback panel with a single
  *   Close action running the HIDE sequence (nothing to revert).
  * - `PopupModel.showCloseButton`: header close affordance running the
- *   CANCEL sequence (upstream popup-view-model binds its close button to
- *   cancel).
- * - iOS `onAccessibilityEscape` → cancel; panel is `aria-modal` +
+ *   CANCEL sequence. Deliberate deviation: upstream clickClose
+ *   plain-hides (popup-view-model.ts:281-284), but RN keeps cancel —
+ *   an explicit ✕ reads as "discard", and dialog-adapter resolution
+ *   treats hide-before-resolution as cancel anyway (DIFFERENCES.md,
+ *   "Overlay dismissal").
+ * - iOS `onAccessibilityEscape` → same mapping as Android back (sheet
+ *   HIDE / dialog CANCEL); panel is `aria-modal` +
  *   `accessibilityViewIsModal`. On active-entry transitions the panel
  *   receives accessibility focus (AccessibilityInfo seam — jest cannot
  *   observe screen-reader focus; device tests cover it). Opener focus
@@ -156,7 +168,7 @@ function DefaultPresenter(props: OverlayPresenterProps): React.JSX.Element {
       pointerEvents={visible ? 'auto' : 'none'}
       accessibilityElementsHidden={!visible}
       importantForAccessibility={visible ? 'auto' : 'no-hide-descendants'}
-      onPress={visible && isSheet ? () => requestCancel() : undefined}
+      onPress={visible && isSheet ? () => requestHide() : undefined}
       accessibilityViewIsModal={visible}
     >
       {/* Inner pressable swallows taps so panel touches never reach the
@@ -166,7 +178,9 @@ function DefaultPresenter(props: OverlayPresenterProps): React.JSX.Element {
         testID={`overlay-panel-${payload.shape}`}
         style={isSheet ? fragments.sheet : fragments.dialog}
         onPress={() => undefined}
-        onAccessibilityEscape={() => requestCancel()}
+        onAccessibilityEscape={() =>
+          isSheet ? requestHide() : requestCancel()
+        }
         accessibilityRole="none"
         aria-modal={visible}
       >
@@ -307,7 +321,14 @@ export function OverlayHost(props: OverlayHostProps): React.JSX.Element {
       statusBarTranslucent
       animationType="none"
       onRequestClose={() => {
-        trulyActive?.payload.requestCancel();
+        if (!trulyActive) return;
+        // Upstream Escape mapping: sheet = plain hide (commit), dialog =
+        // cancel sequence.
+        if (trulyActive.payload.shape === 'sheet') {
+          trulyActive.payload.requestHide();
+        } else {
+          trulyActive.payload.requestCancel();
+        }
       }}
     >
       <KeyboardAvoidingView

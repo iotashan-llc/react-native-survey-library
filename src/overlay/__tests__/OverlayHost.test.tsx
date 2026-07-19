@@ -49,7 +49,9 @@ describe('OverlayHost — presentation', () => {
     expect(screen.getByText('Apply')).toBeTruthy();
   });
 
-  it('backdrop press cancels a sheet but NOT a modal dialog', () => {
+  it('backdrop press DISMISSES a sheet (hide, no cancel) but NOT a modal dialog', () => {
+    // Upstream clickOutside plain-hides (popup-view-model.ts:286-289);
+    // cancel/revert belongs to the footer Cancel button only.
     const sheetCancel = jest.fn();
     const sheet = harness({ onCancel: sheetCancel });
     const view = render(<OverlayHost stack={sheet.stack} />);
@@ -57,7 +59,7 @@ describe('OverlayHost — presentation', () => {
       sheet.popup.show();
     });
     fireEvent.press(screen.getByTestId('overlay-backdrop'));
-    expect(sheetCancel).toHaveBeenCalledTimes(1);
+    expect(sheetCancel).not.toHaveBeenCalled();
     expect(sheet.popup.isVisible).toBe(false);
     view.unmount();
 
@@ -72,7 +74,11 @@ describe('OverlayHost — presentation', () => {
     expect(dialog.popup.isVisible).toBe(true);
   });
 
-  it('Android back (onRequestClose) runs the cancel sequence on the ACTIVE entry', () => {
+  it('Android back (onRequestClose) dismisses the ACTIVE sheet entry (hide, no cancel)', () => {
+    // Upstream Escape mapping: non-modal popups plain-hide
+    // (popup-view-model.ts:213-218); only the modal view-model cancels
+    // (popup-modal-view-model.ts:63-68) — dialog case pinned in
+    // dismiss-semantics.test.tsx.
     const onCancel = jest.fn();
     const { stack, popup } = harness({ onCancel });
     render(<OverlayHost stack={stack} />);
@@ -82,7 +88,7 @@ describe('OverlayHost — presentation', () => {
     act(() => {
       screen.UNSAFE_getByType(Modal).props.onRequestClose();
     });
-    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(onCancel).not.toHaveBeenCalled();
     expect(popup.isVisible).toBe(false);
   });
 
@@ -310,7 +316,9 @@ describe('OverlayHost — review round 1 regressions', () => {
     expect(stack.entries()).toHaveLength(0);
   });
 
-  it('iOS accessibility escape on the panel runs the cancel sequence', () => {
+  it('iOS accessibility escape on a sheet panel dismisses without cancel', () => {
+    // Same upstream Escape mapping as Android back; the dialog-cancels
+    // case is pinned in dismiss-semantics.test.tsx.
     const onCancel = jest.fn();
     const stack = createOverlayStack<OverlayPayload>();
     const popup = new PopupModel(
@@ -331,7 +339,8 @@ describe('OverlayHost — review round 1 regressions', () => {
         'accessibilityEscape'
       );
     });
-    expect(onCancel).toHaveBeenCalledTimes(1);
+    expect(onCancel).not.toHaveBeenCalled();
+    expect(popup.isVisible).toBe(false);
   });
 });
 

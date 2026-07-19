@@ -1002,3 +1002,42 @@ title/description/errors chrome); a `composite` renders its `contentPanel`
 inner element names. A malformed custom (a `createQuestion` callback returning
 null) renders nothing renderable rather than crashing, with a
 `custom-content-missing` diagnostic.
+
+## Overlay dismissal semantics (2.1 overlay host)
+
+### Sheet dismissal commits; only the footer Cancel button reverts
+
+The 2.1 overlay presents core popups as a sheet (non-modal) or dialog
+(modal). Web ground truth for dismissal (survey-core 2.5.33):
+clicking outside a popup runs `PopupBaseViewModel.clickOutside()`, which
+plain-hides with **no** `onCancel` (`popup-view-model.ts:286-289`; modal
+popups no-op it entirely — `popup-modal-view-model.ts:60-62`), and
+Escape plain-hides non-modal popups (`popup-view-model.ts:213-218`)
+while the modal view-model overrides it to cancel
+(`popup-modal-view-model.ts:63-68`). The revert path is exclusively the
+footer **Cancel** button (`PopupBaseViewModel.cancel()` →
+`model.onCancel()` — `popup-view-model.ts:293-296`); the tagbox's
+touch-mode `previousValue` rollback hangs off exactly that `onCancel`
+(`dropdownMultiSelectListModel.ts:85-110`), and its footer **Done**
+button plain-hides, i.e. commits.
+
+The RN mapping matches: a sheet's backdrop tap, Android hardware back,
+and iOS accessibility-escape all run the **hide** sequence — the sheet
+closes and any values already committed to the model (e.g. tagbox
+selections, which commit per toggle) are **kept**. A dialog ignores the
+backdrop, and back/escape on a dialog run the **cancel** sequence, like
+web's modal Escape. The tagbox sheet's footer renders core's own
+Cancel (revert to the value at open) and Done (commit and close)
+actions, so both explicit affordances exist on RN.
+
+### Header close button (`showCloseButton`) cancels — a deliberate deviation
+
+Web's popup header ✕ plain-hides (`clickClose` —
+`popup-view-model.ts:281-284`). RN keeps the ✕ on the **cancel**
+sequence: an explicit close affordance on a dialog reads as "discard",
+and dialog-adapter resolution semantics (task 2.2) already treat
+hide-before-resolution as cancel, so the observable dialog outcome is
+identical; core popups never set `showCloseButton` on the dropdown/
+tagbox sheets, so the sheet revert path cannot re-enter through it. If
+a consumer popup sets `showCloseButton` on a non-modal popup and needs
+web's hide-only ✕, that is the one observable divergence.
