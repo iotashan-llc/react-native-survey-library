@@ -208,6 +208,7 @@ describe('registerAll (module side effect)', () => {
       'sv-list-item-group',
       'sv-logo-image',
       'sv-page',
+      'sv-rating-dropdown-item',
       'sv-rating-item',
       'sv-rating-item-smiley',
       'sv-rating-item-star',

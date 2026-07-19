@@ -79,6 +79,7 @@ describe('index.tsx: registrar wiring (design: docs/design/0.5-factories.md)', (
       'sv-list-item-group',
       'sv-logo-image',
       'sv-page',
+      'sv-rating-dropdown-item',
       'sv-rating-item',
       'sv-rating-item-smiley',
       'sv-rating-item-star',

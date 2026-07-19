@@ -277,6 +277,13 @@ export class ButtonGroupQuestion extends OverlayControlBase<OverlayControlProps>
 
   componentDidMount(): void {
     super.componentDidMount();
+    // React 19 StrictMode (dev) replays the mount lifecycles on the SAME
+    // instance (didMount → willUnmount → didMount): clear the unmount
+    // latch on every (re)mount or every later deferred swap-ensure would
+    // bail — swap-to-already-compact recovery permanently dead (external
+    // review C2). A still-pending microtask re-checks conditions itself,
+    // so `swapEnsureScheduled` stays untouched.
+    this.swapEnsureUnmounted = false;
     this.lastCommittedQuestion = this.questionBase;
   }
 
@@ -382,13 +389,25 @@ export class ButtonGroupQuestion extends OverlayControlBase<OverlayControlProps>
     this.lastCalledAvailable = null;
   }
 
+  /** An invalid sample means the previous cache for that dimension is no
+   * longer trustworthy (rotation-style transitions report zero/non-finite
+   * widths): CLEAR it and the pair dedupe so processing PAUSES until a
+   * fresh valid sample arrives, instead of letting the OTHER dimension's
+   * next event run processResponsiveness with stale geometry (external
+   * review C5). Deadlock-safe: invalid→valid is a real layout change, so
+   * RN re-fires onLayout/onContentSizeChange with the valid width. */
   private handleWrapperLayout = (event: LayoutChangeEvent): void => {
     this.syncMeasurementTarget();
     this.ensureCompactViewModel();
     const width = ButtonGroupQuestion.normalizeWidth(
       event.nativeEvent.layout.width
     );
-    if (width === null) return;
+    if (width === null) {
+      this.liveAvailableWidth = null;
+      this.lastCalledRequired = null;
+      this.lastCalledAvailable = null;
+      return;
+    }
     this.liveAvailableWidth = width;
     this.maybeProcessResponsiveness();
   };
@@ -397,7 +416,12 @@ export class ButtonGroupQuestion extends OverlayControlBase<OverlayControlProps>
     this.syncMeasurementTarget();
     this.ensureCompactViewModel();
     const width = ButtonGroupQuestion.normalizeWidth(contentWidth);
-    if (width === null) return;
+    if (width === null) {
+      this.cachedRequiredWidth = null;
+      this.lastCalledRequired = null;
+      this.lastCalledAvailable = null;
+      return;
+    }
     this.cachedRequiredWidth = width;
     this.maybeProcessResponsiveness();
   };
@@ -535,6 +559,15 @@ export class ButtonGroupQuestion extends OverlayControlBase<OverlayControlProps>
       >
         {vm ? this.renderCompactControl(vm) : null}
         <View
+          // Keyed to QUESTION IDENTITY (external review C4): a question
+          // swap must REMOUNT the measuring ScrollView, because
+          // syncMeasurementTarget clears the required-width cache on swap
+          // and a RETAINED ScrollView emits NO new onContentSizeChange
+          // when the incoming question's content is geometrically
+          // identical — the fresh mount is what guarantees RN re-fires
+          // the content-size event exactly once. `id` is core's
+          // instance-unique identifier (names can collide across swaps).
+          key={`measure-${this.questionBase.id}`}
           testID={`sv-buttongroup-measure-${question.name}`}
           style={compact ? localStyles.hiddenRow : undefined}
           accessibilityElementsHidden={compact}

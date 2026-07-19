@@ -5,10 +5,12 @@
  * descriptor table's renderer-route row ("rating","dropdown" →
  * "sv-rating-dropdown") makes `getComponentName()` resolve our dispatch
  * key so the EXISTING SurveyRowElement dispatch routes it (R1 — no new
- * dispatch code). Rows come from the shared sv-list/ListPicker popup —
- * NOTHING is registered for `sv-rating-dropdown-item` (the collapsed
- * display, not an overlay row).
+ * dispatch code). Rows come from the shared sv-list/ListPicker popup;
+ * their per-row dispatch resolves the registered
+ * `sv-rating-dropdown-item` content (localized title + the min/max
+ * actions' description — external review C3).
  */
+import * as React from 'react';
 import { Modal } from 'react-native';
 import {
   act,
@@ -20,7 +22,10 @@ import {
 import { Model, RendererFactory } from '../../core/facade';
 import type { Question } from '../../core/facade';
 import '../../factories/register-all';
-import { RatingDropdownQuestionElement } from '../RatingDropdownQuestion';
+import {
+  RatingDropdownQuestion,
+  RatingDropdownQuestionElement,
+} from '../RatingDropdownQuestion';
 import { Survey } from '../../survey/Survey';
 import { OverlayContext } from '../../overlay/OverlayContext';
 import { createOverlayStack } from '../../overlay/stack';
@@ -263,6 +268,51 @@ describe('RatingDropdownQuestion — render purity (M1, 6c1eb79 pattern)', () =>
   });
 });
 
+describe('RatingDropdownQuestion — StrictMode lifecycle replay (external review C1)', () => {
+  it('the deferred ensure survives the StrictMode mount → simulated-unmount → remount replay on the SAME instance: the collapsed control still materializes', async () => {
+    // React 19 StrictMode (dev) replays the class mount lifecycles on the
+    // SAME instance: componentDidMount → componentWillUnmount →
+    // componentDidMount. A one-way `ensureUnmounted` latch set in
+    // willUnmount and never reset would make every later deferred ensure
+    // bail — the control would stay the inert fallback forever.
+    const { question } = createRatingDropdown();
+    const stack = createOverlayStack<OverlayPayload>();
+    render(
+      <React.StrictMode>
+        <OverlayContext.Provider value={stack}>
+          <RatingDropdownQuestionElement question={question} creator={{}} />
+        </OverlayContext.Provider>
+      </React.StrictMode>
+    );
+    await flush();
+    expect(resp(question).dropdownListModelValue).toBeDefined();
+    expect(screen.getByTestId('sv-rating-dropdown-rate')).toBeTruthy();
+    expect(screen.queryByTestId('sv-rating-dropdown-fallback-rate')).toBeNull();
+  });
+
+  it('the exact documented replay sequence (didMount → willUnmount → didMount before any microtask) does not latch the ensure machinery', async () => {
+    // Belt-and-suspenders next to the StrictMode render above: drive the
+    // documented sequence explicitly on the mounted instance so the test
+    // stays decisive even if the harness's StrictMode timing changes.
+    const { question } = createRatingDropdown();
+    const stack = createOverlayStack<OverlayPayload>();
+    render(
+      <OverlayContext.Provider value={stack}>
+        <RatingDropdownQuestionElement question={question} creator={{}} />
+      </OverlayContext.Provider>
+    );
+    const instance = screen.UNSAFE_getByType(RatingDropdownQuestion)
+      .instance as RatingDropdownQuestion;
+    act(() => {
+      instance.componentWillUnmount();
+      instance.componentDidMount();
+    });
+    await flush();
+    expect(resp(question).dropdownListModelValue).toBeDefined();
+    expect(screen.getByTestId('sv-rating-dropdown-rate')).toBeTruthy();
+  });
+});
+
 describe('RatingDropdownQuestion — overlay (popup + selection)', () => {
   it('press opens the sv-list popup into the overlay stack, listing the rate values; combobox a11y with STRING ariaExpanded', async () => {
     const { question } = createRatingDropdown();
@@ -334,9 +384,9 @@ describe('RatingDropdownQuestion — end-to-end through <Survey> (R4/R8)', () =>
     await flush();
     expect(screen.UNSAFE_getByType(Modal).props.visible).toBe(true);
     // The opened sheet RENDERS a real sv-list row for EVERY rate value.
-    // Rating actions carry component 'sv-rating-dropdown-item' — web's
-    // COLLAPSED display, deliberately unregistered here — so ListPicker's
-    // fallback branch renders the default title rows.
+    // Rating actions carry component 'sv-rating-dropdown-item' — the
+    // registered RatingDropdownItemContent (title + optional min/max
+    // description; external review C3) renders inside each row.
     const vm = resp(question).dropdownListModel!;
     for (const action of vm.listModel.actions) {
       expect(screen.getByTestId(`sv-list-item-${action.id}`)).toBeTruthy();
@@ -353,6 +403,53 @@ describe('RatingDropdownQuestion — end-to-end through <Survey> (R4/R8)', () =>
     );
     // …and the collapsed control shows the committed selection.
     within(screen.getByTestId('sv-rating-dropdown-value')).getByText('2');
+  });
+
+  it("min/max rate DESCRIPTIONS render inside their overlay rows (web's sv-rating-dropdown-item); middle rows stay title-only (external review C3)", async () => {
+    // Probe-verified (2026-07-19): in dropdown mode core's list actions
+    // carry component 'sv-rating-dropdown-item' AND the min/max actions
+    // carry `description` (a LocalizableString from minRateDescription/
+    // maxRateDescription). Web's registered sv-rating-dropdown-item
+    // renders title + that description; an unregistered key here would
+    // fall back to title-only rows and silently drop the descriptions.
+    const model = new Model({
+      elements: [
+        {
+          type: 'rating',
+          name: 'score',
+          displayMode: 'dropdown',
+          minRateDescription: 'Worst',
+          maxRateDescription: 'Best',
+        },
+      ],
+    });
+    const question = model.getQuestionByName('score')!;
+    render(<Survey model={model as never} />);
+    layoutRows();
+    await flush();
+    fireEvent.press(screen.getByTestId('sv-rating-dropdown-score'));
+    await flush();
+    const vm = resp(question).dropdownListModel!;
+    const actions = vm.listModel.actions;
+    const first = actions[0]!;
+    const middle = actions[2]!;
+    const last = actions[actions.length - 1]!;
+    const firstRow = screen.getByTestId(`sv-list-item-${first.id}`);
+    const middleRow = screen.getByTestId(`sv-list-item-${middle.id}`);
+    const lastRow = screen.getByTestId(`sv-list-item-${last.id}`);
+    // Titles always render…
+    within(firstRow).getByText('1');
+    within(middleRow).getByText('3');
+    within(lastRow).getByText('5');
+    // …and the min/max rows ALSO render their descriptions.
+    within(firstRow).getByText('Worst');
+    within(lastRow).getByText('Best');
+    // A description-less row carries no description node.
+    expect(
+      within(middleRow).queryByTestId(
+        `sv-rating-dropdown-item-description-${middle.id}`
+      )
+    ).toBeNull();
   });
 
   it('a runtime displayMode change flips the rendered mode BOTH directions (dropdown → buttons → dropdown)', async () => {

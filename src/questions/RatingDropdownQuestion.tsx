@@ -14,10 +14,16 @@
  *   SurveyRowElement dispatch routes here — no new dispatch code (R1).
  * - The overlay rows come from the SAME dropdownListModel + sv-list/
  *   ListPicker popup dropdown/tagbox use (`popupModel.
- *   contentComponentName === 'sv-list'`). `question.itemComponent`
- *   (`sv-rating-dropdown-item`) is web's COLLAPSED selected-value
- *   display, not an overlay row — nothing is registered for it; the
- *   collapsed display renders here directly.
+ *   contentComponentName === 'sv-list'`). Core stamps
+ *   `sv-rating-dropdown-item` on EVERY list action in dropdown mode
+ *   (probe-verified 2026-07-19), and the min/max actions additionally
+ *   carry a `description` LocalizableString (minRateDescription/
+ *   maxRateDescription) — upstream registers that key as the LIST ROW
+ *   content (title + optional description). The RN counterpart is
+ *   `RatingDropdownItemContent` below, registered through the
+ *   descriptor table's element route (external review C3; before that
+ *   the title-only ListPicker fallback silently dropped the
+ *   descriptions). The COLLAPSED display renders here directly.
  * - Collapsed value (R7): core's `readOnlyText` when read-only →
  *   `selectedItemLocText` via the LocString renderer → the core
  *   placeholder (`vm.placeholderRendered`). Same fold as
@@ -100,6 +106,45 @@ interface RatingDropdownModelLike extends Question {
 
 export interface RatingDropdownQuestionElementProps extends QuestionElementBaseProps {}
 
+/** The slice of a core rating list action `RatingDropdownItemContent`
+ * consumes: the localized title every action carries, plus the
+ * `description` LocalizableString present ONLY on the min/max actions
+ * (from minRateDescription/maxRateDescription — probe-verified). */
+export interface RatingDropdownItemContentProps {
+  item: {
+    id?: string | number;
+    title: string;
+    description?: LocalizableString;
+  };
+}
+
+/** Overlay row content for `sv-rating-dropdown-item` (external review
+ * C3) — the RN counterpart of web's registered rating-dropdown-item
+ * (survey-react-ui components/rating/rating-dropdown-item.tsx: title +
+ * optional description). ListPicker dispatches each row's
+ * `item.component` through `RNElementFactory`; the row itself stays
+ * ListPicker's (press/a11y/recipe state) — this is content only, same
+ * split as `ListItemGroupContent`. Title-only when no description. */
+export function RatingDropdownItemContent(
+  props: RatingDropdownItemContentProps
+): React.JSX.Element {
+  const item = props.item;
+  return (
+    <View testID={`sv-rating-dropdown-item-${item.id}`}>
+      <Text>{item.title}</Text>
+      {item.description ? (
+        <View testID={`sv-rating-dropdown-item-description-${item.id}`}>
+          {SurveyElementBase.renderLocString(
+            item.description,
+            undefined,
+            'rating-dd-item-description'
+          )}
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
 /** OverlayContext binding for the renderer-route descriptor row (R4 —
  * class components spend their single contextType on the theme; same
  * pattern as DropdownQuestionElement). The row MUST point here, not at
@@ -175,6 +220,14 @@ export class RatingDropdownQuestion extends OverlayControlBase<OverlayControlPro
 
   componentDidMount(): void {
     super.componentDidMount();
+    // React 19 StrictMode (dev) replays the mount lifecycles on the SAME
+    // instance (didMount → willUnmount → didMount): clear the unmount
+    // latch on every (re)mount or the deferred ensure below would bail
+    // forever after the simulated unmount (external review C1). A
+    // still-pending microtask from the pre-replay didMount re-checks all
+    // conditions itself, so leaving `ensureScheduled` untouched is safe
+    // in either interleaving.
+    this.ensureUnmounted = false;
     this.scheduleEnsureOverlayViewModel();
   }
 

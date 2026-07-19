@@ -54,7 +54,10 @@ import {
 import { TextQuestion } from '../questions/TextQuestion';
 import { MultipleTextQuestion } from '../questions/MultipleTextQuestion';
 import { DropdownQuestionElement } from '../questions/DropdownQuestion';
-import { RatingDropdownQuestionElement } from '../questions/RatingDropdownQuestion';
+import {
+  RatingDropdownItemContent,
+  RatingDropdownQuestionElement,
+} from '../questions/RatingDropdownQuestion';
 import { TagboxQuestionElement } from '../questions/TagboxQuestion';
 import { ImageQuestion } from '../questions/ImageQuestion';
 import { ImagePickerQuestion } from '../questions/ImagePickerQuestion';
@@ -205,11 +208,12 @@ export const DESCRIPTOR_TABLE: readonly Descriptor[] = [
   // (`question.itemComponent`, an internal-to-question factory concept
   // -- see RatingQuestion.tsx's doc comment). Task 2.5a adds the
   // renderer-route row below for `displayMode: "dropdown"` (core maps
-  // displayMode to `renderAs`); NOTHING is registered for
-  // `sv-rating-dropdown-item` -- that key is web's COLLAPSED
-  // selected-value display, not an overlay row (the overlay rows come
-  // from the shared sv-list/ListPicker popup), and the RN collapsed
-  // display renders inside RatingDropdownQuestion directly.
+  // displayMode to `renderAs`); the overlay rows come from the shared
+  // sv-list/ListPicker popup, whose per-row dispatch resolves the
+  // `sv-rating-dropdown-item` element row below (external review C3 --
+  // probe-refuted the earlier "collapsed display, not an overlay row"
+  // note: core stamps that key on EVERY dropdown-mode list action). The
+  // RN collapsed display renders inside RatingDropdownQuestion directly.
   {
     status: 'supported',
     questionType: 'rating',
@@ -231,6 +235,22 @@ export const DESCRIPTOR_TABLE: readonly Descriptor[] = [
     route: 'renderer',
     renderAs: 'dropdown',
     component: () => RatingDropdownQuestionElement,
+    milestone: 'M2',
+  },
+  // Task 2.5a follow-up (external review C3) -- overlay row content for
+  // dropdown-mode rating actions. Core stamps component
+  // 'sv-rating-dropdown-item' on every list action, and the min/max
+  // actions carry a `description` LocalizableString
+  // (minRateDescription/maxRateDescription); ListPicker dispatches each
+  // row's `item.component` through RNElementFactory, so without this
+  // row the title-only fallback silently dropped those descriptions
+  // (web renders them via its registered rating-dropdown-item).
+  {
+    status: 'supported',
+    questionType: 'sv-rating-dropdown-item',
+    dispatchKey: 'sv-rating-dropdown-item',
+    route: 'element',
+    component: () => RatingDropdownItemContent,
     milestone: 'M2',
   },
   // Task 2.1 — overlay list picker (upstream registry name "sv-list";

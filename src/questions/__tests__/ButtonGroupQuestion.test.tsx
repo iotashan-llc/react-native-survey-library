@@ -5,6 +5,7 @@
  * icon/selected/readOnly/onChange → selectItem — invariant 6: consumed,
  * never re-derived).
  */
+import * as React from 'react';
 import { Modal, StyleSheet } from 'react-native';
 import {
   act,
@@ -298,6 +299,23 @@ function fireContentWidth(width: number, name = 'bg'): void {
     width,
     48
   );
+}
+
+/** The composite (class) instance backing the measuring ScrollView —
+ * remount detector for the swap re-measure contract (a fresh instance is
+ * what makes RN re-fire the initial onContentSizeChange). Walks up from
+ * the host node to the nearest composite with a class instance. */
+function measuringScrollInstance(name: string): unknown {
+  let node: { instance: unknown; parent: unknown } | null = screen.getByTestId(
+    `sv-buttongroup-scroll-${name}`,
+    {
+      includeHiddenElements: true,
+    }
+  ) as unknown as { instance: unknown; parent: unknown } | null;
+  while (node && !node.instance) {
+    node = node.parent as { instance: unknown; parent: unknown } | null;
+  }
+  return node?.instance ?? null;
 }
 
 function spyOnResponsiveness(question: Question): jest.SpyInstance {
@@ -857,5 +875,134 @@ describe('ButtonGroupQuestion — 2.5b review-findings regressions', () => {
     fireLayout(300, 'bgB');
     fireContentWidth(900, 'bgB');
     expect(renderPhaseCalls).toEqual([]);
+  });
+});
+
+describe('ButtonGroupQuestion — external-review round: swap re-measure (C4) + invalid-width invalidation (C5)', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('swap-while-compact to a question with an IDENTICAL choice set can still flip back: the measuring ScrollView REMOUNTS on question identity, so RN re-fires its initial content-size event', async () => {
+    // RN contract, modeled honestly: a FRESHLY MOUNTED ScrollView always
+    // fires onContentSizeChange once; a RETAINED ScrollView whose content
+    // is geometrically identical fires NOTHING. syncMeasurementTarget
+    // clears the required-width cache on swap, so if the measuring
+    // ScrollView is retained across the swap the new question can never
+    // re-establish its required width — flip-back permanently dead. The
+    // test fires the post-swap content event ONLY IF the ScrollView
+    // actually remounted (exactly what RN would do).
+    const questionA = createButtonGroup({}, 'bgA');
+    const questionB = createButtonGroup({ renderAs: 'dropdown' }, 'bgB'); // identical choices
+    const { rerenderWith } = renderElement(questionA);
+    fireLayout(300, 'bgA');
+    fireContentWidth(800, 'bgA'); // A compacts
+    expect(resp(questionA).renderAs).toBe('dropdown');
+    const before = measuringScrollInstance('bgA');
+    expect(before).toBeTruthy();
+    rerenderWith(questionB);
+    await flush(); // deferred swap-ensure materializes B's collapsed control
+    expect(screen.getByTestId('sv-buttongroup-dropdown-bgB')).toBeTruthy();
+    const after = measuringScrollInstance('bgB');
+    if (after !== before) {
+      // Fresh mount ⇒ RN fires the initial content-size event.
+      fireContentWidth(800, 'bgB');
+    }
+    // The wrapper widening is a real layout change ⇒ RN re-fires onLayout.
+    fireLayout(900, 'bgB');
+    expect(resp(questionB).renderAs).toBe('default');
+    expect(screen.getByTestId('sv-buttongroup-scroll-bgB')).toBeTruthy();
+    expect(screen.queryByTestId('sv-buttongroup-dropdown-bgB')).toBeNull();
+  });
+
+  it('an invalid (zero-width) WRAPPER sample invalidates the cached available width: a following content event must not process with stale geometry; a fresh valid layout resumes', () => {
+    const question = createButtonGroup();
+    const spy = spyOnResponsiveness(question);
+    renderElement(question);
+    fireLayout(300);
+    fireContentWidth(800); // (800, 300) → compact
+    expect(spy).toHaveBeenCalledTimes(1);
+    expect(resp(question).renderAs).toBe('dropdown');
+    // Rotation-style transition: the wrapper reports zero width.
+    fireLayout(0);
+    // Content re-emits while the wrapper is invalid: processing must
+    // PAUSE, not run with the stale 300.
+    fireContentWidth(820);
+    expect(spy).toHaveBeenCalledTimes(1);
+    // Deadlock-safe: invalid→valid is a real layout change, so RN
+    // re-fires onLayout; processing resumes with the fresh pair.
+    fireLayout(900);
+    expect(spy).toHaveBeenCalledTimes(2);
+    expect(spy).toHaveBeenLastCalledWith(820, 900);
+    expect(resp(question).renderAs).toBe('default');
+  });
+
+  it('an invalid (zero-width) CONTENT sample invalidates the cached required width: a following layout event must not process with stale content geometry', () => {
+    const question = createButtonGroup();
+    const spy = spyOnResponsiveness(question);
+    renderElement(question);
+    fireLayout(300);
+    fireContentWidth(800); // (800, 300) → compact
+    expect(spy).toHaveBeenCalledTimes(1);
+    // The hidden measuring row collapses to zero during a transition.
+    fireContentWidth(0);
+    fireLayout(900); // stale required 800 must not drive this
+    expect(spy).toHaveBeenCalledTimes(1);
+    fireContentWidth(820); // fresh content sample resumes processing
+    expect(spy).toHaveBeenCalledTimes(2);
+    expect(spy).toHaveBeenLastCalledWith(820, 900);
+  });
+});
+
+describe('ButtonGroupQuestion — StrictMode lifecycle replay (external review C2)', () => {
+  it('the deferred swap-ensure survives the StrictMode mount → simulated-unmount → remount replay: a later swap to an already-compact question still materializes the collapsed control', async () => {
+    // React 19 StrictMode (dev) replays the class mount lifecycles on the
+    // SAME instance (didMount → willUnmount → didMount). A one-way
+    // `swapEnsureUnmounted` latch set in willUnmount and never reset
+    // would make every later deferred swap-ensure bail — swap-to-already-
+    // compact recovery permanently dead in StrictMode dev.
+    const questionA = createButtonGroup({}, 'bgA');
+    const questionB = createButtonGroup({ renderAs: 'dropdown' }, 'bgB');
+    const stack = createOverlayStack<OverlayPayload>();
+    const view = render(
+      <React.StrictMode>
+        <OverlayContext.Provider value={stack}>
+          <ButtonGroupQuestionElement question={questionA} creator={{}} />
+        </OverlayContext.Provider>
+      </React.StrictMode>
+    );
+    fireLayout(300, 'bgA');
+    fireContentWidth(280, 'bgA'); // A fits — stays on the row
+    view.rerender(
+      <React.StrictMode>
+        <OverlayContext.Provider value={stack}>
+          <ButtonGroupQuestionElement question={questionB} creator={{}} />
+        </OverlayContext.Provider>
+      </React.StrictMode>
+    );
+    // NO measurement events for B — identical geometry; only the deferred
+    // post-swap ensure can materialize the VM.
+    await flush();
+    expect(resp(questionB).dropdownListModelValue).toBeDefined();
+    expect(screen.getByTestId('sv-buttongroup-dropdown-bgB')).toBeTruthy();
+  });
+
+  it('the exact documented replay sequence (didMount → willUnmount → didMount) does not latch the swap-ensure machinery', async () => {
+    // Belt-and-suspenders next to the StrictMode render above: drive the
+    // documented sequence explicitly on the mounted instance so the test
+    // stays decisive even if the harness's StrictMode timing changes.
+    const questionA = createButtonGroup({}, 'bgA');
+    const questionB = createButtonGroup({ renderAs: 'dropdown' }, 'bgB');
+    const { rerenderWith } = renderElement(questionA);
+    const instance = screen.UNSAFE_getByType(ButtonGroupQuestion)
+      .instance as ButtonGroupQuestion;
+    act(() => {
+      instance.componentWillUnmount();
+      instance.componentDidMount();
+    });
+    rerenderWith(questionB); // swap; no measurement events
+    await flush();
+    expect(resp(questionB).dropdownListModelValue).toBeDefined();
+    expect(screen.getByTestId('sv-buttongroup-dropdown-bgB')).toBeTruthy();
   });
 });

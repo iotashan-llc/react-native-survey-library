@@ -745,11 +745,15 @@ web's anchored popup. The collapsed control shows core's
 placeholder when empty), carries combobox a11y (core's input aria
 surface; `ariaExpanded` is a string `'true'`/`'false'`), and exposes a
 clear affordance named by core's `clearCaption` behind the `allowClear`
-gate. Web's `sv-rating-dropdown-item` component is that collapsed
-selected-value display, not an overlay row — nothing is registered
-under that key; the overlay rows are the shared ListPicker's. The
-Dropdown-question differences (overlay sheet, not an anchored list; no
-inline filter input) apply — see the Dropdown question section.
+gate. The overlay rows are the shared ListPicker's, and their per-row
+dispatch resolves the registered `sv-rating-dropdown-item` content —
+the localized rate title plus, on the min/max rows, the
+`minRateDescription`/`maxRateDescription` text (core stamps that
+component on every dropdown-mode list action and puts a `description`
+LocalizableString on the min/max actions; probe-verified) — matching
+web's registered rating-dropdown-item. The Dropdown-question
+differences (overlay sheet, not an anchored list; no inline filter
+input) apply — see the Dropdown question section.
 
 The collapsed control materializes its core `DropdownListModel` one
 microtask AFTER the mount commit (render purity: construction fires
