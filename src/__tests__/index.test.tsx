@@ -13,6 +13,8 @@ import {
   ButtonGroupQuestionElement,
   DropdownQuestion,
   DropdownQuestionElement,
+  RatingDropdownQuestion,
+  RatingDropdownQuestionElement,
   TagboxQuestion,
   TagboxQuestionElement,
 } from '../index';
@@ -36,6 +38,8 @@ describe('test rails', () => {
     expect(typeof TagboxQuestionElement).toBe('function');
     expect(typeof ButtonGroupQuestion).toBe('function');
     expect(typeof ButtonGroupQuestionElement).toBe('function');
+    expect(typeof RatingDropdownQuestion).toBe('function');
+    expect(typeof RatingDropdownQuestionElement).toBe('function');
   });
 
   it('renders react-native components', () => {

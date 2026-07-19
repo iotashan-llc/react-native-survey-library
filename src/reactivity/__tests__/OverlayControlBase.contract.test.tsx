@@ -20,6 +20,11 @@
  *   Pressable resolves NULL here, so the pinned contract is
  *   "callable, returns number|null, never undefined, never throws" —
  *   with the null result asserted as this environment's observed value.
+ *   That makes this case SHAPE-ONLY (broken controlRef wiring would
+ *   still pass) — the actual wiring is pinned by the sibling
+ *   `OverlayControlBase.focusReturn.test.tsx`, which sentinel-mocks
+ *   `findNodeHandle` and asserts each consumer's openerHandle resolves
+ *   a number.
  * - live aria-expanded: core emits `ariaExpanded` as the STRING
  *   'true'/'false' (calibrated: 'false' at rest, 'true' open, 'false'
  *   after the cancel path); the base converts it to the BOOLEAN

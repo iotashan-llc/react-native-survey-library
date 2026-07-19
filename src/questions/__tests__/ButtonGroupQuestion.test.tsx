@@ -783,6 +783,55 @@ describe('ButtonGroupQuestion — 2.5b review-findings regressions', () => {
     expect(resp(question).renderAs).toBe('default');
   });
 
+  it('the LIVE available width SURVIVES a question swap: a content-only event on the new question flips compact using the pre-swap wrapper width (no new layout event)', () => {
+    // The swap-reset test above re-fires the wrapper layout for the new
+    // question, so it can only pin the RESET half of the amendment. This
+    // pins the SURVIVAL half: identical host geometry fires NO new
+    // onLayout after a swap (RN only fires on change), so the flip
+    // decision must reuse the width measured BEFORE the swap.
+    const questionA = createButtonGroup({}, 'bgA');
+    const questionB = createButtonGroup({}, 'bgB');
+    const { rerenderWith } = renderElement(questionA);
+    fireLayout(300, 'bgA');
+    fireContentWidth(800, 'bgA'); // A compacts at 300 available
+    expect(resp(questionA).renderAs).toBe('dropdown');
+    const spyB = spyOnResponsiveness(questionB);
+    rerenderWith(questionB);
+    // ONLY a content-size event for B — never a wrapper layout.
+    fireContentWidth(900, 'bgB');
+    expect(spyB).toHaveBeenCalledTimes(1);
+    expect(spyB).toHaveBeenCalledWith(900, 300);
+    expect(resp(questionB).renderAs).toBe('dropdown');
+    expect(screen.getByTestId('sv-buttongroup-dropdown-bgB')).toBeTruthy();
+  });
+
+  it('swapping to an ALREADY-COMPACT question under IDENTICAL geometry (no measurement events) still materializes the collapsed control, without a mount-commit (D4) warning', async () => {
+    // renderAs is serialized: the incoming question can be compact with
+    // NO VM (core's flip path never ran in this process). Identical host
+    // geometry fires no measurement event after the swap, so the
+    // measurement handlers can never run ensureCompactViewModel — the
+    // post-swap commit must schedule materialization itself (deferred a
+    // microtask: constructing synchronously in componentDidUpdate fires
+    // core notifications into the just-remounted item rows' mount-commit
+    // window — the 0.4 D4 dev invariant; observed empirically).
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    const questionA = createButtonGroup({}, 'bgA');
+    const questionB = createButtonGroup({ renderAs: 'dropdown' }, 'bgB');
+    const { rerenderWith } = renderElement(questionA);
+    fireLayout(300, 'bgA');
+    fireContentWidth(280, 'bgA'); // A fits — stays on the row
+    rerenderWith(questionB);
+    // NO measurement events for B — identical geometry.
+    await flush();
+    expect(resp(questionB).dropdownListModelValue).toBeDefined();
+    expect(screen.getByTestId('sv-buttongroup-dropdown-bgB')).toBeTruthy();
+    expect(screen.queryByTestId('sv-buttongroup-scroll-bgB')).toBeNull();
+    const d4Warnings = warnSpy.mock.calls.filter((call) =>
+      String(call[0]).includes('changed during a mount commit')
+    );
+    expect(d4Warnings).toHaveLength(0);
+  });
+
   it('measurement bookkeeping (syncMeasurementTarget) never runs during a render pass', () => {
     const proto = ButtonGroupQuestion.prototype as unknown as {
       syncMeasurementTarget(this: unknown): void;

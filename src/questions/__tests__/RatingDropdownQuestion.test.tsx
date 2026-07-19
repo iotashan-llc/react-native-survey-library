@@ -10,7 +10,13 @@
  * display, not an overlay row).
  */
 import { Modal } from 'react-native';
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react-native';
 import { Model, RendererFactory } from '../../core/facade';
 import type { Question } from '../../core/facade';
 import '../../factories/register-all';
@@ -103,9 +109,10 @@ describe('RatingDropdownQuestion — dispatch (R1)', () => {
 });
 
 describe('RatingDropdownQuestion — collapsed control (R7)', () => {
-  it('renders the collapsed control with the core placeholder when empty — NOT the rating item rows', () => {
+  it('renders the collapsed control with the core placeholder when empty — NOT the rating item rows', async () => {
     const { question } = createRatingDropdown();
     renderElement(question);
+    await flush(); // M1: the VM materializes one microtask after mount
     expect(screen.getByTestId('sv-rating-dropdown-rate')).toBeTruthy();
     expect(screen.queryByTestId('sv-rating-item-rate-0')).toBeNull();
     expect(screen.getByTestId('sv-rating-dropdown-placeholder')).toBeTruthy();
@@ -113,7 +120,7 @@ describe('RatingDropdownQuestion — collapsed control (R7)', () => {
     expect(screen.getByText('Select...')).toBeTruthy();
   });
 
-  it("shows the selected rate value's LOCALIZED text once a value is set (selectedItemLocText, not a raw value string)", () => {
+  it("shows the selected rate value's LOCALIZED text once a value is set (selectedItemLocText, not a raw value string)", async () => {
     const { question } = createRatingDropdown({
       rateValues: [
         { value: 1, text: 'Bad' },
@@ -122,6 +129,7 @@ describe('RatingDropdownQuestion — collapsed control (R7)', () => {
       ],
     });
     renderElement(question);
+    await flush();
     act(() => {
       question.value = 3;
     });
@@ -130,12 +138,13 @@ describe('RatingDropdownQuestion — collapsed control (R7)', () => {
     expect(screen.queryByTestId('sv-rating-dropdown-placeholder')).toBeNull();
   });
 
-  it('read-only shows readOnlyText (core displayValue) and blocks open', () => {
+  it('read-only shows readOnlyText (core displayValue) and blocks open', async () => {
     const { question } = createRatingDropdown({
       readOnly: true,
       defaultValue: 4,
     });
     const { stack } = renderElement(question);
+    await flush();
     const control = screen.getByTestId('sv-rating-dropdown-rate');
     expect(control.props.accessibilityState?.disabled).toBe(true);
     expect(screen.getByTestId('sv-rating-dropdown-readonly')).toBeTruthy();
@@ -160,12 +169,97 @@ describe('RatingDropdownQuestion — collapsed control (R7)', () => {
     expect(screen.queryByTestId('sv-rating-dropdown-clear-rate')).toBeNull();
   });
 
-  it('opener carries the question title as its accessible label (R6 pin)', () => {
+  it('opener carries the question title as its accessible label (R6 pin)', async () => {
     const { question } = createRatingDropdown({ title: 'Rate our service' });
     renderElement(question);
+    await flush();
     expect(
       screen.getByTestId('sv-rating-dropdown-rate').props.accessibilityLabel
     ).toBe('Rate our service');
+  });
+
+  it('a survey.locale switch re-renders the collapsed caption localized (selectedItemLocText); the placeholder renders the construction-locale text', async () => {
+    const { model, question } = createRatingDropdown({
+      rateValues: [
+        { value: 1, text: { default: 'Bad', de: 'Schlecht' } },
+        { value: 2, text: { default: 'Great', de: 'Toll' } },
+      ],
+    });
+    // `placeholder` is a LOCALIZABLE rating property but NOT a serialized
+    // one (absent from core's addClass("rating") list) — set the
+    // per-locale texts through the loc string.
+    const locPlaceholder = (
+      question as unknown as {
+        locPlaceholder: { setLocaleText(loc: string, text: string): void };
+      }
+    ).locPlaceholder;
+    locPlaceholder.setLocaleText('', 'Pick one');
+    locPlaceholder.setLocaleText('de', 'Wähle eins');
+    renderElement(question);
+    await flush();
+    // Empty: `vm.placeholderRendered` folds to the VM's stored
+    // `inputPlaceholder`, captured from the CONSTRUCTION-time locale.
+    // (Observed core 2.5.33 behavior: unlike QuestionDropdownModel —
+    // whose updateInputPlaceholder re-pushes on locale/placeholder
+    // changes — QuestionRatingModel wires no refresh, so a later locale
+    // flip does NOT re-render the placeholder. Core limitation, not a
+    // renderer gap; the caption below IS live.)
+    expect(
+      within(screen.getByTestId('sv-rating-dropdown-placeholder')).getByText(
+        'Pick one'
+      )
+    ).toBeTruthy();
+    // Selected: the caption follows the locale (LocString viewer path).
+    act(() => {
+      question.value = 2;
+    });
+    expect(
+      within(screen.getByTestId('sv-rating-dropdown-value')).getByText('Great')
+    ).toBeTruthy();
+    act(() => {
+      model.locale = 'de';
+    });
+    expect(
+      within(screen.getByTestId('sv-rating-dropdown-value')).getByText('Toll')
+    ).toBeTruthy();
+    expect(screen.queryByText('Great')).toBeNull();
+  });
+});
+
+describe('RatingDropdownQuestion — render purity (M1, 6c1eb79 pattern)', () => {
+  it('materializes the lazy VM exactly once and NEVER during a render pass', async () => {
+    const { question } = createRatingDropdown();
+    const events: string[] = [];
+    let backing: unknown;
+    // Intercept the backing-field WRITE (creation) and stamp whether a
+    // render pass was live via the shared D2 render guard.
+    Object.defineProperty(question, 'dropdownListModelValue', {
+      configurable: true,
+      get: () => backing,
+      set: (value: unknown) => {
+        if (value !== undefined && backing === undefined) {
+          const guard =
+            (question as unknown as { reactRendering?: number })
+              .reactRendering ?? 0;
+          events.push(
+            guard > 0
+              ? 'constructed-during-render'
+              : 'constructed-outside-render'
+          );
+        }
+        backing = value;
+      },
+    });
+    renderElement(question);
+    // Mount (render + commit) reads only the non-creating backing field.
+    expect(events).toEqual([]);
+    // The deferred (microtask) ensure materializes OUTSIDE render and
+    // outside the mount-commit window.
+    await flush();
+    expect(events).toEqual(['constructed-outside-render']);
+    expect(screen.getByTestId('sv-rating-dropdown-rate')).toBeTruthy();
+    await flush();
+    expect(events).toHaveLength(1); // exactly once, ever
   });
 });
 
@@ -226,26 +320,39 @@ describe('RatingDropdownQuestion — end-to-end through <Survey> (R4/R8)', () =>
     }
   }
 
-  it('a displayMode:"dropdown" rating inside a real Survey dispatches through the descriptor route, opens the shell Modal, and commits a selection', async () => {
+  it('a displayMode:"dropdown" rating inside a real Survey opens the shell Modal, RENDERS the rate rows, and pressing a rendered row commits and closes', async () => {
     const model = new Model({
       elements: [{ type: 'rating', name: 'score', displayMode: 'dropdown' }],
     });
     const question = model.getQuestionByName('score')!;
     render(<Survey model={model as never} />);
     layoutRows();
+    await flush(); // M1: the VM materializes one microtask after mount
     expect(screen.getByTestId('sv-rating-dropdown-score')).toBeTruthy();
     expect(screen.queryByTestId('sv-rating-item-score-0')).toBeNull();
     fireEvent.press(screen.getByTestId('sv-rating-dropdown-score'));
     await flush();
     expect(screen.UNSAFE_getByType(Modal).props.visible).toBe(true);
+    // The opened sheet RENDERS a real sv-list row for EVERY rate value.
+    // Rating actions carry component 'sv-rating-dropdown-item' — web's
+    // COLLAPSED display, deliberately unregistered here — so ListPicker's
+    // fallback branch renders the default title rows.
     const vm = resp(question).dropdownListModel!;
+    for (const action of vm.listModel.actions) {
+      expect(screen.getByTestId(`sv-list-item-${action.id}`)).toBeTruthy();
+    }
+    // Select by PRESSING the rendered row — never by driving the VM.
     const two = vm.listModel.actions.find((a) => a.title === '2')!;
-    act(() => {
-      vm.listModel.onItemClick(two);
-    });
-    expect(JSON.parse(JSON.stringify(question.value))).toBe(2);
+    fireEvent.press(screen.getByTestId(`sv-list-item-${two.id}`));
     await flush();
+    expect(JSON.parse(JSON.stringify(question.value))).toBe(2);
+    // The sheet closed (model hidden, shell Modal down)…
     expect(vm.popupModel.isVisible).toBe(false);
+    expect(screen.UNSAFE_queryByType(Modal)?.props.visible ?? false).toBe(
+      false
+    );
+    // …and the collapsed control shows the committed selection.
+    within(screen.getByTestId('sv-rating-dropdown-value')).getByText('2');
   });
 
   it('a runtime displayMode change flips the rendered mode BOTH directions (dropdown → buttons → dropdown)', async () => {
@@ -255,6 +362,7 @@ describe('RatingDropdownQuestion — end-to-end through <Survey> (R4/R8)', () =>
     const question = model.getQuestionByName('score')!;
     render(<Survey model={model as never} />);
     layoutRows();
+    await flush(); // M1: the VM materializes one microtask after mount
     expect(screen.getByTestId('sv-rating-dropdown-score')).toBeTruthy();
     act(() => {
       resp(question).displayMode = 'buttons';
@@ -272,5 +380,34 @@ describe('RatingDropdownQuestion — end-to-end through <Survey> (R4/R8)', () =>
     expect(resp(question).renderAs).toBe('dropdown');
     expect(screen.getByTestId('sv-rating-dropdown-score')).toBeTruthy();
     expect(screen.queryByTestId('sv-rating-item-score-0')).toBeNull();
+  });
+});
+
+describe('RatingDropdownQuestion — displayMode:"auto" exclusion (R8/M3)', () => {
+  it('displayMode:"auto" (the core default) renders the buttons row and never constructs a dropdown VM, regardless of width', async () => {
+    // DOCUMENTED DIVERGENCE PIN: on web, "auto" collapses to the dropdown
+    // when a ResizeObserver reports overflow. RN wires no measurement
+    // seam for rating (no ResizeObserver equivalent), so "auto" ALWAYS
+    // renders the buttons row — hosts that want the collapsed control
+    // must say displayMode:"dropdown" explicitly (see DIFFERENCES.md).
+    const model = new Model({
+      elements: [{ type: 'rating', name: 'score' }],
+    });
+    const question = model.getQuestionByName('score')!;
+    render(<Survey model={model as never} />);
+    // Deliberately NARROW rows — width must have no effect.
+    for (const row of screen.getAllByTestId('sv-row')) {
+      fireEvent(row, 'layout', {
+        nativeEvent: { layout: { x: 0, y: 0, width: 120, height: 120 } },
+      });
+    }
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(resp(question).displayMode).toBe('auto');
+    expect(resp(question).renderAs).toBe('default');
+    expect(screen.getByTestId('sv-rating-item-score-0')).toBeTruthy();
+    expect(screen.queryByTestId('sv-rating-dropdown-score')).toBeNull();
+    expect(resp(question).dropdownListModelValue).toBeUndefined();
   });
 });

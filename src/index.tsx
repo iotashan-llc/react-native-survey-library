@@ -136,6 +136,13 @@ export {
   TagboxQuestion,
   TagboxQuestionElement,
 } from './questions/TagboxQuestion';
+// rating displayMode:"dropdown" (task 2.5a) — the fourth overlay
+// consumer; export BOTH, same as dropdown/tagbox/buttongroup (the raw
+// class alone renders an opener with no Modal bridged).
+export {
+  RatingDropdownQuestion,
+  RatingDropdownQuestionElement,
+} from './questions/RatingDropdownQuestion';
 export type { ImageQuestionProps } from './questions/ImageQuestion';
 export type { TextQuestionProps } from './questions/TextQuestion';
 export { DraftCommitAdapter } from './inputs/DraftCommitAdapter';

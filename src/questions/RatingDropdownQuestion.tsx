@@ -31,6 +31,19 @@
  *   dispatch chain a renderAs flip re-routes to the "rating" template
  *   row (RatingQuestion) on the same render pass, so that branch is
  *   only reachable when the class is mounted directly.
+ * - Render purity (M1, 6c1eb79 pattern): render, `getStateElements`,
+ *   and `getOverlayPopup` read ONLY the non-creating
+ *   `dropdownListModelValue` backing field. The CREATING
+ *   `dropdownListModel` getter is touched exclusively by the DEFERRED
+ *   (one-microtask) ensure scheduled from the commit lifecycles —
+ *   rating has no measurement seam, and core's displayMode→renderAs
+ *   mapping never constructs the VM itself, so nothing else would.
+ *   Probe-verified: construction fires 7 property notifications ON THE
+ *   QUESTION, so a synchronous componentDidMount construction would
+ *   land in this component's own fresh subscription inside the
+ *   mount-commit window (0.4 D4 dev invariant). Consequence: in
+ *   dropdown mode the collapsed control appears one microtask after
+ *   mount (the inert placeholder renders for that single tick).
  * - a11y mirrors core's INPUT aria surface through the base's shared
  *   opener bundle (R6): rating-dropdown has no search input
  *   (`searchEnabled` false), so the role clamp falls to
@@ -75,9 +88,14 @@ interface RatingDropdownModelLike extends Question {
   readOnlyText: string;
   showSelectedItemLocText: boolean;
   selectedItemLocText?: LocalizableString;
-  /** Lazy: the getter CREATES only while `renderAs === 'dropdown'`;
-   * core retains the instance after a flip back (R5). */
+  /** Lazy CREATING getter — creates only while `renderAs === 'dropdown'`;
+   * core retains the instance after a flip back (R5). Touched only
+   * OUTSIDE render (the deferred ensure below — render purity). */
   dropdownListModel?: RatingDropdownListModelLike;
+  /** Core's NON-CREATING backing field — the only VM read that render,
+   * `getStateElements`, and `getOverlayPopup` ever make. Watchlisted as
+   * `QuestionRatingModel.dropdownListModelValue`. */
+  dropdownListModelValue?: RatingDropdownListModelLike;
 }
 
 export interface RatingDropdownQuestionElementProps extends QuestionElementBaseProps {}
@@ -107,11 +125,14 @@ export class RatingDropdownQuestion extends OverlayControlBase<OverlayControlPro
 
   protected getStateElements(): Base[] {
     // Question AND view model: allowClear/readOnly/placeholder change on
-    // the QUESTION; ariaExpanded re-emits on the VM (open/close). Outside
-    // overlay mode the lazy getter is never touched (it would not create
-    // — but keeping the surface minimal is the rule).
+    // the QUESTION; ariaExpanded re-emits on the VM (open/close). Read
+    // through the NON-CREATING backing field: this runs from render
+    // (getRenderedElements) AND the commit lifecycles, and must never be
+    // a construction point (render purity; construction lives in the
+    // deferred ensure below).
     if (!this.isOverlayMode()) return [this.questionBase];
-    const vm = this.rating.dropdownListModel as unknown as Base | undefined;
+    const vm = this.rating.dropdownListModelValue as unknown as
+      Base | undefined;
     return vm ? [this.questionBase, vm] : [this.questionBase];
   }
 
@@ -123,6 +144,68 @@ export class RatingDropdownQuestion extends OverlayControlBase<OverlayControlPro
    * (core retains the VM after a runtime flip back to buttons; R5). */
   protected isOverlayMode(): boolean {
     return this.rating.renderAs === 'dropdown';
+  }
+
+  /** NON-CREATING override of the base default (which reads the lazy
+   * CREATING getter): reconcile runs in the commit phase, and VM
+   * construction there would fire core property notifications into
+   * already-subscribed observers mid-commit. Construction belongs to
+   * the deferred ensure exclusively. */
+  protected getOverlayPopup(): PopupModel | null {
+    return this.rating.dropdownListModelValue?.popupModel ?? null;
+  }
+
+  // ——— Deferred VM materialization (M1 render purity) ———
+  // Rating has NO measurement seam (unlike buttongroup's onLayout /
+  // onContentSizeChange handlers), and core's displayMode→renderAs
+  // mapping does NOT construct the VM (probe-verified 2026-07-19: a
+  // runtime displayMode flip only sets renderAs; `onBeforeSetCompactRenderer`
+  // runs from processResponsiveness, which rating-dropdown never drives).
+  // So the component must materialize the VM itself — but NOT
+  // synchronously in componentDidMount: `new DropdownListModel(question)`
+  // fires 7 property notifications ON THE QUESTION (visibleChoices,
+  // errors, cssRoot/Header/Content/Description/Error — probe-verified),
+  // which would land in this component's own just-made subscription
+  // inside the mount-commit window and trip the 0.4 D4 dev invariant.
+  // Deferred one microtask, the construction lands outside render and
+  // outside any commit; until it runs the component renders the inert
+  // placeholder View for that single tick.
+  private ensureScheduled = false;
+  private ensureUnmounted = false;
+
+  componentDidMount(): void {
+    super.componentDidMount();
+    this.scheduleEnsureOverlayViewModel();
+  }
+
+  componentDidUpdate(): void {
+    super.componentDidUpdate();
+    // Covers the runtime buttons→dropdown flip when this class is hosted
+    // directly (through real Survey dispatch a renderAs flip REMOUNTS the
+    // element, landing in componentDidMount above) and a question prop
+    // swap to a dropdown-mode rating.
+    this.scheduleEnsureOverlayViewModel();
+  }
+
+  componentWillUnmount(): void {
+    this.ensureUnmounted = true;
+    super.componentWillUnmount();
+  }
+
+  private scheduleEnsureOverlayViewModel(): void {
+    const question = this.rating;
+    if (!this.isOverlayMode() || question.dropdownListModelValue) return;
+    if (this.ensureScheduled) return;
+    this.ensureScheduled = true;
+    queueMicrotask(() => {
+      this.ensureScheduled = false;
+      if (this.ensureUnmounted) return;
+      if (!this.isOverlayMode() || this.rating.dropdownListModelValue) return;
+      // The CREATING getter — re-render only if it actually materialized
+      // (the forceUpdate is deliberate: construction notifications alone
+      // are core-version incidentals, not a re-render contract).
+      if (this.rating.dropdownListModel) this.forceUpdate();
+    });
   }
 
   /** Collapsed value (R7): readOnlyText → selected item locText →
@@ -159,11 +242,15 @@ export class RatingDropdownQuestion extends OverlayControlBase<OverlayControlPro
 
   protected renderElement(): React.JSX.Element {
     const question = this.rating;
-    // The getter CREATES the VM on first access in dropdown mode (core's
-    // own lazy construction); a runtime mode flip re-routes dispatch to
-    // the "rating" template row, so the inert branch below is only
-    // reachable when the class is mounted outside the dispatch chain.
-    const vm = this.isOverlayMode() ? question.dropdownListModel : undefined;
+    // NON-CREATING read (render purity): in dropdown mode the VM is
+    // materialized by the deferred ensure (one microtask after the mount/
+    // update commit) — until then this renders the inert placeholder View
+    // below for a single tick. Outside dropdown mode the branch is only
+    // reachable when the class is mounted outside the dispatch chain (a
+    // runtime mode flip re-routes dispatch to the "rating" template row).
+    const vm = this.isOverlayMode()
+      ? question.dropdownListModelValue
+      : undefined;
     if (!vm) {
       return (
         <View

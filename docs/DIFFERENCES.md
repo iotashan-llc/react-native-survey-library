@@ -751,6 +751,23 @@ under that key; the overlay rows are the shared ListPicker's. The
 Dropdown-question differences (overlay sheet, not an anchored list; no
 inline filter input) apply — see the Dropdown question section.
 
+The collapsed control materializes its core `DropdownListModel` one
+microtask AFTER the mount commit (render purity: construction fires
+core property notifications on the question, which must land in
+neither render nor the mount-commit window), so the very first tick
+renders an inert placeholder. Web constructs the model during render.
+
+### `displayMode: "auto"` never auto-collapses on RN
+
+Core's DEFAULT `displayMode` is `"auto"`; on web a `ResizeObserver`
+feeds `processResponsiveness`, collapsing the rate buttons to the
+dropdown when they overflow. RN wires **no measurement seam for
+rating** (there is no ResizeObserver equivalent on the rating row), so
+`"auto"` always renders the buttons row regardless of available width
+— no dropdown VM is ever constructed. Hosts that want the collapsed
+control must set `displayMode: "dropdown"` explicitly. (Buttongroup is
+different: its overflow measurement is wired — see the next section.)
+
 ## Buttongroup question (task 2.9, overflow 2.5b)
 
 ### Overflow-to-dropdown measures via ScrollView content-vs-viewport, not a ResizeObserver
@@ -774,6 +791,19 @@ identical pairs are deduped, and **design mode never compacts** (web's
 `needResponsiveness()` gate is also caller-side). Dispatch stays on the
 single `buttongroup` template row in both modes — no RendererFactory
 registration, the renderer self-branches on `question.renderAs`.
+
+### Mount-already-compact shows the row for the first frame(s)
+
+`renderAs` is a serialized core property, so a survey persisted while
+compact REMOUNTS compact — but the compact control (and the measure
+host's hiding props) gate on the lazily-built `dropdownListModel`
+VM, which render purity forbids constructing during render or the
+mount commit. Until the first measurement event (or, after a question
+swap under identical geometry, a deferred post-commit microtask)
+materializes the VM, the full button row is briefly **visible,
+interactive, and exposed to accessibility**. Web has no such window
+(the ResizeObserver decision lands before paint). Deliberate
+render-purity consequence, not a bug.
 
 The web `:focus-within` ring is a keyboard-web affordance with no RN
 analog.

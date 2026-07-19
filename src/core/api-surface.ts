@@ -1411,6 +1411,80 @@ export const API_SURFACE_WATCHLIST: readonly WatchedApiMember[] = [
     resolveHost: (sc) => sc.QuestionButtonGroupModel.prototype,
     reason: '2.5b read-only collapsed display text (displayValue fold).',
   },
+  // Task 2.5a — rating displayMode:"dropdown" bindings (mirror of the
+  // 2.5b buttongroup entries above: same render-purity split between the
+  // CREATING getter and the NON-CREATING backing field).
+  {
+    id: 'QuestionRatingModel.renderAs',
+    member: 'renderAs',
+    // Own accessor lives on Question.prototype (core maps displayMode →
+    // renderAs); the walk resolves it through the rating chain.
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.QuestionRatingModel.prototype,
+    reason:
+      "2.5a overlay-mode gate: isOverlayMode keys on renderAs === 'dropdown' (R5 — never on VM presence).",
+  },
+  {
+    id: 'QuestionRatingModel.dropdownListModel',
+    member: 'dropdownListModel',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.QuestionRatingModel.prototype,
+    reason:
+      '2.5a compact control: LAZY DropdownListModel (creates while renderAs is dropdown, RETAINED across a flip back — touched only by the deferred commit-phase ensure, never render).',
+  },
+  {
+    id: 'QuestionRatingModel.dropdownListModelValue',
+    member: 'dropdownListModelValue',
+    // A lazily-assigned OWN data property on each INSTANCE (not on the
+    // prototype) — probed on a displayMode:'dropdown' question whose
+    // CREATING getter has assigned it (same probe-instance pattern as
+    // QuestionButtonGroupModel.dropdownListModelValue).
+    expectedKind: 'data',
+    resolveHost: (sc) => {
+      const model = new sc.Model({
+        elements: [
+          {
+            type: 'rating',
+            name: '__api-surface-rating-probe__',
+            displayMode: 'dropdown',
+          },
+        ],
+      });
+      const question = model.getQuestionByName(
+        '__api-surface-rating-probe__'
+      ) as unknown as {
+        dropdownListModel?: unknown;
+      };
+      // The CREATING getter assigns the backing field; a failed creation
+      // surfaces as 'missing' (null host) rather than a false 'data'.
+      return question.dropdownListModel ? question : null;
+    },
+    reason:
+      '2.5a render purity: render/getStateElements/getOverlayPopup read the NON-CREATING backing field; the CREATING dropdownListModel getter is deferred to a post-commit microtask (M1).',
+  },
+  {
+    id: 'QuestionRatingModel.selectedItemLocText',
+    member: 'selectedItemLocText',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.QuestionRatingModel.prototype,
+    reason:
+      "2.5a collapsed display: the selected rate value's localized caption (R7 fold).",
+  },
+  {
+    id: 'QuestionRatingModel.showSelectedItemLocText',
+    member: 'showSelectedItemLocText',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.QuestionRatingModel.prototype,
+    reason:
+      '2.5a collapsed display gate (folds readOnly/inputHasValue/locText presence).',
+  },
+  {
+    id: 'QuestionRatingModel.readOnlyText',
+    member: 'readOnlyText',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.QuestionRatingModel.prototype,
+    reason: '2.5a read-only collapsed display text (displayValue fold).',
+  },
   // Task 2.7 — imagepicker bindings (QuestionImagePickerModel + ImageItemValue).
   ...(
     [

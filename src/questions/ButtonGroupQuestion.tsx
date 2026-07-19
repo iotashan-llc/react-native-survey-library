@@ -39,6 +39,11 @@
  *   REQUIRED width in BOTH modes. That makes flip-back possible even
  *   when the question MOUNTS already compact (renderAs is serialized)
  *   and keeps the cache fresh when content changes while compact.
+ *   NOTE (v2 review, L3): the hiding props gate on VM PRESENCE, not on
+ *   renderAs — a mount-already-compact question shows the row visible/
+ *   interactive for the first frame(s) until a measurement event (or
+ *   the post-swap deferred ensure) materializes the VM. Documented
+ *   divergence (DIFFERENCES.md, buttongroup).
  * - Caller gates: both widths known/finite/positive, ROUNDED before the
  *   adapter (web scrollWidth is integral; core rounds only
  *   availableWidth — compat-pinned), pair-changed dedupe, and never in
@@ -61,11 +66,17 @@
  *   and `getOverlayPopup` read ONLY the non-creating
  *   `dropdownListModelValue` backing field. The CREATING
  *   `dropdownListModel` getter is touched exclusively OUTSIDE render —
- *   by core's own processResponsiveness flip path, or by
+ *   by core's own processResponsiveness flip path, by
  *   `ensureCompactViewModel` in the measurement handlers when a
  *   question mounts already compact (that keeps VM construction — which
  *   fires core property notifications — out of render AND out of the
- *   mount-commit window, where subscribed item rows would flag it).
+ *   mount-commit window, where subscribed item rows would flag it), or
+ *   by the DEFERRED (one-microtask) post-swap ensure (v2 review L4): a
+ *   question swap to an already-compact question under IDENTICAL host
+ *   geometry fires no measurement event, so componentDidUpdate
+ *   schedules the ensure off-commit (sync construction there is
+ *   probe-verified to trip the 0.4 D4 dev invariant through the
+ *   just-remounted item rows).
  *
  * Error association (`hasErrors`/`describedBy`) has no RN aria
  * equivalent — errors surface through question chrome (same documented
@@ -255,6 +266,56 @@ export class ButtonGroupQuestion extends OverlayControlBase<OverlayControlProps>
 
   protected getStateElement(): Base {
     return this.questionBase;
+  }
+
+  /** Question identity as of the last commit — the swap detector for the
+   * deferred ensure below (measurement handlers can't cover a swap that
+   * fires no measurement event). */
+  private lastCommittedQuestion: Base | null = null;
+  private swapEnsureScheduled = false;
+  private swapEnsureUnmounted = false;
+
+  componentDidMount(): void {
+    super.componentDidMount();
+    this.lastCommittedQuestion = this.questionBase;
+  }
+
+  componentDidUpdate(): void {
+    super.componentDidUpdate();
+    const previous = this.lastCommittedQuestion;
+    this.lastCommittedQuestion = this.questionBase;
+    if (
+      previous !== this.questionBase &&
+      this.isCompactMode &&
+      !this.buttonGroup.dropdownListModelValue
+    ) {
+      // A swap to an ALREADY-compact question (persisted renderAs, VM
+      // never built) under IDENTICAL host geometry fires no measurement
+      // event, so ensureCompactViewModel would never run and the visible
+      // row would stay stranded. Materialize from this post-swap commit —
+      // DEFERRED one microtask: probe-verified (2026-07-19) that sync
+      // construction here fires ~21 core property notifications
+      // (disableTabStop/errors/css*) into the just-remounted item rows'
+      // mount-commit window, tripping the 0.4 D4 dev invariant.
+      this.scheduleSwapEnsure();
+    }
+  }
+
+  componentWillUnmount(): void {
+    this.swapEnsureUnmounted = true;
+    super.componentWillUnmount();
+  }
+
+  private scheduleSwapEnsure(): void {
+    if (this.swapEnsureScheduled) return;
+    this.swapEnsureScheduled = true;
+    queueMicrotask(() => {
+      this.swapEnsureScheduled = false;
+      if (this.swapEnsureUnmounted) return;
+      // ensureCompactViewModel re-checks mode + VM presence itself (a
+      // measurement event may have won the race meanwhile).
+      this.ensureCompactViewModel();
+    });
   }
 
   protected getStateElements(): Base[] {
