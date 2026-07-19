@@ -52,7 +52,11 @@
  *   `dropdownListModel` after flip-back, so VM presence is not mode);
  *   collapsed value = readOnlyText → selected item locText →
  *   `placeholderRendered`, mirroring DropdownQuestion's fold minus the
- *   input-component tier (buttongroup has none upstream).
+ *   input-component tier (buttongroup has none upstream). Opener a11y
+ *   (role clamp + title-label fold + STRING ariaExpanded → boolean) is
+ *   the base's shared bundle (R6); the compact control renders NO clear
+ *   affordance (unchanged behavior — the base's clear gate is not
+ *   called here).
  * - Render purity (review-findings pass): render, `getStateElements`,
  *   and `getOverlayPopup` read ONLY the non-creating
  *   `dropdownListModelValue` backing field. The CREATING
@@ -100,8 +104,6 @@ interface ButtonGroupListVM {
 interface ButtonGroupQuestionModel {
   name: string;
   visibleChoices: ItemValue[];
-  processedTitle: string;
-  a11y_input_ariaLabel?: string | null;
   renderAs: string;
   isDesignMode: boolean;
   isInputReadOnly: boolean;
@@ -397,15 +399,9 @@ export class ButtonGroupQuestion extends OverlayControlBase<OverlayControlProps>
       <Pressable
         ref={this.controlRef}
         testID={`sv-buttongroup-dropdown-${question.name}`}
-        accessibilityRole={this.resolveComboboxRole(vm)}
-        accessibilityLabel={
-          question.a11y_input_ariaLabel ?? question.processedTitle
-        }
-        accessibilityState={{
-          disabled: readOnly,
-          // ariaExpanded is a STRING ('true' | 'false').
-          expanded: vm.ariaExpanded === 'true',
-        }}
+        // a11y: the shared base bundle (combobox role clamp,
+        // title-label fold, STRING ariaExpanded → boolean; R6).
+        {...this.buildOverlayOpenerA11y(vm)}
         disabled={readOnly}
         onPress={readOnly ? undefined : () => vm.onClick()}
         style={localStyles.control}
@@ -434,9 +430,9 @@ export class ButtonGroupQuestion extends OverlayControlBase<OverlayControlProps>
         <View
           testID={`sv-buttongroup-${question.name}`}
           accessibilityRole="radiogroup"
-          accessibilityLabel={
-            question.a11y_input_ariaLabel ?? question.processedTitle
-          }
+          // Same core title fold the base uses for the compact opener —
+          // the row is the non-overlay surface of the same question.
+          accessibilityLabel={this.resolveOpenerLabel()}
           style={composeStyles(recipe.fragments.container, {
             override: slots?.container,
           })}

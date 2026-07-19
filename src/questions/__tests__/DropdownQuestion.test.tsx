@@ -231,6 +231,18 @@ describe('DropdownQuestion — a11y mirrors the input aria surface (major #4)', 
         ?.expanded
     ).toBe(true);
   });
+
+  it('a HIDDEN title still names the opener (core emits the input aria-label; R6 pin)', async () => {
+    const { question } = createDropdown({
+      title: 'Fruit',
+      titleLocation: 'hidden',
+    });
+    render(<DropdownQuestion question={question} creator={{}} />);
+    await flush();
+    expect(
+      screen.getByTestId('sv-dropdown-control').props.accessibilityLabel
+    ).toBe('Fruit');
+  });
 });
 
 describe('DropdownQuestion — unmatched persisted value (r2 #1)', () => {

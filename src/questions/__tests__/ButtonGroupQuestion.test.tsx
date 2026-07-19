@@ -549,6 +549,18 @@ describe('ButtonGroupQuestion — 2.5b compact control (R5/R7)', () => {
     ).toBe(true);
   });
 
+  it('compact opener mirrors core combobox role and the question title as its accessible label (R6 pin)', () => {
+    const question = createButtonGroup({ title: 'Pick one' });
+    renderElement(question);
+    fireLayout(300);
+    fireContentWidth(800);
+    const control = screen.getByTestId('sv-buttongroup-dropdown-bg');
+    // No search input on the compact buttongroup VM: the role falls to
+    // ariaQuestionRole — combobox.
+    expect(control.props.accessibilityRole).toBe('combobox');
+    expect(control.props.accessibilityLabel).toBe('Pick one');
+  });
+
   it('flip-back WHILE THE POPUP IS OPEN unregisters and semantically closes it', () => {
     const question = createButtonGroup();
     const { stack } = renderElement(question);

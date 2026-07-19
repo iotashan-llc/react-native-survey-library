@@ -5,7 +5,8 @@
  *
  * Shares 2.3's overlay machinery (bridge register/reconcile,
  * opener-focus, unsubscribe-then-close teardown, combobox a11y with the
- * STRING `ariaExpanded`) via `OverlayControlBase` (task 2.5 R6).
+ * STRING `ariaExpanded` + the title-label fold, and the clear gate)
+ * via `OverlayControlBase` (task 2.5 R6).
  * Tagbox-specific (PR #30 review r1):
  * - `question.value` is an ARRAY. Chips come from the PUBLIC
  *   `question.selectedChoices` (ItemValues — excludes the synthetic
@@ -34,10 +35,7 @@ import type { AccessibilityRole } from 'react-native';
 import type { Base, Question } from '../core/facade';
 import { Helpers } from '../core/facade';
 import type { QuestionElementBaseProps } from '../reactivity/QuestionElementBase';
-import {
-  OverlayControlBase,
-  overlayNoopEvent,
-} from '../reactivity/OverlayControlBase';
+import { OverlayControlBase } from '../reactivity/OverlayControlBase';
 import type { OverlayControlProps } from '../reactivity/OverlayControlBase';
 import { OverlayContext } from '../overlay/OverlayContext';
 import { DropdownOtherComment } from './DropdownQuestion';
@@ -229,11 +227,7 @@ export class TagboxQuestion extends OverlayControlBase<TagboxQuestionProps> {
   private renderInteractive(vm: TagboxListModelLike): React.JSX.Element {
     const question = this.tagbox;
     const readOnly = question.isInputReadOnly;
-    const showClear = question.allowClear && !question.isEmpty() && !readOnly;
     const empty = question.isEmpty();
-    const accessibilityRole = this.resolveComboboxRole(vm);
-    const label =
-      question.locTitle?.renderedHtml || question.title || question.name;
     return (
       <View style={localStyles.row}>
         {/* Chips are SIBLINGS of the accessible opener so their remove
@@ -244,12 +238,9 @@ export class TagboxQuestion extends OverlayControlBase<TagboxQuestionProps> {
           <Pressable
             ref={this.controlRef}
             testID="sv-tagbox-control"
-            accessibilityRole={accessibilityRole}
-            accessibilityLabel={label}
-            accessibilityState={{
-              disabled: readOnly,
-              expanded: vm.ariaExpanded === 'true',
-            }}
+            // a11y: the shared base bundle (combobox role clamp,
+            // title-label fold, STRING ariaExpanded → boolean; R6).
+            {...this.buildOverlayOpenerA11y(vm)}
             disabled={readOnly}
             onPress={readOnly ? undefined : () => vm.onClick()}
             style={localStyles.opener}
@@ -264,17 +255,7 @@ export class TagboxQuestion extends OverlayControlBase<TagboxQuestionProps> {
             </Text>
           </Pressable>
         </View>
-        {showClear ? (
-          <Pressable
-            testID="sv-tagbox-clear"
-            accessibilityRole="button"
-            accessibilityLabel={vm.clearCaption || 'Clear'}
-            onPress={() => vm.onClear(overlayNoopEvent)}
-            style={localStyles.clear}
-          >
-            <Text>✕</Text>
-          </Pressable>
-        ) : null}
+        {this.renderOverlayClear(vm, 'sv-tagbox-clear')}
       </View>
     );
   }
@@ -322,7 +303,6 @@ const localStyles = StyleSheet.create({
     minWidth: 48,
   },
   flex: { flex: 1 },
-  clear: { marginLeft: 8, padding: 4 },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',

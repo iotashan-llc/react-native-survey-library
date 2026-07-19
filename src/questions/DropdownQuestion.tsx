@@ -24,9 +24,12 @@
  *   element (shared with the overlay host — adding it corrupts the
  *   render-guard's cross-observer counters).
  * - Popup bridge lifecycle (register/reconcile/teardown), `controlRef`,
- *   and the combobox role clamp live in `OverlayControlBase` (task 2.5
- *   R6); this class supplies `isOverlayMode` (`renderAs !== 'select'`)
- *   and `flushOverlayDiagnostics` (PR #29 review r1 #3, r2 #3).
+ *   the combobox role clamp, the opener a11y bundle (title-label fold +
+ *   STRING `ariaExpanded` → boolean conversion), and the clear gate
+ *   (`allowClear`/`clearCaption`/`onClear`) live in `OverlayControlBase`
+ *   (task 2.5 R6); this class supplies `isOverlayMode`
+ *   (`renderAs !== 'select'`) and `flushOverlayDiagnostics` (PR #29
+ *   review r1 #3, r2 #3).
  * - "Other (describe)" opens a choice comment (`isShowingChoiceComment`)
  *   that QuestionChrome does NOT render for dropdown. It renders through
  *   `DropdownOtherComment`, a child KEYED BY QUESTION IDENTITY: the
@@ -54,10 +57,7 @@ import type { Base, Question } from '../core/facade';
 import { Helpers } from '../core/facade';
 import type { QuestionElementBaseProps } from '../reactivity/QuestionElementBase';
 import { SurveyElementBase } from '../reactivity/SurveyElementBase';
-import {
-  OverlayControlBase,
-  overlayNoopEvent,
-} from '../reactivity/OverlayControlBase';
+import { OverlayControlBase } from '../reactivity/OverlayControlBase';
 import type { OverlayControlProps } from '../reactivity/OverlayControlBase';
 import { RNElementFactory } from '../factories/ElementFactory';
 import { OverlayContext } from '../overlay/OverlayContext';
@@ -316,25 +316,15 @@ export class DropdownQuestion extends OverlayControlBase<DropdownQuestionProps> 
   private renderControl(vm: DropdownListModelLike): React.JSX.Element {
     const question = this.dropdown;
     const readOnly = question.isInputReadOnly;
-    const showClear = question.allowClear && !question.isEmpty() && !readOnly;
-    // a11y: mirror core's INPUT aria surface (combobox under the default
-    // searchEnabled; falls to the question role when search is disabled/
-    // read-only), not a hardcoded button.
-    const accessibilityRole = this.resolveComboboxRole(vm);
-    const label =
-      question.locTitle?.renderedHtml || question.title || question.name;
     return (
       <View style={localStyles.row}>
         <Pressable
           ref={this.controlRef}
           testID="sv-dropdown-control"
-          accessibilityRole={accessibilityRole}
-          accessibilityLabel={label}
-          accessibilityState={{
-            disabled: readOnly,
-            // ariaExpanded is a STRING ('true' | 'false').
-            expanded: vm.ariaExpanded === 'true',
-          }}
+          // a11y: core's INPUT aria surface (combobox role clamp, the
+          // title-label fold, STRING ariaExpanded → boolean) — the
+          // shared base bundle (R6).
+          {...this.buildOverlayOpenerA11y(vm)}
           disabled={readOnly}
           onPress={readOnly ? undefined : () => vm.onClick()}
           style={localStyles.control}
@@ -350,17 +340,7 @@ export class DropdownQuestion extends OverlayControlBase<DropdownQuestionProps> 
             {'▾'}
           </Text>
         </Pressable>
-        {showClear ? (
-          <Pressable
-            testID="sv-dropdown-clear"
-            accessibilityRole="button"
-            accessibilityLabel={vm.clearCaption || 'Clear'}
-            onPress={() => vm.onClear(overlayNoopEvent)}
-            style={localStyles.clear}
-          >
-            <Text>✕</Text>
-          </Pressable>
-        ) : null}
+        {this.renderOverlayClear(vm, 'sv-dropdown-clear')}
       </View>
     );
   }
@@ -408,6 +388,5 @@ const localStyles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   chevron: { marginLeft: 8 },
-  clear: { marginLeft: 8, padding: 4 },
   other: { marginTop: 8 },
 });

@@ -159,6 +159,14 @@ describe('RatingDropdownQuestion — collapsed control (R7)', () => {
     expect(question.isEmpty()).toBe(true);
     expect(screen.queryByTestId('sv-rating-dropdown-clear-rate')).toBeNull();
   });
+
+  it('opener carries the question title as its accessible label (R6 pin)', () => {
+    const { question } = createRatingDropdown({ title: 'Rate our service' });
+    renderElement(question);
+    expect(
+      screen.getByTestId('sv-rating-dropdown-rate').props.accessibilityLabel
+    ).toBe('Rate our service');
+  });
 });
 
 describe('RatingDropdownQuestion — overlay (popup + selection)', () => {

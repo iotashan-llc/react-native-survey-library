@@ -17,7 +17,24 @@
  *   identity changes, so a question / OverlayContext prop swap retargets
  *   cleanly and the old registration never lingers,
  * - `resolveComboboxRole`: core's INPUT aria surface
- *   (`ariaInputRole ?? ariaQuestionRole`), clamped to the RN roles.
+ *   (`ariaInputRole ?? ariaQuestionRole`), clamped to the RN roles,
+ * - `resolveExpandedState`: core emits `ariaExpanded` as the STRING
+ *   'true'/'false' (web aria); the conversion to RN's boolean
+ *   `accessibilityState.expanded` lives here, once,
+ * - `resolveOpenerLabel`: the opener's accessible name — core's
+ *   `a11y_input_ariaLabel` when core would emit an input aria-label
+ *   (hidden title / nested question), else `processedTitle` (RN's
+ *   analog of web's aria-labelledby → title element). Probe-verified
+ *   identical to the legacy `locTitle.renderedHtml || title || name`
+ *   fold across every consumer's title variants,
+ * - `buildOverlayOpenerA11y`: the prop bundle (role + label +
+ *   disabled/expanded state) every consumer spreads onto its opener
+ *   Pressable,
+ * - `renderOverlayClear`: the shared clear affordance behind core's
+ *   gate (`allowClear && !isEmpty() && !isInputReadOnly`), named by
+ *   core's localized `clearCaption`, wired to
+ *   `vm.onClear(overlayNoopEvent)`. Consumers without a rendered clear
+ *   surface (buttongroup's compact control) simply don't call it.
  *
  * What each consumer overrides (the Template-Method hooks):
  * - `isOverlayMode()` — whether the interactive overlay should render +
@@ -30,7 +47,7 @@
  *   flushed from the commit phase (never reported during render).
  */
 import * as React from 'react';
-import { findNodeHandle, Pressable } from 'react-native';
+import { findNodeHandle, Pressable, StyleSheet, Text } from 'react-native';
 import type { AccessibilityRole } from 'react-native';
 import type { PopupModel } from '../core/facade';
 import { QuestionElementBase } from './QuestionElementBase';
@@ -67,6 +84,35 @@ export const KNOWN_OVERLAY_ROLES = new Set<AccessibilityRole>([
 export interface OverlayComboboxAria {
   ariaInputRole?: AccessibilityRole | string;
   ariaQuestionRole?: AccessibilityRole | string;
+}
+
+/** The aria slice `buildOverlayOpenerA11y` reads off a list VM.
+ * `ariaExpanded` is a STRING ('true' | 'false'), NOT a boolean —
+ * core mirrors the web aria attribute. */
+export interface OverlayOpenerAria extends OverlayComboboxAria {
+  ariaExpanded?: string;
+}
+
+/** The slice of the list VM the shared clear affordance consumes. */
+export interface OverlayClearVM {
+  clearCaption?: string;
+  onClear(event: { preventDefault(): void; stopPropagation(): void }): void;
+}
+
+/** The shared opener prop bundle (spread onto the opener Pressable). */
+export interface OverlayOpenerA11yProps {
+  accessibilityRole: AccessibilityRole;
+  accessibilityLabel: string;
+  accessibilityState: { disabled: boolean; expanded: boolean };
+}
+
+/** The question surface the base's a11y/clear helpers read. */
+interface OverlayA11yQuestionHost {
+  a11y_input_ariaLabel?: string | null;
+  processedTitle?: string;
+  allowClear?: boolean;
+  isInputReadOnly: boolean;
+  isEmpty(): boolean;
 }
 
 /** What `getOverlayPopup`'s default reads off the question. */
@@ -164,4 +210,78 @@ export abstract class OverlayControlBase<
       ? (candidate as AccessibilityRole)
       : 'button';
   }
+
+  /** Core emits `ariaExpanded` as the STRING 'true'/'false' (the web
+   * aria attribute value); RN's `accessibilityState.expanded` wants the
+   * boolean. The conversion lives here, once. */
+  protected resolveExpandedState(vm: { ariaExpanded?: string }): boolean {
+    return vm.ariaExpanded === 'true';
+  }
+
+  private get a11yQuestion(): OverlayA11yQuestionHost {
+    return this.questionBase as unknown as OverlayA11yQuestionHost;
+  }
+
+  /** The opener's accessible name: core's `a11y_input_ariaLabel` when
+   * core would emit an input aria-label (hidden title / nested
+   * question — then it IS `locTitle.renderedHtml`), else
+   * `processedTitle` (RN's accessible-name analog of web's
+   * aria-labelledby → title element). Probe-verified identical to the
+   * legacy `locTitle.renderedHtml || title || name` fold across all
+   * four consumers' title variants (titled / untitled × visible /
+   * hidden × nested). */
+  protected resolveOpenerLabel(): string {
+    const question = this.a11yQuestion;
+    return question.a11y_input_ariaLabel ?? question.processedTitle ?? '';
+  }
+
+  /** The shared opener a11y bundle — role clamp + label fold +
+   * disabled/expanded state — every consumer spreads onto its opener
+   * Pressable. `disabled` mirrors the same `isInputReadOnly` the
+   * consumers use to gate `onPress`. */
+  protected buildOverlayOpenerA11y(
+    vm: OverlayOpenerAria
+  ): OverlayOpenerA11yProps {
+    return {
+      accessibilityRole: this.resolveComboboxRole(vm),
+      accessibilityLabel: this.resolveOpenerLabel(),
+      accessibilityState: {
+        disabled: this.a11yQuestion.isInputReadOnly,
+        expanded: this.resolveExpandedState(vm),
+      },
+    };
+  }
+
+  /** The shared clear affordance behind core's gate
+   * (`allowClear && !isEmpty() && !isInputReadOnly`), named by core's
+   * localized `clearCaption` and wired to `vm.onClear(overlayNoopEvent)`.
+   * Returns null when gated off; `testID` stays per-consumer. */
+  protected renderOverlayClear(
+    vm: OverlayClearVM,
+    testID: string
+  ): React.JSX.Element | null {
+    const question = this.a11yQuestion;
+    if (
+      !question.allowClear ||
+      question.isEmpty() ||
+      question.isInputReadOnly
+    ) {
+      return null;
+    }
+    return (
+      <Pressable
+        testID={testID}
+        accessibilityRole="button"
+        accessibilityLabel={vm.clearCaption || 'Clear'}
+        onPress={() => vm.onClear(overlayNoopEvent)}
+        style={overlayControlStyles.clear}
+      >
+        <Text>{'✕'}</Text>
+      </Pressable>
+    );
+  }
 }
+
+const overlayControlStyles = StyleSheet.create({
+  clear: { marginLeft: 8, padding: 4 },
+});

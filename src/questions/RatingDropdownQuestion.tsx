@@ -31,14 +31,14 @@
  *   dispatch chain a renderAs flip re-routes to the "rating" template
  *   row (RatingQuestion) on the same render pass, so that branch is
  *   only reachable when the class is mounted directly.
- * - a11y mirrors core's INPUT aria surface: rating-dropdown has no
- *   search input (`searchEnabled` false), so `resolveComboboxRole`
- *   falls to `ariaQuestionRole` — `combobox`; `vm.ariaExpanded` is a
- *   STRING ('true' | 'false') the VM re-emits on open/close; the clear
- *   affordance is named by core's localized `clearCaption`.
- * - Clear: `dropdownListModel.onClear(event)` behind the core
- *   `allowClear` gate (synthetic no-op event — core only dereferences
- *   preventDefault/stopPropagation).
+ * - a11y mirrors core's INPUT aria surface through the base's shared
+ *   opener bundle (R6): rating-dropdown has no search input
+ *   (`searchEnabled` false), so the role clamp falls to
+ *   `ariaQuestionRole` — `combobox`; `vm.ariaExpanded` is a STRING
+ *   ('true' | 'false') the VM re-emits on open/close; the label is the
+ *   base's title fold.
+ * - Clear: the base's shared clear gate (`allowClear` +
+ *   `clearCaption` + `onClear(overlayNoopEvent)`; R6).
  */
 import * as React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -50,10 +50,7 @@ import type {
 } from '../core/facade';
 import type { QuestionElementBaseProps } from '../reactivity/QuestionElementBase';
 import { SurveyElementBase } from '../reactivity/SurveyElementBase';
-import {
-  OverlayControlBase,
-  overlayNoopEvent,
-} from '../reactivity/OverlayControlBase';
+import { OverlayControlBase } from '../reactivity/OverlayControlBase';
 import type { OverlayControlProps } from '../reactivity/OverlayControlBase';
 import { OverlayContext } from '../overlay/OverlayContext';
 
@@ -176,21 +173,14 @@ export class RatingDropdownQuestion extends OverlayControlBase<OverlayControlPro
       );
     }
     const readOnly = question.isInputReadOnly;
-    const showClear = question.allowClear && !question.isEmpty() && !readOnly;
     return (
       <View style={localStyles.row}>
         <Pressable
           ref={this.controlRef}
           testID={`sv-rating-dropdown-${question.name}`}
-          accessibilityRole={this.resolveComboboxRole(vm)}
-          accessibilityLabel={
-            question.a11y_input_ariaLabel ?? question.processedTitle
-          }
-          accessibilityState={{
-            disabled: readOnly,
-            // ariaExpanded is a STRING ('true' | 'false').
-            expanded: vm.ariaExpanded === 'true',
-          }}
+          // a11y: the shared base bundle (combobox role clamp,
+          // title-label fold, STRING ariaExpanded → boolean; R6).
+          {...this.buildOverlayOpenerA11y(vm)}
           disabled={readOnly}
           onPress={readOnly ? undefined : () => vm.onClick()}
           style={localStyles.control}
@@ -200,17 +190,10 @@ export class RatingDropdownQuestion extends OverlayControlBase<OverlayControlPro
             {'▾'}
           </Text>
         </Pressable>
-        {showClear ? (
-          <Pressable
-            testID={`sv-rating-dropdown-clear-${question.name}`}
-            accessibilityRole="button"
-            accessibilityLabel={vm.clearCaption || 'Clear'}
-            onPress={() => vm.onClear(overlayNoopEvent)}
-            style={localStyles.clear}
-          >
-            <Text>{'✕'}</Text>
-          </Pressable>
-        ) : null}
+        {this.renderOverlayClear(
+          vm,
+          `sv-rating-dropdown-clear-${question.name}`
+        )}
       </View>
     );
   }
@@ -225,5 +208,4 @@ const localStyles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   chevron: { marginLeft: 8 },
-  clear: { marginLeft: 8, padding: 4 },
 });

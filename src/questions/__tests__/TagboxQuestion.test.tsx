@@ -111,6 +111,23 @@ describe('TagboxQuestion — clear + a11y', () => {
       screen.getByTestId('sv-tagbox-control').props.accessibilityState?.expanded
     ).toBe(true);
   });
+
+  it('opener carries the question title as its accessible label; clear is named by the VM clearCaption (R6 pin)', async () => {
+    const { question } = createTagbox({ title: 'Toppings', allowClear: true });
+    question.value = ['apple'];
+    render(<TagboxQuestion question={question} creator={{}} />);
+    await flush();
+    expect(
+      screen.getByTestId('sv-tagbox-control').props.accessibilityLabel
+    ).toBe('Toppings');
+    const vm = (
+      question as unknown as { dropdownListModel: { clearCaption: string } }
+    ).dropdownListModel;
+    expect(vm.clearCaption).toBeTruthy();
+    expect(screen.getByTestId('sv-tagbox-clear').props.accessibilityLabel).toBe(
+      vm.clearCaption
+    );
+  });
 });
 
 // PR #30 review regressions (codex sol@max, revise round 1).
