@@ -336,9 +336,19 @@ export class TagboxQuestion extends OverlayControlBase<TagboxQuestionProps> {
     return (
       <View testID="sv-tagbox-pending" style={localStyles.chipsRow}>
         {question.isEmpty() ? (
-          <Text testID="sv-tagbox-placeholder">
-            {question.locPlaceholder?.renderedHtml || ''}
-          </Text>
+          // Same self-subscribing viewer treatment as the select fallback
+          // (r2 #2) — never raw renderedHtml text (external review 2.5fu).
+          <View testID="sv-tagbox-placeholder">
+            {question.locPlaceholder ? (
+              SurveyElementBase.renderLocString(
+                question.locPlaceholder,
+                undefined,
+                'tb-pending-placeholder'
+              )
+            ) : (
+              <Text>{''}</Text>
+            )}
+          </View>
         ) : (
           this.renderChips(true)
         )}

@@ -339,10 +339,21 @@ export class DropdownQuestion extends OverlayControlBase<DropdownQuestionProps> 
       ? ''
       : String((question as { value?: unknown }).value ?? '');
     if (raw) return <Text testID="sv-dropdown-value">{raw}</Text>;
+    // Placeholder through the self-subscribing LocString viewer (live
+    // onStringChanged / renderAs support) — never raw renderedHtml text
+    // (external review 2.5fu; newly reachable on every empty pending frame).
     return (
-      <Text testID="sv-dropdown-placeholder">
-        {question.locPlaceholder?.renderedHtml || ''}
-      </Text>
+      <View testID="sv-dropdown-placeholder">
+        {question.locPlaceholder ? (
+          SurveyElementBase.renderLocString(
+            question.locPlaceholder,
+            undefined,
+            'dd-placeholder'
+          )
+        ) : (
+          <Text>{''}</Text>
+        )}
+      </View>
     );
   }
 

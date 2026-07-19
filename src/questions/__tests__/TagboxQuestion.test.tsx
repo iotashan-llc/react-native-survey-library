@@ -9,6 +9,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { Model } from '../../core/facade';
 import '../../factories/register-all';
 import { TagboxQuestion, TagboxQuestionElement } from '../TagboxQuestion';
+import { SurveyLocStringViewer } from '../../components/LocStringViewer';
 import { OverlayContext } from '../../overlay/OverlayContext';
 import { createOverlayStack } from '../../overlay/stack';
 import type { OverlayPayload } from '../../overlay/popup-bridge';
@@ -398,6 +399,20 @@ describe('TagboxQuestion — render purity (2.5fu backport)', () => {
     } finally {
       setDiagnosticHandler(undefined);
     }
+  });
+
+  it('the pending frame renders an EMPTY placeholder through the LocString viewer — not raw renderedHtml text (external review 2.5fu)', () => {
+    const { question } = createTagbox();
+    question.placeholder = 'Pick some';
+    render(<TagboxQuestion question={question} creator={{}} />);
+    // BEFORE the deferred ensure runs: same self-subscribing viewer
+    // treatment the select fallback already has (r2 #2) — never a raw
+    // Text of renderedHtml.
+    expect(screen.getByTestId('sv-tagbox-placeholder')).toBeTruthy();
+    expect(
+      screen.UNSAFE_queryAllByType(SurveyLocStringViewer).length
+    ).toBeGreaterThan(0);
+    expect(screen.getByText('Pick some')).toBeTruthy();
   });
 
   it('a select-mode MOUNT never constructs the VM (the creating tagbox getter has no renderAs gate — the renderer discipline is the gate)', async () => {

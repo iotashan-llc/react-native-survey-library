@@ -13,6 +13,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { Model } from '../../core/facade';
 import '../../factories/register-all';
 import { DropdownQuestion, DropdownQuestionElement } from '../DropdownQuestion';
+import { SurveyLocStringViewer } from '../../components/LocStringViewer';
 import { OverlayContext } from '../../overlay/OverlayContext';
 import { createOverlayStack } from '../../overlay/stack';
 import type { OverlayPayload } from '../../overlay/popup-bridge';
@@ -430,6 +431,20 @@ describe('DropdownQuestion — render purity (2.5fu backport)', () => {
     } finally {
       setDiagnosticHandler(undefined);
     }
+  });
+
+  it('the pending frame renders an EMPTY placeholder through the LocString viewer — not raw renderedHtml text (external review 2.5fu)', () => {
+    const { question } = createDropdown();
+    question.placeholder = 'Pick one';
+    render(<DropdownQuestion question={question} creator={{}} />);
+    // BEFORE the deferred ensure runs: the placeholder must be a
+    // self-subscribing viewer (live onStringChanged / renderAs support),
+    // never a raw Text of renderedHtml.
+    expect(screen.getByTestId('sv-dropdown-placeholder')).toBeTruthy();
+    expect(
+      screen.UNSAFE_queryAllByType(SurveyLocStringViewer).length
+    ).toBeGreaterThan(0);
+    expect(screen.getByText('Pick one')).toBeTruthy();
   });
 });
 
