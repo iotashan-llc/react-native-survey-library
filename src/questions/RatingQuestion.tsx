@@ -7,20 +7,20 @@
  * build.
  *
  * Dispatch (mirrors upstream exactly): `RatingQuestion` registers under
- * the single template key `"rating"` (`ReactQuestionFactory` has no
- * renderAs-keyed registration for rating -- `RendererFactory` is never
- * called for this type upstream, so there is no renderer-route row here
- * either). Per-item rendering dispatches through `RNElementFactory` under
- * `question.itemComponent` (`"sv-rating-item"` labels/numbers,
- * `"sv-rating-item-star"` stars, `"sv-rating-item-smiley"` smileys,
- * `"sv-rating-dropdown-item"` for `renderAs: "dropdown"` -- DEFERRED to
- * M2 popups per the task; a dispatch miss there falls through to the
- * shared unsupported-item fallback below, same non-throwing contract as
- * the top-level factory (invariant 9)) -- an internal-to-question factory
- * concept with no upstream `RendererFactory` involvement, but reusing
- * `RNElementFactory` here (rather than a private switch) preserves
- * upstream's own consumer-extensibility hook: a host can register a
- * replacement item component under one of these keys.
+ * the template key `"rating"` (the default button-row rendering);
+ * `displayMode: "dropdown"` routes through the `sv-rating-dropdown`
+ * renderer-route row to `RatingDropdownQuestion` (task 2.5a) and never
+ * reaches this component. Per-item rendering here dispatches through
+ * `RNElementFactory` under `question.itemComponent` (`"sv-rating-item"`
+ * labels/numbers, `"sv-rating-item-star"` stars,
+ * `"sv-rating-item-smiley"` smileys; a dispatch miss on an unregistered
+ * name falls through to the shared unsupported-item fallback below,
+ * same non-throwing contract as the top-level factory (invariant 9)) --
+ * an internal-to-question factory concept with no upstream
+ * `RendererFactory` involvement, but reusing `RNElementFactory` here
+ * (rather than a private switch) preserves upstream's own
+ * consumer-extensibility hook: a host can register a replacement item
+ * component under one of these keys.
  *
  * Selection: `question.setValueFromClick(value)` (question_rating.ts) --
  * consumed as-is (invariant 6): it already handles the
@@ -305,8 +305,8 @@ export class RatingQuestion extends QuestionElementBase<QuestionElementBaseProps
     this.ratingQuestion.setValueFromClick(value);
   };
 
-  /** Set during render on an item-dispatch miss (e.g. `renderAs: "dropdown"`
-   * -- deferred to M2), reported from the commit lifecycles below (0.7's
+  /** Set during render on an item-dispatch miss (an unregistered custom
+   * `itemComponent`), reported from the commit lifecycles below (0.7's
    * "no diagnostics during render" rule -- same pattern SurveyHeader's
    * wrapper-miss diagnostic uses), deduped per componentName for this
    * instance's lifetime. Never throws (invariant 9): a miss simply omits

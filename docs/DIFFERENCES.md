@@ -732,6 +732,25 @@ in v1 — `"video"`/`"youtube"` render nothing and report an
 `image-content-mode-unsupported` diagnostic (native video/WebView paths
 are deferred).
 
+## Rating question — `displayMode: "dropdown"` (task 2.5a)
+
+### The drop-down mode presents through the 2.1 overlay sheet
+
+`displayMode: "dropdown"` (core maps it to `renderAs` at load and on a
+runtime change, both directions) routes through the `sv-rating-dropdown`
+renderer row to an overlay-backed control — the SAME `dropdownListModel`
++ sv-list ListPicker sheet the dropdown/tagbox questions use, never
+web's anchored popup. The collapsed control shows core's
+`selectedItemLocText` (its `readOnlyText` when read-only, the localized
+placeholder when empty), carries combobox a11y (core's input aria
+surface; `ariaExpanded` is a string `'true'`/`'false'`), and exposes a
+clear affordance named by core's `clearCaption` behind the `allowClear`
+gate. Web's `sv-rating-dropdown-item` component is that collapsed
+selected-value display, not an overlay row — nothing is registered
+under that key; the overlay rows are the shared ListPicker's. The
+Dropdown-question differences (overlay sheet, not an anchored list; no
+inline filter input) apply — see the Dropdown question section.
+
 ## Buttongroup question (task 2.9, overflow 2.5b)
 
 ### Overflow-to-dropdown measures via ScrollView content-vs-viewport, not a ResizeObserver

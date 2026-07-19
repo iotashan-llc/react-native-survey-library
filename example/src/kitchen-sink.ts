@@ -172,6 +172,14 @@ export const kitchenSinkJson = {
           rateValues: ['solo', 'small', 'medium', 'large'],
         },
         {
+          type: 'rating',
+          name: 'satisfaction',
+          title: 'Overall satisfaction (rating, displayMode: dropdown)',
+          displayMode: 'dropdown',
+          rateMin: 1,
+          rateMax: 10,
+        },
+        {
           type: 'buttongroup',
           name: 'plan',
           title: 'Plan (buttongroup)',

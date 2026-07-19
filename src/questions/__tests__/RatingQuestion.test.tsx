@@ -204,7 +204,11 @@ describe('RatingQuestion -- read-only', () => {
   });
 });
 
-describe('RatingQuestion -- item-dispatch miss (renderAs: "dropdown", deferred to M2)', () => {
+describe('RatingQuestion -- item-dispatch miss (unregistered custom itemComponent)', () => {
+  // (Formerly the renderAs:"dropdown" deferral test -- displayMode:
+  // "dropdown" is SUPPORTED as of task 2.5a through the sv-rating-dropdown
+  // renderer route; see RatingDropdownQuestion.test.tsx. The miss
+  // machinery itself stays covered via a custom itemComponent name.)
   afterEach(() => {
     setDiagnosticHandler(undefined);
   });
@@ -212,8 +216,10 @@ describe('RatingQuestion -- item-dispatch miss (renderAs: "dropdown", deferred t
   it('never throws; renders the row with no items; reports an element-wrapper-missing diagnostic', () => {
     const diagnostics: DiagnosticPayload[] = [];
     setDiagnosticHandler((payload) => diagnostics.push(payload));
-    const { question } = createRatingQuestion('q10', { renderAs: 'dropdown' });
-    expect(question.itemComponent).toBe('sv-rating-dropdown-item');
+    const { question } = createRatingQuestion('q10', {
+      itemComponent: 'sv-rating-item-unregistered-custom',
+    });
+    expect(question.itemComponent).toBe('sv-rating-item-unregistered-custom');
     expect(() =>
       render(<RatingQuestion question={question} creator={{}} />)
     ).not.toThrow();
@@ -222,7 +228,7 @@ describe('RatingQuestion -- item-dispatch miss (renderAs: "dropdown", deferred t
     expect(diagnostics).toEqual([
       expect.objectContaining({
         code: 'element-wrapper-missing',
-        componentName: 'sv-rating-dropdown-item',
+        componentName: 'sv-rating-item-unregistered-custom',
         reason: 'rating-item-component',
       }),
     ]);

@@ -197,6 +197,7 @@ describe('registerAll (module side effect)', () => {
       'rating',
       'sv-boolean-checkbox',
       'sv-boolean-radio',
+      'sv-rating-dropdown',
       'tagbox',
       'text',
     ]);
