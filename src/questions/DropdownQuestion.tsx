@@ -47,6 +47,17 @@
  *   deduped per QUESTION IDENTITY + key via a WeakMap — never reported
  *   from the render phase (repo React 19 commit-phase rule; PR #29
  *   review r2 #6, r3 #4).
+ * - Render purity (2.5fu backport of the 2.5 discipline): render,
+ *   `getStateElements`, and the base's `getOverlayPopup` read ONLY the
+ *   non-creating `dropdownListModelValue` backing field. The CREATING
+ *   `dropdownListModel` getter is touched exclusively by the DEFERRED
+ *   (one-microtask) ensure scheduled from the commit lifecycles
+ *   (StrictMode-safe: the unmount latch resets on every (re)mount).
+ *   Until it runs, a VM-free pending frame renders the question-level
+ *   R7 fold (readOnlyText → selectedItemLocText → raw value →
+ *   placeholder — probe-verified non-creating) for a single tick.
+ *   Select mode never constructs (core's `useDropdownList` gate never
+ *   would either).
  * - Clear: `dropdownListModel.onClear(event)` — core dereferences only
  *   preventDefault/stopPropagation (synthetic no-ops).
  */
@@ -80,7 +91,15 @@ interface DropdownListModelLike {
 }
 
 interface DropdownQuestionModelLike extends Question {
+  /** Lazy CREATING getter — core gates it on `useDropdownList`
+   * (`renderAs !== 'select'`), so select mode never constructs. Touched
+   * only OUTSIDE render (the deferred ensure — render purity). */
   dropdownListModel?: DropdownListModelLike;
+  /** Core's NON-CREATING backing field — the only VM read that render,
+   * `getStateElements`, and the base's `getOverlayPopup` ever make.
+   * Watchlisted as the `dropdownListModelValue` backing field
+   * (question_dropdown.ts). */
+  dropdownListModelValue?: DropdownListModelLike;
   renderAs: string;
   allowClear: boolean;
   showInputFieldComponent: boolean;
@@ -191,8 +210,12 @@ export class DropdownQuestion extends OverlayControlBase<DropdownQuestionProps> 
     // isShowingChoiceComment change on the QUESTION; list state AND
     // ariaExpanded (the VM re-emits it on open/close) change on the VM.
     // Select mode is non-interactive — the VM (if it lingers) is unused.
+    // Read through the NON-CREATING backing field: this runs from render
+    // (getRenderedElements) AND the commit lifecycles, and must never be
+    // a construction point (render purity; construction lives in the
+    // deferred ensure below).
     if (this.isSelectMode) return [this.questionBase];
-    const model = this.dropdown.dropdownListModel as unknown as
+    const model = this.dropdown.dropdownListModelValue as unknown as
       Base | undefined;
     return model ? [this.questionBase, model] : [this.questionBase];
   }
@@ -210,6 +233,63 @@ export class DropdownQuestion extends OverlayControlBase<DropdownQuestionProps> 
    * reliable signal; R5). Select mode never registers a sheet. */
   protected isOverlayMode(): boolean {
     return !this.isSelectMode;
+  }
+
+  // ——— Deferred VM materialization (2.5fu render-purity backport) ———
+  // Core's creating getter fires construction property notifications ON
+  // THE QUESTION, so a synchronous construction in render OR the
+  // mount-commit window would land in this component's own fresh
+  // subscription and trip the 0.4 D4 dev invariant (probe-verified for
+  // rating/buttongroup; same DropdownListModel construction path).
+  // Deferred one microtask, construction lands outside render and
+  // outside any commit; until it runs the component renders the VM-free
+  // pending frame below for that single tick. Select mode never
+  // schedules (and core's `useDropdownList` gate never constructs there
+  // anyway).
+  private ensureScheduled = false;
+  private ensureUnmounted = false;
+
+  componentDidMount(): void {
+    super.componentDidMount();
+    // React 19 StrictMode (dev) replays the mount lifecycles on the SAME
+    // instance (didMount → willUnmount → didMount): clear the unmount
+    // latch on every (re)mount or the deferred ensure below would bail
+    // forever after the simulated unmount (mirror of external review
+    // C1). A still-pending microtask from the pre-replay didMount
+    // re-checks all conditions itself, so leaving `ensureScheduled`
+    // untouched is safe in either interleaving.
+    this.ensureUnmounted = false;
+    this.scheduleEnsureOverlayViewModel();
+  }
+
+  componentDidUpdate(): void {
+    super.componentDidUpdate();
+    // Covers a question prop swap and a runtime select → overlay
+    // renderAs flip (this class self-branches on renderAs — no remount).
+    this.scheduleEnsureOverlayViewModel();
+  }
+
+  componentWillUnmount(): void {
+    this.ensureUnmounted = true;
+    super.componentWillUnmount();
+  }
+
+  private scheduleEnsureOverlayViewModel(): void {
+    const question = this.dropdown;
+    if (!this.isOverlayMode() || question.dropdownListModelValue) return;
+    if (this.ensureScheduled) return;
+    this.ensureScheduled = true;
+    queueMicrotask(() => {
+      this.ensureScheduled = false;
+      if (this.ensureUnmounted) return;
+      if (!this.isOverlayMode() || this.dropdown.dropdownListModelValue) {
+        return;
+      }
+      // The CREATING getter — re-render only if it actually materialized
+      // (the forceUpdate is deliberate: construction notifications alone
+      // are core-version incidentals, not a re-render contract).
+      if (this.dropdown.dropdownListModel) this.forceUpdate();
+    });
   }
 
   /** Deferred diagnostics, flushed by the base from the commit phase.
@@ -302,6 +382,31 @@ export class DropdownQuestion extends OverlayControlBase<DropdownQuestionProps> 
     );
   }
 
+  /** The one-microtask pre-materialization frame (render purity): the
+   * VM does not exist yet, so render the R7 fold from QUESTION-level
+   * members only — probe-verified NON-creating: `isInputReadOnly`,
+   * `readOnlyText`, `selectedItemLocText`, `value`, `locPlaceholder` —
+   * NEVER `showSelectedItemLocText` (its fold evaluates the CREATING
+   * getter once a value is set) and never the custom input-component
+   * tier (it needs `vm.getSelectedAction()`; it appears one tick later
+   * with the real control). Non-interactive for the single tick; no
+   * diagnostics (this is overlay mode, not the select fallback). */
+  private renderPendingControl(): React.JSX.Element {
+    const question = this.dropdown;
+    return (
+      <View style={localStyles.row} testID="sv-dropdown-control-pending">
+        {question.isInputReadOnly && question.readOnlyText ? (
+          <Text testID="sv-dropdown-readonly">{question.readOnlyText}</Text>
+        ) : (
+          this.renderSelectedText()
+        )}
+        <Text accessibilityElementsHidden style={localStyles.chevron}>
+          {'▾'}
+        </Text>
+      </View>
+    );
+  }
+
   /** `renderAs:"select"` (no interactive sheet): non-interactive value
    * display + a deferred diagnostic — never crash the survey. */
   private renderSelectModeFallback(): React.JSX.Element {
@@ -347,7 +452,11 @@ export class DropdownQuestion extends OverlayControlBase<DropdownQuestionProps> 
 
   protected renderElement(): React.JSX.Element {
     const question = this.dropdown;
-    const vm = question.dropdownListModel;
+    // NON-CREATING read (render purity): in overlay mode the VM is
+    // materialized by the deferred ensure (one microtask after the
+    // mount/update commit) — until then the VM-free pending frame below
+    // renders for a single tick.
+    const vm = this.isSelectMode ? undefined : question.dropdownListModelValue;
     // Clear the deferred-diagnostic buffers fresh each render so an
     // abandoned render can't leak a stale miss into a later commit; the
     // originating question travels with the buffers for per-identity
@@ -358,10 +467,11 @@ export class DropdownQuestion extends OverlayControlBase<DropdownQuestionProps> 
     // Mode is keyed on renderAs (a lingering VM after a runtime switch is
     // NOT a reliable signal). The Other-comment input renders in BOTH
     // modes when the "Other" choice is selected.
-    const top =
-      this.isSelectMode || !vm
-        ? this.renderSelectModeFallback()
-        : this.renderControl(vm);
+    const top = this.isSelectMode
+      ? this.renderSelectModeFallback()
+      : vm
+        ? this.renderControl(vm)
+        : this.renderPendingControl();
     return (
       <View style={localStyles.container}>
         {top}

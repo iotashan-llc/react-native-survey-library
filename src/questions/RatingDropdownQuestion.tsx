@@ -191,14 +191,10 @@ export class RatingDropdownQuestion extends OverlayControlBase<OverlayControlPro
     return this.rating.renderAs === 'dropdown';
   }
 
-  /** NON-CREATING override of the base default (which reads the lazy
-   * CREATING getter): reconcile runs in the commit phase, and VM
-   * construction there would fire core property notifications into
-   * already-subscribed observers mid-commit. Construction belongs to
-   * the deferred ensure exclusively. */
-  protected getOverlayPopup(): PopupModel | null {
-    return this.rating.dropdownListModelValue?.popupModel ?? null;
-  }
+  // `getOverlayPopup` is the base default: the NON-CREATING
+  // `dropdownListModelValue?.popupModel` read (2.5fu backport made the
+  // default itself non-creating, so the former override collapsed).
+  // Construction belongs to the deferred ensure below exclusively.
 
   // ——— Deferred VM materialization (M1 render purity) ———
   // Rating has NO measurement seam (unlike buttongroup's onLayout /

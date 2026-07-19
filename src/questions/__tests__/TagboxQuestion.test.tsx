@@ -4,6 +4,7 @@
  * docs/design/2.4-tagbox-plan.md). Value is an ARRAY; the control shows
  * removable chips; the overlay list stays open across selections.
  */
+import * as React from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { Model } from '../../core/facade';
 import '../../factories/register-all';
@@ -335,6 +336,121 @@ describe('TagboxQuestion — case/whitespace-distinct values match core semantic
     // Removing the unmatched lowercase 'a' leaves ['A'].
     fireEvent.press(screen.getByTestId('sv-tagbox-chip-remove-a'));
     expect(JSON.parse(JSON.stringify(question.value))).toEqual(['A']);
+  });
+});
+
+describe('TagboxQuestion — render purity (2.5fu backport)', () => {
+  it('constructs the lazy VM exactly once and NEVER during a render pass', async () => {
+    const { question } = createTagbox();
+    const events: string[] = [];
+    let backing: unknown;
+    // Intercept the backing-field WRITE (creation) and stamp whether a
+    // render pass was live via the shared D2 render guard (mirror of the
+    // ButtonGroup/RatingDropdown purity pins).
+    Object.defineProperty(question, 'dropdownListModelValue', {
+      configurable: true,
+      get: () => backing,
+      set: (value: unknown) => {
+        if (value !== undefined && backing === undefined) {
+          const guard =
+            (question as unknown as { reactRendering?: number })
+              .reactRendering ?? 0;
+          events.push(
+            guard > 0
+              ? 'constructed-during-render'
+              : 'constructed-outside-render'
+          );
+        }
+        backing = value;
+      },
+    });
+    render(<TagboxQuestion question={question} creator={{}} />);
+    // Mount (render + commit) reads only the non-creating backing field.
+    expect(events).toEqual([]);
+    // The deferred (microtask) ensure materializes OUTSIDE render and
+    // outside the mount-commit window.
+    await flush();
+    expect(events).toEqual(['constructed-outside-render']);
+    expect(screen.getByTestId('sv-tagbox-control')).toBeTruthy();
+    await flush();
+    expect(events).toHaveLength(1); // exactly once, ever
+  });
+
+  it('chips do NOT regress during the one-microtask pre-materialization frame — never the select fallback, no diagnostic', async () => {
+    const codes: string[] = [];
+    setDiagnosticHandler((p: DiagnosticPayload) => codes.push(p.code));
+    try {
+      const { question } = createTagbox();
+      question.value = ['apple', 'banana'];
+      render(<TagboxQuestion question={question} creator={{}} />);
+      // BEFORE the deferred ensure runs: chips render VM-free from
+      // question.selectedChoices/renderedValue, and the frame is NOT the
+      // select-mode fallback (no spurious diagnostic).
+      expect(screen.getByTestId('sv-tagbox-chip-apple')).toBeTruthy();
+      expect(screen.getByTestId('sv-tagbox-chip-banana')).toBeTruthy();
+      expect(screen.queryByTestId('sv-tagbox-select-fallback')).toBeNull();
+      expect(codes).toHaveLength(0);
+      await flush();
+      // …then the real interactive opener materializes, chips intact.
+      expect(screen.getByTestId('sv-tagbox-control')).toBeTruthy();
+      expect(screen.getByTestId('sv-tagbox-chip-apple')).toBeTruthy();
+      expect(codes).toHaveLength(0);
+    } finally {
+      setDiagnosticHandler(undefined);
+    }
+  });
+
+  it('a select-mode MOUNT never constructs the VM (the creating tagbox getter has no renderAs gate — the renderer discipline is the gate)', async () => {
+    const { question } = createTagbox({ renderAs: 'select' });
+    question.value = ['apple'];
+    render(<TagboxQuestion question={question} creator={{}} />);
+    await flush();
+    expect(screen.getByTestId('sv-tagbox-select-fallback')).toBeTruthy();
+    expect(
+      (question as unknown as { dropdownListModelValue?: unknown })
+        .dropdownListModelValue
+    ).toBeUndefined();
+  });
+});
+
+describe('TagboxQuestion — StrictMode lifecycle replay (2.5fu backport)', () => {
+  it('the deferred ensure survives the StrictMode mount → simulated-unmount → remount replay on the SAME instance: the opener still materializes', async () => {
+    // React 19 StrictMode (dev) replays the class mount lifecycles on the
+    // SAME instance (didMount → willUnmount → didMount): a one-way
+    // `ensureUnmounted` latch never reset would leave the control on the
+    // pending frame forever (mirror of external review C1).
+    const { question } = createTagbox();
+    render(
+      <React.StrictMode>
+        <TagboxQuestion question={question} creator={{}} />
+      </React.StrictMode>
+    );
+    await flush();
+    expect(
+      (question as unknown as { dropdownListModelValue?: unknown })
+        .dropdownListModelValue
+    ).toBeDefined();
+    expect(screen.getByTestId('sv-tagbox-control')).toBeTruthy();
+  });
+
+  it('the exact documented replay sequence (didMount → willUnmount → didMount before any microtask) does not latch the ensure machinery', async () => {
+    // Belt-and-suspenders next to the StrictMode render above: drive the
+    // documented sequence explicitly on the mounted instance so the test
+    // stays decisive even if the harness's StrictMode timing changes.
+    const { question } = createTagbox();
+    render(<TagboxQuestion question={question} creator={{}} />);
+    const instance = screen.UNSAFE_getByType(TagboxQuestion)
+      .instance as TagboxQuestion;
+    act(() => {
+      instance.componentWillUnmount();
+      instance.componentDidMount();
+    });
+    await flush();
+    expect(
+      (question as unknown as { dropdownListModelValue?: unknown })
+        .dropdownListModelValue
+    ).toBeDefined();
+    expect(screen.getByTestId('sv-tagbox-control')).toBeTruthy();
   });
 });
 

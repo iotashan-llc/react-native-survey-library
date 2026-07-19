@@ -8,6 +8,7 @@
  * placeholder (inline filter input dropped — inputMode='none' on web
  * touch). Popup bridge is question-scoped via OverlayContext.
  */
+import * as React from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { Model } from '../../core/facade';
 import '../../factories/register-all';
@@ -368,6 +369,108 @@ describe('DropdownQuestion — popup bridge reconciles on prop swap (major #3)',
     fireEvent.press(screen.getByTestId('sv-dropdown-control'));
     expect(stackA.entries()).toHaveLength(0);
     expect(stackB.entries()).toHaveLength(1);
+  });
+});
+
+describe('DropdownQuestion — render purity (2.5fu backport)', () => {
+  it('constructs the lazy VM exactly once and NEVER during a render pass', async () => {
+    const { question } = createDropdown();
+    const events: string[] = [];
+    let backing: unknown;
+    // Intercept the backing-field WRITE (creation) and stamp whether a
+    // render pass was live via the shared D2 render guard (mirror of the
+    // ButtonGroup/RatingDropdown purity pins).
+    Object.defineProperty(question, 'dropdownListModelValue', {
+      configurable: true,
+      get: () => backing,
+      set: (value: unknown) => {
+        if (value !== undefined && backing === undefined) {
+          const guard =
+            (question as unknown as { reactRendering?: number })
+              .reactRendering ?? 0;
+          events.push(
+            guard > 0
+              ? 'constructed-during-render'
+              : 'constructed-outside-render'
+          );
+        }
+        backing = value;
+      },
+    });
+    render(<DropdownQuestion question={question} creator={{}} />);
+    // Mount (render + commit) reads only the non-creating backing field.
+    expect(events).toEqual([]);
+    // The deferred (microtask) ensure materializes OUTSIDE render and
+    // outside the mount-commit window.
+    await flush();
+    expect(events).toEqual(['constructed-outside-render']);
+    expect(screen.getByTestId('sv-dropdown-control')).toBeTruthy();
+    await flush();
+    expect(events).toHaveLength(1); // exactly once, ever
+  });
+
+  it('the one-microtask pre-materialization frame shows the question-level value text — never the select fallback, no diagnostic', async () => {
+    const codes: string[] = [];
+    setDiagnosticHandler((p: DiagnosticPayload) => codes.push(p.code));
+    try {
+      const { question } = createDropdown();
+      question.value = 'banana';
+      render(<DropdownQuestion question={question} creator={{}} />);
+      // BEFORE the deferred ensure runs: the committed value renders
+      // VM-free (selectedItemLocText is a question-level member), and the
+      // frame is NOT the select-mode fallback (no spurious diagnostic).
+      expect(screen.getByText('banana')).toBeTruthy();
+      expect(screen.queryByTestId('sv-dropdown-select-fallback')).toBeNull();
+      expect(codes).toHaveLength(0);
+      await flush();
+      // …then the real interactive control materializes.
+      expect(screen.getByTestId('sv-dropdown-control')).toBeTruthy();
+      expect(screen.getByText('banana')).toBeTruthy();
+      expect(codes).toHaveLength(0);
+    } finally {
+      setDiagnosticHandler(undefined);
+    }
+  });
+});
+
+describe('DropdownQuestion — StrictMode lifecycle replay (2.5fu backport)', () => {
+  it('the deferred ensure survives the StrictMode mount → simulated-unmount → remount replay on the SAME instance: the control still materializes', async () => {
+    // React 19 StrictMode (dev) replays the class mount lifecycles on the
+    // SAME instance (didMount → willUnmount → didMount): a one-way
+    // `ensureUnmounted` latch never reset would leave the control on the
+    // inert pending frame forever (mirror of external review C1).
+    const { question } = createDropdown();
+    render(
+      <React.StrictMode>
+        <DropdownQuestion question={question} creator={{}} />
+      </React.StrictMode>
+    );
+    await flush();
+    expect(
+      (question as unknown as { dropdownListModelValue?: unknown })
+        .dropdownListModelValue
+    ).toBeDefined();
+    expect(screen.getByTestId('sv-dropdown-control')).toBeTruthy();
+  });
+
+  it('the exact documented replay sequence (didMount → willUnmount → didMount before any microtask) does not latch the ensure machinery', async () => {
+    // Belt-and-suspenders next to the StrictMode render above: drive the
+    // documented sequence explicitly on the mounted instance so the test
+    // stays decisive even if the harness's StrictMode timing changes.
+    const { question } = createDropdown();
+    render(<DropdownQuestion question={question} creator={{}} />);
+    const instance = screen.UNSAFE_getByType(DropdownQuestion)
+      .instance as DropdownQuestion;
+    act(() => {
+      instance.componentWillUnmount();
+      instance.componentDidMount();
+    });
+    await flush();
+    expect(
+      (question as unknown as { dropdownListModelValue?: unknown })
+        .dropdownListModelValue
+    ).toBeDefined();
+    expect(screen.getByTestId('sv-dropdown-control')).toBeTruthy();
   });
 });
 

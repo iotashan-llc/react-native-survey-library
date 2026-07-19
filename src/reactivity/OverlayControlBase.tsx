@@ -41,8 +41,13 @@
  *   register. KEYED ON THIS, never on VM presence: core RETAINS a
  *   `dropdownListModel` after a runtime mode flip (R5), so "is the model
  *   there" is not "are we in overlay mode".
- * - `getOverlayPopup()` — the PopupModel to bridge (defaults to
- *   `question.dropdownListModel.popupModel`, shared by all four consumers).
+ * - `getOverlayPopup()` — the PopupModel to bridge (defaults to the
+ *   NON-CREATING `question.dropdownListModelValue?.popupModel` backing
+ *   field, shared by all four consumers — render purity: reconcile runs
+ *   in the commit phase, and reading the CREATING `dropdownListModel`
+ *   getter there would fire core construction notifications into
+ *   already-subscribed observers mid-commit; construction belongs to
+ *   each consumer's deferred ensure / core's own flip path).
  * - `flushOverlayDiagnostics()` — per-consumer deferred diagnostics,
  *   flushed from the commit phase (never reported during render).
  */
@@ -115,9 +120,11 @@ interface OverlayA11yQuestionHost {
   isEmpty(): boolean;
 }
 
-/** What `getOverlayPopup`'s default reads off the question. */
+/** What `getOverlayPopup`'s default reads off the question: core's
+ * NON-CREATING `dropdownListModelValue` backing field — never the lazy
+ * CREATING `dropdownListModel` getter (render purity). */
 interface DropdownListModelHost {
-  dropdownListModel?: { popupModel?: PopupModel };
+  dropdownListModelValue?: { popupModel?: PopupModel };
 }
 
 export abstract class OverlayControlBase<
@@ -142,10 +149,15 @@ export abstract class OverlayControlBase<
   protected abstract isOverlayMode(): boolean;
 
   /** The PopupModel to bridge when in overlay mode. Defaults to the
-   * question's `dropdownListModel.popupModel` (all four consumers). */
+   * question's NON-CREATING `dropdownListModelValue` backing field (all
+   * four consumers): reconcile runs in the commit phase, and VM
+   * construction there would fire core property notifications into
+   * already-subscribed observers mid-commit. Construction belongs to
+   * each consumer's deferred ensure / core's own flip path — never
+   * here. */
   protected getOverlayPopup(): PopupModel | null {
     const host = this.questionBase as unknown as DropdownListModelHost;
-    return host.dropdownListModel?.popupModel ?? null;
+    return host.dropdownListModelValue?.popupModel ?? null;
   }
 
   /** Per-consumer deferred diagnostics, flushed from the commit phase.

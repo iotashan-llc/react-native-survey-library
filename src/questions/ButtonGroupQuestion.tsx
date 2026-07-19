@@ -351,14 +351,11 @@ export class ButtonGroupQuestion extends OverlayControlBase<OverlayControlProps>
     return this.isCompactMode;
   }
 
-  /** NON-CREATING override of the base default (which reads the lazy
-   * CREATING getter): reconcile runs in the commit phase, and VM
-   * construction there would fire core property notifications into
-   * already-subscribed observers mid-commit. Construction belongs to
-   * `ensureCompactViewModel` / core's flip path exclusively. */
-  protected getOverlayPopup(): PopupModel | null {
-    return this.buttonGroup.dropdownListModelValue?.popupModel ?? null;
-  }
+  // `getOverlayPopup` is the base default: the NON-CREATING
+  // `dropdownListModelValue?.popupModel` read (2.5fu backport made the
+  // default itself non-creating, so the former override collapsed).
+  // Construction belongs to `ensureCompactViewModel` / core's flip path
+  // exclusively.
 
   /** Materializes the lazy VM when a question is ALREADY compact but the
    * VM does not exist yet — the remount-while-compact case (`renderAs`
