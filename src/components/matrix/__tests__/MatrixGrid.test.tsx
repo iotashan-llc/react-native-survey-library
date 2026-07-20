@@ -1,0 +1,224 @@
+/**
+ * M3 3.1a — `MatrixGrid` presentational primitive (design
+ * docs/design/M3-matrix-family-plan.md §3 / §3a). Fed a fully-RESOLVED
+ * `ResolvedGridContract` (dp widths + summed content width already
+ * computed by the measurement owner), it renders a flex-View grid inside
+ * a SINGLE horizontal ScrollView with the row-header column INSIDE the
+ * scroll content (no split-pane, no height-sync). It resolves NOTHING.
+ *
+ * Verified here: header/body/footer columns align on the ONE dp array +
+ * the identical summed content width; content wider than the viewport
+ * scrolls with NO shrink and NO width-0 collapse; a colSpan cell sums the
+ * exact spanned dp; detail rows are full-width; the row-header cell lives
+ * inside the scroll content; contract-supplied keys drive the rows.
+ */
+import { Text } from 'react-native';
+import { StyleSheet } from 'react-native';
+import { render, screen } from '@testing-library/react-native';
+
+import { MatrixGrid } from '../MatrixGrid';
+import type {
+  GridCell,
+  GridRow,
+  ResolvedGridColumn,
+  ResolvedGridContract,
+} from '../grid-contract';
+
+function textCell(key: string, label: string, span?: number): GridCell {
+  return {
+    key,
+    kind: 'question',
+    span,
+    render: () => <Text testID={`content-${key}`}>{label}</Text>,
+  };
+}
+
+function row(key: string, kind: GridRow['kind'], cells: GridCell[]): GridRow {
+  return { key, kind, cells, getStateElement: () => ({}) as never };
+}
+
+function col(
+  key: string,
+  dp: number,
+  isRowHeader?: boolean
+): ResolvedGridColumn {
+  return { key, dp, isRowHeader, header: <Text>{key}</Text> };
+}
+
+function width(testID: string): number {
+  return (
+    StyleSheet.flatten(screen.getByTestId(testID).props.style) as {
+      width?: number;
+    }
+  ).width as number;
+}
+
+/** A 3-column contract that fits the viewport (dp sums to contentWidth). */
+function fitContract(): ResolvedGridContract {
+  const columns = [col('rowh', 100, true), col('c1', 200), col('c2', 150)];
+  return {
+    columns,
+    contentWidth: 450,
+    showHeader: true,
+    hasFooter: true,
+    mobile: false,
+    stickyFirstColumn: false,
+    regime: 'fit',
+    rows: [
+      row('r1', 'data', [
+        textCell('r1-0', 'Row 1'),
+        textCell('r1-1', 'a'),
+        textCell('r1-2', 'b'),
+      ]),
+      row('ftr', 'footer', [
+        textCell('ftr-0', 'Total'),
+        textCell('ftr-1', '10'),
+        textCell('ftr-2', '20'),
+      ]),
+    ],
+  };
+}
+
+describe('MatrixGrid — single horizontal ScrollView baseline (§3a)', () => {
+  it('wraps the grid in ONE horizontal ScrollView with the content sized to the summed content width', () => {
+    render(<MatrixGrid contract={fitContract()} />);
+    expect(screen.getByTestId('matrix-scroll').props.horizontal).toBe(true);
+    expect(width('matrix-content')).toBe(450);
+  });
+
+  it('renders the row-header column as the FIRST cell INSIDE the scroll content (no split-pane)', () => {
+    render(<MatrixGrid contract={fitContract()} />);
+    const content = screen.getByTestId('matrix-content');
+    const rowHeaderCell = screen.getByTestId('matrix-hcell-0');
+    // the row-header header cell is a descendant of the scroll content
+    expect(content).toContainElement(rowHeaderCell);
+    // there is no separate fixed pane in the baseline
+    expect(screen.queryByTestId('matrix-sticky-pane')).toBeNull();
+  });
+});
+
+describe('MatrixGrid — header/body/footer alignment on the shared dp array (§3a.3f)', () => {
+  it('stamps the SAME per-column dp on header, body, and footer cells', () => {
+    render(<MatrixGrid contract={fitContract()} />);
+    // dp array [100, 200, 150]
+    for (const [slot, dp] of [
+      [0, 100],
+      [1, 200],
+      [2, 150],
+    ] as const) {
+      expect(width(`matrix-hcell-${slot}`)).toBe(dp);
+      expect(width(`matrix-cell-r1-${slot}`)).toBe(dp);
+      expect(width(`matrix-cell-ftr-${slot}`)).toBe(dp);
+    }
+  });
+
+  it('stamps the identical summed content width on the header, body, and footer bands', () => {
+    render(<MatrixGrid contract={fitContract()} />);
+    expect(width('matrix-band-header')).toBe(450);
+    expect(width('matrix-row-r1')).toBe(450);
+    expect(width('matrix-row-ftr')).toBe(450);
+  });
+
+  it('never collapses a cell to width 0', () => {
+    render(<MatrixGrid contract={fitContract()} />);
+    for (const testID of [
+      'matrix-hcell-0',
+      'matrix-hcell-1',
+      'matrix-hcell-2',
+      'matrix-cell-r1-0',
+      'matrix-cell-ftr-2',
+    ]) {
+      expect(width(testID)).toBeGreaterThan(0);
+    }
+  });
+});
+
+describe('MatrixGrid — content wider than the viewport scrolls with NO shrink (§3a.3c(b))', () => {
+  it('sizes the content to the overflow content width; cells keep their intrinsic dp', () => {
+    const columns = [col('rowh', 100, true), col('c1', 400), col('c2', 300)];
+    const contract: ResolvedGridContract = {
+      columns,
+      contentWidth: 800,
+      showHeader: true,
+      hasFooter: false,
+      mobile: false,
+      stickyFirstColumn: false,
+      regime: 'overflow',
+      rows: [
+        row('r1', 'data', [
+          textCell('r1-0', 'R'),
+          textCell('r1-1', 'a'),
+          textCell('r1-2', 'b'),
+        ]),
+      ],
+    };
+    render(<MatrixGrid contract={contract} />);
+    expect(width('matrix-content')).toBe(800);
+    expect(width('matrix-cell-r1-1')).toBe(400);
+    expect(width('matrix-cell-r1-2')).toBe(300);
+    // still one horizontal ScrollView — the surplus scrolls
+    expect(screen.getByTestId('matrix-scroll').props.horizontal).toBe(true);
+  });
+});
+
+describe('MatrixGrid — colSpan sums the exact spanned dp (§3a.1)', () => {
+  it('a span-2 cell is a single View summing the spanned column widths', () => {
+    const columns = [col('rowh', 100, true), col('c1', 200), col('c2', 150)];
+    const contract: ResolvedGridContract = {
+      columns,
+      contentWidth: 450,
+      showHeader: false,
+      hasFooter: false,
+      mobile: false,
+      stickyFirstColumn: false,
+      regime: 'fit',
+      rows: [
+        row('r1', 'data', [
+          textCell('r1-0', 'R'),
+          textCell('r1-1', 'wide', 2), // spans c1 + c2 = 200 + 150
+        ]),
+      ],
+    };
+    render(<MatrixGrid contract={contract} />);
+    expect(width('matrix-cell-r1-0')).toBe(100);
+    expect(width('matrix-cell-r1-1')).toBe(350);
+  });
+});
+
+describe('MatrixGrid — row topology (§3g)', () => {
+  it('a detail row is FULL-WIDTH (spans the content width), not column-aligned', () => {
+    const columns = [col('rowh', 100, true), col('c1', 200)];
+    const contract: ResolvedGridContract = {
+      columns,
+      contentWidth: 300,
+      showHeader: false,
+      hasFooter: false,
+      mobile: false,
+      stickyFirstColumn: false,
+      regime: 'fit',
+      rows: [
+        row('r1', 'data', [textCell('r1-0', 'R'), textCell('r1-1', 'a')]),
+        row('r1-detail', 'detail', [
+          {
+            key: 'r1-detail-panel',
+            kind: 'panel',
+            render: () => <Text testID="detail-body">detail</Text>,
+          },
+        ]),
+      ],
+    };
+    render(<MatrixGrid contract={contract} />);
+    expect(width('matrix-detail-r1-detail')).toBe(300);
+    expect(screen.getByTestId('detail-body')).toBeTruthy();
+  });
+});
+
+describe('MatrixGrid — showHeader gates the header band', () => {
+  it('omits the header band when showHeader is false', () => {
+    const c = fitContract();
+    render(<MatrixGrid contract={{ ...c, showHeader: false }} />);
+    expect(screen.queryByTestId('matrix-band-header')).toBeNull();
+    // body still renders
+    expect(screen.getByTestId('matrix-row-r1')).toBeTruthy();
+  });
+});
