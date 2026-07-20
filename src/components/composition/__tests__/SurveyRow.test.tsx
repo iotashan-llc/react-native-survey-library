@@ -423,6 +423,83 @@ describe('SurveyRow — header-adjacent first-row spacing (sd-row.scss `.sd-page
   });
 });
 
+describe('SurveyRow — content box owns the row main axis (kitchen-sink page-3 device parity)', () => {
+  /**
+   * Device-verified regression (iPad sim, kitchen-sink page 3): the row
+   * View is `flexDirection: 'row'`, so the content box's
+   * `alignSelf: 'stretch'` only stretches the CROSS axis (height) — on
+   * the MAIN axis Yoga sizes an auto-width content box by fit-content,
+   * shrinking children to their resolved `minWidth` during the measure.
+   * Question wrappers carry `minWidth` 300 and stay visible (squeezed);
+   * panel/paneldynamic wrappers have model `minWidth: "auto"` (no
+   * resolved minWidth) and collapse to WIDTH 0 — their nested SurveyRows
+   * then measure `onLayout` w=0, the `width > 0` defer gate never opens,
+   * and the panel body stays blank forever (observed live: inner rows
+   * `answeredSummary,ageNextYear` and `model,os` logged w=0 and
+   * deadlocked in DEFER). The content box must therefore claim the row's
+   * full main-axis width via `flexGrow: 1` — NOT `width: '100%'`, which
+   * would pin the multi-row negative-margin widening (see the component
+   * doc: content must widen to rowWidth + gutter).
+   */
+  const PANEL_IN_ROW = {
+    elements: [
+      {
+        type: 'panel',
+        name: 'scores',
+        title: 'Computed',
+        elements: [
+          { type: 'expression', name: 'sum' },
+          { type: 'expression', name: 'sum2', startWithNewLine: false },
+        ],
+      },
+    ],
+  };
+
+  function layoutAllRows(width: number): void {
+    act(() => {
+      for (const rowView of screen.getAllByTestId('sv-row')) {
+        fireEvent(rowView, 'layout', {
+          nativeEvent: { layout: { x: 0, y: 0, width, height: 0 } },
+        });
+      }
+    });
+  }
+
+  it('every non-stacked content box (page row AND nested panel row) carries flexGrow 1 and no explicit width', () => {
+    const { model, row } = firstRow(PANEL_IN_ROW);
+    render(
+      <SurveyRow row={row as never} survey={model} creator={{}} index={0} />
+    );
+    // Page row measures -> panel renders -> nested row mounts (deferred).
+    layoutAllRows(1032);
+    // Nested row measures -> nested content box renders.
+    layoutAllRows(1032);
+    const contents = screen.getAllByTestId('sv-row-content');
+    expect(contents.length).toBe(2); // page row + panel-inner row
+    for (const content of contents) {
+      const style = StyleSheet.flatten(content.props.style) as Record<
+        string,
+        unknown
+      >;
+      expect(style.flexGrow).toBe(1);
+      expect(style.width).toBeUndefined();
+    }
+  });
+
+  it('narrow (stacked) content boxes keep the main-axis claim too', () => {
+    const { model, row } = firstRow(THREE_UP);
+    render(
+      <SurveyThemeProvider narrow>
+        <SurveyRow row={row as never} survey={model} creator={{}} index={0} />
+      </SurveyThemeProvider>
+    );
+    layoutRow(360);
+    const style = flat('sv-row-content');
+    expect(style.flexGrow).toBe(1);
+    expect(style.width).toBeUndefined();
+  });
+});
+
 describe('SurveyRow — live width reactivity (1.3 design: integration test)', () => {
   it('mutating question.width re-renders the affected elements with fresh resolver numbers', () => {
     const { model, row } = firstRow({
