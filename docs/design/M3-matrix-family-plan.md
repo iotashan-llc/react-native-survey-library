@@ -1,11 +1,17 @@
 # Milestone M3 — Matrix family (matrix / matrixdropdown / matrixdynamic)
 
-Status: **DRAFT design — revision 2 (source-verified)**. Consolidated from three
+Status: **FINAL design — revision 3 (source-verified)**. Consolidated from three
 read-only research passes against survey-core 2.5.33 + survey-react-ui + this
-repo (core-models, web-renderer, repo-reuse), then corrected in revision 2
-against a source-verified design-approval review (choice-cell APIs, mobile
-totals, empty-state polarity, column-width water-fill, renderedTable identity,
-draft retargeting). All model facts below are re-confirmed against the checked-in
+repo (core-models, web-renderer, repo-reuse), corrected in revision 2 against a
+source-verified design-approval review, and finalized in **revision 3** against a
+last source-verified review that fixed: the renderedTable no-undefined-commit
+lifecycle contract, immutable-`cell.question.uniqueId` leaf keys (rendered
+`row.id`/`cell.id` are NOT universally stable), the explicit checkbox
+`clickItemHandler(item, !isItemSelected(item))` toggle value, the floor-safe
+largest-remainder width residual, the full no-question cell-kind precedence +
+action-id mapping, the placeholder add-button `showAddRow` gate, single MatrixGrid
+ownership, the width-resolver `WidthValue` wording, and the no-DOM
+architecture-principle relabel. All model facts below are re-confirmed against the checked-in
 survey-core 2.5.33 source and MUST still be re-confirmed by headless probe
 through the facade during TDD (the 2.5/2.8a precedent). This doc is the orchestrator's `CORE`
 design for the M3 family per CLAUDE.md orchestration rule 4; the 3.1 grid
@@ -34,7 +40,9 @@ matrixdynamic into **`question.renderedTable`** (`QuestionMatrixDropdownRendered
 `question_matrixdropdownrendered.ts`). The web renderer is a *dumb walker* over
 `renderedTable.headerRow` / `renderedRows` / `footerRow`, emitting
 `<thead>/<tbody>/<tfoot>/<td colSpan>`. But that abstraction is **DOM/table-shaped**
-and violates invariant 8: colspan semantics, `<td>` afterRender
+and violates the repo's **no-DOM / no-`afterRender` architecture principle**
+(A-decisions / won't-support list — a design principle, NOT numbered invariant 8,
+which is Security: HTML sanitized / URL allowlist): colspan semantics, `<td>` afterRender
 (`afterRenderQuestionElement(el: HTMLElement)`), `MatrixRow.setRootElement(domNode)`
 for focus + drag hit-testing, `RenderedRow.focusCell` via `querySelectorAll`, DOM
 height animations, and a pure-DOM `DragDropMatrixRows` engine
@@ -93,9 +101,14 @@ interface GridRow    { key: string; kind: 'data'|'detail'|'footer'|'error'; cell
 interface GridContract { columns: GridColumn[]; rows: GridRow[]; showHeader: boolean; hasFooter: boolean; mobile: boolean; stickyFirstColumn: boolean; }
 ```
 
-`width`/`minWidth` stay as core's raw CSS strings (`"120px"`, `"20%"`,
-`columnMinWidth`, `rowTitleWidth`) — `MatrixGrid` resolves them once against its
-measured width (§3). This is the CORE sub-design that lets one primitive serve
+`width`/`minWidth` are core's raw CSS strings (`"120px"`, `"20%"`,
+`columnMinWidth`, `rowTitleWidth`) that live on the core cells/columns. **ONE
+class-based owner** — the question-renderer (see §3 "MatrixGrid ownership") —
+reads them, resolves them once against the measured width (§3), and constructs the
+canonical column slots; the presentational `MatrixGrid` receives the
+ALREADY-RESOLVED dp array and resolves nothing. (So the `GridColumn.width`/`minWidth`
+raw-string fields above are the OWNER's INPUT, read from core; the dp array is
+MatrixGrid's INPUT.) This split is the CORE sub-design that lets one primitive serve
 all three types and any future grid.
 
 ---
@@ -233,19 +246,54 @@ also carries `item`** (an `ItemValue` wrapping its `ActionContainer` —
 !isOtherChoice` (`:80-90`), so the **Other choice cell** (`isOtherChoice`, set in
 `createEditCell` when `choiceItem === cell.question.otherItem`, `:1081-1089`) is
 `isChoice === true` yet has **neither `isCheckbox` nor `isRadio`**. Cell
-normalization must therefore resolve kinds in this precedence:
+normalization must therefore resolve kinds in this precedence — **ALL no-question
+structural cells are classified FIRST** (a data cell is dispatched as a question
+only after these are excluded), verified against `hasQuestion = !!question &&
+!isErrorsCell` (`question_matrixdropdownrendered.ts:52-54`). The existing
+choice/question case numbers (referenced elsewhere as "case 2" / "case 4") are
+preserved:
 
-1. **`isActionsCell` FIRST** → `GridCell.kind === 'actions'` (row remove/detail
-   buttons, §3e), never a choice — resolve before any `isChoice` check.
-2. **`isChoice === false`** → `GridCell.kind === 'question'`: whole-question
-   dispatch via `renderCellQuestion` (§2) + inline `QuestionErrors` (§2a). Default.
+0. **No-question NON-action structural cells (before everything else).** A cell
+   with `hasQuestion === false` is never a question dispatch and never an item:
+   a. **`isDragHandlerCell`** (`getRowDragCell`, `:688-696`) → `GridCell.kind ===
+      'drag'` — inert/hidden in v0.3 (§3f), sized `ACTIONS_COL_DP` (§3a.3e).
+   b. **`isEmpty`** (empty / leading filler, `:37`, `:692`) → `GridCell.kind ===
+      'empty'` — a contentless spacer sized to its slot.
+1. **`isActionsCell`** (STILL a no-question cell — caught before any `isChoice` item
+   path) → `GridCell.kind === 'actions'`. `isActionsCell` cells ALSO carry `item`
+   (so `isChoice` is true) but `hasQuestion` is false, which is exactly why they
+   resolve here, never as a choice item. Core builds them as `cell.item =
+   new ItemValue(actionContainer); cell.isActionsCell = true` (`getRowActionsCell`,
+   `:714-731`). **Action mapping** (plain themed buttons — do NOT build an
+   `AdaptiveActionContainer`; §3e, DIFFERENCES 6): iterate
+   `(cell.item.value as ActionContainer).actions` and dispatch by `action.id`
+   (verified `setDefaultRowActions`, `:766-829`), slotting each at start vs end per
+   `action.location`:
+   - **`"remove-row"`** (`location:"end"`; present only when core's
+     `hasRemoveRows && canRemoveRow(row)` already pushed it — text and
+     `showRemoveButtonAsIcon` variants share the id) → themed remove button;
+     `onPress` invokes the action's own `action()`, which routes to
+     `matrix.removeRowUI(row)` → 2.2 dialog adapter (§3e).
+   - **`"show-detail"`** (desktop, `location:"start"`,
+     `component:"sv-matrix-detail-button"`) / **`"show-detail-mobile"`** (mobile,
+     `location:"end"`) → themed detail-toggle button; `onPress` invokes
+     `row.showHideDetailPanelClick()` (the mobile action wires this as its `action`;
+     the desktop one is component-driven, so RN calls `showHideDetailPanelClick()`
+     directly). Title from the action's `ComputedUpdater` (show/hide details).
+   - **any other `action.id`** (custom actions from
+     `survey.getUpdatedMatrixRowActions` / `onGetMatrixRowActions`) → v1 UNSUPPORTED
+     (DIFFERENCES 6): render nothing for that action, never crash; overflow-to-popup
+     is likewise unsupported.
+2. **`isChoice === false`** (⇒ `hasQuestion === true`) → `GridCell.kind === 'question'`:
+   whole-question dispatch via `renderCellQuestion` (§2) + inline `QuestionErrors`
+   (§2a). Default. **(case 2)**
 3. **`isChoice === true && isOtherChoice`** → route to a **controlled Other-comment
    adapter** (the existing `OtherCommentDraftAdapter`, invariant 3), NOT an item
    button — this cell edits the shared question's `otherValue`/comment, not a
    selectable item.
 4. **`isChoice === true && (isCheckbox || isRadio)`** → `GridCell.kind === 'choice'`:
    a distinct render path emitting **ONE radio/checkbox item per cell** (not the
-   whole question), reusing the `ChoiceItemRow` item recipe.
+   whole question), reusing the `ChoiceItemRow` item recipe. **(case 4)**
 
 The choice-cell (case 4) render path is a **CLASS-BASED reactive wrapper**
 (`MatrixChoiceCell extends SurveyElementBase`, `getStateElement()` returns the
@@ -261,9 +309,20 @@ is only a local variable inside core's per-item render options):
   core attaches the shared question's error, rendered inline there per §2a;
 - **selection state:** `cell.question.isItemSelected(cell.item)`
   (`question_baseselect.ts:2134-2136`);
-- **write:** `cell.question.clickItemHandler(cell.item[, checked])`
-  (`question_checkbox.ts:199-203` / `question_radiogroup.ts:67-68`) — never a
-  hand-rolled toggle;
+- **write (EXPLICIT next-checked value — verified):** the two select bases have
+  DIFFERENT `clickItemHandler` signatures, so the choice cell must branch by
+  `cell.isCheckbox`/`cell.isRadio`:
+  - **checkbox cell** → `cell.question.clickItemHandler(cell.item,
+    !cell.question.isItemSelected(cell.item))` — the two-arg toggle form
+    (`question_checkbox.ts:199-201`: `clickItemHandler(item, checked?)` →
+    `selectItem(item, checked)`); the EXPLICIT next-checked boolean is REQUIRED
+    (core does not compute the toggle for you). Mirrors `src/components/Checkbox.tsx:54-58`
+    exactly (`const checked = !question.isItemSelected(item);
+    question.clickItemHandler(item, checked)`).
+  - **radiogroup cell** → `cell.question.clickItemHandler(cell.item)` — the
+    single-arg select-only form (`question_radiogroup.ts:67-68`:
+    `clickItemHandler(item)` → `selectItem(item)`, no toggle-off), mirroring
+    `src/components/Radiogroup.tsx:31-33`. NEVER a hand-rolled toggle;
 - **enabled / readonly:** `cell.question.getItemEnabled(cell.item)` +
   `cell.question.isInputReadOnly` (`question.ts:1756`);
 mirroring web `renderCellCheckboxButton` / `renderCellRadiogroupButton`
@@ -323,6 +382,23 @@ matrixdropdown `{rowVal: {col:val}}`, matrixdynamic `[{col:val}]`.
 normalized contract + a resolved column-width array. Two render paths chosen by
 `contract.mobile`:
 
+**MatrixGrid ownership (stated once, canonical — supersedes any wording elsewhere).**
+There is exactly ONE class-based owner of measurement, width resolution, and slot
+construction: the **question-renderer class** — `MatrixQuestion` for simple matrix,
+and the INNER `MatrixTable` (§4) for the dropdown/dynamic pair (the class that
+already owns the model / `renderedTable` subscription). That owner:
+- hosts the **outer pre-scroll root View** and its `onLayout`, and holds the
+  `measuredWidth` **one-frame layout state** (§3a.2 — measure ONLY that outer root,
+  never a `width>0`-gated box inside the horizontal ScrollView content); `MatrixGrid`
+  renders INSIDE that outer root, so the measure View is the owner's, not the grid's;
+- runs the **column-width allocation algorithm** (§3a.3) and constructs the
+  **canonical column slots + resolved dp array + summed content width**, including
+  the header-absent and transposed / vertical shapes;
+- passes a **fully-resolved presentational `GridContract`** (dp widths, summed
+  content width, ordered slot array, `renderCell` thunks) DOWN to `MatrixGrid`.
+`MatrixGrid` is purely presentational: it renders the horizontal ScrollView + flex
+rows/cells from the resolved contract, holds NO layout state, and resolves NOTHING.
+
 ### 3a. Wide path — flex grid inside a SINGLE horizontal ScrollView
 
 The 3.1a baseline is deliberately the LOW-risk shape: one horizontal `ScrollView`
@@ -374,17 +450,22 @@ highest-risk mechanism from the critical path.
       floor. The RN allocator reads the same `settings.matrix.columnWidthsByType`
       map through the facade (do NOT hardcode; it is consumer-overridable) plus
       the `matrix.columnMinWidth` global.
-   b. **Evaluate BOTH raw values** through `evaluateWidthExpression(raw,
-      percentBase)` → `{kind:'dp'|'%'-resolved|'auto'|'unset'|'invalid'}`
-      (`percentBase = measuredWidth`, §3a.2), then reduce each column to ONE
-      effective spec:
+   b. **Evaluate BOTH raw values** through the repo resolver
+      `evaluateWidthExpression(raw, percentBase)` (`src/layout/width-resolver.ts:430`),
+      whose ACTUAL return type is `WidthValue = {kind:'dp'|'auto'|'unset'|'invalid'}`
+      (`:54-58`) — there is **NO separate `'%'-resolved` kind**: a `%` input is
+      resolved INTO dp against `percentBase` inside the parser (`(v/100)*percentBase`,
+      `:275-277`) and returns `{kind:'dp'}` (`percentBase = measuredWidth`, §3a.2). So
+      the allocator cannot (and need not) distinguish a `%`-origin dp from a px-origin
+      dp — both arrive as `{kind:'dp'}` and are treated identically as a FIXED dp
+      width. Then reduce each column to ONE effective spec:
       - **`effFixed = max(clamped width, clamped minWidth)`** whenever `width`
-        resolves to dp — a fixed column's minWidth still raises its floor, so
-        `width:50 / minWidth:100 → 100` (NOT 50; excluding a fixed column's own
-        minWidth was the revision-1 bug). `%`-resolved width is treated as fixed
-        at its resolved dp for regime detection, likewise floored to `max(…, minWidth)`.
-      - **`floored`** = no fixed/`%` width but a dp `minWidth` (`effFloor = minWidth`).
-      - **`auto`** = neither width nor minWidth resolves to dp.
+        resolves to `{kind:'dp'}` (px-origin OR `%`-origin) — a fixed column's
+        minWidth still raises its floor, so `width:50 / minWidth:100 → 100` (NOT 50;
+        excluding a fixed column's own minWidth was the revision-1 bug).
+      - **`floored`** = `width` is `auto`/`unset`/`invalid` but `minWidth` resolves to
+        `{kind:'dp'}` (`effFloor = minWidth`).
+      - **`auto`** = neither width nor minWidth resolves to `{kind:'dp'}`.
    c. **Two regimes** (let `S = Σ effFixed(fixed cols) + Σ effFloor(floored cols) +
       Σ intrinsic(auto cols)` where auto intrinsic is the default in (e)):
       - **(a) Fit — `S ≤ measuredWidth`:** run an **iterative water-fill** to make
@@ -398,17 +479,46 @@ highest-risk mechanism from the critical path.
            settles — there is no per-column max, unlike a classic capped water-fill,
            so ONE equal split exhausts the slack). This makes the split
            order-independent and deterministic.
-        3. **All-fixed underfill policy:** if `growable` is EMPTY (every column is
-           fixed/floored-with-no-auto and `S < measuredWidth`), the grid is
-           narrower than the viewport. Do **not** stretch fixed columns; leave them
-           at `effFixed` and let the grid sit left-aligned (logical-start, A7)
-           within `measuredWidth` — the trailing space is empty. (Matches web: fixed
-           `<td>` widths are honored; the table does not stretch them.)
-        4. **Rounding-residual policy:** dp widths are rounded to integers; the
-           residual `measuredWidth − Σ round(width)` (at most `|cols|−1` px) is
-           added to the **last growable column** (or, under the all-fixed policy,
-           dropped into the trailing empty space) so `Σ` is exact and header/body/
-           footer stay pixel-aligned.
+        3. **All-fixed underfill policy:** `growable` is EMPTY only when **every
+           column is fixed** (`effFixed`, whether px- or `%`-origin). Since floored
+           AND auto columns are BOTH growable (step 1), the presence of ANY floored
+           or auto column makes water-fill apply — the earlier
+           "fixed/floored-with-no-auto" wording was self-contradictory because a
+           floored column IS growable. When growable is empty and `S <
+           measuredWidth`, the grid is narrower than the viewport: do **not** stretch
+           fixed columns; leave them at `effFixed` and let the grid sit logical-start
+           (A7) within `measuredWidth` — the trailing space is empty. (Matches web:
+           fixed `<td>` widths are honored; the table does not stretch them.)
+        4. **Rounding-residual policy (FLOOR-SAFE largest-remainder — never drops a
+           column below its floor).** Applying a *signed* residual to the "last
+           growable column" (the revision-2 wording) can push it BELOW its effective
+           floor, violating no-shrink. Instead distribute deterministically:
+           i.   Take each column's real (fractional) target from steps 1–3 (fixed
+                frozen at `effFixed`; growables at their water-filled real width).
+                Snap every effective floor to an integer first (`effFloor_i =
+                floor(effFloor)`, `effFixed_i = floor(effFixed)`) so each floor is an
+                integer lower bound.
+           ii.  **Floor every column DOWN** to integer dp: `w_i = floor(target_i)`.
+                Because `target_i ≥ effFloor` and the floor is integral, `w_i ≥
+                effFloor_i` — no column is below its floor after flooring.
+           iii. `leftover = measuredWidth − Σ w_i`, a NON-NEGATIVE integer in
+                `[0, |growable|)` (flooring only removed fractional dp, and in regime
+                (a) `Σ target_i = measuredWidth` exactly).
+           iv.  Hand out the `leftover` dp **one at a time (+1 each)** to the
+                **growable columns ONLY**, ordered by DESCENDING fractional remainder
+                `frac_i = target_i − floor(target_i)`, ties broken by ASCENDING column
+                slot index (fully deterministic / order-independent). Fixed columns
+                never receive a +1 (they stay at `effFixed_i`). A +1 only ever RAISES
+                a growable column already at/above its floor, so **no column falls
+                below `effFloor`/`effFixed`**, and `Σ w_i = measuredWidth` exactly —
+                header/body/footer stay pixel-aligned.
+           v.   **All-fixed underfill:** if `growable` is empty (step 3), there is no
+                column to receive the leftover — it stays as trailing empty space
+                (grid sits logical-start), never stretched into a fixed column.
+           In regime (b) overflow each column is simply floored to integer dp (no
+           residual to distribute — the grid overflows and exact viewport-fill is not
+           required); the SAME floored dp per column is stamped on header/body/footer
+           and `Σ` is the summed content width.
       - **(b) Overflow — `S > measuredWidth`:** **no shrinking.** Each column takes
         its intrinsic width (`effFixed`, `effFloor`, or the auto intrinsic); the
         summed content width `Σ = S > measuredWidth` and the surplus **overflows
@@ -584,18 +694,35 @@ divergence** in DIFFERENCES — NOT described as "web parity".
   2.2 dialog adapter → OverlayHost (IDENTICAL to paneldynamic; renderer never
   builds the dialog). Gated by `canRemoveRows` / `canRemoveRow(row)` (honors
   `lockedRowCount` + the `matrixAllowRemoveRow` callback). NEVER raw `removeRow`.
-- **Empty state — driven by `!renderedTable.showTable` (revision-1 polarity was
-  REVERSED).** Core computes `showTable = rows.length > 0 || isDesignMode ||
-  !matrix.getShowColumnsIfEmpty()`, and `getShowColumnsIfEmpty()` simply returns
-  the `hideColumnsIfEmpty` property (default `false`) —
+- **Empty state — table visibility driven by `!renderedTable.showTable`; the
+  placeholder's add button gates SEPARATELY on `renderedTable.showAddRow`.** Core
+  computes `showTable = rows.length > 0 || isDesignMode ||
+  !matrix.getShowColumnsIfEmpty()`, and `getShowColumnsIfEmpty()` simply returns the
+  `hideColumnsIfEmpty` property (default `false`) —
   `question_matrixdropdownrendered.ts:399-421`, `question_matrixdynamic.ts:779-787`.
-  So the columns/table are HIDDEN (→ placeholder) precisely when
-  `hideColumnsIfEmpty` is **`true`** AND there are no rows (not design mode) — i.e.
-  when `getShowColumnsIfEmpty()` is **TRUE**, the opposite of what revision 1
-  stated. The RN placeholder condition is therefore **`renderedTable.showTable ===
-  false`**: render the `noRowsText` placeholder + an add button (the only way to
-  add the first row). When `showTable` is true (the default, `hideColumnsIfEmpty`
-  false), the empty grid still shows its header + add button, no placeholder.
+  So the columns/table are HIDDEN (→ placeholder) precisely when `hideColumnsIfEmpty`
+  is **`true`** AND there are no rows (not design mode). The RN placeholder condition
+  is **`renderedTable.showTable === false`**: render the `noRowsText` text
+  placeholder. But whether ADDING is allowed is a DISTINCT question from whether the
+  table is hidden — verified in `updateShowTableAndAddRow` (`:399-422`), which sets
+  the standalone **`renderedTable.showAddRow = !isDesignMode && matrix.canAddRow`**
+  WITHOUT the `showTable` factor (`:419`), whereas the in-table
+  `showAddRowOnTop`/`showAddRowOnBottom` DO include `&& showTable` (`:406-421`) and
+  are therefore FALSE while the table is hidden. Therefore:
+  - The placeholder renders `noRowsText` **always** (when `showTable === false`), but
+    its add button renders **only when `renderedTable.showAddRow` is true** — exactly
+    the web placeholder gate (`SurveyQuestionMatrixDynamicPlaceholder`: `const
+    showAddButton = matrix.renderedTable.showAddRow`,
+    `reactquestion_matrixdynamic.tsx:100,103`). An empty hidden table with adding
+    DISALLOWED (`canAddRow` false — e.g. at `maxRowCount` or `allowAddRows:false`)
+    shows the text with NO add button.
+  - Do NOT gate the placeholder add button on `showAddRowOnTop`/`showAddRowOnBottom`
+    (both false in the hidden-table state, which would wrongly suppress the only way
+    to add the first row). Those two drive the IN-TABLE top/bottom add buttons (the
+    add-buttons bullet above) only when `showTable` is true.
+  - When `showTable` is true (the default, `hideColumnsIfEmpty` false), the empty grid
+    shows its header + the in-table add button(s) (per
+    `showAddRowOnTop`/`showAddRowOnBottom`), no placeholder.
 - Row **actions are plain themed buttons** (remove + detail toggle), NOT an
   `AdaptiveActionContainer` (no RN action-bar exists; PanelDynamic precedent).
   `onGetMatrixRowActions` custom actions + action overflow-to-popup are v1
@@ -669,38 +796,108 @@ per callback calling `this.setState` — NOT `forceUpdate`; attach in
   - **OUTER component** (`MatrixTableBase`): `getStateElement()` returns the
     **stable `question`** (subscribes value/css/loc/`isMobile`), AND registers
     `onRenderedTableResetCallback → this.setState` (single-assignment field, one
-    bound handler). Its render reads the CURRENT `renderedTable` (materialized
-    out-of-render per the purity rule) and passes it as a **prop** to the inner
-    component with a **stable key** (the OUTER's own identity, NOT the
-    renderedTable's) so the inner instance PERSISTS across a reset.
-  - **INNER table component** (`MatrixTable`): `getStateElement()` returns the
-    **current `renderedTable` instance** (from props). Because the inner instance
-    persists, on a reset the OUTER re-renders with the new `renderedTable` prop and
-    the INNER **detaches its subscription from the old renderedTable and attaches
-    to the new one in `componentDidUpdate`** (compare `prevProps.renderedTable !==
-    this.props.renderedTable`; the same detach-old/attach-new discipline used for a
-    `question`-prop swap, clear-only-if-still-ours on unmount). This is the single,
-    non-contradictory identity-retarget path.
-  - **Row / cell keys come from core's stable rendered IDs, NEVER array indexes.**
-    Core supplies stable ids: `QuestionMatrixDropdownRenderedRow.id`
-    (`getId(row?.id || uniqueId, isErrorsRow, isDetailRow)` —
-    `question_matrixdropdownrendered.ts:181-183`) and
-    `QuestionMatrixDropdownRenderedCell.id` (derived from `question.id` /
-    `item.id` — `:61-66`). Key rows off `renderedRow.id` and cells off `cell.id`
-    (or the immutable `cell.question` identity). Keying by array index would, on a
-    FRONT insertion/removal, reuse a React instance across a DIFFERENT row's cell
-    question — and because a controlled leaf (Text/Comment) builds its
-    draft/commit adapter ONCE and does NOT retarget on a question-prop change
-    (`Comment.tsx:76-84` — the adapter is constructed in the constructor with
-    `props.question` and never rebound in `componentDidUpdate`), an in-flight
-    draft would be committed to the PREVIOUS row's question. Stable ids keep each
-    leaf bound to its own question identity.
-  - **Force a LEAF remount only when its `cell.question` identity actually
-    changes.** Do not remount leaves on every reset; a reset that reuses the same
-    `cell.question` instances must NOT discard their uncommitted drafts. Since the
-    controlled-leaf adapter follows Question identity (invariant 3, §5), a leaf is
-    remounted (fresh adapter) only if its `cell.question` is a genuinely new
-    instance — detected via the `cell.id`/`question.id` key, not row position.
+    bound handler). On a reset callback it does NOT read the (now-destroyed)
+    `renderedTable` during render; it passes a **reset signal** to the INNER (a
+    monotonic `resetToken` bumped by the callback) plus a **stable key** (the
+    OUTER's own identity, NOT the renderedTable's) so the inner instance PERSISTS
+    across a reset. The freshly-created `renderedTable` is materialized OUT of render
+    by the deferred ensure (render-purity bullet below) and picked up by the INNER
+    in `componentDidUpdate`.
+  - **INNER table component** (`MatrixTable`) — holds the **no-undefined-commit
+    contract.** It keeps the **CURRENT `renderedTable` in its OWN instance state**
+    (`this.state.table`), and `getStateElement()` returns that held instance. It
+    **NEVER renders `undefined`.** On a reset (the `resetToken` prop changes, or the
+    non-creating backing read momentarily returns `undefined`) it KEEPS RENDERING the
+    prior `renderedTable` reference it already holds in `state.table` — it does not
+    blank out. Only in `componentDidUpdate`, AFTER the deferred ensure has re-created
+    the table (guarded by `isRendredTableCreated` / the non-creating
+    `getPropertyValueWithoutDefault("renderedTable")` accessor — `base.ts:1292-1293`,
+    render-purity below — which returns the LIVE new instance once creation has run),
+    does it **swap atomically**: detach the subscription from the old table, set
+    `state.table = <new live instance>`, attach to the new one (clear-only-if-
+    still-ours on unmount). Because the swap goes in one committed update from a
+    non-undefined old reference to a non-undefined new reference, **no intermediate
+    commit ever renders an undefined table**, so cell leaves are never transiently
+    unmounted. Leaves whose `cell.question` identity is UNCHANGED across the swap
+    MUST NOT unmount — guaranteed by the immutable-`cell.question.uniqueId` keying
+    (next bullet): the old and new renderedTable instances materialize their cells
+    over the SAME surviving `Question` instances, so the leaves' keys are identical
+    and React reconciles them in place (drafts, focus, scroll survive). This is the
+    single, non-contradictory identity-retarget path.
+  - **No-undefined-commit contract (explicit).** The INNER's render output is a pure
+    function of `this.state.table`, which is ALWAYS a live
+    `QuestionMatrixDropdownRenderedTable` (never `undefined`, never a half-built
+    instance). The reset sequence is: (1) core `resetPropertyValue("renderedTable")`
+    destroys the old instance and fires `onRenderedTableResetCallback`
+    (`question_matrixdropdownbase.ts:1273-1283`); (2) OUTER `setState` bumps
+    `resetToken` — INNER re-renders but STILL from its held (old-but-valid)
+    `state.table`; (3) the deferred ensure (out of render) reads the `renderedTable`
+    getter once, constructing the new instance; (4) INNER `componentDidUpdate` reads
+    the now-live instance via the non-creating accessor and swaps `state.table`
+    atomically. **TDD asserts an active `onBlur` draft AND cell focus survive a
+    `renderedTable` reset** — no blank frame, no leaf unmount for unchanged
+    `cell.question` identities.
+  - **Leaf keys come from IMMUTABLE question identity — NOT `renderedRow.id` /
+    `cell.id`, which are NOT universally stable/unique (source-verified).** The
+    rendered ids regenerate or collide in exactly the cases matrix must survive:
+    - `QuestionMatrixDropdownRenderedRow.id = getId(row?.id || uniqueId, …)`
+      (`question_matrixdropdownrendered.ts:181-183`): a rendered row WITH a source
+      `row` uses the stable `row.id`, but **transposed/vertical rows, the header row,
+      and the footer row have NO source `row`** → they fall back to the rendered
+      wrapper's `uniqueId`, a fresh `Base.UniqueId++` on every reconstruction
+      (`base.ts:239,400`) — NOT stable across a reset.
+    - `QuestionMatrixDropdownRenderedCell.id` (`:61-67`): a cell WITH a question keys
+      off `question.id`, but a **no-question cell** (header / footer-slot / actions /
+      drag / empty filler) uses `idValue = counter++` (a fresh per-instance counter
+      assigned in the ctor, `:46-47`) — regenerates on reconstruction; and choice
+      cells append `-index<choiceIndex>` / `-<item.id>`, so exploded footer/choice
+      cells sharing ONE `cell.question` with `item` undefined can COLLIDE.
+    Therefore key each leaf **primarily off immutable question identity** — the
+    per-instance `cell.question.uniqueId` (a stable `Base.UniqueId++` captured at
+    question construction, `base.ts:400`; it SURVIVES a renderedTable reset whenever
+    the underlying `Question` is the same instance, so the leaf's React instance —
+    and its draft/commit adapter — persists and the draft is not lost). For cells
+    with no question, use a **composite stable key** = `rowKey + ':' + cellKind + ':'
+    + columnSlotIndex` — never `cell.id` alone. Keying table per cell kind:
+
+    | Cell kind | Key |
+    |---|---|
+    | non-choice question cell (`hasQuestion`, `isChoice===false`) | `cell.question.uniqueId` |
+    | choice item cell (`isChoice`, `isCheckbox`/`isRadio`) | `cell.question.uniqueId + ':c' + cell.choiceIndex` |
+    | Other-choice cell (`isOtherChoice`) | `cell.question.uniqueId + ':other'` |
+    | footer total cell (expression question) | `cell.question.uniqueId` |
+    | actions cell (`isActionsCell`) | `rowKey + ':actions:' + columnSlotIndex` |
+    | drag-handle cell (`isDragHandlerCell`) | `rowKey + ':drag'` |
+    | empty filler (`isEmpty`) | `rowKey + ':empty:' + columnSlotIndex` |
+    | header cell (no question) | `'header:' + columnSlotIndex` |
+    | footer no-question slot (row-text / actions filler) | `'footer:' + columnSlotIndex` |
+
+    Row keying:
+
+    | Row kind | Key |
+    |---|---|
+    | data row (has source `row`) | `renderedRow.row.id` (source-row id, stable across reset) |
+    | detail row | `parentDataRow.row.id + ':detail'` |
+    | transposed / vertical row (NO source row) | the **column identity it represents** — the matrix column's `name` (stable), NOT the regenerating `renderedRow.uniqueId` |
+    | header row | `'header'` (exactly one) |
+    | footer row | `'footer'` (exactly one) |
+
+    Error rows/cells are filtered out entirely (§2a) and never need keys. Keying by
+    array index would, on a FRONT insertion/removal, reuse a React instance across a
+    DIFFERENT row's cell question — and because a controlled leaf (Text/Comment)
+    builds its draft/commit adapter ONCE and does NOT retarget on a question-prop
+    change (`Comment.tsx:76-84` — the adapter is constructed with `props.question`
+    and never rebound in `componentDidUpdate`), an in-flight draft would be committed
+    to the PREVIOUS row's question. Immutable-`cell.question.uniqueId` keys keep each
+    leaf bound to its own question.
+  - **Force a LEAF remount only when its `cell.question` identity actually changes.**
+    Do not remount leaves on every reset; a reset that reuses the same `cell.question`
+    instances must NOT discard their uncommitted drafts. Since the controlled-leaf
+    adapter follows Question identity (invariant 3, §5) and the leaf is keyed off
+    `cell.question.uniqueId`, a leaf is remounted (fresh adapter) only if its
+    `cell.question` is a genuinely new instance — detected via the
+    `cell.question.uniqueId` key, never row position and never the regenerating
+    `cell.id`.
   - Each rendered ROW is its own reactive sub-component (`MatrixTableRow extends
     SurveyElementBase`, `getStateElement() → renderedRow`, plus
     `row.onDetailPanelShowingChanged`). Each CELL question is a real reactive
@@ -768,10 +965,12 @@ per callback calling `this.setState` — NOT `forceUpdate`; attach in
   never bound to matrix.value directly (§2). **The controlled-leaf adapter binds
   to Question IDENTITY, not row position:** because a leaf builds its
   `DraftCommitAdapter`/`OtherCommentDraftAdapter` once and does not rebind on a
-  prop swap (`Comment.tsx:76-84`), rows/cells are keyed off core's stable
-  `renderedRow.id`/`cell.id` (§4) so a reset or a FRONT insert/remove never routes
-  an in-flight draft to a different row's question; a leaf remounts (fresh adapter)
-  only when its `cell.question` instance genuinely changes.
+  prop swap (`Comment.tsx:76-84`), leaves are keyed off the immutable
+  **`cell.question.uniqueId`** (§4 keying table — NOT the regenerating
+  `renderedRow.id`/`cell.id`; data-row and detail-row keys use the stable source
+  `row.id`) so a reset or a FRONT insert/remove never routes an in-flight draft to a
+  different row's question; a leaf remounts (fresh adapter) only when its
+  `cell.question` instance genuinely changes.
 - **4 (StyleSheet + tokens):** a new **`matrix` recipe** (`src/theme-rn/recipes/matrix.ts`)
   slots into the `Recipes` interface + `buildRecipes` map + barrel (the `row.ts`
   prebuild-legal-tuples / select-at-render pattern; narrow/RTL are SELECT-time
@@ -780,24 +979,33 @@ per callback calling `this.setState` — NOT `forceUpdate`; attach in
   checked/error, card, add/remove/detail buttons. Reuse `row`/`button`/`item`/
   `questionChrome`/`overlay`/`listItem` recipes where possible. A12 consumer
   override slot key `matrix`.
-- **5 (hybrid styling):** the recipe owns native interaction state (pressed/RTL/
+- **5 (theme pipeline):** the `matrix` recipe consumes tokens produced by
+  `theme-core` → `theme-rn` (no RN imports in `theme-core`); it adds no new token
+  source and rides the existing golden-tested pipeline.
+- **6 (hybrid styling):** the recipe owns native interaction state (pressed/RTL/
   alternate-row/vertical-align); class-token mapping only for model-derived state
   from CssClassBuilder strings (`getItemClass`, rendered `cell.className`,
   `row.className` — `hasError`/`answered`/`itemChecked`/`itemDisabled`). Never
   re-derive those booleans in the component.
-- **6 (capability libs, lazy):** add/remove/detail icons via `RNIcon` (lazy
+- **7 (capability libs, lazy):** add/remove/detail icons via `RNIcon` (lazy
   `react-native-svg`); gesture-handler + reanimated only when 4.3 drag lands, NOT
   in 3.x.
-- **7 (non-throwing fallback):** unsupported cellType → `createUnsupportedQuestion`;
+- **8 (Security):** any cell rendering HTML (e.g. an `html`/rubric display cell)
+  goes through the repo HTML sanitizer + URL-scheme allowlist; totals are
+  `expression` questions evaluated by core (no ad-hoc eval); and no matrix
+  affordance auto-navigates (`navigateToUrl` etc. surface via events — host decides).
+- **9 (non-throwing fallback):** unsupported cellType → `createUnsupportedQuestion`;
   deferred sub-features (drag, transpose if deferred) degrade with a deferred,
-  deduped diagnostic (ImageQuestion/paneldynamic pattern), never crash.
-- **8 (no DOM/afterRender):** bypass `renderedTable`'s HTMLElement contracts
+  deduped diagnostic (ImageQuestion/paneldynamic pattern), never crash. Simple-matrix
+  `isExclusive` + rubric cells and the detail/totals paths each degrade independently.
+- **Architecture principle — no DOM / no `afterRender` (A-decisions / won't-support
+  list; NOT a numbered invariant).** Bypass `renderedTable`'s HTMLElement contracts
   (`afterRenderQuestionElement`, `setRootElement`, `focusCell` querySelector, DOM
-  animations, `DragDropMatrixRows`, `matrixAfterCellRender`); mobile detection is
-  the survey `onLayout`→`setIsMobile` path, not a `ResizeObserver`. `onMatrixAfterCellRender`
-  is not fired (repo-wide no-afterRender posture).
-- **9 (fallback):** see 7. Simple-matrix `isExclusive` + rubric cells and the
-  detail/totals paths each degrade independently.
+  animations, `DragDropMatrixRows`, `matrixAfterCellRender`); mobile detection is the
+  survey `onLayout`→`setIsMobile` path, not a `ResizeObserver`. `onMatrixAfterCellRender`
+  is not fired. This is the design principle §0 refers to — repo invariant 8 is
+  Security (above); the no-DOM rule is a separate architecture decision, not
+  invariant 8.
 
 ---
 
@@ -894,10 +1102,14 @@ the orchestrator + three-way paired BEFORE handoff (never delegated blind):
    read** `getPropertyValueWithoutDefault` (protected; one isolated cast + compat
    test, §11.3 resolved), StrictMode latch reset; the OUTER-subscribes-`question`
    + `onRenderedTableResetCallback`, INNER-holds-`renderedTable`-as-prop-with-STABLE-key-and-retargets-in-`componentDidUpdate`
-   split (ONE strategy — NOT a keyed remount); row/cell keys from
-   `renderedRow.id`/`cell.id` (never array index) so controlled drafts follow
-   Question identity; and the TDD confirmation that in-place `renderedRows`
-   mutations notify without firing the reset callback.
+   split (ONE strategy — NOT a keyed remount) with the **no-undefined-commit
+   contract** (INNER holds the current renderedTable in state, keeps rendering the
+   prior reference until `componentDidUpdate` swaps atomically — never a blank
+   frame); leaf keys from the immutable **`cell.question.uniqueId`** (never array
+   index, never the regenerating `renderedRow.id`/`cell.id`; data/detail rows key
+   off the stable source `row.id`, transposed rows off column identity) so
+   controlled drafts follow Question identity; and the TDD confirmation that
+   in-place `renderedRows` mutations notify without firing the reset callback.
 5. **Sticky-first-column split-pane + BIDIRECTIONAL per-row height sync
    (DEFERRED, OPTIONAL 3.1b)** — the bespoke, highest-risk mechanism, no RN
    primitive exists; ships only if the single-ScrollView baseline (§3a) proves
@@ -917,7 +1129,7 @@ is a follow-on only if the baseline needs it.
 | **3.1b** | `MatrixGrid` primitive II: mobile stacked-card path (`isMobile`/`displayMode`); **OPTIONAL** sticky first (row-header) column split-pane + **bidirectional** per-row height sync — gated on measured acceptability of the 3.1a baseline (ships only if needed); RTL fixed-pane side + horizontal-scroll-start flip lives here. | M | ✅ (sticky part) |
 | **3.2** | `matrix` (simple): radio/checkbox tiles via `row.cellClick`/`row.isChecked`, single + multi-select (`cellType:"checkbox"` + `isExclusive`), `hasCellText` rubric cells, `eachRowRequired`/`eachRowUnique` per-row errors, `rowOrder` random, `visibleRowsChangedCallback`. Builds the `GridContract` from `visibleColumns/visibleRows`. | M | |
 | **3.3a-pre** | **PREREQUISITE (CORE): extract a reusable `QuestionErrors` renderer** from the private `QuestionChrome.renderErrors` (over `question.renderedErrors` / `currentNotificationType`); `QuestionChrome` re-consumes it (no behavior change, existing chrome test stays green). Blocks all chrome-less cell dispatch — without it, cell errors are invisible. | S | ✅ |
-| **3.3a** | `MatrixTableBase` + `MatrixDropdownQuestion` (static rows): two-level renderedTable component split (stable-key inner + `componentDidUpdate` retarget, NOT keyed remount; keys from `renderedRow.id`/`cell.id`) + reset reactivity + render purity (confirmed `getPropertyValueWithoutDefault` backing read), chrome-less cell dispatch, header, **inline cell errors via reactive `QuestionErrors` (non-choice cells AND once at `isFirstChoice`; explicitly skip core's `isErrorsRow`/`isErrorsCell`)**, **`showInMultipleColumns` `'choice'` cells (ONE item per cell via `isItemSelected`/`clickItemHandler`; `isActionsCell`/`isOtherChoice` precedence; `columnColCount` NOT applied to exploded cells)**, **`readOnly` cells (`isRowEnabled` false → display-mode)**, **faithful vertical render when `isColumnLayoutHorizontal===false` on wide screen (`transposeData`) + deduped diagnostic**. | L | partial (base) |
+| **3.3a** | `MatrixTableBase` + `MatrixDropdownQuestion` (static rows): two-level renderedTable component split (stable-key inner + `componentDidUpdate` retarget, NOT keyed remount; **no-undefined-commit** — inner holds the current table in state, never renders undefined; leaf keys off immutable `cell.question.uniqueId`, rows off stable source `row.id`, NOT the regenerating `renderedRow.id`/`cell.id`) + reset reactivity + render purity (confirmed `getPropertyValueWithoutDefault` backing read), chrome-less cell dispatch, header, **inline cell errors via reactive `QuestionErrors` (non-choice cells AND once at `isFirstChoice`; explicitly skip core's `isErrorsRow`/`isErrorsCell`)**, **`showInMultipleColumns` `'choice'` cells (ONE item per cell via `isItemSelected`/`clickItemHandler`; `isActionsCell`/`isOtherChoice` precedence; `columnColCount` NOT applied to exploded cells)**, **`readOnly` cells (`isRowEnabled` false → display-mode)**, **faithful vertical render when `isColumnLayoutHorizontal===false` on wide screen (`transposeData`) + deduped diagnostic**. | L | partial (base) |
 | **3.3b** | Detail panels (`detailPanelMode` underRow/underRowSingle via `SurveyPanel`, full-width RN divergence) + totals (expression cells, column-aligned via shared dp array; **present on mobile as a totals summary card — `showFooter` is TRUE on mobile; absent ONLY in wide transposed**; read `showFooter`). Shared with 3.4. | M | |
 | **3.4a** | `MatrixDynamicQuestion`: add-row buttons (top/bottom), per-row remove via `removeRowUI` → 2.2 dialog adapter, empty-state placeholder, `min/maxRowCount` + `keyName` + `lockedRowCount` gating, `defaultRowValue`/`copyDefaultValueFromLastEntry`. Includes the **`keyName`/`isUnique` duplication path** (§3.4 TDD): a duplicate value adds a `KeyDuplicationError` onto the offending `cell.question`, surfaced by the inline `QuestionErrors`. | L | |
 | **3.4b** | matrixdynamic detail-on-add (`detailPanelShowOnAdding`), validation summaries (`MinRowCountError`), `confirmDelete` UX polish. | S | |
@@ -944,8 +1156,11 @@ detail / totals" the brief split out live inside 3.1b (cards) and 3.3b
   both width AND floor** on the row-header column; **regime (a) fit** water-fills
   the remainder EQUALLY across growable (auto+floored) columns above their floor,
   is deterministic/order-independent, and the grid exactly fills `measuredWidth`
-  (inert ScrollView); the **rounding residual** lands on the last growable column
-  so `Σ` is exact; the **all-fixed underfill** case (every column fixed, `S <
+  (inert ScrollView); the **floor-safe rounding residual** (floor every column DOWN,
+  then hand out the non-negative leftover dp one at a time to growable columns by
+  DESCENDING fractional remainder, ties by ascending slot index) makes `Σ` exact
+  **without pushing any column below its floor** (no signed residual on a single
+  column); the **all-fixed underfill** case (every column fixed, `S <
   measuredWidth`) does NOT stretch fixed columns (grid sits logical-start, trailing
   space empty); **regime (b) overflow** keeps intrinsic/min widths, does NOT shrink,
   and total content width exceeds `measuredWidth` (scrollable); a **floorless-auto**
@@ -992,9 +1207,11 @@ detail / totals" the brief split out live inside 3.1b (cards) and 3.3b
   replay); the **two-level split**: `onRenderedTableResetCallback` re-renders on
   column change AND the inner component (STABLE key, NOT remounted) re-attaches its
   subscription to the NEW renderedTable instance in `componentDidUpdate` after a
-  reset (old instance detached); an in-place `renderedRows` mutation (add row)
-  re-renders WITHOUT firing the reset callback; **rows/cells are keyed off
-  `renderedRow.id`/`cell.id`** — an **active `onBlur` draft in an edited cell
+  reset (old instance detached, via the no-undefined-commit atomic swap — no blank
+  frame); an in-place `renderedRows` mutation (add row) re-renders WITHOUT firing
+  the reset callback; **leaves are keyed off the immutable `cell.question.uniqueId`**
+  (rows off the stable source `row.id`; NOT the regenerating
+  `renderedRow.id`/`cell.id`) — an **active `onBlur` draft in an edited cell
   survives a FRONT insertion/removal of another row** (the draft is NOT committed
   to a different row's question — the index-reuse regression) **and survives a
   `renderedTable` reset** (stable-identity retarget, not a remount that discards
@@ -1033,8 +1250,9 @@ detail / totals" the brief split out live inside 3.1b (cards) and 3.3b
   placeholder; first-row add works from the empty state; the **actions column
   appears when the first removable row exists and disappears when none remain**;
   **external FRONT insertion/deletion** (splice a row at index 0 via the model, not
-  the UI) re-renders correctly and does not misroute an in-flight draft (keys off
-  `renderedRow.id`); a **transposed reset** rebuilds cleanly; **detail rows are
+  the UI) re-renders correctly and does not misroute an in-flight draft (leaves key
+  off `cell.question.uniqueId`, rows off the stable source `row.id`); a **transposed
+  reset** rebuilds cleanly; **detail rows are
   preserved** across add/remove that does not require a full reset; value is the
   array shape `[{col:val}]`; `MinRowCountError` when required; **totals recompute**
   on add/remove (`sum/count/min/max/avgInArray` update as rows are added/removed);
@@ -1195,8 +1413,12 @@ land with 3.2.)
    is a future task), so there is no automatic cell focus to claim. Cross-grid
    cell focus / keyboard nav is deferred and documented (DIFFERENCES 9),
    consistent with the a11y deviations; vertical scroll-to works, horizontal and
-   programmatic cell focus do not. Revisit when focusable-component registration
-   lands repo-wide.
+   programmatic cell focus do not. **This v0.3 non-goal deliberately SUPERSEDES the
+   earlier phase-plan note** — `docs/IMPLEMENTATION-PLAN.md` task 3.1 lists
+   "focusable cells" in the grid-primitive scope; that clause is DEFERRED here
+   (the grid primitive itself still ships in 3.1, only its "focusable cells" part
+   is a non-goal), pending repo-wide focusable-component registration. Revisit when
+   that registration lands repo-wide.
 7. **Per-cell element wrapper** (`onGetElementWrapperComponent` / `wrapMatrixCell`)
    — stub as a no-op in v0.3 (document) or wire an RN cell-wrapper contract? Lean:
    no-op + DIFFERENCES.
@@ -1205,3 +1427,39 @@ land with 3.2.)
    available, or is the survey-level 600px `isMobile` flip sufficient for v0.3?
    Lean: survey flag only for v0.3 (DIFFERENCES 4); revisit in 6.2 if profiling
    shows wide-grid pain.
+
+---
+
+## 12. STILL-OPEN device / runtime-verification GATES
+
+These six are UNRESOLVED and must NOT be answered by design reasoning alone — each
+requires a real probe / device run / measurement during TDD or sign-off. Do not
+invent answers; record results against these gates.
+
+- **(a) Peer-range compile + non-creating probe.** Confirm the
+  `getPropertyValueWithoutDefault("renderedTable")` structural cast (§4
+  render-purity, §11.3) COMPILES and stays **non-creating** — returns `undefined`
+  before creation, the live instance after — across the supported survey-core band
+  (peer floor `>=2.5.32 <2.6.0`), via a behavioral compat test through the facade,
+  run against the pinned peer(s). Gates the no-undefined-commit swap (§4).
+- **(b) Nested scroll + initial-layout convergence (iOS + Android).** Nested
+  horizontal (grid) inside vertical (`<Survey>`) scrolling; first-frame `onLayout`
+  `measuredWidth` convergence (one-frame defer, NO blank frame — the `SurveyRow`
+  device-bug regression); header/body/footer column alignment on the shared dp
+  array; per-row cell height stretch via natural flex. BOTH platforms.
+- **(c) Runtime reactivity tests.** In-place `@propertyArray` `renderedRows`
+  notifications (add/remove/detail) fire WITHOUT the reset callback; matrixdynamic
+  EXTERNAL (model-driven, not UI) add/remove re-renders and does not misroute
+  drafts; detail-panel visibility toggles; totals-expression
+  (`sum/count/min/max/avgInArray`) recompute on value + row changes.
+- **(d) Large-grid render/update cost measurement.** Measure render + update cost of
+  a large grid (all rendered rows as Views, non-virtualized) BEFORE accepting the
+  non-virtualized v0.3 baseline; virtualization stays deferred to 6.2, but the
+  baseline's acceptability is a MEASURED gate, not an assumption.
+- **(e) Screen-reader pass (VoiceOver + TalkBack).** Per-cell `accessibilityLabel`
+  from `getCellAriaLabel`, announcements, roles (radio/checkbox for simple-matrix
+  cells), and traversal order — verified on device with BOTH screen readers.
+- **(f) Sticky-column RTL (ONLY if the optional 3.1b split-pane ships).** Fixed-pane
+  side, horizontal-scroll-start offsets, hit-testing, and scroll-sync under RTL — a
+  device gate that arises only if the optional sticky-first-column mode (§3a.5) is
+  built; otherwise N/A.
