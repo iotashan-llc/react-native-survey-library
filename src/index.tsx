@@ -117,8 +117,13 @@ export type {
   OverlayPresenter,
   OverlayPresenterProps,
 } from './overlay/OverlayPresenterContext';
-// buttongroup question (task 2.9).
-export { ButtonGroupQuestion } from './questions/ButtonGroupQuestion';
+// buttongroup question (task 2.9; the OverlayContext element wrapper is
+// the 2.5b compact mode's Modal bridge — export BOTH, same as dropdown/
+// tagbox: the raw class alone renders a compact opener with no sheet).
+export {
+  ButtonGroupQuestion,
+  ButtonGroupQuestionElement,
+} from './questions/ButtonGroupQuestion';
 // image question (task 2.10).
 export { ImageQuestion } from './questions/ImageQuestion';
 export { ImagePickerQuestion } from './questions/ImagePickerQuestion';
@@ -131,6 +136,13 @@ export {
   TagboxQuestion,
   TagboxQuestionElement,
 } from './questions/TagboxQuestion';
+// rating displayMode:"dropdown" (task 2.5a) — the fourth overlay
+// consumer; export BOTH, same as dropdown/tagbox/buttongroup (the raw
+// class alone renders an opener with no Modal bridged).
+export {
+  RatingDropdownQuestion,
+  RatingDropdownQuestionElement,
+} from './questions/RatingDropdownQuestion';
 export type { ImageQuestionProps } from './questions/ImageQuestion';
 export type { TextQuestionProps } from './questions/TextQuestion';
 export { DraftCommitAdapter } from './inputs/DraftCommitAdapter';

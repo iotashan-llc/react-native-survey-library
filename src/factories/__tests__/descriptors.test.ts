@@ -45,6 +45,8 @@ describe('DESCRIPTOR_TABLE (M0 + M1)', () => {
       'sv-list-item-group',
       'sv-logo-image',
       'sv-page',
+      'sv-rating-dropdown',
+      'sv-rating-dropdown-item',
       'sv-rating-item',
       'sv-rating-item-smiley',
       'sv-rating-item-star',

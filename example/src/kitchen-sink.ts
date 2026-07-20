@@ -172,10 +172,29 @@ export const kitchenSinkJson = {
           rateValues: ['solo', 'small', 'medium', 'large'],
         },
         {
+          type: 'rating',
+          name: 'satisfaction',
+          title: 'Overall satisfaction (rating, displayMode: dropdown)',
+          displayMode: 'dropdown',
+          rateMin: 1,
+          rateMax: 10,
+        },
+        {
           type: 'buttongroup',
           name: 'plan',
           title: 'Plan (buttongroup)',
           choices: ['Free', 'Pro', 'Team'],
+        },
+        {
+          type: 'buttongroup',
+          name: 'tier',
+          title: 'Support tier (buttongroup, overflows to dropdown on phones)',
+          choices: [
+            'Community (free forever)',
+            'Professional (priority email)',
+            'Enterprise (24/7 phone + dedicated TAM)',
+            'Government (FedRAMP + compliance pack)',
+          ],
         },
         {
           type: 'dropdown',

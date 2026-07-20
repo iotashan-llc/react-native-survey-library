@@ -54,10 +54,14 @@ import {
 import { TextQuestion } from '../questions/TextQuestion';
 import { MultipleTextQuestion } from '../questions/MultipleTextQuestion';
 import { DropdownQuestionElement } from '../questions/DropdownQuestion';
+import {
+  RatingDropdownItemContent,
+  RatingDropdownQuestionElement,
+} from '../questions/RatingDropdownQuestion';
 import { TagboxQuestionElement } from '../questions/TagboxQuestion';
 import { ImageQuestion } from '../questions/ImageQuestion';
 import { ImagePickerQuestion } from '../questions/ImagePickerQuestion';
-import { ButtonGroupQuestion } from '../questions/ButtonGroupQuestion';
+import { ButtonGroupQuestionElement } from '../questions/ButtonGroupQuestion';
 import { PanelDynamicQuestion } from '../questions/PanelDynamicQuestion';
 import { CustomQuestion } from '../questions/CustomQuestion';
 import { CompositeQuestion } from '../questions/CompositeQuestion';
@@ -199,14 +203,17 @@ export const DESCRIPTOR_TABLE: readonly Descriptor[] = [
     component: () => ExpressionQuestion,
     milestone: 'M1',
   },
-  // Task 1.14 (rating): a single template row (upstream never calls
-  // `RendererFactory.registerRenderer` for "rating" -- no renderAs
-  // variants, so no renderer-route row) plus three element-route rows for
-  // the per-item dispatch (`question.itemComponent`, an internal-to-
-  // question factory concept -- see RatingQuestion.tsx's doc comment).
-  // `sv-rating-dropdown-item` (`renderAs: "dropdown"`) is DEFERRED to M2
-  // popups; a dispatch miss on that key falls through to the shared
-  // unsupported-item fallback, never a throw.
+  // Task 1.14 (rating): the template row for the default button-row
+  // rendering, plus three element-route rows for the per-item dispatch
+  // (`question.itemComponent`, an internal-to-question factory concept
+  // -- see RatingQuestion.tsx's doc comment). Task 2.5a adds the
+  // renderer-route row below for `displayMode: "dropdown"` (core maps
+  // displayMode to `renderAs`); the overlay rows come from the shared
+  // sv-list/ListPicker popup, whose per-row dispatch resolves the
+  // `sv-rating-dropdown-item` element row below (external review C3 --
+  // probe-refuted the earlier "collapsed display, not an overlay row"
+  // note: core stamps that key on EVERY dropdown-mode list action). The
+  // RN collapsed display renders inside RatingDropdownQuestion directly.
   {
     status: 'supported',
     questionType: 'rating',
@@ -214,6 +221,37 @@ export const DESCRIPTOR_TABLE: readonly Descriptor[] = [
     route: 'template',
     component: () => RatingQuestion,
     milestone: 'M1',
+  },
+  // Task 2.5a (rating displayMode:"dropdown"): renderer-route row, same
+  // mechanism as boolean 1.13 -- registering ("rating","dropdown") makes
+  // `getComponentName()` resolve this key and `isDefaultRendering()` go
+  // false, so SurveyRowElement's existing dispatch routes it. Points at
+  // the OverlayContext WRAPPER (2.5 R4): the class alone would toggle
+  // the PopupModel with no RN Modal bridged.
+  {
+    status: 'supported',
+    questionType: 'rating',
+    dispatchKey: 'sv-rating-dropdown',
+    route: 'renderer',
+    renderAs: 'dropdown',
+    component: () => RatingDropdownQuestionElement,
+    milestone: 'M2',
+  },
+  // Task 2.5a follow-up (external review C3) -- overlay row content for
+  // dropdown-mode rating actions. Core stamps component
+  // 'sv-rating-dropdown-item' on every list action, and the min/max
+  // actions carry a `description` LocalizableString
+  // (minRateDescription/maxRateDescription); ListPicker dispatches each
+  // row's `item.component` through RNElementFactory, so without this
+  // row the title-only fallback silently dropped those descriptions
+  // (web renders them via its registered rating-dropdown-item).
+  {
+    status: 'supported',
+    questionType: 'sv-rating-dropdown-item',
+    dispatchKey: 'sv-rating-dropdown-item',
+    route: 'element',
+    component: () => RatingDropdownItemContent,
+    milestone: 'M2',
   },
   // Task 2.1 — overlay list picker (upstream registry name "sv-list";
   // PopupModel contentComponentName dispatch).
@@ -263,13 +301,17 @@ export const DESCRIPTOR_TABLE: readonly Descriptor[] = [
     component: () => MultipleTextQuestion,
     milestone: 'M2',
   },
-  // Task 2.9 — buttongroup question.
+  // Task 2.9 — buttongroup question. ONE template row in BOTH modes
+  // (2.5b R1): overflow compaction flips `renderAs` to 'dropdown' but
+  // registers NOTHING in RendererFactory, so `isDefaultRendering()`
+  // stays true and dispatch stays on `getTemplate()` === 'buttongroup';
+  // the element wrapper self-branches on renderAs.
   {
     status: 'supported',
     questionType: 'buttongroup',
     dispatchKey: 'buttongroup',
     route: 'template',
-    component: () => ButtonGroupQuestion,
+    component: () => ButtonGroupQuestionElement,
     milestone: 'M2',
   },
   // Task 2.10 — image question (static display + scaling modes).

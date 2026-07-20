@@ -732,13 +732,85 @@ in v1 — `"video"`/`"youtube"` render nothing and report an
 `image-content-mode-unsupported` diagnostic (native video/WebView paths
 are deferred).
 
-## Buttongroup question (task 2.9)
+## Rating question — `displayMode: "dropdown"` (task 2.5a)
 
-### No overflow-to-dropdown until task 2.5
+### The drop-down mode presents through the 2.1 overlay sheet
 
-Web swaps the button row for a dropdown when the container is too
-narrow (`buttongroup-dropdown.tsx`, width shrink observer). v0.2 renders a horizontal-scroll row (web parity: overflow-x auto + nowrap); the adaptive dropdown arrives with the 2.5 overlay work. The web `:focus-within` ring is a keyboard-web
-affordance with no RN analog.
+`displayMode: "dropdown"` (core maps it to `renderAs` at load and on a
+runtime change, both directions) routes through the `sv-rating-dropdown`
+renderer row to an overlay-backed control — the SAME `dropdownListModel`
++ sv-list ListPicker sheet the dropdown/tagbox questions use, never
+web's anchored popup. The collapsed control shows core's
+`selectedItemLocText` (its `readOnlyText` when read-only, the localized
+placeholder when empty), carries combobox a11y (core's input aria
+surface; `ariaExpanded` is a string `'true'`/`'false'`), and exposes a
+clear affordance named by core's `clearCaption` behind the `allowClear`
+gate. The overlay rows are the shared ListPicker's, and their per-row
+dispatch resolves the registered `sv-rating-dropdown-item` content —
+the localized rate title plus, on the min/max rows, the
+`minRateDescription`/`maxRateDescription` text (core stamps that
+component on every dropdown-mode list action and puts a `description`
+LocalizableString on the min/max actions; probe-verified) — matching
+web's registered rating-dropdown-item. The Dropdown-question
+differences (overlay sheet, not an anchored list; no inline filter
+input) apply — see the Dropdown question section.
+
+The collapsed control materializes its core `DropdownListModel` one
+microtask AFTER the mount commit (render purity: construction fires
+core property notifications on the question, which must land in
+neither render nor the mount-commit window), so the very first tick
+renders an inert placeholder. Web constructs the model during render.
+
+### `displayMode: "auto"` never auto-collapses on RN
+
+Core's DEFAULT `displayMode` is `"auto"`; on web a `ResizeObserver`
+feeds `processResponsiveness`, collapsing the rate buttons to the
+dropdown when they overflow. RN wires **no measurement seam for
+rating** (there is no ResizeObserver equivalent on the rating row), so
+`"auto"` always renders the buttons row regardless of available width
+— no dropdown VM is ever constructed. Hosts that want the collapsed
+control must set `displayMode: "dropdown"` explicitly. (Buttongroup is
+different: its overflow measurement is wired — see the next section.)
+
+## Buttongroup question (task 2.9, overflow 2.5b)
+
+### Overflow-to-dropdown measures via ScrollView content-vs-viewport, not a ResizeObserver
+
+Web drives `Question.processResponsiveness(requiredWidth,
+availableWidth)` from a `ResizeObserver` over the rendered row
+(`responsivity-manager.ts` scrollWidth vs offsetWidth). RN has no
+resize observer, so the renderer feeds the same core method from two
+native callbacks: an **always-mounted wrapper View's `onLayout`**
+supplies the live available width in BOTH modes, and the row
+ScrollView's `onContentSizeChange` supplies the intrinsic required
+width (row mode only — the value is **cached**, so widening while
+compact still flips back even though the compact control renders no
+ScrollView to re-emit a content event). CORE keeps the decision: the
+±2 deadband, the `renderAs` flip to `'dropdown'` and back, and the lazy
+retained `dropdownListModel` are all unmodified core behavior
+(compat-pinned in `process-responsiveness-compat.test.ts`). Caller-side
+gates match the web driver: widths are rounded to integers before the
+call (web scrollWidth is integral; core rounds only availableWidth),
+identical pairs are deduped, and **design mode never compacts** (web's
+`needResponsiveness()` gate is also caller-side). Dispatch stays on the
+single `buttongroup` template row in both modes — no RendererFactory
+registration, the renderer self-branches on `question.renderAs`.
+
+### Mount-already-compact shows the row for the first frame(s)
+
+`renderAs` is a serialized core property, so a survey persisted while
+compact REMOUNTS compact — but the compact control (and the measure
+host's hiding props) gate on the lazily-built `dropdownListModel`
+VM, which render purity forbids constructing during render or the
+mount commit. Until the first measurement event (or, after a question
+swap under identical geometry, a deferred post-commit microtask)
+materializes the VM, the full button row is briefly **visible,
+interactive, and exposed to accessibility**. Web has no such window
+(the ResizeObserver decision lands before paint). Deliberate
+render-purity consequence, not a bug.
+
+The web `:focus-within` ring is a keyboard-web affordance with no RN
+analog.
 
 ## Multipletext question (task 2.6)
 

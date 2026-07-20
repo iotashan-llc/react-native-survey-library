@@ -9,6 +9,14 @@ import {
   createUnsupportedQuestion,
   RNIcon,
   ActionButton,
+  ButtonGroupQuestion,
+  ButtonGroupQuestionElement,
+  DropdownQuestion,
+  DropdownQuestionElement,
+  RatingDropdownQuestion,
+  RatingDropdownQuestionElement,
+  TagboxQuestion,
+  TagboxQuestionElement,
 } from '../index';
 import { Model } from '../core/facade';
 import type { Question } from '../core/facade';
@@ -21,6 +29,17 @@ describe('test rails', () => {
   it('exports the 1.5 icon/action primitives from the package root', () => {
     expect(RNIcon).toBeDefined();
     expect(ActionButton).toBeDefined();
+  });
+
+  it('every overlay question class exports WITH its OverlayContext element wrapper (the raw class alone cannot bridge a Modal)', () => {
+    expect(typeof DropdownQuestion).toBe('function');
+    expect(typeof DropdownQuestionElement).toBe('function');
+    expect(typeof TagboxQuestion).toBe('function');
+    expect(typeof TagboxQuestionElement).toBe('function');
+    expect(typeof ButtonGroupQuestion).toBe('function');
+    expect(typeof ButtonGroupQuestionElement).toBe('function');
+    expect(typeof RatingDropdownQuestion).toBe('function');
+    expect(typeof RatingDropdownQuestionElement).toBe('function');
   });
 
   it('renders react-native components', () => {
@@ -49,6 +68,7 @@ describe('index.tsx: registrar wiring (design: docs/design/0.5-factories.md)', (
       'rating',
       'sv-boolean-checkbox',
       'sv-boolean-radio',
+      'sv-rating-dropdown',
       'tagbox',
       'text',
     ]);
@@ -59,6 +79,7 @@ describe('index.tsx: registrar wiring (design: docs/design/0.5-factories.md)', (
       'sv-list-item-group',
       'sv-logo-image',
       'sv-page',
+      'sv-rating-dropdown-item',
       'sv-rating-item',
       'sv-rating-item-smiley',
       'sv-rating-item-star',
