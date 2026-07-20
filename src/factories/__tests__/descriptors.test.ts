@@ -31,6 +31,7 @@ describe('DESCRIPTOR_TABLE (M0 + M1)', () => {
       'dropdown',
       'empty',
       'expression',
+      'html',
       'image',
       'imagepicker',
       'multipletext',
@@ -155,6 +156,16 @@ describe('DESCRIPTOR_TABLE (M0 + M1)', () => {
     if (row.status !== 'supported') throw new Error('unreachable');
     expect(typeof row.component()).toBe('function');
     expect(row.milestone).toBe('M1');
+  });
+
+  it('"html" (v0.2.1 pull-forward) is a supported/template row, dispatchKey === questionType', () => {
+    const row = byKey('html');
+    expect(row.status).toBe('supported');
+    expect(row.route).toBe('template');
+    expect(row.questionType).toBe('html');
+    if (row.status !== 'supported') throw new Error('unreachable');
+    expect(typeof row.component()).toBe('function');
+    expect(row.milestone).toBe('M2');
   });
 
   it('"comment"/"checkbox"/"radiogroup" (task 1.11/1.12) are supported/template rows with resolvable component thunks, dispatchKey === questionType', () => {

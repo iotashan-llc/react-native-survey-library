@@ -22,6 +22,17 @@ through `<SanitizedHtml>` (`src/components/SanitizedHtml.tsx`), a
 security-first adapter over `@native-html/render` — necessarily more
 restrictive than a browser, by design.
 
+The `html` question type (supported since v0.2.1) renders
+`question.html` through this same `<SanitizedHtml>` sink rather than
+web's `dangerouslySetInnerHTML`, so every constraint in this section
+applies to it — the tag allowlist, the stripped remote `<img>` sources,
+and the no-auto-navigation link policy (a link inside html content is
+currently **inert**: nothing is wired to receive a link press, so a tap is
+a no-op plus a dev-only diagnostic — it does not navigate and does not yet
+surface an event; host-callback plumbing lands with the separate
+`onLinkPress` task — see "Links never auto-navigate" below). No new
+deviation beyond those already listed here.
+
 ### Tag support is an explicit allowlist, not "any HTML"
 
 Web accepts arbitrary HTML — any tag, any nesting, any browser-supported
@@ -67,9 +78,14 @@ no-op (plus a dev-only diagnostic); with one supplied, it receives the
 **policy-revalidated canonical URL** and the host app decides what to do
 (open in-app, open externally, ask the user, block it, etc.).
 
-**Workaround:** always pass `onLinkPress` to `<SanitizedHtml>` (or, once
-task 1.6/M1 wire the survey-level renderer, the corresponding `<Survey>`
-prop) if link presses inside HTML content should do anything at all.
+**Workaround:** render `<SanitizedHtml>` (a public export) directly with an
+`onLinkPress` if link presses inside HTML content should do anything at all.
+Note the `<Survey>` root does **not** yet expose an `onLinkPress` prop, and it
+does not thread a link callback down to the HTML it renders (the `html`
+question, the completed/completed-before/loading state HTML) — those mount
+`<SanitizedHtml>` with no host callback, so link presses inside a `<Survey>`
+are currently inert (a no-op plus a dev-only diagnostic). A survey-level
+link-press hook is a tracked TODO, not yet built.
 
 ### URL scheme/origin policy is restrictive by default
 
@@ -106,16 +122,30 @@ source inside sanitized HTML content is stripped entirely (a
 still renders). Only strict inline `data:` images — which involve no network
 request at all — render from HTML `<img>` tags.
 
-This applies specifically to `<img>` inside HTML content (rendered through
-the stock renderer's native `Image`). Other image sinks (image question,
-imagepicker, choice images, survey logo, background image) are wired by
-later tasks (1.1/M2/M4) through a policy-aware, redirect-validating
-transport and can load allowlisted remote images.
+This fail-closed stripping applies specifically to `<img>` **inside HTML
+content** (rendered through the stock renderer's native `Image`).
 
-**Workaround:** inline small images as `data:` URIs, or serve HTML-embedded
-imagery from the (later) transport-backed image sinks rather than raw
-`<img>` tags. `imageUriConfig.allowedOrigins` remains meaningful for those
-other sinks and for the `data:` decoded-size cap.
+The other image sinks (image question, imagepicker choice images, survey
+logo) do **not** share this fail-closed posture, and the redirect gap
+described above is **not** closed for them today. Each validates the URL
+**once** against the scheme/origin policy (`src/security/uri-policy.ts`)
+and then hands the canonical URL straight to a React Native `<Image>`
+(`src/questions/ImageQuestion.tsx`, `src/questions/ImagePickerQuestion.tsx`,
+`src/components/LogoImage.tsx`) — there is no redirect-validating transport
+in front of that sink. RN `Image` follows HTTP redirects with **no per-hop
+validation** (documented at `src/security/sanitize-html.ts`, the `img.src`
+branch), so an allowlisted origin that 30x-redirects can still reach a
+denied/private origin on these sinks. In other words: the origin allowlist
+is enforced only on the **initial** URL, not on redirect targets. This is a
+known limitation for these remote-image sinks, tracked for a future
+policy-aware transport; it does not affect inline `data:` images (no network
+request) or the fail-closed HTML `<img>` path above.
+
+**Workaround:** for HTML content, inline small images as `data:` URIs. For
+the image-question / imagepicker / logo sinks, only reference origins you
+trust to not redirect off-allowlist (ideally your own origin serving stable,
+non-redirecting URLs). `imageUriConfig.allowedOrigins` still gates the
+**initial** request origin and the `data:` decoded-size cap.
 
 ### Oversized/pathological HTML renders as plain text, not a partial DOM
 
@@ -165,8 +195,11 @@ constructing).
 
 **Residual gap:** an ALLOWED `choicesByUrl` fetch is performed by
 survey-core itself, so the policy's manual-redirect rule cannot be
-enforced on that one sink from outside; the empirical abort gate lands
-with the dropdown task (2.3). Scheme/origin policy IS enforced.
+enforced on that one sink from outside. Today only the **JSON preflight**
+is enforced (scheme/origin policy + template lint, applied at model
+construction — see above); a request-time abort/redirect gate for the
+core-owned fetch was **not** delivered by the dropdown task (2.3) and
+remains a tracked TODO. The scheme/origin policy IS enforced at preflight.
 
 ### Owned-model lifetime
 
@@ -582,23 +615,36 @@ question always sizes itself the same way regardless of
 `allowResize`/`resizeStyle` (only `autoGrow` — content-driven growth via
 `onContentSizeChange` — is honored).
 
-### Read-only text never renders as plain text (`isReadOnlyRenderDiv` not ported)
+### Read-only text/comment plain-text mode renders as `Text`, not `<div>`
 
 Web can optionally render a read-only text/comment question as a plain
-`<div>` instead of a disabled `<textarea>`/`<input>`
-(`settings.readOnly.textRenderMode === "div"`). This library always
-renders the same `TextInput`/item controls with `editable={false}`,
-styled via the read-only recipe fragment, regardless of that setting.
+`<div>` holding the committed value instead of a disabled
+`<input>`/`<textarea>` (`settings.readOnly.textRenderMode === "div"` for
+text, `settings.readOnly.commentRenderMode === "div"` for comment — both
+default to the input/textarea mode). This is **now supported**: when
+`isReadOnlyRenderDiv()` holds, the question renders its committed value
+as a plain `Text` node (the RN analog of web's `<div>{value}</div>`)
+instead of a disabled `TextInput`. The value is user-entered plain text
+(never a `LocalizableString`), so it is rendered directly — the text
+question through `inputValue` (the masked display value when a mask is
+active, matching web), the comment question through `value`. The plain
+`Text` node carries no input-recipe chrome (border/padding), matching
+web's unstyled `<div>`. With the default render mode (the shipped
+default), a read-only question still renders the disabled `TextInput`
+styled via the read-only recipe fragment.
 
-### Choice items render without a dedicated icon primitive (v1)
+### The radiogroup checked dot is a filled `View`, not an icon primitive
 
-The checked-state checkmark (checkbox) and filled dot (radiogroup) are
-drawn as plain native glyphs (a `✓` `Text` / a small filled `View`)
-sized and colored from the item recipe's `iconSize`/`iconFills` tokens,
-rather than through a shared icon primitive — task 1.5's `RNIcon`
-had not landed when this task shipped. Swapping in a real icon
-component later is a presentation-only change; no model or state
-contract depends on the glyph shape.
+The checkbox checkmark renders through the shared `RNIcon` primitive
+(web parity: web draws it with `<use xlinkHref={question.itemSvgIcon}>`
+against core's `#icon-check-16x16`; the RN port resolves that same core
+icon by name — the leading `#` DOM-sprite fragment marker is stripped —
+and sizes/colors it from the item recipe's `iconSize`/`iconFills`
+tokens). The radiogroup **checked dot** stays a small filled `View`:
+web radios are a CSS-drawn filled circle (the radiogroup `cssClasses`
+carry no `itemSvgIconId` in the default, non-preview render), so there
+is no icon to adopt there. Both are presentation-only; no model or
+state contract depends on the decorator shape.
 
 ### Columns are a flat N-column flex-wrap grid, not upstream's column-item redistribution
 
@@ -796,18 +842,25 @@ identical pairs are deduped, and **design mode never compacts** (web's
 single `buttongroup` template row in both modes — no RendererFactory
 registration, the renderer self-branches on `question.renderAs`.
 
-### Mount-already-compact shows the row for the first frame(s)
+### Mount-already-compact briefly renders no collapsed control (but never a tappable/screen-readable row)
 
 `renderAs` is a serialized core property, so a survey persisted while
-compact REMOUNTS compact — but the compact control (and the measure
-host's hiding props) gate on the lazily-built `dropdownListModel`
-VM, which render purity forbids constructing during render or the
-mount commit. Until the first measurement event (or, after a question
-swap under identical geometry, a deferred post-commit microtask)
-materializes the VM, the full button row is briefly **visible,
-interactive, and exposed to accessibility**. Web has no such window
-(the ResizeObserver decision lands before paint). Deliberate
-render-purity consequence, not a bug.
+compact REMOUNTS compact — but the collapsed control gates on the
+lazily-built `dropdownListModel` VM, which render purity forbids
+constructing during render or the mount commit. Until the first
+measurement event (or, after a question swap under identical geometry, a
+deferred post-commit microtask) materializes the VM, the compact control
+is not yet rendered. The measure host that carries the button row is
+still mounted for measurement, but its **hide/interaction/accessibility
+props gate on compact MODE (`renderAs`), NOT on VM presence** — so from
+the very first frame the row is off-screen (`opacity: 0`, absolute),
+non-interactive (`pointerEvents: 'none'`), and a11y-hidden
+(`accessibilityElementsHidden` / `importantForAccessibility:
+'no-hide-descendants'`). The row can therefore never be tapped or
+screen-read during the pending frame; the only divergence is a brief
+frame with the collapsed control absent (an empty collapsed area) before
+the VM lands. Web has no such window (the ResizeObserver decision lands
+before paint). Deliberate render-purity consequence, not a bug.
 
 The web `:focus-within` ring is a keyboard-web affordance with no RN
 analog.
@@ -997,14 +1050,16 @@ the Add button to the LAST panel (matching web).
 
 ## Dynamic panels (`paneldynamic`, task 2.8a)
 
-### v0.2 supports `displayMode: "list"` only
+### `displayMode`: list, carousel, and tab are all supported
 
 The list renderer stacks all visible panels with an add-panel button and a
 per-panel remove button (delete confirmation routes through the 2.2 dialog
-adapter). `displayMode` `"carousel"`/`"tab"` and the progress bar are deferred
-to 2.8b/2.8c; a non-list survey renders an unsupported fallback and reports the
-`paneldynamic-mode-unsupported` diagnostic rather than a broken frame
-(invariant 9).
+adapter). `displayMode: "carousel"` (a single panel with prev/next controls
+plus the text progress indicator) and `displayMode: "tab"` (a scrollable tab
+strip plus the current panel) also render — see the carousel & tab section
+above. Only an unrecognized `displayMode` falls back to the non-throwing
+unsupported view with a `paneldynamic-mode-unsupported` diagnostic rather than
+a broken frame (invariant 9).
 
 ### Collapsible panels get an explicit toggle
 

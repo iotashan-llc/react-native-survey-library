@@ -39,11 +39,14 @@
  *   REQUIRED width in BOTH modes. That makes flip-back possible even
  *   when the question MOUNTS already compact (renderAs is serialized)
  *   and keeps the cache fresh when content changes while compact.
- *   NOTE (v2 review, L3): the hiding props gate on VM PRESENCE, not on
- *   renderAs — a mount-already-compact question shows the row visible/
- *   interactive for the first frame(s) until a measurement event (or
- *   the post-swap deferred ensure) materializes the VM. Documented
- *   divergence (DIFFERENCES.md, buttongroup).
+ *   NOTE (v2 review, L3; refined): the measure host's hide/interaction/
+ *   a11y props gate on compact MODE (renderAs), NOT on VM presence — so a
+ *   mount-already-compact question hides the row (measurable but
+ *   non-interactive + a11y-hidden) from the very first frame, before a
+ *   measurement event (or the post-swap deferred ensure) materializes the
+ *   VM. Only the compact CONTROL waits on the VM; the row never flashes
+ *   as tappable/screen-readable (DIFFERENCES.md, buttongroup
+ *   mount-already-compact).
  * - Caller gates: both widths known/finite/positive, ROUNDED before the
  *   adapter (web scrollWidth is integral; core rounds only
  *   availableWidth — compat-pinned), pair-changed dedupe, and never in
@@ -342,7 +345,19 @@ export class ButtonGroupQuestion extends OverlayControlBase<OverlayControlProps>
   }
 
   private get isCompactMode(): boolean {
-    return this.buttonGroup.renderAs === 'dropdown';
+    // "Active compact rendering" = dropdown mode AND NOT design mode (codex
+    // FIX 4). `renderAs` is serialized, so a survey persisted while compact
+    // can reopen in a Creator (design mode) with `renderAs === 'dropdown'`.
+    // Core's responsiveness gate excludes design mode (web parity:
+    // `needResponsiveness()`; also enforced in `maybeProcessResponsiveness`
+    // below), so it NEVER runs to reset `renderAs` there — nothing would
+    // undo a materialized dropdown, stranding the editable row. Gating the
+    // single compact predicate on `!isDesignMode` keeps VM materialization,
+    // overlay registration, measuring-row visibility, and
+    // `ensureCompactViewModel` all consistently row-mode in design mode.
+    return (
+      this.buttonGroup.renderAs === 'dropdown' && !this.buttonGroup.isDesignMode
+    );
   }
 
   /** Overlay-mode gate for `OverlayControlBase` — keyed on `renderAs`,
@@ -537,17 +552,29 @@ export class ButtonGroupQuestion extends OverlayControlBase<OverlayControlProps>
   protected renderElement(): React.JSX.Element {
     const question = this.buttonGroup;
     // NON-CREATING read (render purity): a question that mounts already
-    // compact renders the row until the first measurement event
-    // materializes the VM via ensureCompactViewModel.
+    // compact renders the row (for measurement) until the first
+    // measurement event materializes the VM via ensureCompactViewModel.
+    // `vm` gates whether the compact CONTROL renders; the measure host's
+    // hide/interaction/a11y props gate on compact MODE (below).
     const vm = this.isCompactMode ? question.dropdownListModelValue : undefined;
-    const compact = !!vm;
+    // The measure host is hidden + non-interactive + a11y-hidden whenever
+    // the question is in compact MODE — NOT keyed on VM presence. This
+    // covers the mount-already-compact PENDING frame (renderAs serialized,
+    // VM not yet built): without it the full button row would render
+    // visible, INTERACTIVE, and a11y-exposed for the first frame(s) until
+    // a measurement event materializes the compact control — a tappable/
+    // screen-readable flash (DIFFERENCES.md, buttongroup mount-already-
+    // compact). Measurement still works: the host stays MOUNTED and the
+    // ScrollView keeps emitting content-size events while hidden.
+    const compact = this.isCompactMode;
     // The wrapper is ALWAYS mounted (R2): it keeps reporting the live
     // available width in BOTH modes. The measure host below keeps the
     // row — and with it the ScrollView's content-size events — mounted
     // in BOTH modes too: visible in row mode, hidden (absolute,
-    // opacity 0, no touch, a11y-hidden) while compact, so flip-back
-    // works after a remount-while-compact and the REQUIRED cache stays
-    // fresh when content changes while compact.
+    // opacity 0, no touch, a11y-hidden) while compact (including the
+    // compact-pending frame), so flip-back works after a
+    // remount-while-compact and the REQUIRED cache stays fresh when
+    // content changes while compact.
     return (
       <View
         testID={`sv-buttongroup-wrapper-${question.name}`}

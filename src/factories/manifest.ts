@@ -231,6 +231,13 @@ export const MODEL_TYPE_CLASSIFICATION: Readonly<
     milestone: 'M2',
     runtimeRenderable: { expectedTemplate: 'image', expectedRoute: 'template' },
   },
+  // Pulled forward from Phase 5 (task 5.3) — html renders through the 0.9
+  // SanitizedHtml sink; no longer the unsupported-fallback demo.
+  html: {
+    status: 'supported',
+    milestone: 'M2',
+    runtimeRenderable: { expectedTemplate: 'html', expectedRoute: 'template' },
+  },
 
   // Phase 3 — v0.3 (M3).
   matrix: { status: 'planned', milestone: 'M3', reason: 'task 3.2' },
@@ -244,7 +251,7 @@ export const MODEL_TYPE_CLASSIFICATION: Readonly<
   // Phase 5 — v0.5-v0.9 (M5).
   signaturepad: { status: 'planned', milestone: 'M5', reason: 'task 5.1' },
   file: { status: 'planned', milestone: 'M5', reason: 'task 5.2' },
-  html: { status: 'planned', milestone: 'M5', reason: 'task 5.3' },
+  // html: pulled forward to M2 (see Phase 2 section above).
   imagemap: { status: 'planned', milestone: 'M5', reason: 'task 5.4' },
 };
 

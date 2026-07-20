@@ -36,9 +36,12 @@
  *   reaches the same end state (no newlines ever visible or committed).
  * - `allowResize`/`resizeStyle`: a user-draggable resize handle has no RN
  *   analog; not rendered.
- * - `isReadOnlyRenderDiv()` (web's optional plain-`<div>` read-only mode):
- *   not ported — RN always renders the same `TextInput`, `editable={false}`
- *   for read-only, styled via the `input` recipe's readOnly fragment.
+ * - `isReadOnlyRenderDiv()` (web's optional plain-`<div>` read-only mode,
+ *   `settings.readOnly.commentRenderMode === "div"`): ported — when it
+ *   holds, `renderElement` returns a plain `Text` with the committed
+ *   value instead of a disabled multiline `TextInput` (web parity). Off
+ *   by default (`commentRenderMode` defaults to `"textarea"`), so the
+ *   disabled `TextInput` remains the default read-only rendering.
  */
 import * as React from 'react';
 import { TextInput, View, Text } from 'react-native';
@@ -49,6 +52,7 @@ import type { QuestionElementBaseProps } from '../reactivity/QuestionElementBase
 import { DraftCommitAdapter } from '../inputs/DraftCommitAdapter';
 import { selectInputStyles, composeStyles } from '../theme-rn/recipes';
 import type { InputCounterSize } from '../theme-rn/recipes';
+import { buildBodyTextStyle } from '../theme-rn/recipes/bodyText';
 import {
   getControlVariant,
   queueUnknownTokens,
@@ -130,6 +134,30 @@ export class Comment extends QuestionElementBase<CommentProps, CommentState> {
 
   protected renderElement(): React.JSX.Element {
     const question = this.comment;
+
+    // Read-only plain-text mode (web's `isReadOnlyRenderDiv()` —
+    // question.ts: `isReadOnly && settings.readOnly.commentRenderMode ===
+    // "div"`). Web returns the value inside a bare `<div>`
+    // (reactquestion_comment.tsx `renderElement`); the RN analog is a
+    // plain `Text` with the committed value — never a disabled multiline
+    // `TextInput`. The comment value is user-entered plain text (never a
+    // `LocalizableString`), so it renders directly, not through the
+    // LocString viewer.
+    if (question.isReadOnlyRenderDiv()) {
+      const value = question.value as unknown;
+      // Chrome-free, but theme-styled: RN text has no CSS inheritance, so
+      // the plain read-only Text carries the shared body-text foreground/
+      // typography explicitly (codex FIX 2) — no border/padding chrome.
+      return (
+        <Text
+          testID="comment-readonly-text"
+          style={buildBodyTextStyle(this.themeContext.resolved)}
+        >
+          {value == null ? '' : String(value)}
+        </Text>
+      );
+    }
+
     const { recipes, styles: overrides, mode } = this.themeContext;
     const controlVariant = getControlVariant(
       question,

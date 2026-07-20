@@ -5,9 +5,10 @@
  * multi-page navigation, panels + multi-element rows, boolean (all three
  * renderAs), checkbox/radiogroup (columns, other, comment), comment,
  * text (a spread of inputTypes incl. a pattern mask), rating (numbers,
- * stars, smileys, custom string rateValues), expression, completedHtml.
- * Unsupported types are deliberately NOT included here — the fallback
- * panel demo lives on its own page so the rest of the survey stays
+ * stars, smileys, custom string rateValues), expression, html (sanitized
+ * rich content), completedHtml. A single genuinely-unsupported type
+ * (matrix, planned for M3) sits on the last page to demonstrate the
+ * NON-THROWING fallback panel (invariant 9); the rest of the survey stays
  * representative.
  */
 
@@ -311,12 +312,27 @@ export const kitchenSinkJson = {
     },
     {
       name: 'fallback',
-      title: 'Graceful fallback',
+      title: 'HTML & graceful fallback',
       elements: [
         {
+          // html question (pulled forward from M5) — renders rich content
+          // through the 0.9 SanitizedHtml sink: allowlisted tags only,
+          // URI/scheme policy, no auto-navigation (invariant 8). Link
+          // presses are currently inert (no host callback is wired yet);
+          // event-surfacing lands with the onLinkPress task.
           type: 'html',
+          name: 'htmlContent',
+          html: '<p>The <code>html</code> question type renders rich content natively via the sanitized HTML pipeline: <strong>bold</strong>, <em>italic</em>, and <a href="https://surveyjs.io">links</a> (the renderer never auto-navigates; link presses are currently inert — a host callback for them is not wired yet).</p>',
+        },
+        {
+          // A genuinely still-unsupported type (matrix, planned for M3):
+          // the web reference renders it, RN shows the NON-THROWING
+          // fallback panel (invariant 9). This is the graceful-fallback demo.
+          type: 'matrix',
           name: 'notSupportedDemo',
-          html: '<p>The <code>html</code> question type is not supported until M2 — this row demonstrates the NON-THROWING fallback panel.</p>',
+          title: 'Unsupported in RN (matrix) — fallback demo',
+          columns: ['Yes', 'No'],
+          rows: [{ value: 'q1', text: 'Example row' }],
         },
         {
           type: 'comment',

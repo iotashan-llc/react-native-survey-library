@@ -25,10 +25,14 @@
  * still mutate the answer (verified empirically against v2.5.33). It
  * gates the Pressable AND the "other" comment input's editability.
  *
- * No RNIcon dependency (task 1.5 not yet landed on this branch): the
- * checked decorator is a plain native glyph (checkmark Text / filled-dot
- * View) sized/colored from the item recipe's `iconSize`/`iconFills` —
- * swapping in a real icon primitive later is a presentation-only change.
+ * Checked decorator: the checkbox checkmark renders through the shared
+ * `RNIcon` primitive (web parity — `<use xlinkHref={question.itemSvgIcon}>`
+ * against core's `#icon-check-16x16`), sized/colored from the item recipe's
+ * `iconSize`/`iconFills`. The radiogroup dot stays a plain filled `View`:
+ * web radios are a CSS-drawn filled circle (radiogroup cssClasses carry no
+ * `itemSvgIconId` in the default render), NOT an icon — so there is no icon
+ * primitive to adopt there. Presentation-only; no model/state contract
+ * depends on the decorator shape.
  */
 import * as React from 'react';
 import { Pressable, View, Text, TextInput, StyleSheet } from 'react-native';
@@ -42,6 +46,7 @@ import {
 import type { ItemShape, ItemAddOn } from '../theme-rn/recipes';
 import { getItemVariant, queueUnknownTokens } from '../theme-rn/bridge';
 import { OtherCommentDraftAdapter } from '../inputs/OtherCommentDraftAdapter';
+import { RNIcon } from './RNIcon';
 
 const styles = StyleSheet.create({
   row: { flexDirection: 'column' },
@@ -49,12 +54,31 @@ const styles = StyleSheet.create({
   otherInputWrap: { marginTop: 4 },
 });
 
+/** Default checkbox check icon (survey-core defaultCss `itemSvgIconId`). */
+const DEFAULT_CHECK_ICON = 'icon-check-16x16';
+
+/**
+ * Core's `itemSvgIcon` (question_baseselect.ts) is a DOM SPRITE FRAGMENT
+ * reference — web feeds it straight to `<use xlinkHref="#icon-check-16x16">`.
+ * RNIcon resolves by NAME, so strip the leading `#` (which
+ * `getIconNameFromProxy` does not handle). Falls back to the default check
+ * icon when a consumer clears the id, preserving the v1 "checkbox always
+ * shows a checkmark when checked" behavior.
+ */
+function resolveCheckIconName(itemSvgIcon: string | undefined): string {
+  const raw = itemSvgIcon ?? '';
+  const name = raw.startsWith('#') ? raw.slice(1) : raw;
+  return name || DEFAULT_CHECK_ICON;
+}
+
 export interface ChoiceItemRowProps {
   question: Question & {
     isItemSelected(item: ItemValue): boolean;
     getItemClass(item: ItemValue): string;
     getItemEnabled(item: ItemValue): boolean;
     otherItem?: ItemValue;
+    /** DOM-sprite fragment ref for the checked checkmark (checkbox shape). */
+    itemSvgIcon?: string;
   };
   item: ItemValue;
   shape: ItemShape;
@@ -177,11 +201,18 @@ export function ChoiceItemRow(props: ChoiceItemRowProps): React.JSX.Element {
                 })}
               >
                 {checked && shape === 'checkbox' ? (
-                  <Text
-                    style={{ color: iconFill, fontSize: recipes.item.iconSize }}
-                  >
-                    {'✓'}
-                  </Text>
+                  // Web parity: the checkbox checkmark is a real SVG icon
+                  // (`<use xlinkHref={question.itemSvgIcon}>`), resolved here
+                  // through the shared RNIcon primitive. Decorative (no title)
+                  // — the row's `checkbox` role + label carry the semantics.
+                  <RNIcon
+                    testID={
+                      props.testID ? `${props.testID}-check-icon` : undefined
+                    }
+                    iconName={resolveCheckIconName(question.itemSvgIcon)}
+                    size={recipes.item.iconSize}
+                    fill={iconFill}
+                  />
                 ) : null}
                 {checked && shape === 'radio' ? (
                   <View

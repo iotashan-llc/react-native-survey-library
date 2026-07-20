@@ -75,6 +75,17 @@ describe('manifest: model-type inventory', () => {
     });
   });
 
+  it('"html" is classified supported/M2 (pulled forward from M5) with runtimeRenderable metadata', () => {
+    expect(MODEL_TYPE_CLASSIFICATION.html).toMatchObject({
+      status: 'supported',
+      milestone: 'M2',
+    });
+    expect(MODEL_TYPE_CLASSIFICATION.html?.runtimeRenderable).toMatchObject({
+      expectedTemplate: 'html',
+      expectedRoute: 'template',
+    });
+  });
+
   it('"comment"/"checkbox"/"radiogroup" (task 1.11/1.12) are classified supported/M1 with runtimeRenderable metadata', () => {
     for (const key of ['comment', 'checkbox', 'radiogroup'] as const) {
       expect(MODEL_TYPE_CLASSIFICATION[key]).toMatchObject({

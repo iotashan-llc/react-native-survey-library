@@ -597,17 +597,54 @@ function buildAttributes(
 // Plain-text fallback (never a partial render)
 // -----------------------------------------------------------------------
 
+/** Hard cap applied to EVERY plain-text fallback's rendered output (review
+ * — bounded sanitizer output). The source-size bound alone does NOT bound
+ * rendered text: a raw string just over `maxSourceLength`, or a parsed tree
+ * whose text nodes sum to far more than any single parse bound, would
+ * otherwise dump arbitrarily large content into one Text node (render
+ * stall / memory). Cap the rendered fallback text at `maxDecodedTextLength`
+ * — the SAME "total decoded text" ceiling the normal parse path enforces —
+ * replacing over-limit content with an ellipsis marker so the FINAL string
+ * length never exceeds the cap. */
+function capFallbackText(text: string, maxLength: number): string {
+  if (text.length <= maxLength) return text;
+  const ELLIPSIS = '…';
+  if (maxLength <= ELLIPSIS.length) return text.slice(0, maxLength);
+  return text.slice(0, maxLength - ELLIPSIS.length) + ELLIPSIS;
+}
+
+/** `<script>`/`<style>` bodies are RAW-TEXT content: stripping only the
+ * tags would leave their ENTIRE body as visible text. Remove those
+ * subtrees whole first — matching the sanitized path, where both are
+ * always dropped as subtrees, so their body never renders as content. */
+const RAW_TEXT_SUBTREE_RE = /<(script|style)\b[^>]*>[\s\S]*?<\/\1\s*>/gi;
+
 /** Cheap, parse-free tag strip for when the source itself is too large to
  * safely parse at all (the pre-parse cap). Deliberately does not attempt
  * entity decoding or any HTML-aware processing — the whole point of this
- * path is to avoid spending parse-proportional work on unbounded input. */
-function plainTextFromRawSource(raw: string): Document {
-  const stripped = raw.replace(/<[^>]*>/g, '');
+ * path is to avoid spending parse-proportional work on unbounded input.
+ * `<script>`/`<style>` bodies are dropped and the result is length-capped
+ * so the fallback never renders script/style text or unbounded content. */
+function plainTextFromRawSource(raw: string, bounds: ResourceBounds): Document {
+  const withoutRawText = raw.replace(RAW_TEXT_SUBTREE_RE, '');
+  const stripped = withoutRawText.replace(/<[^>]*>/g, '');
   const doc = new Document([]);
-  if (stripped.length > 0) {
-    appendChild(doc, new Text(stripped));
+  const text = capFallbackText(stripped, bounds.maxDecodedTextLength);
+  if (text.length > 0) {
+    appendChild(doc, new Text(text));
   }
   return doc;
+}
+
+/** True for nodes whose ENTIRE subtree the sanitizer drops (never
+ * unwrapped): `script`/`style` (their own domhandler node types) plus every
+ * other always-dropped-as-subtree tag. Their text must never surface in the
+ * plain-text fallback either. */
+function isDroppedSubtreeNode(node: AnyNode): boolean {
+  if (node.type === 'script' || node.type === 'style') return true;
+  return (
+    node.type === 'tag' && DROPPED_SUBTREE_TAGS.has((node as Element).name)
+  );
 }
 
 /** Used when a bound is exceeded — the source is already fully parsed in
@@ -615,24 +652,34 @@ function plainTextFromRawSource(raw: string): Document {
  * `.data` strings are ever concatenated, never re-interpreted as markup).
  * ITERATIVE (explicit stack) so an arbitrarily deep parsed tree — exactly
  * the input that tripped the depth bound — never overflows the JS call
- * stack here (review #2). */
-function plainTextFromParsedTree(root: Document): Document {
+ * stack here (review #2). Dangerous subtrees (`script`/`style`/etc.) are
+ * skipped whole, and extraction STOPS once the cap is reached, so the
+ * rendered fallback is script/style-free and length-bounded. */
+function plainTextFromParsedTree(
+  root: Document,
+  bounds: ResourceBounds
+): Document {
+  const cap = bounds.maxDecodedTextLength;
   const parts: string[] = [];
+  let total = 0;
   const stack: AnyNode[] = [];
   for (let i = root.children.length - 1; i >= 0; i--) {
     stack.push(root.children[i]!);
   }
-  while (stack.length > 0) {
+  while (stack.length > 0 && total < cap) {
     const node = stack.pop()!;
+    if (isDroppedSubtreeNode(node)) continue;
     if (node.type === 'text') {
-      parts.push((node as Text).data);
+      const data = (node as Text).data;
+      parts.push(data);
+      total += data.length;
     } else if ('children' in node) {
       const kids = (node as Document | Element).children;
       for (let i = kids.length - 1; i >= 0; i--) stack.push(kids[i]!);
     }
   }
   const doc = new Document([]);
-  const text = parts.join('');
+  const text = capFallbackText(parts.join(''), cap);
   if (text.length > 0) {
     appendChild(doc, new Text(text));
   }
@@ -655,7 +702,7 @@ export function sanitizeHtml(
 
   if (raw.length > bounds.maxSourceLength) {
     return {
-      dom: plainTextFromRawSource(raw),
+      dom: plainTextFromRawSource(raw, bounds),
       mode: 'plain-text-fallback',
       diagnostics: [
         {
@@ -675,7 +722,7 @@ export function sanitizeHtml(
   const parseBoundDetail = firstExceededParseBound(accounting, bounds);
   if (parseBoundDetail) {
     return {
-      dom: plainTextFromParsedTree(sourceRoot),
+      dom: plainTextFromParsedTree(sourceRoot, bounds),
       mode: 'plain-text-fallback',
       diagnostics: [
         { code: 'resource-bound-exceeded', detail: parseBoundDetail },
@@ -702,7 +749,7 @@ export function sanitizeHtml(
   } catch (error) {
     if (error instanceof ResourceBoundExceeded) {
       return {
-        dom: plainTextFromParsedTree(sourceRoot),
+        dom: plainTextFromParsedTree(sourceRoot, bounds),
         mode: 'plain-text-fallback',
         diagnostics: [
           { code: 'resource-bound-exceeded', detail: error.detail },

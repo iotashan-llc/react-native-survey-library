@@ -55,6 +55,7 @@ import { mapInputTypeToRNProps, mapAutoComplete } from './inputTypeMapping';
 import { composeStyles } from '../theme-rn/recipes/types';
 import { selectInputStyles } from '../theme-rn/recipes/input';
 import type { InputCounterSize } from '../theme-rn/recipes/input';
+import { buildBodyTextStyle } from '../theme-rn/recipes/bodyText';
 
 export type TextQuestionProps = QuestionElementBaseProps;
 
@@ -355,7 +356,31 @@ export class TextQuestion extends QuestionElementBase<
 
   protected renderElement(): React.JSX.Element {
     const question = this.questionBase as unknown as QuestionTextModel;
-    const { recipes, styles: overrides, mode } = this.themeContext;
+    const { recipes, styles: overrides, mode, resolved } = this.themeContext;
+
+    // Read-only plain-text mode (web's `isReadOnlyRenderDiv()` —
+    // question_text.ts: `isReadOnly && settings.readOnly.textRenderMode ===
+    // "div"`). Web renders the committed value inside a bare `<div>`
+    // (reactquestion_text.tsx `renderInput`); the RN analog is a plain
+    // `Text` with the value — never a disabled `TextInput`. The text
+    // question's value is user-entered plain text (never a
+    // `LocalizableString`), so it renders directly through `inputValue`
+    // (web parity — the masked display value when a mask is active),
+    // not through the LocString viewer.
+    if (question.isReadOnlyRenderDiv()) {
+      const value = question.inputValue;
+      // Chrome-free, but theme-styled: RN text has no CSS inheritance, so
+      // the plain read-only Text carries the shared body-text foreground/
+      // typography explicitly (codex FIX 2) — no border/padding chrome.
+      return (
+        <Text
+          testID={`${question.name}-readonly-text`}
+          style={buildBodyTextStyle(resolved)}
+        >
+          {value == null ? '' : String(value)}
+        </Text>
+      );
+    }
 
     const inputType = question.inputType || 'text';
     const rnProps = mapInputTypeToRNProps(inputType);

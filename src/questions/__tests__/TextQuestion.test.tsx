@@ -15,7 +15,7 @@
  * restoration (the `InputElementAdapter` analog).
  */
 import { act, render, screen, fireEvent } from '@testing-library/react-native';
-import { Model } from '../../core/facade';
+import { Model, settings } from '../../core/facade';
 import type { QuestionTextModel } from '../../core/facade';
 import { TextQuestion } from '../TextQuestion';
 import { setDiagnosticHandler } from '../../diagnostics';
@@ -142,6 +142,40 @@ describe('TextQuestion: model-driven props', () => {
 
   it('a fresh (non-readOnly) question is editable', () => {
     const { question } = textSurvey();
+    renderQuestion(question);
+    expect(getInput().props.editable).toBe(true);
+  });
+});
+
+describe('TextQuestion: read-only plain-text rendering (isReadOnlyRenderDiv)', () => {
+  afterEach(() => {
+    settings.readOnly.textRenderMode = 'input';
+  });
+
+  it('read-only + textRenderMode "div": renders the committed value as plain Text, no editable input', () => {
+    settings.readOnly.textRenderMode = 'div';
+    const { question } = textSurvey(
+      {},
+      { readOnly: true, defaultValue: 'committed value' }
+    );
+    renderQuestion(question);
+    expect(screen.queryByTestId('q1-input')).toBeNull();
+    expect(screen.getByText('committed value')).toBeTruthy();
+  });
+
+  it('read-only WITHOUT div mode still renders the disabled input (default parity)', () => {
+    const { question } = textSurvey(
+      {},
+      { readOnly: true, defaultValue: 'committed value' }
+    );
+    renderQuestion(question);
+    expect(getInput().props.editable).toBe(false);
+    expect(screen.queryByText('committed value')).toBeNull();
+  });
+
+  it('"div" mode set but question editable: still renders the input', () => {
+    settings.readOnly.textRenderMode = 'div';
+    const { question } = textSurvey({}, { defaultValue: 'committed value' });
     renderQuestion(question);
     expect(getInput().props.editable).toBe(true);
   });

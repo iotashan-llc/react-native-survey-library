@@ -189,6 +189,7 @@ describe('registerAll (module side effect)', () => {
       'dropdown',
       'empty',
       'expression',
+      'html',
       'image',
       'imagepicker',
       'multipletext',

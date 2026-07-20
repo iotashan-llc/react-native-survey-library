@@ -8,7 +8,7 @@
 import { render, screen, fireEvent, act } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 
-import { Model } from '../../core/facade';
+import { Model, settings } from '../../core/facade';
 import type { Question } from '../../core/facade';
 import { Comment } from '../Comment';
 import { QuestionChrome } from '../QuestionChrome';
@@ -128,6 +128,32 @@ describe('Comment', () => {
     render(<Comment question={question} creator={{}} />);
     const input = screen.getByTestId('comment-input');
     expect(input.props.editable).toBe(false);
+  });
+
+  describe('read-only plain-text rendering (isReadOnlyRenderDiv)', () => {
+    afterEach(() => {
+      settings.readOnly.commentRenderMode = 'textarea';
+    });
+
+    it('read-only + commentRenderMode "div": renders the value as plain Text, no editable input', () => {
+      settings.readOnly.commentRenderMode = 'div';
+      const question = createComment({
+        readOnly: true,
+        defaultValue: 'committed comment',
+      });
+      render(<Comment question={question} creator={{}} />);
+      expect(screen.queryByTestId('comment-input')).toBeNull();
+      expect(screen.getByText('committed comment')).toBeTruthy();
+    });
+
+    it('read-only WITHOUT div mode still renders the disabled input (default parity)', () => {
+      const question = createComment({
+        readOnly: true,
+        defaultValue: 'committed comment',
+      });
+      render(<Comment question={question} creator={{}} />);
+      expect(screen.getByTestId('comment-input').props.editable).toBe(false);
+    });
   });
 
   it('autosize: onContentSizeChange grows the input height when autoGrow is enabled (content height + recipe vertical padding)', () => {

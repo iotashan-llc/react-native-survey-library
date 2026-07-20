@@ -52,6 +52,7 @@ import {
   RatingStarItem,
 } from '../questions/RatingQuestion';
 import { TextQuestion } from '../questions/TextQuestion';
+import { HtmlQuestion } from '../questions/HtmlQuestion';
 import { MultipleTextQuestion } from '../questions/MultipleTextQuestion';
 import { DropdownQuestionElement } from '../questions/DropdownQuestion';
 import {
@@ -321,6 +322,19 @@ export const DESCRIPTOR_TABLE: readonly Descriptor[] = [
     dispatchKey: 'image',
     route: 'template',
     component: () => ImageQuestion,
+    milestone: 'M2',
+  },
+  // v0.2.1 pull-forward (from M5, task 5.3) — html question. Value-less
+  // display (QuestionNonValue); renders `question.html` through the 0.9
+  // SanitizedHtml sink (allowlist + URI policy + no auto-navigation,
+  // invariant 8). No renderAs variants upstream (a single "html" key);
+  // template route, dispatchKey === questionType.
+  {
+    status: 'supported',
+    questionType: 'html',
+    dispatchKey: 'html',
+    route: 'template',
+    component: () => HtmlQuestion,
     milestone: 'M2',
   },
   // Task 2.7 — imagepicker question (image-choice grid; single/multi select).
