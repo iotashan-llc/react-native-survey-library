@@ -16,6 +16,8 @@ export interface MockSvgXmlProps extends ViewProps {
   width?: number | string;
   height?: number | string;
   fill?: string;
+  stroke?: string;
+  strokeWidth?: number | string;
 }
 
 export function SvgXml(props: MockSvgXmlProps): React.JSX.Element {

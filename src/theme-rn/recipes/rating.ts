@@ -27,9 +27,14 @@
  *   positioning is not ported -- only the default "leftRight" (flanking,
  *   in natural flex flow) is supported.
  * - The star item's dual-SVG partial-fill overlay (`sv-star`/`sv-star-2`
- *   clip animation) collapses to a discrete unfilled/filled icon swap
- *   (component layer, RNIcon) -- no recipe fragment needed for stars
- *   beyond `starIconSize`.
+ *   clip animation) collapses to a single RNIcon whose `fill`/`stroke`/
+ *   `strokeWidth` come from `starIconStyles` (the `.sd-rating__item-star
+ *   svg` fill/stroke rules, sd-rating.scss:392-550): unselected is an
+ *   OUTLINE (transparent fill + `$border` stroke), selected fills with
+ *   `$primary`; the `sv-star-2` alt icon only appears on
+ *   selected+focused (web `--selected:not(--preview):focus-within`).
+ *   `--unhighlighted`/`--highlighted` hover-preview states are not
+ *   ported (hover is a no-op under IsTouch upstream).
  * - "disabled" (as opposed to readOnly) is RESERVED/unreachable for a
  *   rating item, same convention as `item.ts`'s `checkedDisabledReserved`
  *   (`--background-semitransparent` in `.sd-rating__item--selected
@@ -108,6 +113,13 @@ export interface RatingSmileyFragments {
   pressed: ViewStyle;
 }
 
+/** SVG presentation attrs for one star-icon legal state (`.sd-rating__item-star svg`). */
+export interface RatingStarIconStyle {
+  fill: string;
+  stroke: string;
+  strokeWidth: number;
+}
+
 export interface RatingRecipe {
   fragments: {
     /** `.sd-rating fieldset` -- the item row. */
@@ -121,6 +133,32 @@ export interface RatingRecipe {
   };
   /** `.sd-rating__item-star` -- `width`/`height: calcSize(6)`, no wrapper background states. */
   starIconSize: number;
+  /**
+   * `.sd-rating__item-star svg` fill/stroke per legal state
+   * (sd-rating.scss:392-550). The star SVG paths carry no fill/stroke of
+   * their own -- web supplies them via CSS; RN supplies them as SvgXml
+   * root presentation attrs (they inherit identically).
+   */
+  starIconStyles: {
+    /** Base rule: OUTLINE -- `stroke: $border; stroke-width: 2px; fill: transparent`. */
+    unselected: RatingStarIconStyle;
+    /** `--selected`: `stroke: transparent; fill: $primary`. */
+    selected: RatingStarIconStyle;
+    /** `--readonly`: `stroke: $border; fill: none`. */
+    readOnly: RatingStarIconStyle;
+    /** `--selected.--readonly`: `stroke: none; fill: $foreground`. */
+    selectedReadOnly: RatingStarIconStyle;
+    /** `--preview`: `stroke: $foreground; stroke-width: 1px; fill: none`. */
+    preview: RatingStarIconStyle;
+    /** `--selected.--preview`: `stroke: none; fill: $foreground` (width 1 from the `--preview` rule). */
+    selectedPreview: RatingStarIconStyle;
+    /** `--error`: `stroke: none; fill: $red-light` (no `--selected` combo rule in the fixture). */
+    error: RatingStarIconStyle;
+    /** `:not(--preview):focus-within`: `stroke: $primary; fill: transparent`. */
+    focused: RatingStarIconStyle;
+    /** `--selected:not(--preview):focus-within`: `stroke: $primary; fill: $primary`. */
+    selectedFocused: RatingStarIconStyle;
+  };
   smileyIconFills: {
     unselected: string;
     selected: string;
@@ -353,9 +391,52 @@ export function buildRatingRecipe(
     smiley,
   };
 
+  const borderColor = resolveColorVar(
+    resolved,
+    '--sjs-border-default',
+    sink
+  ).css;
+  const primaryColor = resolveColorVar(
+    resolved,
+    '--sjs-primary-backcolor',
+    sink
+  ).css;
+  const foregroundColor = resolveColorVar(
+    resolved,
+    '--sjs-general-forecolor',
+    sink
+  ).css;
+
   return {
     fragments,
     starIconSize: calcSize(resolved, 6),
+    starIconStyles: {
+      unselected: { fill: 'transparent', stroke: borderColor, strokeWidth: 2 },
+      selected: { fill: primaryColor, stroke: 'transparent', strokeWidth: 2 },
+      readOnly: { fill: 'none', stroke: borderColor, strokeWidth: 2 },
+      selectedReadOnly: {
+        fill: foregroundColor,
+        stroke: 'none',
+        strokeWidth: 2,
+      },
+      preview: { fill: 'none', stroke: foregroundColor, strokeWidth: 1 },
+      selectedPreview: {
+        fill: foregroundColor,
+        stroke: 'none',
+        strokeWidth: 1,
+      },
+      error: {
+        fill: resolveColorVar(resolved, '--sjs-special-red-light', sink).css,
+        stroke: 'none',
+        strokeWidth: 2,
+      },
+      focused: { fill: 'transparent', stroke: primaryColor, strokeWidth: 2 },
+      selectedFocused: {
+        fill: primaryColor,
+        stroke: primaryColor,
+        strokeWidth: 2,
+      },
+    },
     smileyIconFills: {
       unselected: resolveColorVar(resolved, '--sjs-border-default', sink).css,
       selected: resolveColorVar(resolved, '--sjs-primary-forecolor', sink).css,
@@ -454,6 +535,36 @@ export function selectRatingSmileyStyles(
       break;
   }
   return styles;
+}
+
+/**
+ * Star-icon fill/stroke per legal state (`.sd-rating__item-star svg`,
+ * sd-rating.scss:392-550) -- same `resolveRatingItemLegalState` cascade
+ * as the wrapper selectors. `error` applies regardless of `selected` (the
+ * fixture has no `--selected.--error` combo rule); `pressed` (which never
+ * carries `selected`) falls back to the unselected base style (the
+ * fixture has no `:active` rule for stars).
+ */
+export function selectRatingStarIconStyle(
+  recipe: RatingRecipe,
+  input: RatingItemStateInput
+): RatingStarIconStyle {
+  const s = recipe.starIconStyles;
+  const state = resolveRatingItemLegalState(input);
+  switch (state.kind) {
+    case 'readOnly':
+      return state.selected ? s.selectedReadOnly : s.readOnly;
+    case 'preview':
+      return state.selected ? s.selectedPreview : s.preview;
+    case 'focused':
+      return state.selected ? s.selectedFocused : s.focused;
+    case 'error':
+      return s.error;
+    case 'pressed':
+      return s.unselected;
+    case 'base':
+      return state.selected ? s.selected : s.unselected;
+  }
 }
 
 /** Mirrors `item.ts`'s `selectIconFill` -- smiley icon fill per legal state. */

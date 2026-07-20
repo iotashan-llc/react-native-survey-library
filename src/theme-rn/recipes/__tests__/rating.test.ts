@@ -4,12 +4,14 @@
  * `default-theme/blocks/sd-rating.scss`.
  */
 import { resolveTheme } from '../../../theme-core/resolve';
+import { resolveColorVar } from '../tokenLookup';
 import {
   buildRatingRecipe,
   resolveRatingItemLegalState,
   selectRatingPillStyles,
   selectRatingSmileyStyles,
   selectRatingSmileyIconFill,
+  selectRatingStarIconStyle,
 } from '../rating';
 import type { RatingItemStateInput } from '../rating';
 
@@ -163,6 +165,153 @@ describe('selectRatingSmileyStyles -- exhaustive composition', () => {
       recipe.fragments.smiley.preview,
       recipe.fragments.smiley.selectedPreview,
     ]);
+  });
+});
+
+describe('starIconStyles -- web `.sd-rating__item-star svg` fill/stroke contract (sd-rating.scss:392-550)', () => {
+  const recipe = buildRatingRecipe(resolved);
+  const border = resolveColorVar(resolved, '--sjs-border-default').css;
+  const primary = resolveColorVar(resolved, '--sjs-primary-backcolor').css;
+  const foreground = resolveColorVar(resolved, '--sjs-general-forecolor').css;
+  const redLight = resolveColorVar(resolved, '--sjs-special-red-light').css;
+
+  it('unselected (base): OUTLINE -- fill transparent, stroke $border (--sjs-border-default), stroke-width 2', () => {
+    expect(recipe.starIconStyles.unselected).toEqual({
+      fill: 'transparent',
+      stroke: border,
+      strokeWidth: 2,
+    });
+  });
+
+  it('selected: FILLED -- fill $primary (--sjs-primary-backcolor), stroke transparent', () => {
+    expect(recipe.starIconStyles.selected).toEqual({
+      fill: primary,
+      stroke: 'transparent',
+      strokeWidth: 2,
+    });
+  });
+
+  it('readOnly: outline stroke $border / fill none; selected+readOnly: fill $foreground / stroke none', () => {
+    expect(recipe.starIconStyles.readOnly).toEqual({
+      fill: 'none',
+      stroke: border,
+      strokeWidth: 2,
+    });
+    expect(recipe.starIconStyles.selectedReadOnly).toEqual({
+      fill: foreground,
+      stroke: 'none',
+      strokeWidth: 2,
+    });
+  });
+
+  it('preview: stroke $foreground width 1 / fill none; selected+preview: fill $foreground / stroke none (width 1 inherited from the --preview rule)', () => {
+    expect(recipe.starIconStyles.preview).toEqual({
+      fill: 'none',
+      stroke: foreground,
+      strokeWidth: 1,
+    });
+    expect(recipe.starIconStyles.selectedPreview).toEqual({
+      fill: foreground,
+      stroke: 'none',
+      strokeWidth: 1,
+    });
+  });
+
+  it('error: fill $red-light / stroke none (single rule -- no --selected.--error combo in the fixture)', () => {
+    expect(recipe.starIconStyles.error).toEqual({
+      fill: redLight,
+      stroke: 'none',
+      strokeWidth: 2,
+    });
+  });
+
+  it('focused (:focus-within, non-preview): stroke $primary / fill transparent; selected+focused: both $primary', () => {
+    expect(recipe.starIconStyles.focused).toEqual({
+      fill: 'transparent',
+      stroke: primary,
+      strokeWidth: 2,
+    });
+    expect(recipe.starIconStyles.selectedFocused).toEqual({
+      fill: primary,
+      stroke: primary,
+      strokeWidth: 2,
+    });
+  });
+
+  it('the unselected outline is visibly distinct from the selected fill (the device-observed bug: all stars solid)', () => {
+    expect(recipe.starIconStyles.unselected.fill).toBe('transparent');
+    expect(recipe.starIconStyles.selected.fill).not.toBe('transparent');
+    expect(recipe.starIconStyles.unselected.stroke).not.toBe('transparent');
+  });
+});
+
+describe('selectRatingStarIconStyle -- legal-state selection', () => {
+  const recipe = buildRatingRecipe(resolved);
+
+  it('base: unselected -> unselected style; selected -> selected style', () => {
+    expect(selectRatingStarIconStyle(recipe, input())).toBe(
+      recipe.starIconStyles.unselected
+    );
+    expect(selectRatingStarIconStyle(recipe, input({ selected: true }))).toBe(
+      recipe.starIconStyles.selected
+    );
+  });
+
+  it('readOnly (+selected) beats preview/focused/error', () => {
+    expect(
+      selectRatingStarIconStyle(
+        recipe,
+        input({ readOnly: true, preview: true, focused: true, error: true })
+      )
+    ).toBe(recipe.starIconStyles.readOnly);
+    expect(
+      selectRatingStarIconStyle(
+        recipe,
+        input({ selected: true, readOnly: true, focused: true })
+      )
+    ).toBe(recipe.starIconStyles.selectedReadOnly);
+  });
+
+  it('preview (+selected)', () => {
+    expect(selectRatingStarIconStyle(recipe, input({ preview: true }))).toBe(
+      recipe.starIconStyles.preview
+    );
+    expect(
+      selectRatingStarIconStyle(
+        recipe,
+        input({ selected: true, preview: true })
+      )
+    ).toBe(recipe.starIconStyles.selectedPreview);
+  });
+
+  it('focused (+selected) beats error (fixture: the :focus-within rule is later AND more specific than --error)', () => {
+    expect(
+      selectRatingStarIconStyle(recipe, input({ focused: true, error: true }))
+    ).toBe(recipe.starIconStyles.focused);
+    expect(
+      selectRatingStarIconStyle(
+        recipe,
+        input({ selected: true, focused: true })
+      )
+    ).toBe(recipe.starIconStyles.selectedFocused);
+  });
+
+  it('error applies regardless of selected', () => {
+    expect(selectRatingStarIconStyle(recipe, input({ error: true }))).toBe(
+      recipe.starIconStyles.error
+    );
+    expect(
+      selectRatingStarIconStyle(recipe, input({ selected: true, error: true }))
+    ).toBe(recipe.starIconStyles.error);
+  });
+
+  it('pressed (gated, never selected): falls back to the unselected base style (no :active rule in the fixture)', () => {
+    expect(
+      selectRatingStarIconStyle(
+        recipe,
+        input({ pressed: true, selected: true })
+      )
+    ).toBe(recipe.starIconStyles.unselected);
   });
 });
 

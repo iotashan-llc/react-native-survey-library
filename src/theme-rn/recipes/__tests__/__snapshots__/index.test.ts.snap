@@ -828,6 +828,53 @@ exports[`curated recipe golden snapshots ContrastLight: recipes build to a stabl
       "unselected": "rgba(0, 0, 0, 1)",
     },
     "starIconSize": 48,
+    "starIconStyles": {
+      "error": {
+        "fill": "rgba(229, 10, 62, 0.1)",
+        "stroke": "none",
+        "strokeWidth": 2,
+      },
+      "focused": {
+        "fill": "transparent",
+        "stroke": "rgba(0, 0, 0, 1)",
+        "strokeWidth": 2,
+      },
+      "preview": {
+        "fill": "none",
+        "stroke": "rgba(0, 0, 0, 1)",
+        "strokeWidth": 1,
+      },
+      "readOnly": {
+        "fill": "none",
+        "stroke": "rgba(0, 0, 0, 1)",
+        "strokeWidth": 2,
+      },
+      "selected": {
+        "fill": "rgba(0, 0, 0, 1)",
+        "stroke": "transparent",
+        "strokeWidth": 2,
+      },
+      "selectedFocused": {
+        "fill": "rgba(0, 0, 0, 1)",
+        "stroke": "rgba(0, 0, 0, 1)",
+        "strokeWidth": 2,
+      },
+      "selectedPreview": {
+        "fill": "rgba(0, 0, 0, 1)",
+        "stroke": "none",
+        "strokeWidth": 1,
+      },
+      "selectedReadOnly": {
+        "fill": "rgba(0, 0, 0, 1)",
+        "stroke": "none",
+        "strokeWidth": 2,
+      },
+      "unselected": {
+        "fill": "transparent",
+        "stroke": "rgba(0, 0, 0, 1)",
+        "strokeWidth": 2,
+      },
+    },
   },
   "row": {
     "variants": {
@@ -1775,6 +1822,53 @@ exports[`curated recipe golden snapshots DefaultLight: recipes build to a stable
       "unselected": "rgba(0, 0, 0, 0.16)",
     },
     "starIconSize": 48,
+    "starIconStyles": {
+      "error": {
+        "fill": "rgba(229, 10, 62, 0.1)",
+        "stroke": "none",
+        "strokeWidth": 2,
+      },
+      "focused": {
+        "fill": "transparent",
+        "stroke": "rgba(25, 179, 148, 1)",
+        "strokeWidth": 2,
+      },
+      "preview": {
+        "fill": "none",
+        "stroke": "rgba(0, 0, 0, 0.91)",
+        "strokeWidth": 1,
+      },
+      "readOnly": {
+        "fill": "none",
+        "stroke": "rgba(0, 0, 0, 0.16)",
+        "strokeWidth": 2,
+      },
+      "selected": {
+        "fill": "rgba(25, 179, 148, 1)",
+        "stroke": "transparent",
+        "strokeWidth": 2,
+      },
+      "selectedFocused": {
+        "fill": "rgba(25, 179, 148, 1)",
+        "stroke": "rgba(25, 179, 148, 1)",
+        "strokeWidth": 2,
+      },
+      "selectedPreview": {
+        "fill": "rgba(0, 0, 0, 0.91)",
+        "stroke": "none",
+        "strokeWidth": 1,
+      },
+      "selectedReadOnly": {
+        "fill": "rgba(0, 0, 0, 0.91)",
+        "stroke": "none",
+        "strokeWidth": 2,
+      },
+      "unselected": {
+        "fill": "transparent",
+        "stroke": "rgba(0, 0, 0, 0.16)",
+        "strokeWidth": 2,
+      },
+    },
   },
   "row": {
     "variants": {
@@ -2882,6 +2976,53 @@ exports[`curated recipe golden snapshots LayeredDark: recipes build to a stable 
       "unselected": "rgba(67, 69, 85, 1)",
     },
     "starIconSize": 48,
+    "starIconStyles": {
+      "error": {
+        "fill": "rgba(254, 76, 108, 0.1)",
+        "stroke": "none",
+        "strokeWidth": 2,
+      },
+      "focused": {
+        "fill": "transparent",
+        "stroke": "rgba(164, 127, 243, 1)",
+        "strokeWidth": 2,
+      },
+      "preview": {
+        "fill": "none",
+        "stroke": "rgba(213, 215, 238, 1)",
+        "strokeWidth": 1,
+      },
+      "readOnly": {
+        "fill": "none",
+        "stroke": "rgba(67, 69, 85, 1)",
+        "strokeWidth": 2,
+      },
+      "selected": {
+        "fill": "rgba(164, 127, 243, 1)",
+        "stroke": "transparent",
+        "strokeWidth": 2,
+      },
+      "selectedFocused": {
+        "fill": "rgba(164, 127, 243, 1)",
+        "stroke": "rgba(164, 127, 243, 1)",
+        "strokeWidth": 2,
+      },
+      "selectedPreview": {
+        "fill": "rgba(213, 215, 238, 1)",
+        "stroke": "none",
+        "strokeWidth": 1,
+      },
+      "selectedReadOnly": {
+        "fill": "rgba(213, 215, 238, 1)",
+        "stroke": "none",
+        "strokeWidth": 2,
+      },
+      "unselected": {
+        "fill": "transparent",
+        "stroke": "rgba(67, 69, 85, 1)",
+        "strokeWidth": 2,
+      },
+    },
   },
   "row": {
     "variants": {
@@ -3829,6 +3970,53 @@ exports[`curated recipe golden snapshots SharpDark: recipes build to a stable sn
       "unselected": "rgba(255, 255, 255, 0.22)",
     },
     "starIconSize": 48,
+    "starIconStyles": {
+      "error": {
+        "fill": "rgba(254, 76, 108, 0.1)",
+        "stroke": "none",
+        "strokeWidth": 2,
+      },
+      "focused": {
+        "fill": "transparent",
+        "stroke": "rgba(16, 226, 255, 1)",
+        "strokeWidth": 2,
+      },
+      "preview": {
+        "fill": "none",
+        "stroke": "rgba(255, 255, 255, 0.78)",
+        "strokeWidth": 1,
+      },
+      "readOnly": {
+        "fill": "none",
+        "stroke": "rgba(255, 255, 255, 0.22)",
+        "strokeWidth": 2,
+      },
+      "selected": {
+        "fill": "rgba(16, 226, 255, 1)",
+        "stroke": "transparent",
+        "strokeWidth": 2,
+      },
+      "selectedFocused": {
+        "fill": "rgba(16, 226, 255, 1)",
+        "stroke": "rgba(16, 226, 255, 1)",
+        "strokeWidth": 2,
+      },
+      "selectedPreview": {
+        "fill": "rgba(255, 255, 255, 0.78)",
+        "stroke": "none",
+        "strokeWidth": 1,
+      },
+      "selectedReadOnly": {
+        "fill": "rgba(255, 255, 255, 0.78)",
+        "stroke": "none",
+        "strokeWidth": 2,
+      },
+      "unselected": {
+        "fill": "transparent",
+        "stroke": "rgba(255, 255, 255, 0.22)",
+        "strokeWidth": 2,
+      },
+    },
   },
   "row": {
     "variants": {
@@ -4872,6 +5060,53 @@ exports[`curated recipe golden snapshots ThreeDimensionalLight: recipes build to
       "unselected": "rgba(0, 0, 0, 0.08)",
     },
     "starIconSize": 48,
+    "starIconStyles": {
+      "error": {
+        "fill": "rgba(229, 10, 62, 0.1)",
+        "stroke": "none",
+        "strokeWidth": 2,
+      },
+      "focused": {
+        "fill": "transparent",
+        "stroke": "rgba(217, 74, 100, 1)",
+        "strokeWidth": 2,
+      },
+      "preview": {
+        "fill": "none",
+        "stroke": "rgba(0, 0, 0, 0.91)",
+        "strokeWidth": 1,
+      },
+      "readOnly": {
+        "fill": "none",
+        "stroke": "rgba(0, 0, 0, 0.08)",
+        "strokeWidth": 2,
+      },
+      "selected": {
+        "fill": "rgba(217, 74, 100, 1)",
+        "stroke": "transparent",
+        "strokeWidth": 2,
+      },
+      "selectedFocused": {
+        "fill": "rgba(217, 74, 100, 1)",
+        "stroke": "rgba(217, 74, 100, 1)",
+        "strokeWidth": 2,
+      },
+      "selectedPreview": {
+        "fill": "rgba(0, 0, 0, 0.91)",
+        "stroke": "none",
+        "strokeWidth": 1,
+      },
+      "selectedReadOnly": {
+        "fill": "rgba(0, 0, 0, 0.91)",
+        "stroke": "none",
+        "strokeWidth": 2,
+      },
+      "unselected": {
+        "fill": "transparent",
+        "stroke": "rgba(0, 0, 0, 0.08)",
+        "strokeWidth": 2,
+      },
+    },
   },
   "row": {
     "variants": {

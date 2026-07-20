@@ -42,6 +42,14 @@ export interface RNIconProps {
   size?: number | string;
   /** Optional monochrome fill override; per-component theme wiring stays with each port (A7). */
   fill?: ColorValue;
+  /**
+   * Optional stroke color/width overrides (root presentation attrs —
+   * inherit into paths that don't set their own, exactly like web CSS
+   * `svg { stroke: …; stroke-width: … }`). Added for the rating star's
+   * outline states; `'none'`/`'transparent'` are both valid.
+   */
+  stroke?: ColorValue;
+  strokeWidth?: number | string;
   /** Accessibility label (web `<title>` analog). Absent → decorative, mirroring web `role="presentation"`. */
   title?: string;
   style?: StyleProp<ViewStyle>;
@@ -53,6 +61,8 @@ interface SvgXmlProps {
   width?: number | string;
   height?: number | string;
   fill?: ColorValue;
+  stroke?: ColorValue;
+  strokeWidth?: number | string;
   style?: StyleProp<ViewStyle>;
   testID?: string;
   accessible?: boolean;
@@ -104,6 +114,8 @@ export class RNIcon extends React.Component<RNIconProps, RNIconState> {
       iconName,
       size = RNICON_DEFAULT_SIZE,
       fill,
+      stroke,
+      strokeWidth,
       title,
       style,
       testID,
@@ -129,6 +141,8 @@ export class RNIcon extends React.Component<RNIconProps, RNIconState> {
         width={size}
         height={size}
         fill={fill}
+        stroke={stroke}
+        strokeWidth={strokeWidth}
         style={style}
         testID={testID}
         {...accessibilityProps}
