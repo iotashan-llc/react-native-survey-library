@@ -600,15 +600,18 @@ web's unstyled `<div>`. With the default render mode (the shipped
 default), a read-only question still renders the disabled `TextInput`
 styled via the read-only recipe fragment.
 
-### Choice items render without a dedicated icon primitive (v1)
+### The radiogroup checked dot is a filled `View`, not an icon primitive
 
-The checked-state checkmark (checkbox) and filled dot (radiogroup) are
-drawn as plain native glyphs (a `✓` `Text` / a small filled `View`)
-sized and colored from the item recipe's `iconSize`/`iconFills` tokens,
-rather than through a shared icon primitive — task 1.5's `RNIcon`
-had not landed when this task shipped. Swapping in a real icon
-component later is a presentation-only change; no model or state
-contract depends on the glyph shape.
+The checkbox checkmark renders through the shared `RNIcon` primitive
+(web parity: web draws it with `<use xlinkHref={question.itemSvgIcon}>`
+against core's `#icon-check-16x16`; the RN port resolves that same core
+icon by name — the leading `#` DOM-sprite fragment marker is stripped —
+and sizes/colors it from the item recipe's `iconSize`/`iconFills`
+tokens). The radiogroup **checked dot** stays a small filled `View`:
+web radios are a CSS-drawn filled circle (the radiogroup `cssClasses`
+carry no `itemSvgIconId` in the default, non-preview render), so there
+is no icon to adopt there. Both are presentation-only; no model or
+state contract depends on the decorator shape.
 
 ### Columns are a flat N-column flex-wrap grid, not upstream's column-item redistribution
 

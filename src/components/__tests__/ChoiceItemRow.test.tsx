@@ -11,11 +11,15 @@ import { render, screen, fireEvent } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 
 import { Model } from '../../core/facade';
-import type { QuestionCheckboxModel } from '../../core/facade';
+import type {
+  QuestionCheckboxModel,
+  QuestionRadiogroupModel,
+} from '../../core/facade';
 import { ChoiceItemRow } from '../ChoiceItemRow';
 import { SurveyThemeProvider } from '../../theme-rn/provider';
 import { resolveTheme } from '../../theme-core/resolve';
 import { buildItemRecipe } from '../../theme-rn/recipes/item';
+import { bundledIconsV2 } from '../../core/icons';
 
 function createCheckbox(
   props: Record<string, unknown> = {}
@@ -24,6 +28,17 @@ function createCheckbox(
     elements: [{ type: 'checkbox', name: 'q1', choices: ['a', 'b'], ...props }],
   });
   return model.getQuestionByName('q1') as QuestionCheckboxModel;
+}
+
+function createRadio(
+  props: Record<string, unknown> = {}
+): QuestionRadiogroupModel {
+  const model = new Model({
+    elements: [
+      { type: 'radiogroup', name: 'q1', choices: ['a', 'b'], ...props },
+    ],
+  });
+  return model.getQuestionByName('q1') as QuestionRadiogroupModel;
 }
 
 function flatStyle(node: {
@@ -100,5 +115,75 @@ describe('ChoiceItemRow style slots', () => {
     );
     fireEvent.press(screen.getByTestId('row-under-test'));
     expect(onPress).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('ChoiceItemRow checked decorator (v0.2.1 RNIcon adoption)', () => {
+  it('renders the checkbox checkmark through RNIcon (bundled check-16x16), not a plain glyph', () => {
+    // Web renders the checkbox checkmark via <use xlinkHref={itemSvgIcon}>
+    // where checkbox cssClasses.itemSvgIconId === "#icon-check-16x16"
+    // (survey-core defaultCss); the RN port resolves that same core icon
+    // through the RNIcon primitive (the decorative SvgXml the mock captures).
+    const question = createCheckbox();
+    const item = question.visibleChoices[0]!;
+    render(
+      <ChoiceItemRow
+        question={question}
+        item={item}
+        shape="checkbox"
+        checked={true}
+        onPress={() => {}}
+        testID="check-row"
+      />
+    );
+    const icon = screen.getByTestId('check-row-check-icon', {
+      includeHiddenElements: true,
+    });
+    expect(icon.props.xml).toBe(bundledIconsV2['check-16x16']);
+    // No plain-glyph checkmark remains.
+    expect(screen.queryByText('✓')).toBeNull();
+  });
+
+  it('renders NO check icon when the checkbox is unchecked', () => {
+    const question = createCheckbox();
+    const item = question.visibleChoices[0]!;
+    render(
+      <ChoiceItemRow
+        question={question}
+        item={item}
+        shape="checkbox"
+        checked={false}
+        onPress={() => {}}
+        testID="check-row"
+      />
+    );
+    expect(
+      screen.queryByTestId('check-row-check-icon', {
+        includeHiddenElements: true,
+      })
+    ).toBeNull();
+  });
+
+  it('keeps the radio dot as a filled View — no RNIcon (web radios are a CSS circle, not an icon)', () => {
+    // radiogroup cssClasses has NO itemSvgIconId in the default (non-preview)
+    // render, so web draws the radio as a filled circle; the RN dot stays a
+    // plain filled View.
+    const question = createRadio();
+    const item = question.visibleChoices[0]!;
+    render(
+      <ChoiceItemRow
+        question={question}
+        item={item}
+        shape="radio"
+        checked={true}
+        onPress={() => {}}
+        testID="radio-row"
+      />
+    );
+    expect(
+      screen.queryByTestId('radio-row-check-icon', {
+        includeHiddenElements: true,
+      })
+    ).toBeNull();
   });
 });
