@@ -884,6 +884,19 @@ skips on rapid scrolling). The RN picker gates its end-reached trigger
 on the owning question's `isReady`, so exactly one page loads at a
 time.
 
+### The interactive control materializes one microtask after mount
+
+The control materializes its core `DropdownListModel` one microtask
+AFTER the mount commit (render purity — the same discipline as
+rating-dropdown/buttongroup: construction fires core property
+notifications on the question, which must land in neither render nor
+the mount-commit window). For that single tick the control renders a
+**non-interactive** VM-free frame showing the question-level value fold
+(`readOnlyText` when read-only → `selectedItemLocText` → the raw value
+→ the placeholder) — real text, but no press/a11y/clear affordance
+until the next tick. Web constructs the model during render and has no
+such window.
+
 ## Tagbox question (task 2.4)
 
 The `tagbox` (multi-select) question reuses the dropdown's overlay
@@ -921,6 +934,19 @@ the selected value (or placeholder) and emits a one-shot
 `dropdown-select-mode-unsupported` diagnostic. There is no native
 `<select>` analog in React Native; use the default dropdown rendering
 for an interactive picker.
+
+The one-microtask deferred materialization above applies to the tagbox
+too, with two tagbox-specific notes. First, the pre-materialization
+frame renders the chips and the placeholder VM-free (both are
+question-level members), so a committed value never blinks — only the
+opener's press/a11y and the clear affordance wait for the next tick.
+Second, unlike dropdown's, core's tagbox `dropdownListModel` getter has
+**no** `renderAs` gate (it would construct even in `"select"` mode), so
+on RN it is this renderer discipline that keeps a select-mode mount
+construction-free: a tagbox mounted with `renderAs: "select"` never
+builds a `DropdownListModel` at all, and the select fallback's
+placeholder stays live through the loc-string viewer's own
+subscription instead of a VM state element.
 
 ### The "Other (describe)" comment renders inside the control
 

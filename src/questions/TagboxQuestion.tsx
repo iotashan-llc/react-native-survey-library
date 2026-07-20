@@ -28,6 +28,18 @@
  *   chips — chip remove buttons are independently-focusable siblings,
  *   not nested inside the accessible opener (RN groups descendants of an
  *   accessible Pressable).
+ * - Render purity (2.5fu backport of the 2.5 discipline): render,
+ *   `getStateElements`, and the base's `getOverlayPopup` read ONLY the
+ *   non-creating `dropdownListModelValue` backing field. The CREATING
+ *   `dropdownListModel` getter is touched exclusively by the DEFERRED
+ *   (one-microtask) ensure scheduled from the commit lifecycles
+ *   (StrictMode-safe: the unmount latch resets on every (re)mount) and
+ *   by event handlers (chip remove). Until the ensure runs, a VM-free
+ *   pending frame renders chips + placeholder (both question-level,
+ *   probe-verified non-creating) for a single tick — the committed
+ *   value never blinks. Select mode never constructs: core's tagbox
+ *   getter has NO renderAs gate, so this renderer discipline is the
+ *   only thing keeping a select-mode mount construction-free.
  */
 import * as React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -35,6 +47,7 @@ import type { AccessibilityRole } from 'react-native';
 import type { Base, Question } from '../core/facade';
 import { Helpers } from '../core/facade';
 import type { QuestionElementBaseProps } from '../reactivity/QuestionElementBase';
+import { SurveyElementBase } from '../reactivity/SurveyElementBase';
 import { OverlayControlBase } from '../reactivity/OverlayControlBase';
 import type { OverlayControlProps } from '../reactivity/OverlayControlBase';
 import { OverlayContext } from '../overlay/OverlayContext';
@@ -60,7 +73,16 @@ interface TagboxListModelLike {
 }
 
 interface TagboxQuestionModelLike extends Question {
+  /** Lazy CREATING getter — unlike dropdown's, core gates it on NOTHING
+   * (it constructs even in select mode), so the renderer's discipline is
+   * the only gate. Touched only OUTSIDE render (the deferred ensure and
+   * the chip-remove/press event handlers — render purity). */
   dropdownListModel?: TagboxListModelLike;
+  /** Core's NON-CREATING backing field — the only VM read that render,
+   * `getStateElements`, and the base's `getOverlayPopup` ever make.
+   * Watchlisted as the `dropdownListModelValue` backing field
+   * (question_tagbox.ts). */
+  dropdownListModelValue?: TagboxListModelLike;
   renderAs: string;
   allowClear: boolean;
   isInputReadOnly: boolean;
@@ -98,11 +120,17 @@ export class TagboxQuestion extends OverlayControlBase<TagboxQuestionProps> {
   }
 
   protected getStateElements(): Base[] {
-    // Keep the VM as a state element in BOTH modes: core emits placeholder
-    // changes only through the model, so a select-mode fallback would go
-    // stale without it (PR #30 review r2 #2). Select mode only suppresses
-    // overlay registration + interaction, not reactivity.
-    const model = this.tagbox.dropdownListModel as unknown as Base | undefined;
+    // Keep the VM as a state element in BOTH modes WHEN IT EXISTS (a
+    // select-mode fallback with a lingering VM from a runtime flip must
+    // not go stale — PR #30 review r2 #2; select mode only suppresses
+    // overlay registration + interaction, not reactivity). Read through
+    // the NON-CREATING backing field: this runs from render
+    // (getRenderedElements) AND the commit lifecycles, and must never be
+    // a construction point (render purity). A select-mode MOUNT never
+    // builds a VM at all — placeholder reactivity then rides the
+    // question's own property notifications (r2 #2 stays pinned green).
+    const model = this.tagbox.dropdownListModelValue as unknown as
+      Base | undefined;
     return model ? [this.questionBase, model] : [this.questionBase];
   }
 
@@ -118,6 +146,64 @@ export class TagboxQuestion extends OverlayControlBase<TagboxQuestionProps> {
    * (select mode never registers an overlay; non-interactive). */
   protected isOverlayMode(): boolean {
     return !this.isSelectMode;
+  }
+
+  // ——— Deferred VM materialization (2.5fu render-purity backport) ———
+  // Core's creating getter fires construction property notifications ON
+  // THE QUESTION, so a synchronous construction in render OR the
+  // mount-commit window would land in this component's own fresh
+  // subscription and trip the 0.4 D4 dev invariant (probe-verified for
+  // rating/buttongroup; tagbox constructs the same DropdownListModel
+  // family). Deferred one microtask, construction lands outside render
+  // and outside any commit; until it runs the component renders the
+  // VM-free pending frame below (chips + placeholder — no regression)
+  // for that single tick. Select mode never schedules — and since the
+  // tagbox creating getter has NO renderAs gate in core, this renderer
+  // discipline is what keeps a select-mode mount construction-free.
+  private ensureScheduled = false;
+  private ensureUnmounted = false;
+
+  componentDidMount(): void {
+    super.componentDidMount();
+    // React 19 StrictMode (dev) replays the mount lifecycles on the SAME
+    // instance (didMount → willUnmount → didMount): clear the unmount
+    // latch on every (re)mount or the deferred ensure below would bail
+    // forever after the simulated unmount (mirror of external review
+    // C1). A still-pending microtask from the pre-replay didMount
+    // re-checks all conditions itself, so leaving `ensureScheduled`
+    // untouched is safe in either interleaving.
+    this.ensureUnmounted = false;
+    this.scheduleEnsureOverlayViewModel();
+  }
+
+  componentDidUpdate(): void {
+    super.componentDidUpdate();
+    // Covers a question prop swap and a runtime select → overlay
+    // renderAs flip (this class self-branches on renderAs — no remount).
+    this.scheduleEnsureOverlayViewModel();
+  }
+
+  componentWillUnmount(): void {
+    this.ensureUnmounted = true;
+    super.componentWillUnmount();
+  }
+
+  private scheduleEnsureOverlayViewModel(): void {
+    const question = this.tagbox;
+    if (!this.isOverlayMode() || question.dropdownListModelValue) return;
+    if (this.ensureScheduled) return;
+    this.ensureScheduled = true;
+    queueMicrotask(() => {
+      this.ensureScheduled = false;
+      if (this.ensureUnmounted) return;
+      if (!this.isOverlayMode() || this.tagbox.dropdownListModelValue) {
+        return;
+      }
+      // The CREATING getter — re-render only if it actually materialized
+      // (the forceUpdate is deliberate: construction notifications alone
+      // are core-version incidentals, not a re-render contract).
+      if (this.tagbox.dropdownListModel) this.forceUpdate();
+    });
   }
 
   protected flushOverlayDiagnostics(): void {
@@ -207,18 +293,64 @@ export class TagboxQuestion extends OverlayControlBase<TagboxQuestionProps> {
 
   /** `renderAs:"select"` (no native multi-select): non-interactive chips
    * display + a deferred one-shot diagnostic. Placeholder only when the
-   * value is genuinely empty (PR #30 review r2 #3). */
+   * value is genuinely empty (PR #30 review r2 #3) — rendered through
+   * the LocString viewer, which subscribes to the loc string itself: a
+   * select-mode MOUNT never constructs the VM (render-purity backport),
+   * so the placeholder can no longer ride a VM state-element
+   * subscription and must stay live on its own (r2 #2). */
   private renderSelectTop(): React.JSX.Element {
     this.pendingSelectMiss = true;
     const question = this.tagbox;
     return (
       <View testID="sv-tagbox-select-fallback" style={localStyles.chipsRow}>
         {question.isEmpty() ? (
-          <Text testID="sv-tagbox-placeholder">
-            {question.locPlaceholder?.renderedHtml || ''}
-          </Text>
+          <View testID="sv-tagbox-placeholder">
+            {question.locPlaceholder ? (
+              SurveyElementBase.renderLocString(
+                question.locPlaceholder,
+                undefined,
+                'tb-select-placeholder'
+              )
+            ) : (
+              <Text>{''}</Text>
+            )}
+          </View>
         ) : (
           this.renderChips(false)
+        )}
+      </View>
+    );
+  }
+
+  /** The one-microtask pre-materialization frame (render purity): the
+   * VM does not exist yet, so render everything QUESTION-level — chips
+   * come from `renderedValue`/`selectedChoices` and the placeholder from
+   * `locPlaceholder` (probe-verified non-creating) — so the committed
+   * value never blinks. Chip removal stays live (`deselectItem` runs in
+   * an event handler, outside render). The opener a11y bundle, press
+   * handler, and clear affordance need the VM and appear one tick later
+   * with the real interactive control. No diagnostics (this is overlay
+   * mode, not the select fallback). */
+  private renderPendingTop(): React.JSX.Element {
+    const question = this.tagbox;
+    return (
+      <View testID="sv-tagbox-pending" style={localStyles.chipsRow}>
+        {question.isEmpty() ? (
+          // Same self-subscribing viewer treatment as the select fallback
+          // (r2 #2) — never raw renderedHtml text (external review 2.5fu).
+          <View testID="sv-tagbox-placeholder">
+            {question.locPlaceholder ? (
+              SurveyElementBase.renderLocString(
+                question.locPlaceholder,
+                undefined,
+                'tb-pending-placeholder'
+              )
+            ) : (
+              <Text>{''}</Text>
+            )}
+          </View>
+        ) : (
+          this.renderChips(true)
         )}
       </View>
     );
@@ -263,13 +395,18 @@ export class TagboxQuestion extends OverlayControlBase<TagboxQuestionProps> {
   protected renderElement(): React.JSX.Element {
     const question = this.tagbox;
     this.pendingSelectMiss = false;
-    const vm = question.dropdownListModel;
+    // NON-CREATING read (render purity): in overlay mode the VM is
+    // materialized by the deferred ensure (one microtask after the
+    // mount/update commit) — until then the VM-free pending frame below
+    // renders for a single tick.
+    const vm = this.isSelectMode ? undefined : question.dropdownListModelValue;
     // Mode-specific top; the "Other" comment renders beneath in BOTH modes
     // (select-mode Other still needs its editor — PR #30 review r2 #1).
-    const top =
-      this.isSelectMode || !vm
-        ? this.renderSelectTop()
-        : this.renderInteractive(vm);
+    const top = this.isSelectMode
+      ? this.renderSelectTop()
+      : vm
+        ? this.renderInteractive(vm)
+        : this.renderPendingTop();
     return (
       <View style={localStyles.container}>
         {top}
