@@ -333,12 +333,19 @@
     },
     {
       "name": "fallback",
-      "title": "Graceful fallback",
+      "title": "HTML & graceful fallback",
       "elements": [
         {
           "type": "html",
+          "name": "htmlContent",
+          "html": "<p>The <code>html</code> question type renders rich content natively via the sanitized HTML pipeline: <strong>bold</strong>, <em>italic</em>, and <a href=\"https://surveyjs.io\">links</a> (a link press surfaces an event — the host app decides; the renderer never auto-navigates).</p>"
+        },
+        {
+          "type": "matrix",
           "name": "notSupportedDemo",
-          "html": "<p>The <code>html</code> question type is not supported until M2 — this row demonstrates the NON-THROWING fallback panel.</p>"
+          "title": "Unsupported in RN (matrix) — fallback demo",
+          "columns": ["Yes", "No"],
+          "rows": [{ "value": "q1", "text": "Example row" }]
         },
         {
           "type": "comment",

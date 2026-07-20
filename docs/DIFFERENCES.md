@@ -22,6 +22,14 @@ through `<SanitizedHtml>` (`src/components/SanitizedHtml.tsx`), a
 security-first adapter over `@native-html/render` — necessarily more
 restrictive than a browser, by design.
 
+The `html` question type (supported since v0.2.1) renders
+`question.html` through this same `<SanitizedHtml>` sink rather than
+web's `dangerouslySetInnerHTML`, so every constraint in this section
+applies to it — the tag allowlist, the stripped remote `<img>` sources,
+and the no-auto-navigation link policy (a link inside html content
+surfaces an event only; nothing navigates unless the host wires it). No
+new deviation beyond those already listed here.
+
 ### Tag support is an explicit allowlist, not "any HTML"
 
 Web accepts arbitrary HTML — any tag, any nesting, any browser-supported
