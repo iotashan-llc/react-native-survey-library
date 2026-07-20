@@ -75,9 +75,14 @@ no-op (plus a dev-only diagnostic); with one supplied, it receives the
 **policy-revalidated canonical URL** and the host app decides what to do
 (open in-app, open externally, ask the user, block it, etc.).
 
-**Workaround:** always pass `onLinkPress` to `<SanitizedHtml>` (or, once
-task 1.6/M1 wire the survey-level renderer, the corresponding `<Survey>`
-prop) if link presses inside HTML content should do anything at all.
+**Workaround:** render `<SanitizedHtml>` (a public export) directly with an
+`onLinkPress` if link presses inside HTML content should do anything at all.
+Note the `<Survey>` root does **not** yet expose an `onLinkPress` prop, and it
+does not thread a link callback down to the HTML it renders (the `html`
+question, the completed/completed-before/loading state HTML) — those mount
+`<SanitizedHtml>` with no host callback, so link presses inside a `<Survey>`
+are currently inert (a no-op plus a dev-only diagnostic). A survey-level
+link-press hook is a tracked TODO, not yet built.
 
 ### URL scheme/origin policy is restrictive by default
 
@@ -173,8 +178,11 @@ constructing).
 
 **Residual gap:** an ALLOWED `choicesByUrl` fetch is performed by
 survey-core itself, so the policy's manual-redirect rule cannot be
-enforced on that one sink from outside; the empirical abort gate lands
-with the dropdown task (2.3). Scheme/origin policy IS enforced.
+enforced on that one sink from outside. Today only the **JSON preflight**
+is enforced (scheme/origin policy + template lint, applied at model
+construction — see above); a request-time abort/redirect gate for the
+core-owned fetch was **not** delivered by the dropdown task (2.3) and
+remains a tracked TODO. The scheme/origin policy IS enforced at preflight.
 
 ### Owned-model lifetime
 
@@ -1025,14 +1033,16 @@ the Add button to the LAST panel (matching web).
 
 ## Dynamic panels (`paneldynamic`, task 2.8a)
 
-### v0.2 supports `displayMode: "list"` only
+### `displayMode`: list, carousel, and tab are all supported
 
 The list renderer stacks all visible panels with an add-panel button and a
 per-panel remove button (delete confirmation routes through the 2.2 dialog
-adapter). `displayMode` `"carousel"`/`"tab"` and the progress bar are deferred
-to 2.8b/2.8c; a non-list survey renders an unsupported fallback and reports the
-`paneldynamic-mode-unsupported` diagnostic rather than a broken frame
-(invariant 9).
+adapter). `displayMode: "carousel"` (a single panel with prev/next controls
+plus the text progress indicator) and `displayMode: "tab"` (a scrollable tab
+strip plus the current panel) also render — see the carousel & tab section
+above. Only an unrecognized `displayMode` falls back to the non-throwing
+unsupported view with a `paneldynamic-mode-unsupported` diagnostic rather than
+a broken frame (invariant 9).
 
 ### Collapsible panels get an explicit toggle
 
