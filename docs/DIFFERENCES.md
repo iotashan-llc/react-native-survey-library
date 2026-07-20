@@ -582,13 +582,23 @@ question always sizes itself the same way regardless of
 `allowResize`/`resizeStyle` (only `autoGrow` — content-driven growth via
 `onContentSizeChange` — is honored).
 
-### Read-only text never renders as plain text (`isReadOnlyRenderDiv` not ported)
+### Read-only text/comment plain-text mode renders as `Text`, not `<div>`
 
 Web can optionally render a read-only text/comment question as a plain
-`<div>` instead of a disabled `<textarea>`/`<input>`
-(`settings.readOnly.textRenderMode === "div"`). This library always
-renders the same `TextInput`/item controls with `editable={false}`,
-styled via the read-only recipe fragment, regardless of that setting.
+`<div>` holding the committed value instead of a disabled
+`<input>`/`<textarea>` (`settings.readOnly.textRenderMode === "div"` for
+text, `settings.readOnly.commentRenderMode === "div"` for comment — both
+default to the input/textarea mode). This is **now supported**: when
+`isReadOnlyRenderDiv()` holds, the question renders its committed value
+as a plain `Text` node (the RN analog of web's `<div>{value}</div>`)
+instead of a disabled `TextInput`. The value is user-entered plain text
+(never a `LocalizableString`), so it is rendered directly — the text
+question through `inputValue` (the masked display value when a mask is
+active, matching web), the comment question through `value`. The plain
+`Text` node carries no input-recipe chrome (border/padding), matching
+web's unstyled `<div>`. With the default render mode (the shipped
+default), a read-only question still renders the disabled `TextInput`
+styled via the read-only recipe fragment.
 
 ### Choice items render without a dedicated icon primitive (v1)
 

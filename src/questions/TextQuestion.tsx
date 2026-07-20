@@ -357,6 +357,24 @@ export class TextQuestion extends QuestionElementBase<
     const question = this.questionBase as unknown as QuestionTextModel;
     const { recipes, styles: overrides, mode } = this.themeContext;
 
+    // Read-only plain-text mode (web's `isReadOnlyRenderDiv()` —
+    // question_text.ts: `isReadOnly && settings.readOnly.textRenderMode ===
+    // "div"`). Web renders the committed value inside a bare `<div>`
+    // (reactquestion_text.tsx `renderInput`); the RN analog is a plain
+    // `Text` with the value — never a disabled `TextInput`. The text
+    // question's value is user-entered plain text (never a
+    // `LocalizableString`), so it renders directly through `inputValue`
+    // (web parity — the masked display value when a mask is active),
+    // not through the LocString viewer.
+    if (question.isReadOnlyRenderDiv()) {
+      const value = question.inputValue;
+      return (
+        <Text testID={`${question.name}-readonly-text`}>
+          {value == null ? '' : String(value)}
+        </Text>
+      );
+    }
+
     const inputType = question.inputType || 'text';
     const rnProps = mapInputTypeToRNProps(inputType);
     const autoCompleteProps = mapAutoComplete(question.autocomplete);
