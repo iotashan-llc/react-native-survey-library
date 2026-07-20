@@ -809,18 +809,25 @@ identical pairs are deduped, and **design mode never compacts** (web's
 single `buttongroup` template row in both modes — no RendererFactory
 registration, the renderer self-branches on `question.renderAs`.
 
-### Mount-already-compact shows the row for the first frame(s)
+### Mount-already-compact briefly renders no collapsed control (but never a tappable/screen-readable row)
 
 `renderAs` is a serialized core property, so a survey persisted while
-compact REMOUNTS compact — but the compact control (and the measure
-host's hiding props) gate on the lazily-built `dropdownListModel`
-VM, which render purity forbids constructing during render or the
-mount commit. Until the first measurement event (or, after a question
-swap under identical geometry, a deferred post-commit microtask)
-materializes the VM, the full button row is briefly **visible,
-interactive, and exposed to accessibility**. Web has no such window
-(the ResizeObserver decision lands before paint). Deliberate
-render-purity consequence, not a bug.
+compact REMOUNTS compact — but the collapsed control gates on the
+lazily-built `dropdownListModel` VM, which render purity forbids
+constructing during render or the mount commit. Until the first
+measurement event (or, after a question swap under identical geometry, a
+deferred post-commit microtask) materializes the VM, the compact control
+is not yet rendered. The measure host that carries the button row is
+still mounted for measurement, but its **hide/interaction/accessibility
+props gate on compact MODE (`renderAs`), NOT on VM presence** — so from
+the very first frame the row is off-screen (`opacity: 0`, absolute),
+non-interactive (`pointerEvents: 'none'`), and a11y-hidden
+(`accessibilityElementsHidden` / `importantForAccessibility:
+'no-hide-descendants'`). The row can therefore never be tapped or
+screen-read during the pending frame; the only divergence is a brief
+frame with the collapsed control absent (an empty collapsed area) before
+the VM lands. Web has no such window (the ResizeObserver decision lands
+before paint). Deliberate render-purity consequence, not a bug.
 
 The web `:focus-within` ring is a keyboard-web affordance with no RN
 analog.

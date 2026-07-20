@@ -715,6 +715,43 @@ describe('ButtonGroupQuestion — 2.5b review-findings regressions', () => {
     expect(screen.queryByTestId('sv-buttongroup-dropdown-bg')).toBeNull();
   });
 
+  it('the mount-already-compact PENDING frame gates interaction + a11y BEFORE the first measurement event (no interactive/screen-readable row flash)', () => {
+    // renderAs is serialized: a survey persisted while compact remounts
+    // compact with NO VM yet (render purity forbids constructing it in
+    // render or the mount commit). Before the first measurement event
+    // materializes the compact control, the measure host must ALREADY be
+    // hidden from accessibility + touch — gated on compact MODE, not VM
+    // presence — so the full button row cannot be tapped or screen-read
+    // for the first frame(s). It stays MOUNTED (measurement needs it).
+    const question = createButtonGroup({ renderAs: 'dropdown' });
+    renderElement(question);
+    // Pending frame: no measurement event fired yet, so the VM is unbuilt
+    // and the compact control has not materialized.
+    expect(resp(question).dropdownListModelValue).toBeUndefined();
+    expect(screen.queryByTestId('sv-buttongroup-dropdown-bg')).toBeNull();
+    // Even so, the measure host is a11y-hidden and non-interactive.
+    const measure = screen.getByTestId('sv-buttongroup-measure-bg', {
+      includeHiddenElements: true,
+    });
+    expect(measure.props.accessibilityElementsHidden).toBe(true);
+    expect(measure.props.importantForAccessibility).toBe('no-hide-descendants');
+    const flat = StyleSheet.flatten(measure.props.style) as {
+      opacity?: number;
+      position?: string;
+      pointerEvents?: string;
+    };
+    expect(flat.opacity).toBe(0);
+    expect(flat.position).toBe('absolute');
+    expect(flat.pointerEvents).toBe('none');
+    // Still mounted + measurable: the (hidden) ScrollView exists so the
+    // first measurement event can materialize the compact control.
+    expect(
+      screen.getByTestId('sv-buttongroup-scroll-bg', {
+        includeHiddenElements: true,
+      })
+    ).toBeTruthy();
+  });
+
   it('while compact the measuring row is hidden from accessibility and touch but stays mounted', () => {
     const question = createButtonGroup();
     renderElement(question);
