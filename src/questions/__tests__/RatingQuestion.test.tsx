@@ -11,6 +11,8 @@ import '../../factories/register-all';
 import { RatingQuestion } from '../RatingQuestion';
 import { setDiagnosticHandler } from '../../diagnostics';
 import type { DiagnosticPayload } from '../../diagnostics';
+import { resolveTheme } from '../../theme-core/resolve';
+import { buildRatingRecipe } from '../../theme-rn/recipes/rating';
 
 function createRatingQuestion(
   name: string,
@@ -139,6 +141,86 @@ describe('RatingQuestion -- stars mode (rateType: "stars")', () => {
       screen.getByTestId('sv-rating-item-q7s-1').props.accessibilityState
         ?.checked
     ).toBe(false);
+  });
+});
+
+describe('RatingQuestion -- star icon selection state (web parity: .sd-rating__item-star svg)', () => {
+  const recipe = buildRatingRecipe(resolveTheme(undefined));
+
+  function starIcon(name: string, index: number) {
+    return screen.getByTestId(`sv-rating-star-icon-${name}-${index}`, {
+      includeHiddenElements: true,
+    });
+  }
+
+  it('NO value: every star renders the UNSELECTED outline contract (fill transparent, stroke border token, strokeWidth 2) -- never a solid fill', () => {
+    const { question } = createRatingQuestion('q-star-unsel', {
+      rateType: 'stars',
+      rateMax: 5,
+    });
+    render(<RatingQuestion question={question} creator={{}} />);
+    expect(question.value).toBeUndefined();
+    for (let i = 0; i < 5; i++) {
+      const icon = starIcon('q-star-unsel', i);
+      expect(icon.props.fill).toBe(recipe.starIconStyles.unselected.fill);
+      expect(icon.props.stroke).toBe(recipe.starIconStyles.unselected.stroke);
+      expect(icon.props.strokeWidth).toBe(
+        recipe.starIconStyles.unselected.strokeWidth
+      );
+    }
+    // Lock the actual contract (not just recipe self-consistency): the
+    // unselected star is an OUTLINE -- transparent fill, visible stroke.
+    expect(recipe.starIconStyles.unselected.fill).toBe('transparent');
+    expect(recipe.starIconStyles.unselected.stroke).not.toBe('transparent');
+  });
+
+  it('value=3: stars 1-3 carry the SELECTED fill (primary, stroke transparent); stars 4-5 stay unselected outline', () => {
+    const { question } = createRatingQuestion('q-star-sel', {
+      rateType: 'stars',
+      rateMax: 5,
+    });
+    render(<RatingQuestion question={question} creator={{}} />);
+    act(() => {
+      question.value = 3;
+    });
+    for (let i = 0; i < 3; i++) {
+      const icon = starIcon('q-star-sel', i);
+      expect(icon.props.fill).toBe(recipe.starIconStyles.selected.fill);
+      expect(icon.props.stroke).toBe(recipe.starIconStyles.selected.stroke);
+    }
+    for (let i = 3; i < 5; i++) {
+      const icon = starIcon('q-star-sel', i);
+      expect(icon.props.fill).toBe(recipe.starIconStyles.unselected.fill);
+      expect(icon.props.stroke).toBe(recipe.starIconStyles.unselected.stroke);
+    }
+    // Selected fill differs from the unselected fill (a real state change).
+    expect(recipe.starIconStyles.selected.fill).not.toBe(
+      recipe.starIconStyles.unselected.fill
+    );
+  });
+
+  it('selected + focused: focus styling applies AND the icon swaps to itemStarIconAlt (web --selected:focus-within sv-star-2 reveal)', () => {
+    const { question } = createRatingQuestion('q-star-foc', {
+      rateType: 'stars',
+      rateMax: 5,
+    });
+    render(<RatingQuestion question={question} creator={{}} />);
+    act(() => {
+      question.value = 2;
+    });
+    const xmlBefore = starIcon('q-star-foc', 1).props.xml;
+    fireEvent(screen.getByTestId('sv-rating-item-q-star-foc-1'), 'focus');
+    const icon = starIcon('q-star-foc', 1);
+    expect(icon.props.fill).toBe(recipe.starIconStyles.selectedFocused.fill);
+    expect(icon.props.stroke).toBe(
+      recipe.starIconStyles.selectedFocused.stroke
+    );
+    expect(icon.props.xml).not.toBe(xmlBefore);
+    // Blur restores the base icon + plain selected styling.
+    fireEvent(screen.getByTestId('sv-rating-item-q-star-foc-1'), 'blur');
+    const blurred = starIcon('q-star-foc', 1);
+    expect(blurred.props.xml).toBe(xmlBefore);
+    expect(blurred.props.fill).toBe(recipe.starIconStyles.selected.fill);
   });
 });
 

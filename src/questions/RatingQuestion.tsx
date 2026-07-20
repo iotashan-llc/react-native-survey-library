@@ -36,8 +36,10 @@
  * - `rateDescriptionLocation` "top"/"bottom"/"topBottom" absolute
  *   positioning is not ported -- only the default "leftRight" (flanking
  *   text, natural flex flow) renders.
- * - The star item's dual-SVG partial-fill overlay collapses to a
- *   discrete unfilled/filled icon swap; "filled up to the selected value"
+ * - The star item's dual-SVG partial-fill overlay collapses to a single
+ *   RNIcon styled by the recipe's `starIconStyles` fill/stroke mapping
+ *   (unselected outline / selected primary fill, web parity; the alt
+ *   icon only on selected+focused); "filled up to the selected value"
  *   (`getItemClass`'s `isStar` branch) is ported for BOTH branches:
  *   numeric compare on auto-generated scales, `rateValues`-position
  *   compare for custom values (upstream's `useRateValues()` is `private`,
@@ -65,6 +67,8 @@ import {
   selectRatingPillStyles,
   selectRatingSmileyStyles,
   selectRatingSmileyIconFill,
+  selectRatingStarIconStyle,
+  resolveRatingItemLegalState,
 } from '../theme-rn/recipes/rating';
 import type { RatingItemStateInput } from '../theme-rn/recipes/rating';
 import { composeStyles } from '../theme-rn/recipes/types';
@@ -213,8 +217,29 @@ export function RatingStarItem(
 ): React.JSX.Element {
   const { question, item, index, onPress, isDisplayMode } = props;
   const { recipes } = React.useContext(SurveyThemeContext);
+  const [focused, setFocused] = React.useState(false);
   const inputReadOnly = question.isInputReadOnly || isDisplayMode;
   const selected = isStarSelected(question, item);
+  const input: RatingItemStateInput = {
+    selected,
+    // No `:active` styling exists for stars in the fixture -- pressed is
+    // not tracked (selectRatingStarIconStyle maps it to unselected anyway).
+    pressed: false,
+    focused,
+    ...baseRatingState(question),
+  };
+  // Web parity (`.sd-rating__item-star svg`, sd-rating.scss:392-550): the
+  // icon's fill/stroke come from the recipe's class-token mapping --
+  // unselected stars are an OUTLINE (transparent fill + border-color
+  // stroke), selected stars fill with primary. The `sv-star-2` alt icon
+  // appears only on selected+focused (web
+  // `--selected:not(--preview):focus-within` reveal) -- the legal-state
+  // resolver already excludes readOnly/preview from `focused`, matching
+  // the `:not(--preview)` guard (readOnly items are `disabled` in RN and
+  // can't focus at all).
+  const iconStyle = selectRatingStarIconStyle(recipes.rating, input);
+  const legalState = resolveRatingItemLegalState(input);
+  const showAltIcon = legalState.kind === 'focused' && legalState.selected;
   const handlePress = (_event: GestureResponderEvent): void => {
     if (inputReadOnly) return;
     onPress(item.value);
@@ -229,10 +254,18 @@ export function RatingStarItem(
       accessibilityState={{ checked: selected, disabled: inputReadOnly }}
       disabled={inputReadOnly}
       onPress={handlePress}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
     >
       <RNIcon
-        iconName={selected ? question.itemStarIconAlt : question.itemStarIcon}
+        testID={`sv-rating-star-icon-${question.name}-${index}`}
+        iconName={
+          showAltIcon ? question.itemStarIconAlt : question.itemStarIcon
+        }
         size={recipes.rating.starIconSize}
+        fill={iconStyle.fill}
+        stroke={iconStyle.stroke}
+        strokeWidth={iconStyle.strokeWidth}
       />
     </Pressable>
   );
