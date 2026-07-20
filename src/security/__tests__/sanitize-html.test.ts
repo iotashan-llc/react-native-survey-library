@@ -582,6 +582,70 @@ describe('sanitizeHtml — resource bounds (exceed -> plain-text fallback, never
   });
 });
 
+describe('sanitizeHtml — plain-text fallback output is bounded + script/style-free (codex FIX 5)', () => {
+  const fallbackText = (
+    raw: string,
+    config?: Parameters<typeof sanitizeHtml>[1]
+  ): string => {
+    const result = sanitizeHtml(raw, config);
+    expect(result.mode).toBe('plain-text-fallback');
+    return result.dom.children.map((c) => (c as Text).data).join('');
+  };
+
+  it('raw-source fallback (source cap exceeded) drops <script>/<style> body text', () => {
+    const raw =
+      '<script>' +
+      'S'.repeat(80) +
+      '</script>' +
+      '<style>' +
+      'Y'.repeat(80) +
+      '</style>' +
+      '<p>' +
+      'V'.repeat(80) +
+      '</p>';
+    const text = fallbackText(raw, { bounds: { maxSourceLength: 40 } });
+    expect(text).not.toContain('S');
+    expect(text).not.toContain('Y');
+    expect(text).toContain('V');
+  });
+
+  it('raw-source fallback caps rendered text at the configured maxDecodedTextLength', () => {
+    const raw = 'V'.repeat(500);
+    const text = fallbackText(raw, {
+      bounds: { maxSourceLength: 40, maxDecodedTextLength: 25 },
+    });
+    expect(text.length).toBeLessThanOrEqual(25);
+  });
+
+  it('parsed-tree fallback (parse bound exceeded) drops <script>/<style> body text', () => {
+    const raw =
+      '<script>' +
+      'S'.repeat(20) +
+      '</script>' +
+      '<style>' +
+      'Y'.repeat(20) +
+      '</style>' +
+      '<p>V</p><p>V</p><p>V</p><p>V</p>';
+    // maxNodeCount tightened down → parse-bound fallback (NOT the source
+    // cap): exercises plainTextFromParsedTree.
+    const text = fallbackText(raw, { bounds: { maxNodeCount: 3 } });
+    expect(text).not.toContain('S');
+    expect(text).not.toContain('Y');
+    expect(text).toContain('V');
+  });
+
+  it('parsed-tree fallback caps rendered text at the configured maxDecodedTextLength', () => {
+    const raw =
+      '<div>' +
+      'V'.repeat(500) +
+      '</div><span>x</span><span>x</span><span>x</span><span>x</span>';
+    const text = fallbackText(raw, {
+      bounds: { maxNodeCount: 3, maxDecodedTextLength: 25 },
+    });
+    expect(text.length).toBeLessThanOrEqual(25);
+  });
+});
+
 describe('sanitizeHtml — relaxedFormatting (widens formatting only, safety pass immutable)', () => {
   it('does not allow mark/small/del/ins by default', () => {
     const html = sanitizedHtml('<mark>hi</mark>');

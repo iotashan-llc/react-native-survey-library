@@ -8,8 +8,11 @@
  * Upstream renders `locHtml.renderedHtml` through `dangerouslySetInnerHTML`.
  * This library renders that SAME processed string through `<SanitizedHtml>`
  * (task 0.9): the allowlisted-tag sanitizer, the URI/scheme policy, and the
- * no-auto-navigation link handling (invariant 8) all apply — a link inside
- * html content surfaces as an event (host decides) rather than navigating.
+ * no-auto-navigation link handling (invariant 8) all apply. This component
+ * supplies no `onLinkPress`, so a link inside html content is currently
+ * INERT — a press is a no-op (plus a dev diagnostic), never navigation; the
+ * host-callback plumbing (event-surfacing) lands with the separate
+ * `onLinkPress` task.
  * It renders through `<SanitizedHtml>` DIRECTLY, not through
  * `SurveyLocStringViewer`: that viewer's `hasHtml` branch is gated on
  * MARKDOWN conversion (`LocalizableString.hasHtml` → `owner.getMarkdownHtml`,
@@ -37,6 +40,7 @@ import { View } from 'react-native';
 import type { Base, LocalizableString } from '../core/facade';
 import { QuestionHtmlModel } from '../core/facade';
 import { SanitizedHtml } from '../components/SanitizedHtml';
+import { buildBodyTextStyle } from '../theme-rn/recipes/bodyText';
 import { QuestionElementBase } from '../reactivity/QuestionElementBase';
 import type { QuestionElementBaseProps } from '../reactivity/QuestionElementBase';
 import type { SurveyElementBaseState } from '../reactivity/SurveyElementBase';
@@ -104,9 +108,15 @@ export class HtmlQuestion extends QuestionElementBase<
 
   protected renderElement(): React.JSX.Element {
     const question = this.htmlQuestion;
+    // RN has no CSS text inheritance: thread the shared theme-derived body
+    // text style (foreground color + base typography) as the renderer's
+    // `baseStyle` so dark themes render readable content (codex FIX 2).
     return (
       <View testID={`sv-html-${question.name}`}>
-        <SanitizedHtml html={question.locHtml.renderedHtml} />
+        <SanitizedHtml
+          html={question.locHtml.renderedHtml}
+          baseStyle={buildBodyTextStyle(this.themeContext.resolved)}
+        />
       </View>
     );
   }

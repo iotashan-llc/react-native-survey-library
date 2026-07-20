@@ -454,6 +454,40 @@ describe('ButtonGroupQuestion — 2.5b overflow measurement (R2/R3 gates)', () =
   });
 });
 
+describe('ButtonGroupQuestion — persisted compact in DESIGN mode (codex FIX 4)', () => {
+  it('renders the editable row (not the collapsed control) and never constructs the VM', () => {
+    // renderAs is serialized: a survey persisted while compact can reopen
+    // in a Creator (design mode). Core's responsiveness gate excludes
+    // design mode, so it NEVER runs to reset renderAs — nothing would undo
+    // a materialized dropdown, stranding the row. "Active compact" must
+    // therefore be dropdown-mode AND NOT design mode.
+    const { model, question } = createButtonGroupModel({
+      renderAs: 'dropdown',
+    });
+    model.setDesignMode(true);
+    renderElement(question);
+    // Measurement events that would materialize the compact VM at runtime
+    // must be inert in design mode.
+    fireLayout(300);
+    fireContentWidth(800);
+    // renderAs stays the serialized 'dropdown' (core never resets it here).
+    expect(resp(question).renderAs).toBe('dropdown');
+    // The collapsed dropdown control is NOT rendered…
+    expect(screen.queryByTestId('sv-buttongroup-dropdown-bg')).toBeNull();
+    // …and the lazy compact VM was never constructed.
+    expect(resp(question).dropdownListModelValue).toBeUndefined();
+    // The measuring row is VISIBLE + a11y-exposed (not the compact-hidden
+    // host): editable in design mode.
+    const measure = screen.getByTestId('sv-buttongroup-measure-bg', {
+      includeHiddenElements: true,
+    });
+    expect(measure.props.accessibilityElementsHidden).toBeFalsy();
+    const flat = StyleSheet.flatten(measure.props.style) as
+      { opacity?: number } | undefined;
+    expect(flat?.opacity ?? 1).not.toBe(0);
+  });
+});
+
 describe('ButtonGroupQuestion — 2.5b compact control (R5/R7)', () => {
   it('a fitting row never instantiates the dropdownListModel', () => {
     const question = createButtonGroup();

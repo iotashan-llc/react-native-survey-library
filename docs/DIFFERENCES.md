@@ -26,9 +26,12 @@ The `html` question type (supported since v0.2.1) renders
 `question.html` through this same `<SanitizedHtml>` sink rather than
 web's `dangerouslySetInnerHTML`, so every constraint in this section
 applies to it — the tag allowlist, the stripped remote `<img>` sources,
-and the no-auto-navigation link policy (a link inside html content
-surfaces an event only; nothing navigates unless the host wires it). No
-new deviation beyond those already listed here.
+and the no-auto-navigation link policy (a link inside html content is
+currently **inert**: nothing is wired to receive a link press, so a tap is
+a no-op plus a dev-only diagnostic — it does not navigate and does not yet
+surface an event; host-callback plumbing lands with the separate
+`onLinkPress` task — see "Links never auto-navigate" below). No new
+deviation beyond those already listed here.
 
 ### Tag support is an explicit allowlist, not "any HTML"
 
@@ -119,16 +122,30 @@ source inside sanitized HTML content is stripped entirely (a
 still renders). Only strict inline `data:` images — which involve no network
 request at all — render from HTML `<img>` tags.
 
-This applies specifically to `<img>` inside HTML content (rendered through
-the stock renderer's native `Image`). Other image sinks (image question,
-imagepicker, choice images, survey logo, background image) are wired by
-later tasks (1.1/M2/M4) through a policy-aware, redirect-validating
-transport and can load allowlisted remote images.
+This fail-closed stripping applies specifically to `<img>` **inside HTML
+content** (rendered through the stock renderer's native `Image`).
 
-**Workaround:** inline small images as `data:` URIs, or serve HTML-embedded
-imagery from the (later) transport-backed image sinks rather than raw
-`<img>` tags. `imageUriConfig.allowedOrigins` remains meaningful for those
-other sinks and for the `data:` decoded-size cap.
+The other image sinks (image question, imagepicker choice images, survey
+logo) do **not** share this fail-closed posture, and the redirect gap
+described above is **not** closed for them today. Each validates the URL
+**once** against the scheme/origin policy (`src/security/uri-policy.ts`)
+and then hands the canonical URL straight to a React Native `<Image>`
+(`src/questions/ImageQuestion.tsx`, `src/questions/ImagePickerQuestion.tsx`,
+`src/components/LogoImage.tsx`) — there is no redirect-validating transport
+in front of that sink. RN `Image` follows HTTP redirects with **no per-hop
+validation** (documented at `src/security/sanitize-html.ts`, the `img.src`
+branch), so an allowlisted origin that 30x-redirects can still reach a
+denied/private origin on these sinks. In other words: the origin allowlist
+is enforced only on the **initial** URL, not on redirect targets. This is a
+known limitation for these remote-image sinks, tracked for a future
+policy-aware transport; it does not affect inline `data:` images (no network
+request) or the fail-closed HTML `<img>` path above.
+
+**Workaround:** for HTML content, inline small images as `data:` URIs. For
+the image-question / imagepicker / logo sinks, only reference origins you
+trust to not redirect off-allowlist (ideally your own origin serving stable,
+non-redirecting URLs). `imageUriConfig.allowedOrigins` still gates the
+**initial** request origin and the `data:` decoded-size cap.
 
 ### Oversized/pathological HTML renders as plain text, not a partial DOM
 

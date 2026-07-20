@@ -345,7 +345,19 @@ export class ButtonGroupQuestion extends OverlayControlBase<OverlayControlProps>
   }
 
   private get isCompactMode(): boolean {
-    return this.buttonGroup.renderAs === 'dropdown';
+    // "Active compact rendering" = dropdown mode AND NOT design mode (codex
+    // FIX 4). `renderAs` is serialized, so a survey persisted while compact
+    // can reopen in a Creator (design mode) with `renderAs === 'dropdown'`.
+    // Core's responsiveness gate excludes design mode (web parity:
+    // `needResponsiveness()`; also enforced in `maybeProcessResponsiveness`
+    // below), so it NEVER runs to reset `renderAs` there — nothing would
+    // undo a materialized dropdown, stranding the editable row. Gating the
+    // single compact predicate on `!isDesignMode` keeps VM materialization,
+    // overlay registration, measuring-row visibility, and
+    // `ensureCompactViewModel` all consistently row-mode in design mode.
+    return (
+      this.buttonGroup.renderAs === 'dropdown' && !this.buttonGroup.isDesignMode
+    );
   }
 
   /** Overlay-mode gate for `OverlayControlBase` — keyed on `renderAs`,

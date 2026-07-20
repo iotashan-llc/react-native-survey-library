@@ -52,6 +52,7 @@ import type { QuestionElementBaseProps } from '../reactivity/QuestionElementBase
 import { DraftCommitAdapter } from '../inputs/DraftCommitAdapter';
 import { selectInputStyles, composeStyles } from '../theme-rn/recipes';
 import type { InputCounterSize } from '../theme-rn/recipes';
+import { buildBodyTextStyle } from '../theme-rn/recipes/bodyText';
 import {
   getControlVariant,
   queueUnknownTokens,
@@ -144,8 +145,14 @@ export class Comment extends QuestionElementBase<CommentProps, CommentState> {
     // LocString viewer.
     if (question.isReadOnlyRenderDiv()) {
       const value = question.value as unknown;
+      // Chrome-free, but theme-styled: RN text has no CSS inheritance, so
+      // the plain read-only Text carries the shared body-text foreground/
+      // typography explicitly (codex FIX 2) — no border/padding chrome.
       return (
-        <Text testID="comment-readonly-text">
+        <Text
+          testID="comment-readonly-text"
+          style={buildBodyTextStyle(this.themeContext.resolved)}
+        >
           {value == null ? '' : String(value)}
         </Text>
       );
