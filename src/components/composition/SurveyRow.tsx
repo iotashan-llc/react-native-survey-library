@@ -192,13 +192,31 @@ export class SurveyRow extends SurveyElementBase<
 
 const styles = StyleSheet.create({
   /**
-   * Inner content box: `.sd-row`'s `display:flex; flex-direction:row`.
-   * Stretch (not `width:'100%'`) so a multi variant's negative
-   * `marginStart` WIDENS it to rowWidth + g — an explicit percent width
-   * would pin it to rowWidth and break DOM parity (see file doc).
+   * Inner content box: `.sd-row`'s `display:flex; flex-direction:row;
+   * width:100%`.
+   *
+   * `flexGrow: 1` is the MAIN-axis width claim (the DOM's `width:100%`),
+   * and it is load-bearing: the outer row View is `flexDirection:'row'`,
+   * so `alignSelf:'stretch'` here only stretches the CROSS axis (height).
+   * Without the grow, Yoga sizes this auto-width box by fit-content and
+   * shrinks children to their resolved `minWidth` during the measure —
+   * question wrappers squeeze to their 300dp minWidth, while panel/
+   * paneldynamic wrappers (model `minWidth: "auto"` -> no resolved
+   * minWidth) collapse to width 0, their nested SurveyRows measure
+   * onLayout w=0, and the `width > 0` defer gate deadlocks the panel body
+   * blank forever (device-verified: kitchen-sink page 3 `scores`/
+   * `devices`; see SurveyRow.test.tsx "content box owns the row main
+   * axis").
+   *
+   * Grow — NOT `width:'100%'` — so a multi variant's negative
+   * `marginStart` still WIDENS it to rowWidth + g: the grow distributes
+   * the free space including the margin's 40dp, exactly the DOM's
+   * `width: calc(100% + g)` box; an explicit percent width would pin it
+   * to rowWidth and break DOM parity (see file doc).
    */
   content: {
     flexDirection: 'row',
     alignSelf: 'stretch',
+    flexGrow: 1,
   },
 });
