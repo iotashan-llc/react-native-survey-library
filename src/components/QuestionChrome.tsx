@@ -54,6 +54,7 @@ import { QuestionElementBase } from '../reactivity/QuestionElementBase';
 import type { QuestionElementBaseProps } from '../reactivity/QuestionElementBase';
 import type { SurveyElementBaseState } from '../reactivity/SurveyElementBase';
 import type { Base, Question, LocalizableString } from '../core/facade';
+import { QuestionErrors } from './QuestionErrors';
 import { getRootVariant } from '../theme-rn/bridge';
 import { composeStyles } from '../theme-rn/recipes/types';
 import { selectQuestionTitleStyles } from '../theme-rn/recipes/questionTitle';
@@ -218,26 +219,16 @@ export class QuestionChrome extends QuestionElementBase<
     const headerTop = question.hasTitleOnLeftTop ? header : null;
     const headerBottom = question.hasTitleOnBottom ? header : null;
 
-    const showErrorsAbove =
-      question.showErrorsAboveQuestion && question.hasVisibleErrors;
-    const showErrorsBelow =
-      question.showErrorsBelowQuestion && question.hasVisibleErrors;
-    const errorsAbove = showErrorsAbove
-      ? this.renderErrors(
-          question,
-          recipes.questionChrome,
-          overrides.questionChrome,
-          'above'
-        )
-      : null;
-    const errorsBelow = showErrorsBelow
-      ? this.renderErrors(
-          question,
-          recipes.questionChrome,
-          overrides.questionChrome,
-          'below'
-        )
-      : null;
+    // Error rendering is delegated to the extracted `QuestionErrors` unit
+    // (M3 §2a, 3.3a-pre) — it self-gates on `hasVisibleErrors` and
+    // subscribes to the question independently; only the position gate
+    // (`errorLocation`-derived) stays here at the call site.
+    const errorsAbove = question.showErrorsAboveQuestion ? (
+      <QuestionErrors question={question} position="above" />
+    ) : null;
+    const errorsBelow = question.showErrorsBelowQuestion ? (
+      <QuestionErrors question={question} position="below" />
+    ) : null;
 
     const content = !collapsed ? (
       <View testID={`${question.name}-content`}>
@@ -418,52 +409,6 @@ export class QuestionChrome extends QuestionElementBase<
         override: chromeOverrides?.description,
       }),
       key
-    );
-  }
-
-  private renderErrors(
-    question: Question,
-    chromeRecipe: QuestionChromeRecipe,
-    chromeOverrides: QuestionChromeStyleOverrides | undefined,
-    position: 'above' | 'below'
-  ): React.JSX.Element {
-    const f = chromeRecipe.fragments;
-    const panelVariant =
-      position === 'above' ? f.errorPanelAbove : f.errorPanelBelow;
-    // Tone policy = upstream's (codex review major 4): the PANEL tone
-    // follows `currentNotificationType` (highest severity among visible
-    // errors; error > warning > info), and core's `calcRenderedErrors`
-    // already filters `renderedErrors` to exactly that type — the panel
-    // is homogeneous by construction, so per-error tones cannot diverge
-    // (survey-element.ts:793-816; sd-error.scss:26-38).
-    const tone = question.currentNotificationType;
-    const panelFragments = [f.errorPanel, panelVariant];
-    const itemFragments = [f.errorItem];
-    if (tone === 'warning') {
-      panelFragments.push(f.errorPanelWarning);
-      itemFragments.push(f.errorItemWarning);
-    } else if (tone === 'info') {
-      panelFragments.push(f.errorPanelInfo);
-      itemFragments.push(f.errorItemInfo);
-    }
-    return (
-      <View
-        testID={`${question.name}-errors-${position}`}
-        accessibilityRole="alert"
-        style={composeStyles(panelFragments, {
-          override: chromeOverrides?.errorPanel,
-        })}
-      >
-        {question.renderedErrors.map((error, index) =>
-          this.renderLocString(
-            error.locText,
-            composeStyles(itemFragments, {
-              override: chromeOverrides?.errorItem,
-            }),
-            `error-${position}-${index}`
-          )
-        )}
-      </View>
     );
   }
 
