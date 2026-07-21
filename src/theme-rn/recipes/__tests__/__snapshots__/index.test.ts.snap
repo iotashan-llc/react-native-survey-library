@@ -434,6 +434,8 @@ exports[`curated recipe golden snapshots ContrastLight: recipes build to a stabl
   "matrix": {
     "detailIconColor": "rgba(0, 0, 0, 1)",
     "detailIconSize": 16,
+    "dragIconColor": "rgba(0, 0, 0, 1)",
+    "dragIconSize": 24,
     "fragments": {
       "addRowButton": {
         "alignItems": "center",
@@ -520,6 +522,19 @@ exports[`curated recipe golden snapshots ContrastLight: recipes build to a stabl
         "paddingVertical": 8,
       },
       "detailToggle": {
+        "alignItems": "center",
+        "justifyContent": "center",
+        "minHeight": 32,
+        "minWidth": 32,
+      },
+      "dragArrowText": {
+        "color": "rgba(0, 0, 0, 1)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "lineHeight": 24,
+        "textAlign": "center",
+      },
+      "dragHandle": {
         "alignItems": "center",
         "justifyContent": "center",
         "minHeight": 32,
@@ -1835,6 +1850,8 @@ exports[`curated recipe golden snapshots DefaultLight: recipes build to a stable
   "matrix": {
     "detailIconColor": "rgba(0, 0, 0, 0.91)",
     "detailIconSize": 16,
+    "dragIconColor": "rgba(0, 0, 0, 0.91)",
+    "dragIconSize": 24,
     "fragments": {
       "addRowButton": {
         "alignItems": "center",
@@ -1921,6 +1938,19 @@ exports[`curated recipe golden snapshots DefaultLight: recipes build to a stable
         "paddingVertical": 8,
       },
       "detailToggle": {
+        "alignItems": "center",
+        "justifyContent": "center",
+        "minHeight": 32,
+        "minWidth": 32,
+      },
+      "dragArrowText": {
+        "color": "rgba(0, 0, 0, 0.91)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "lineHeight": 24,
+        "textAlign": "center",
+      },
+      "dragHandle": {
         "alignItems": "center",
         "justifyContent": "center",
         "minHeight": 32,
@@ -3300,6 +3330,8 @@ exports[`curated recipe golden snapshots LayeredDark: recipes build to a stable 
   "matrix": {
     "detailIconColor": "rgba(213, 215, 238, 1)",
     "detailIconSize": 16,
+    "dragIconColor": "rgba(213, 215, 238, 1)",
+    "dragIconSize": 24,
     "fragments": {
       "addRowButton": {
         "alignItems": "center",
@@ -3386,6 +3418,19 @@ exports[`curated recipe golden snapshots LayeredDark: recipes build to a stable 
         "paddingVertical": 8,
       },
       "detailToggle": {
+        "alignItems": "center",
+        "justifyContent": "center",
+        "minHeight": 32,
+        "minWidth": 32,
+      },
+      "dragArrowText": {
+        "color": "rgba(213, 215, 238, 1)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "lineHeight": 24,
+        "textAlign": "center",
+      },
+      "dragHandle": {
         "alignItems": "center",
         "justifyContent": "center",
         "minHeight": 32,
@@ -4797,6 +4842,8 @@ exports[`curated recipe golden snapshots SharpDark: recipes build to a stable sn
   "matrix": {
     "detailIconColor": "rgba(255, 255, 255, 0.78)",
     "detailIconSize": 16,
+    "dragIconColor": "rgba(255, 255, 255, 0.78)",
+    "dragIconSize": 24,
     "fragments": {
       "addRowButton": {
         "alignItems": "center",
@@ -4883,6 +4930,19 @@ exports[`curated recipe golden snapshots SharpDark: recipes build to a stable sn
         "paddingVertical": 8,
       },
       "detailToggle": {
+        "alignItems": "center",
+        "justifyContent": "center",
+        "minHeight": 32,
+        "minWidth": 32,
+      },
+      "dragArrowText": {
+        "color": "rgba(255, 255, 255, 0.78)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "lineHeight": 24,
+        "textAlign": "center",
+      },
+      "dragHandle": {
         "alignItems": "center",
         "justifyContent": "center",
         "minHeight": 32,
@@ -6246,6 +6306,8 @@ exports[`curated recipe golden snapshots ThreeDimensionalLight: recipes build to
   "matrix": {
     "detailIconColor": "rgba(0, 0, 0, 0.91)",
     "detailIconSize": 16,
+    "dragIconColor": "rgba(0, 0, 0, 0.91)",
+    "dragIconSize": 24,
     "fragments": {
       "addRowButton": {
         "alignItems": "center",
@@ -6332,6 +6394,19 @@ exports[`curated recipe golden snapshots ThreeDimensionalLight: recipes build to
         "paddingVertical": 8,
       },
       "detailToggle": {
+        "alignItems": "center",
+        "justifyContent": "center",
+        "minHeight": 32,
+        "minWidth": 32,
+      },
+      "dragArrowText": {
+        "color": "rgba(0, 0, 0, 0.91)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "lineHeight": 24,
+        "textAlign": "center",
+      },
+      "dragHandle": {
         "alignItems": "center",
         "justifyContent": "center",
         "minHeight": 32,

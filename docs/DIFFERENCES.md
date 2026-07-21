@@ -1534,12 +1534,35 @@ STANDALONE `renderedTable.showAddRow` — NOT the in-table
 `showAddRowOnTop`/`showAddRowOnBottom` (both false while the table is
 hidden). The first row is added from the placeholder itself.
 
-### Row drag reorder is deferred to task 4.3
+### Row drag reorder is accessible move controls + a device-gated Pan (task 4.3)
 
-`allowRowReorder` produces core's drag-handle cells, which render inert
-(an empty aligned slot, no gesture wiring) until the M4 drag primitive
-lands (4.1/4.3). Web's `DragDropMatrixRows` DOM machinery is bypassed
-entirely (the repo-wide no-DOM posture).
+`allowRowReorder` / `allowRowsDragAndDrop` is supported, driven **entirely
+through the core model**. Core still builds the drag-handle cell (gated by
+`isRowsDragAndDrop` — reorder-on && **not** read-only && horizontal — and by
+`lockedRowCount`, so locked leading rows get no handle), and the RN renderer
+fills it with a handle whose reorder calls core's own **`moveRowByIndex`** —
+the SAME primitive core's drag-drop commits with. `question.value` reorders
+(the row **models** stay put and values flow through positions, matching
+core, which is why the swap needs no full table reset), `onValueChanged` and
+the inner-table subscription re-render the new order, and validation/events
+stay 100% core-correct. Web's `DragDropMatrixRows` DOM machinery (pointer
+events, a cloned DOM shortcut, per-`dragOver` model splices, the ghost row)
+is bypassed entirely (the repo-wide no-DOM posture).
+
+**Accessible move controls are the primary affordance.** Each unlocked row's
+handle exposes **move-up / move-down** buttons (boundary-gated: no up on the
+first row, no down on the last), so the matrix is fully reorderable without
+any fine-drag gesture — and this is the jest-tested path.
+
+**Fine drag is a device gate.** The handle is wrapped in the SAME lazy
+`RankingDragRow` Pan primitive ranking uses (gesture-handler + reanimated,
+the required peers), which commits ONCE on release via `moveRowByIndex` — not
+web's continuous per-`dragOver` splices. When those peers are absent (or in
+jest) `RankingDragRow` degrades to the buttons, so the accessible path always
+works; the gesture itself is verified on the New-Arch example, not in jest.
+The drag translates the handle glyph (the reorder is applied on release);
+there is no ported drop-placeholder / ghost-row styling (core's ghost is a
+model-driven web state the commit-once drag never produces).
 
 ## Single-input summary (`singleinputsummary`, task 3.5)
 

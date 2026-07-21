@@ -20,8 +20,10 @@
  * `MatrixTableBase` renders each `remove-row` action as a
  * `MatrixRemoveRowButton` → `removeRowUI(row)` → core's `confirmDelete`
  * → `settings.showDialog` → the 2.2 dialog adapter (§2b/§3e). Row drag
- * reorder is DEFERRED to 4.3 — the drag-handle cell renders inert (§3f,
- * DIFFERENCES 7).
+ * REORDER (4.3, `allowRowsDragAndDrop`) is likewise in `MatrixTableBase`:
+ * the shared walk fills each drag-handle cell with a `MatrixRowDragHandle`
+ * — accessible move-up/down driving core's `moveRowByIndex`, plus the
+ * device-gated `RankingDragRow` Pan (§3f, DIFFERENCES 7).
  *
  * The element wrapper is the family-shape pass-through (like
  * `MatrixDropdownQuestionElement`): cell overlays get their
