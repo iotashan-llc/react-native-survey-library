@@ -428,6 +428,20 @@
           "name": "teams",
           "title": "Team assessment (matrixdropdown)",
           "totalText": "Totals",
+          "detailPanelMode": "underRow",
+          "detailElements": [
+            {
+              "type": "text",
+              "name": "owner",
+              "title": "Owner"
+            },
+            {
+              "type": "comment",
+              "name": "notes",
+              "title": "Notes",
+              "startWithNewLine": false
+            }
+          ],
           "columns": [
             {
               "name": "lead",
@@ -524,7 +538,7 @@
         {
           "type": "html",
           "name": "htmlContent",
-          "html": "<p>The <code>html</code> question type renders rich content natively via the sanitized HTML pipeline: <strong>bold</strong>, <em>italic</em>, and <a href=\"https://surveyjs.io\">links</a> (the renderer never auto-navigates; link presses are currently inert — a host callback for them is not wired yet).</p>"
+          "html": "<p>The <code>html</code> question type renders rich content natively via the sanitized HTML pipeline: <strong>bold</strong>, <em>italic</em>, and <a href=\"https://surveyjs.io\">links</a> (the renderer never auto-navigates; a press surfaces a {url, context} event to the onLinkPress handler this example logs to the console).</p>"
         },
         {
           "type": "ranking",

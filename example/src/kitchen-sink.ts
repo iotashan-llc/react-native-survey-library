@@ -362,16 +362,27 @@ export const kitchenSinkJson = {
           },
         },
         {
-          // matrixdropdown (M3 3.3a — static rows over renderedTable):
+          // matrixdropdown (M3 3.3a/3.3b — static rows over renderedTable):
           // chrome-less per-cell question dispatch (dropdown cell opens the
           // overlay sheet, text cell drafts/commits, boolean toggles), a
           // showInMultipleColumns exploded checkbox column (one item per
-          // cell), and a per-column totals footer (read-only expression
-          // cells). Detail panels are 3.3b.
+          // cell), a per-column totals footer (read-only expression cells),
+          // and a per-row DETAIL PANEL (detailPanelMode: underRow) whose
+          // toggle expands the `detailElements` under the row (3.3b).
           type: 'matrixdropdown',
           name: 'teams',
           title: 'Team assessment (matrixdropdown)',
           totalText: 'Totals',
+          detailPanelMode: 'underRow',
+          detailElements: [
+            { type: 'text', name: 'owner', title: 'Owner' },
+            {
+              type: 'comment',
+              name: 'notes',
+              title: 'Notes',
+              startWithNewLine: false,
+            },
+          ],
           columns: [
             {
               name: 'lead',
