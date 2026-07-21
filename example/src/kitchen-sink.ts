@@ -361,6 +361,45 @@ export const kitchenSinkJson = {
             quality: { low: 'Rough', mid: 'Solid', high: 'Excellent' },
           },
         },
+        {
+          // matrixdropdown (M3 3.3a — static rows over renderedTable):
+          // chrome-less per-cell question dispatch (dropdown cell opens the
+          // overlay sheet, text cell drafts/commits, boolean toggles), a
+          // showInMultipleColumns exploded checkbox column (one item per
+          // cell), and a per-column totals footer (read-only expression
+          // cells). Detail panels are 3.3b.
+          type: 'matrixdropdown',
+          name: 'teams',
+          title: 'Team assessment (matrixdropdown)',
+          totalText: 'Totals',
+          columns: [
+            {
+              name: 'lead',
+              title: 'Lead',
+              cellType: 'dropdown',
+              choices: ['Ada', 'Grace', 'Linus'],
+            },
+            {
+              name: 'headcount',
+              title: 'Headcount',
+              cellType: 'text',
+              inputType: 'number',
+              totalType: 'sum',
+            },
+            { name: 'onTrack', title: 'On track?', cellType: 'boolean' },
+            {
+              name: 'platforms',
+              title: 'Platforms',
+              cellType: 'checkbox',
+              showInMultipleColumns: true,
+              choices: ['iOS', 'Android'],
+            },
+          ],
+          rows: [
+            { value: 'design', text: 'Design' },
+            { value: 'engineering', text: 'Engineering' },
+          ],
+        },
       ],
     },
     {

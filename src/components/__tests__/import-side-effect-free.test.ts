@@ -73,6 +73,7 @@ describe('component modules are import-side-effect-free', () => {
       'image',
       'imagepicker',
       'matrix',
+      'matrixdropdown',
       'multipletext',
       'paneldynamic',
       'radiogroup',

@@ -1207,3 +1207,85 @@ React Native exposes no ARIA grid semantics. Each tile is an
 column)` (the localized row title + column title). There is no
 `role="grid"`/`columnheader`/`rowheader` wrapper and no header/cell
 association beyond that per-tile label.
+
+## Matrix dropdown question (task 3.3a)
+
+### Cell questions render chrome-less — the column header is the cell title
+
+Each `matrixdropdown` cell holds a genuine `Question` instance built by
+core (`column.createCellQuestion(row)`), and RN dispatches it through the
+**same registered per-type renderer** a top-level question uses — a
+dropdown cell opens the 2.1 overlay sheet, a text cell drafts/commits
+through the 1.9 adapter, boolean/comment/expression cells render their
+normal components. What is deliberately **not** rendered is the per-cell
+`QuestionChrome`: no per-cell title/description/comment chrome (the column
+header carries the title, matching web's `renderQuestionBody`). Cell
+errors are rendered by the reusable, reactive `QuestionErrors` unit
+(extracted from `QuestionChrome`, 3.3a-pre) **inline under the cell body**
+— under each non-choice question cell, and exactly once per
+`showInMultipleColumns` exploded choice group at its `isFirstChoice` cell
+(where core attaches the shared question's error). The walker skips core's
+rendered error affordances (`isErrorsRow` rows / `isErrorsCell` cells)
+entirely, so errors appear exactly once — neither doubled nor dropped. The
+separate top/bottom `cellErrorLocation` error row collapses to inline in
+v0.3.
+
+### No `<table>` — the renderedTable walks into the shared flex-View grid
+
+The walker consumes `renderedTable.headerRow` / `renderedRows` /
+`footerRow` faithfully and lays them out through the same 3.1a
+`MatrixGrid` primitive as the simple matrix (one horizontal `ScrollView`,
+one shared column-dp array stamped on header/body/footer — see the 3.2
+section's grid notes, which all apply). Rendered rows are keyed off the
+stable source `row.id` and cell leaves off the immutable
+`cell.question.uniqueId`, so a `renderedTable` reset (column/`isRequired`/
+layout changes destroy and lazily rebuild the rendered wrapper) reconciles
+surviving cell questions **in place** — an uncommitted text draft and cell
+focus survive the reset instead of being discarded with a remount.
+
+### `showInMultipleColumns` renders one choice item per cell
+
+A checkbox/radiogroup column with `showInMultipleColumns` is exploded by
+core into per-choice cells sharing ONE question; RN renders a single
+radio/checkbox item per cell (never the whole control N times) driven by
+the shared question's `isItemSelected`/`clickItemHandler` (checkbox uses
+the explicit two-arg toggle form; radiogroup the single-arg select form).
+The item caption is hidden (the exploded column header carries the choice
+text) and each cell's `accessibilityLabel` is synthesized from core's
+`getCellAriaLabel` (row title + column title). An `isActionsCell` (which
+also carries an `item`) resolves before any choice path, and an
+`isOtherChoice` cell renders the controlled Other-comment adapter, not an
+item button. `columnColCount` is not applied to exploded cells (core
+applies `colCount` only to an un-exploded child question's own layout).
+
+### Transposed layout renders as a plain vertical grid + diagnostic
+
+With `transposeData: true` (or `columnLayout: "vertical"`) on a wide
+screen, `isColumnLayoutHorizontal` is genuinely false and core builds a
+vertical renderedTable (columns become rows). RN walks those renderedRows
+faithfully as a plain, non-sticky grid — no axis-swapping of its own — and
+emits a deduped `matrix-vertical-layout` layout diagnostic noting possible
+polish gaps. The totals footer is absent in this layout (core's
+`showFooter` gate), matching web.
+
+### Totals render as read-only expression cells in a column-aligned footer
+
+`totalType` columns render core's footer `expression` questions through
+the normal expression renderer, aligned to the shared column-dp array
+(the footer is a column-aligned band, not a full-width strip);
+`totalText` renders in the footer's row-title slot. The footer band is
+gated on `renderedTable.showFooter`. A dedicated mobile totals summary
+*card* arrives with the 3.1b/3.3b stacked-card path — until then the grid
+(and its footer band) renders on every width, so totals remain visible on
+phones via horizontal scroll.
+
+### Detail panels and row actions are deferred to 3.3b/3.4
+
+`detailPanelMode` detail rows and their show/hide toggle actions are 3.3b:
+in 3.3a a detail-toggle actions cell renders as an inert, aligned no-op
+placeholder and detail rows are not emitted. Custom row actions
+(`onGetMatrixRowActions`) and action overflow-to-popup remain v1
+unsupported (plain themed buttons only, no `AdaptiveActionContainer`).
+An unsupported `cellType` (e.g. `file` before M5) degrades to the
+non-throwing fallback panel **in that one cell** with a structured
+diagnostic — the rest of the matrix keeps working.

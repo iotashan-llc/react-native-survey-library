@@ -14,8 +14,9 @@
  */
 import { Text } from 'react-native';
 import { StyleSheet } from 'react-native';
-import { render, screen } from '@testing-library/react-native';
+import { act, render, screen } from '@testing-library/react-native';
 
+import { Model } from '../../../core/facade';
 import { MatrixGrid } from '../MatrixGrid';
 import type {
   GridCell,
@@ -260,5 +261,65 @@ describe('MatrixGrid — showHeader gates the header band', () => {
     expect(screen.queryByTestId('matrix-band-header')).toBeNull();
     // body still renders
     expect(screen.getByTestId('matrix-row-r1')).toBeTruthy();
+  });
+});
+
+describe('MatrixGrid — per-row reactive subscription (design §4, 3.3a review amendment)', () => {
+  it('re-renders a row band when its state element takes an in-place property write', () => {
+    // A REAL survey-core Base as the row state element: core mutates
+    // renderedRow.isGhostRow / .visible IN PLACE (no reset) — the row
+    // band must re-render from that notification alone (3.3b detail /
+    // 3.4 drag ghost-row groundwork).
+    const model = new Model({
+      elements: [
+        {
+          type: 'matrixdropdown',
+          name: 'md',
+          columns: [{ name: 'c1', cellType: 'text' }],
+          rows: ['r1'],
+        },
+      ],
+    });
+    const question = model.getQuestionByName('md') as unknown as {
+      renderedTable: {
+        renderedRows: Array<{ isGhostRow: boolean; isErrorsRow: boolean }>;
+      };
+    };
+    const renderedRow = question.renderedTable.renderedRows.find(
+      (r) => !r.isErrorsRow
+    )!;
+    const contract: ResolvedGridContract = {
+      columns: [col('c1', 200)],
+      contentWidth: 200,
+      showHeader: false,
+      hasFooter: false,
+      mobile: false,
+      stickyFirstColumn: false,
+      regime: 'fit',
+      rows: [
+        {
+          key: 'r1',
+          kind: 'data',
+          cells: [
+            {
+              key: 'probe',
+              kind: 'question',
+              render: () => (
+                <Text testID="ghost-probe">
+                  {String(renderedRow.isGhostRow)}
+                </Text>
+              ),
+            },
+          ],
+          getStateElement: () => renderedRow as never,
+        },
+      ],
+    };
+    render(<MatrixGrid contract={contract} />);
+    expect(screen.getByTestId('ghost-probe').props.children).toBe('false');
+    act(() => {
+      renderedRow.isGhostRow = true;
+    });
+    expect(screen.getByTestId('ghost-probe').props.children).toBe('true');
   });
 });

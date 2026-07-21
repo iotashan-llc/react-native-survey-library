@@ -56,7 +56,7 @@ describe('manifest: model-type inventory', () => {
     }
   });
 
-  it('"empty"/"text"/"rating" are classified supported (M0/M1); "matrix" is now supported/M3 (task 3.2); "matrixdropdown" stays planned', () => {
+  it('"empty"/"text"/"rating" are classified supported (M0/M1); "matrix"/"matrixdropdown" are supported/M3 (tasks 3.2/3.3a); "matrixdynamic" stays planned', () => {
     expect(MODEL_TYPE_CLASSIFICATION.empty).toMatchObject({
       status: 'supported',
       milestone: 'M0',
@@ -77,8 +77,19 @@ describe('manifest: model-type inventory', () => {
       expectedTemplate: 'matrix',
       expectedRoute: 'template',
     });
-    // matrixdropdown/matrixdynamic (3.3/3.4) are NOT part of 3.2.
+    // matrixdropdown flips supported with 3.3a; matrixdynamic (3.4) is NOT
+    // part of 3.3a.
     expect(MODEL_TYPE_CLASSIFICATION.matrixdropdown).toMatchObject({
+      status: 'supported',
+      milestone: 'M3',
+    });
+    expect(
+      MODEL_TYPE_CLASSIFICATION.matrixdropdown?.runtimeRenderable
+    ).toMatchObject({
+      expectedTemplate: 'matrixdropdown',
+      expectedRoute: 'template',
+    });
+    expect(MODEL_TYPE_CLASSIFICATION.matrixdynamic).toMatchObject({
       status: 'planned',
       milestone: 'M3',
     });
@@ -192,16 +203,16 @@ describe('manifest: classification/descriptor status consistency', () => {
   });
 
   it('detects a supported descriptor row whose model-type classification is not supported', () => {
-    // 'matrixdropdown' is still classified 'planned' (task 3.3, M3) — a
+    // 'matrixdynamic' is still classified 'planned' (task 3.4, M3) — a
     // supported descriptor row for it is the inconsistency this test
-    // wants ('matrix' can't be reused here anymore: task 3.2 landed it as
-    // genuinely supported on both sides).
+    // wants ('matrixdropdown' can't be reused here anymore: task 3.3a
+    // landed it as genuinely supported on both sides).
     const descriptors: Descriptor[] = [
       ...DESCRIPTOR_TABLE,
       {
         status: 'supported',
-        questionType: 'matrixdropdown',
-        dispatchKey: 'matrixdropdown',
+        questionType: 'matrixdynamic',
+        dispatchKey: 'matrixdynamic',
         route: 'template',
         component: () => (() => null) as never,
         milestone: 'M3',
@@ -211,7 +222,7 @@ describe('manifest: classification/descriptor status consistency', () => {
       MODEL_TYPE_CLASSIFICATION,
       descriptors
     );
-    expect(violations.some((v) => v.includes('matrixdropdown'))).toBe(true);
+    expect(violations.some((v) => v.includes('matrixdynamic'))).toBe(true);
   });
 
   it('detects a supported classification entry lacking runtimeRenderable safe-construction metadata', () => {

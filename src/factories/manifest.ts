@@ -250,7 +250,20 @@ export const MODEL_TYPE_CLASSIFICATION: Readonly<
       fixtureJson: { type: 'matrix', columns: ['a', 'b'], rows: ['r1'] },
     },
   },
-  matrixdropdown: { status: 'planned', milestone: 'M3', reason: 'task 3.3' },
+  matrixdropdown: {
+    status: 'supported',
+    milestone: 'M3',
+    reason: 'task 3.3a',
+    runtimeRenderable: {
+      expectedTemplate: 'matrixdropdown',
+      expectedRoute: 'template',
+      fixtureJson: {
+        type: 'matrixdropdown',
+        columns: [{ name: 'a', cellType: 'text' }],
+        rows: ['r1'],
+      },
+    },
+  },
   matrixdynamic: { status: 'planned', milestone: 'M3', reason: 'task 3.4' },
 
   // Phase 4 — v0.4 (M4).

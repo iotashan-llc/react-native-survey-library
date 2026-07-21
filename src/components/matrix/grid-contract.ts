@@ -72,8 +72,14 @@ export interface GridCell {
  * A rendered row. `kind` drives topology (§3g): `data`/`footer` are
  * COLUMN-ALIGNED (cells share the dp array); `detail` is FULL-WIDTH (the
  * SurveyPanel spans the whole content width). `getStateElement()` is the
- * per-row reactive identity the OWNER subscribes (never MatrixGrid, which
- * is `SurveyElementBase`-free).
+ * per-row reactive identity — subscribed by `MatrixGrid`'s thin
+ * `MatrixGridRowSubscriber` (design §4 amendment, 3.3a review: core
+ * mutates `renderedRow.visible`/`isGhostRow` in place, so each row band
+ * re-renders from that notification alone; the grid layout itself stays
+ * reactivity-free). It MUST return a STABLE instance per underlying row
+ * model (repeat calls → the same object) — an identity-churning getter
+ * would re-trigger the reactive base's retarget reconcile on every
+ * commit.
  */
 export interface GridRow {
   key: string;
