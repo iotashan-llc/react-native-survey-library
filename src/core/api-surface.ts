@@ -1795,4 +1795,96 @@ export const API_SURFACE_WATCHLIST: readonly WatchedApiMember[] = [
     reason:
       '3.3a MatrixChoiceCell radiogroup write — single-arg select-only form.',
   },
+  // choicesByUrl request-time gate (src/security/choices-gate.ts): the
+  // hook seam plus the TS-private-but-real error-path members the gate's
+  // blocked/discard delivery invokes on the pinned 2.5.33 build (same
+  // watchlist rationale as _setIsTouch). Behaviorally covered by
+  // security/__tests__/choices-gate.test.tsx.
+  {
+    id: 'settings.web.onBeforeRequestChoices',
+    member: 'onBeforeRequestChoices',
+    // Core ships a default no-op FUNCTION here (data property holding a
+    // function classifies as 'method').
+    expectedKind: 'method',
+    resolveHost: (sc) =>
+      (sc as { settings: { web: Record<string, unknown> } }).settings.web,
+    reason:
+      'choicesByUrl gate hook seam — the only per-request callback core ' +
+      'exposes (fires inside `new Model()` too); the gate composes any ' +
+      'host auth-header hook after it.',
+  },
+  {
+    id: 'ChoicesRestful.beforeLoadRequest',
+    member: 'beforeLoadRequest',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.ChoicesRestful.prototype,
+    reason:
+      'choicesByUrl gate blocked/discard delivery — protected-in-typings ' +
+      "isRunning reset (also core's fetch-.catch never calls it: pinned " +
+      'quirk the gate compensates for).',
+  },
+  {
+    id: 'ChoicesRestful.onError',
+    member: 'onError',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.ChoicesRestful.prototype,
+    reason:
+      'choicesByUrl gate fail-closed route — private-in-typings error ' +
+      'path (WebRequestError + EMPTY choices via doEmptyResultCallback + ' +
+      'unregisterSameRequests, so the dedupe registry never hangs).',
+  },
+  {
+    id: 'ChoicesRestful.getSurvey',
+    member: 'getSurvey',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.ChoicesRestful.prototype,
+    reason:
+      'choicesByUrl gate registry lookup — sender → owning model for ' +
+      'runtime re-run policy resolution.',
+  },
+  {
+    id: 'ChoicesRestful.getCachedItemsResult',
+    member: 'getCachedItemsResult',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.ChoicesRestful,
+    reason:
+      'choicesByUrl gate cache-delivery enforcement — private-in-typings ' +
+      "STATIC the gate wraps: core's run() consults the static itemsResult " +
+      'cache BEFORE sendRequest, so a cached payload would otherwise bypass ' +
+      'the request-time policy entirely.',
+  },
+  {
+    id: 'ChoicesRestful.addSameRequest',
+    member: 'addSameRequest',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.ChoicesRestful,
+    reason:
+      'choicesByUrl gate coalescing enforcement — private-in-typings ' +
+      'STATIC the gate wraps so a gated sender never coalesces onto an ' +
+      'in-flight request whose delivery bypasses the request-time hook.',
+  },
+  {
+    id: 'ChoicesRestful.objHash',
+    member: 'objHash',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.ChoicesRestful.prototype,
+    reason:
+      'choicesByUrl gate cache-provenance key — the SAME hash core keys ' +
+      'itemsResult/sendingSameRequests by; the gate records validated ' +
+      'end URLs under it for cache-read re-validation.',
+  },
+  {
+    id: 'ChoicesRestful.processedUrl',
+    member: 'processedUrl',
+    // Assigned in the ChoicesRestful constructor — an OWN data property
+    // on each INSTANCE, probed on a fresh instance (constructor verified
+    // side-effect-free: field assignments only), same pattern as the
+    // QuestionCustomWidget probe above.
+    expectedKind: 'data',
+    resolveHost: (sc) => new sc.ChoicesRestful(),
+    reason:
+      'choicesByUrl gate cache-time validation input — the fully ' +
+      'text-processed request URL, protected-in-typings instance field ' +
+      'set by run() BEFORE the cache/coalescing lookups.',
+  },
 ];

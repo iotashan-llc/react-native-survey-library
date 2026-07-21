@@ -670,6 +670,47 @@ function validateRelative(
 }
 
 // ---------------------------------------------------------------------
+// Diagnostic URL redaction (security review finding 3)
+// ---------------------------------------------------------------------
+
+const REDACTED_PATH_MAX = 32;
+
+/**
+ * Diagnostic-safe rendering of a (possibly hostile) URL: lowercase scheme
+ * + host[:port] + path truncated to 32 chars. Userinfo, query, and
+ * fragment are STRIPPED entirely — they are where embedded credentials
+ * and API tokens live, and a blocked-URL diagnostic must never leak them
+ * to the dev console or a host diagnostic handler. Display only — never
+ * an input to validation (sinks keep consuming `validateUri`'s canonical
+ * string, not this).
+ */
+export function redactUriForDiagnostics(raw: string): string {
+  if (typeof raw !== 'string' || raw.length === 0) return '';
+  const schemeMatch = /^[a-zA-Z][a-zA-Z0-9+.-]*:/.exec(raw);
+  const scheme = schemeMatch ? schemeMatch[0].toLowerCase() : '';
+  let rest = raw.slice(scheme.length);
+  let hostPart = '';
+  if (rest.startsWith('//')) {
+    const { authority, pathAndRest } = splitSchemeRest(rest);
+    let auth = authority ?? '';
+    const at = auth.lastIndexOf('@');
+    if (at !== -1) auth = auth.slice(at + 1); // strip userinfo
+    hostPart = '//' + auth;
+    rest = pathAndRest;
+  }
+  let end = rest.length;
+  for (const marker of ['?', '#']) {
+    const idx = rest.indexOf(marker);
+    if (idx !== -1 && idx < end) end = idx;
+  }
+  let path = rest.slice(0, end);
+  if (path.length > REDACTED_PATH_MAX) {
+    path = path.slice(0, REDACTED_PATH_MAX) + '…';
+  }
+  return scheme + hostPart + path;
+}
+
+// ---------------------------------------------------------------------
 // choicesByUrl JSON-time lint (design: "(a) JSON-time lint: substitutions
 // forbidden in scheme/authority/port positions"). Request-time validation
 // of the fully-resolved URL is just `validateUri(resolved, 'choicesByUrl',

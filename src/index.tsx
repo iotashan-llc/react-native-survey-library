@@ -77,6 +77,16 @@ export type {
   PreflightDiagnostic,
   PreflightResult,
 } from './security/json-preflight';
+// choicesByUrl request-time gate (A11 follow-through) — armed
+// automatically by <Survey>; these exports let hosts on the `model` path
+// opt their OWN construction into the same request-time + end-URL
+// redirect enforcement (see docs/DIFFERENCES.md).
+export {
+  installChoicesByUrlGate,
+  registerModelUriPolicy,
+  unregisterModelUriPolicy,
+  runWithConstructionUriPolicy,
+} from './security/choices-gate';
 
 // Native lifecycle bridge (design: docs/design/1.2-lifecycle-bridge.md,
 // A15) — the per-survey ref/layout registry, the onScrollToTop

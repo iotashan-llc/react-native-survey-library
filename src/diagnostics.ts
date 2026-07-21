@@ -348,6 +348,36 @@ export interface TagboxSelectModeUnsupportedPayload {
   questionName: string;
 }
 
+/**
+ * choicesByUrl request-time gate (src/security/choices-gate.ts): a
+ * `ChoicesRestful` request was blocked fail-closed by the central URI
+ * policy. `phase: 'request'` — the URL failed policy BEFORE any network
+ * I/O (the request never fired); `phase: 'redirect'` — the response's
+ * end URL (`xhr.responseURL`, RN's XHR populates it from the native
+ * stack) failed policy and the payload was DISCARDED (never parsed,
+ * never cached). Deduped per (sender, phase, url, reason) via
+ * `reportChoicesByUrlBlockedOnce`.
+ */
+export interface ChoicesByUrlBlockedPayload {
+  code: 'choices-by-url-blocked';
+  phase: 'request' | 'redirect';
+  /** The offending URL — the request URL for `'request'`, the final
+   * (post-redirect) URL for `'redirect'`. REDACTED for display: scheme +
+   * host + path truncated to 32 chars; userinfo, query, and fragment are
+   * stripped (embedded credentials/API tokens must never reach the dev
+   * console or a host handler — security review finding 3). The gate
+   * dedupes on the RAW url, so distinct blocked URLs that redact alike
+   * still each report. */
+  url: string;
+  /** The URL the request was (or would have been) sent to — redacted the
+   * same way as `url`. */
+  requestUrl: string;
+  /** Stable `validateUri` reason code (plus `'response-url-unavailable'`
+   * when the runtime exposed no end URL to validate — fail-closed). */
+  reason: string;
+  questionName: string | undefined;
+}
+
 /** 3.3a review (finding 5): core's transposed end-actions row pushes
  * `getRowActionsCell(...)` UNGUARDED into `renderedRow.cells`, and it
  * returns null for rows without end actions
@@ -363,6 +393,7 @@ export interface MatrixNullCellPayload {
 
 export type DiagnosticPayload =
   | UnsupportedQuestionTypePayload
+  | ChoicesByUrlBlockedPayload
   | MatrixNullCellPayload
   | CustomWidgetIgnoredPayload
   | DropdownSelectModeUnsupportedPayload
@@ -474,6 +505,34 @@ export function reportMatrixNullCellOnce(
 ): void {
   if (matrixNullCellEmitted.has(matrix)) return;
   matrixNullCellEmitted.add(matrix);
+  reportDiagnostic(payload);
+}
+
+/**
+ * Dedupe registry for `reportChoicesByUrlBlockedOnce` — keyed per SENDER
+ * (the `ChoicesRestful` instance, one per question), with a composite
+ * `(phase, url, reason)` inner key: re-running the SAME blocked URL on
+ * the same question reports once; a DIFFERENT blocked URL (or the same
+ * URL blocked at a different phase) is separately actionable and
+ * re-emits. The payload's `url` is REDACTED, so the gate passes the
+ * RAW-url composite via `dedupeKey` — two distinct blocked URLs that
+ * redact identically must still each report once.
+ */
+const choicesByUrlBlockedEmitted = new WeakMap<object, Set<string>>();
+
+export function reportChoicesByUrlBlockedOnce(
+  sender: object,
+  payload: ChoicesByUrlBlockedPayload,
+  dedupeKey?: string
+): void {
+  let emittedKeys = choicesByUrlBlockedEmitted.get(sender);
+  if (!emittedKeys) {
+    emittedKeys = new Set<string>();
+    choicesByUrlBlockedEmitted.set(sender, emittedKeys);
+  }
+  const key = dedupeKey ?? `${payload.phase}|${payload.url}|${payload.reason}`;
+  if (emittedKeys.has(key)) return;
+  emittedKeys.add(key);
   reportDiagnostic(payload);
 }
 

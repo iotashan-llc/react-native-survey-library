@@ -193,13 +193,76 @@ documented as **trusted/prevalidated by the host** — no preflight runs
 (hosts can call the exported `preflightSurveyJson` themselves before
 constructing).
 
-**Residual gap:** an ALLOWED `choicesByUrl` fetch is performed by
-survey-core itself, so the policy's manual-redirect rule cannot be
-enforced on that one sink from outside. Today only the **JSON preflight**
-is enforced (scheme/origin policy + template lint, applied at model
-construction — see above); a request-time abort/redirect gate for the
-core-owned fetch was **not** delivered by the dropdown task (2.3) and
-remains a tracked TODO. The scheme/origin policy IS enforced at preflight.
+### `choicesByUrl` is ALSO enforced at request time, including redirect end-URLs
+
+The preflight above is a construction-time check on authored JSON. On top
+of it, a **request-time gate** (`src/security/choices-gate.ts`, armed
+automatically whenever a `<Survey>` is mounted — no consumer opt-in) hooks
+survey-core's `settings.web.onBeforeRequestChoices` seam and validates
+the request URL of every **gated** `choicesByUrl` request (gated = the
+json path, plus any model registered with a `uriPolicy` — see "Scope and
+composition" below; ungated host-model requests stay trusted by
+contract) — the fully text-processed URL at the moment the request would
+fire — against the same central URI policy. This covers what the
+preflight cannot see: post-construction model mutation
+(`question.choicesByUrl.url = ...` re-runs the request) and dynamic
+`{placeholder}` re-runs. On violation the request **never fires** (the
+gate defuses the XHR before `send`), the question receives **empty
+choices** plus core's own `WebRequestError` (fail-closed, never a crash,
+never partial data), and a `choices-by-url-blocked` diagnostic
+(`phase: 'request'`, deduped) is emitted. Diagnostic URL fields are
+**redacted** — scheme + host + truncated path only; userinfo, query, and
+fragment (where embedded credentials/API tokens live) are stripped
+before the payload reaches the console or a host diagnostic handler. A
+`uriPolicy` config that makes the validator **throw** is treated as a
+violation (`reason: 'uri-policy-error'`), never propagated.
+
+**Static cache and request coalescing:** survey-core keeps a
+process-wide static results cache (`ChoicesRestful.itemsResult`) and a
+same-request coalescing registry, and consults both **before** firing a
+request — i.e. before the request-time hook can run — so either could
+hand a question choices the gate never saw. The gate closes both
+delivery paths for gated questions: a cached payload is served only when
+the requesting survey's **own** policy passes both the request URL *and*
+the cache entry's recorded final (post-redirect) URL — provenance the
+gate records whenever a gated request's payload passes the end-URL check
+below. Entries with no recorded provenance (cached by a trusted/ungated
+survey) and entries whose provenance fails the requesting policy are
+**refetched** through a fresh, fully gated request instead of served;
+blocked request URLs fail closed exactly as above (empty choices +
+diagnostic, no network). Gated questions never join same-request
+coalescing — each fires its own fully gated request (a rare duplicate
+concurrent GET between surveys under different policies is the
+documented cost).
+
+**Redirects:** React Native follows HTTP redirects inside the native stack
+(NSURLSession/OkHttp) with no JS per-hop callback and no
+`redirect: 'manual'` — per-hop validation is **not achievable** on the
+platform (same constraint as the remote-image sinks above). The gate
+enforces the strongest available mechanism instead: after the response
+arrives it validates the **final** URL (`xhr.responseURL`, populated from
+the native stack on both platforms) and, if the request ended off-policy
+— or the runtime exposed no end URL to check — the payload is
+**discarded** before core can parse or cache it: empty choices, a
+`choices-by-url-blocked` diagnostic (`phase: 'redirect'`). Residual, as
+with remote images: by validation time the GET has already egressed to
+the redirect target at the native layer — the gate prevents the response
+from entering the model, not the hop itself.
+
+**Scope and composition:** the `json` path is always gated (with the
+`uriPolicy` prop, or the fail-closed defaults when the prop is absent —
+mirroring the preflight). A host-constructed `model` fired its
+construction-time requests before this library ever saw it (that boundary
+is the host's, per the trusted-by-host contract) — but its runtime
+RE-runs are gated too whenever a `uriPolicy` prop is passed; without the
+prop the model path stays fully trusted. Hosts constructing models
+themselves can opt their construction into the gate with the exported
+`runWithConstructionUriPolicy(config, () => new Model(json))` +
+`registerModelUriPolicy(model, config)`. A pre-existing
+`settings.web.onBeforeRequestChoices` host hook (the documented
+auth-header seam) keeps working: the gate captures and chains it after
+the policy check passes (it is not invoked for blocked requests), and the
+last `<Survey>` unmount restores it.
 
 ### Owned-model lifetime
 
