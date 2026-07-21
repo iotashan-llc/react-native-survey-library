@@ -2109,3 +2109,66 @@ viewer's own subscription and `logo`/`headerView` through the survey, and
 a theme re-apply rebuilds the cover and re-renders the tree through the
 provider — so the realistic runtime paths update, but imperatively poking
 a live `Cover` instance's properties without re-theming will not.
+
+## Survey timer panel (task 5.7a)
+
+survey-core owns **all** timing. `SurveyTimerModel` (`survey.timerModel`)
+and the module-singleton `SurveyTimer` own the `setInterval`, the
+per-page/per-survey elapsed counters, `timeLimit`/`timeLimitPerPage`, the
+`onTimerTick` event, and the auto-advance / auto-complete when a limit is
+reached. The renderer only **draws** the model's already-computed timer
+strings and **starts/stops** the core timer at the right lifecycle points —
+it never recomputes any timing math (invariant 6).
+
+### What is rendered — text, not the SVG progress ring
+
+Upstream's `SurveyTimerPanel` (survey-react-ui `reacttimerpanel.tsx`)
+renders a `showTimerAsClock` badge as a `position: fixed`, circular
+(`--sd-timer-size`, 144px) element with an **SVG progress ring**
+(`icon-timercircle`, `stroke-dashoffset` animated from `timerModel.progress`).
+RN renders an **inline, centered TEXT badge** in the shell's top/bottom
+slot:
+
+- **Clock mode** (`showTimerAsClock === true`, the default modern css that
+  defines `clockTimerRoot`): a major line (`timerModel.clockMajorText`, e.g.
+  `0:30`) and, when present, a minor line (`timerModel.clockMinorText`, e.g.
+  `1:00`) — both read verbatim from the model.
+- **Plain-text mode** (`showTimerAsClock === false`, a css without
+  `clockTimerRoot`): the full localized sentence `timerModel.text` (the
+  `timerInfoText`, e.g. "You have spent 0 sec of 30 sec on this page and 0
+  sec of 1 min in total.").
+
+The **SVG progress ring is omitted** (text-only). `timerModel.progress` is
+still driven by core each tick; it is simply not drawn. `position: fixed`
+has no RN analog, so the badge flows inline (centered) rather than floating.
+The full `timerModel.text` sentence is set as the panel's
+`accessibilityLabel` even in clock mode, so a screen reader hears the
+meaningful phrase rather than a bare `0:30`.
+
+### Placement and `showTimerPanelMode`
+
+`showTimer` + `timerLocation` (`showTimerPanel` `"none"`/`"top"`/`"bottom"`)
+choose the slot: the shell renders the panel at the **top** (before the
+pages) and/or **bottom** (after the nav), each instance self-gating on
+`survey.isTimerPanelShowingOnTop` / `isTimerPanelShowingOnBottom` (mirroring
+upstream's layout-element `isInContainer("header")`/`("footer")`). When
+`showTimer` is off both render nothing.
+
+`showTimerPanelMode` (the modern `timerInfoMode`: `"page"` / `"survey"` /
+`"combined"`) is honored **transparently** — the model's
+`clockMajorText` / `clockMinorText` / `text` already reflect the mode, so
+nothing mode-specific is computed in the renderer.
+
+### Lifecycle — start on mount, stop on unmount (deferred one macrotask)
+
+The shell mirrors upstream `reactSurvey`: `startTimerFromUI()` on mount
+(core self-gates — it starts only when `showTimer` is set and the survey is
+`running`) and `stopTimer()` on unmount / model-swap, so **no `setInterval`
+leaks**. One RN-specific divergence: the start call is **deferred one
+macrotask** (`setTimeout(0)`, cancelled on early detach). `startTimerFromUI`
+flips `timerModel.isRunning`, and a just-mounted `SurveyTimerPanel`
+subscribed to that model would otherwise observe the mutation inside its own
+mount-commit window and trip the dev-only render-to-commit invariant
+(`docs/design/0.4-reactive-base.md`) — the same reason the `<Survey>` root
+defers `setIsMobile`. Behavior is unchanged (a 0ms deferral); the timer is
+running by the next frame.

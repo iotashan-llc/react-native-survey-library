@@ -154,6 +154,14 @@ export interface ListItemStyleOverrides {
   searchInput?: StyleProp<TextStyle>;
 }
 
+/** Survey timer-panel slots (task 5.7a: `SurveyTimerPanel`). */
+export interface TimerPanelStyleOverrides {
+  root?: StyleProp<ViewStyle>;
+  majorText?: StyleProp<TextStyle>;
+  minorText?: StyleProp<TextStyle>;
+  text?: StyleProp<TextStyle>;
+}
+
 /** Per-component slot overrides distributed via `SurveyThemeProvider`'s `styles` prop and `SurveyThemeContext`'s `styles` field. */
 export interface SurveyComponentStyles {
   item?: ItemStyleOverrides;
@@ -174,6 +182,7 @@ export interface SurveyComponentStyles {
   signature?: SignatureStyleOverrides;
   imagemap?: ImageMapStyleOverrides;
   listItem?: ListItemStyleOverrides;
+  timerPanel?: TimerPanelStyleOverrides;
 }
 
 /** Stable default so an omitted `styles` prop never churns the provider's memoized context value. */

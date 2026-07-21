@@ -68,6 +68,7 @@ import { SurveyHeader } from '../components/SurveyHeader';
 import { SurveyProgressBar } from '../components/SurveyProgressBar';
 import { SurveyNavigation } from '../components/SurveyNavigation';
 import { SurveyStateFrame } from '../components/SurveyStateFrame';
+import { SurveyTimerPanel } from '../components/SurveyTimerPanel';
 import { createOverlayStack } from '../overlay/stack';
 import type { OverlayStack } from '../overlay/stack';
 import type { OverlayPayload } from '../overlay/popup-bridge';
@@ -179,6 +180,9 @@ class SurveyRoot extends SurveyElementBase<SurveyRootProps> {
   private deregisterScrollHost: (() => void) | undefined;
   private wiredEventProps: ExtractedEventProps = {};
   private lastNarrow: boolean | null = null;
+  /** Pending deferred timer-start (5.7a) — cleared on detach if the survey
+   * unmounts/swaps before the macrotask fires. */
+  private startTimerHandle: ReturnType<typeof setTimeout> | undefined;
 
   /** Scroll-host viewport bookkeeping (bridge-author wiring note:
    * onScroll + onLayout keep `getViewport()` answerable so the bridge can
@@ -270,6 +274,23 @@ class SurveyRoot extends SurveyElementBase<SurveyRootProps> {
     // host (last-mounted wins). Token disposal is independent of the
     // `detached` guard — StrictMode remounts register fresh tokens.
     this.dialogHostToken = registerDialogHost(this.overlayStack);
+    // 5.7a timer: start the core timer (upstream reactSurvey onSurveyUpdated
+    // → `startTimerFromUI()`). Core self-gates: it starts only when
+    // `showTimer` is set and `state === "running"`; otherwise a no-op. The
+    // SurveyTimer singleton owns the interval — `detachFromModel` stops it.
+    //
+    // DEFERRED one macrotask (same rationale as the outer component's
+    // `setIsMobile` deferral): `startTimerFromUI` flips `timerModel.isRunning`,
+    // and a just-mounted `SurveyTimerPanel` subscribed to that model would see
+    // the mutation inside its own mount-commit window, tripping the dev-only
+    // render-to-commit invariant (0.4-reactive-base). One macrotask later the
+    // mount commit is flushed and the panel observes the start cleanly.
+    this.startTimerHandle = setTimeout(() => {
+      this.startTimerHandle = undefined;
+      if (!this.detached && !this.props.survey.isDisposed) {
+        this.props.survey.startTimerFromUI();
+      }
+    }, 0);
     this.callAfterRenderPage();
   }
 
@@ -343,6 +364,15 @@ class SurveyRoot extends SurveyElementBase<SurveyRootProps> {
     if (this.detached) return;
     this.detached = true;
     const survey = this.props.survey;
+    // 5.7a timer: cancel a not-yet-fired deferred start, then stop the core
+    // timer (upstream reactSurvey destroySurvey → `stopTimer()`) so the
+    // SurveyTimer interval is cleared — no leaked setInterval after
+    // unmount/model-swap. Both are no-ops when the timer never started.
+    if (this.startTimerHandle !== undefined) {
+      clearTimeout(this.startTimerHandle);
+      this.startTimerHandle = undefined;
+    }
+    survey.stopTimer();
     survey.onOpenDropdownMenu.remove(this.handleOpenDropdownMenu);
     wireModelEventProps(survey, this.wiredEventProps, {});
     this.wiredEventProps = {};
@@ -472,6 +502,9 @@ class SurveyRoot extends SurveyElementBase<SurveyRootProps> {
                   while pages present; the state frame owns completed/
                   completedBefore/loading/empty. */}
                 <SurveyHeader survey={survey} />
+                {presentingPages ? (
+                  <SurveyTimerPanel survey={survey} location="top" />
+                ) : null}
                 {presentingPages ? <SurveyProgressBar survey={survey} /> : null}
                 {presentingPages ? (
                   this.renderActivePage()
@@ -479,6 +512,9 @@ class SurveyRoot extends SurveyElementBase<SurveyRootProps> {
                   <SurveyStateFrame survey={survey} />
                 )}
                 {presentingPages ? <SurveyNavigation survey={survey} /> : null}
+                {presentingPages ? (
+                  <SurveyTimerPanel survey={survey} location="bottom" />
+                ) : null}
               </ScrollView>
             </View>
             <OverlayHost stack={this.overlayStack} />
