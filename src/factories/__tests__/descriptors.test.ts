@@ -54,6 +54,7 @@ describe('DESCRIPTOR_TABLE (M0 + M1)', () => {
       'sv-rating-item',
       'sv-rating-item-smiley',
       'sv-rating-item-star',
+      'sv-singleinput-summary',
       'sv-string-viewer',
       'tagbox',
       'text',

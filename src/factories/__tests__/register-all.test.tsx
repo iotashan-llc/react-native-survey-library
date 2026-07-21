@@ -216,6 +216,7 @@ describe('registerAll (module side effect)', () => {
       'sv-rating-item',
       'sv-rating-item-smiley',
       'sv-rating-item-star',
+      'sv-singleinput-summary',
       'sv-string-viewer',
     ]);
   });
