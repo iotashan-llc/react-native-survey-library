@@ -56,16 +56,21 @@ function asEventLike(value: unknown): EventLike | null {
 
 /**
  * Filters a props record down to the model-event candidates: `on*` keys
- * with function values. `onScrollToElement` is EXCLUDED — it is the
- * RN-level scroll-interception prop consumed by the 1.2 bridge seam, not
- * a model event.
+ * with function values. `onScrollToElement` and `onLinkPress` are
+ * EXCLUDED — RN-level props (the 1.2 bridge consult seam and the
+ * `LinkPressContext` link-event seam respectively), not model events.
  */
 export function extractModelEventProps(
   props: Record<string, unknown>
 ): ExtractedEventProps {
   const out: Record<string, ModelEventHandler> = {};
   for (const key of Object.keys(props)) {
-    if (!key.startsWith('on') || key === 'onScrollToElement') continue;
+    if (
+      !key.startsWith('on') ||
+      key === 'onScrollToElement' ||
+      key === 'onLinkPress'
+    )
+      continue;
     const value = props[key];
     if (typeof value === 'function') {
       out[key] = value as ModelEventHandler;

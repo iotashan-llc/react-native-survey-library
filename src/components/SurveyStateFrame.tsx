@@ -41,7 +41,7 @@ import { composeStyles } from '../theme-rn/recipes/types';
 
 export interface SurveyStateFrameProps {
   survey: SurveyModel;
-  /** Forwarded to every `<SanitizedHtml>` this frame renders (completed/completedBefore/loading HTML). No host callback wired by default -- an anchor press is a no-op + dev diagnostic until the host supplies one (same contract as `<SanitizedHtml>` itself). */
+  /** Forwarded to every `<SanitizedHtml>` this frame renders (completed/completedBefore/loading HTML). Wins over the Survey-level `onLinkPress` context handler; with neither, anchors render as plain text (same a11y-honest contract as `<SanitizedHtml>` itself). */
   onLinkPress?: (canonicalUrl: string, event: GestureResponderEvent) => void;
   /** Forwarded to every `<SanitizedHtml>` this frame renders, for `<img>` origin validation. */
   imageUriConfig?: UriPolicyConfig;
@@ -91,7 +91,11 @@ export class SurveyStateFrame extends SurveyElementBase<SurveyStateFrameProps> {
         })}
       >
         {html ? (
-          <SanitizedHtml html={html} {...this.sanitizedHtmlProps()} />
+          <SanitizedHtml
+            html={html}
+            linkContext="completed"
+            {...this.sanitizedHtmlProps()}
+          />
         ) : null}
       </View>
     );
@@ -108,7 +112,11 @@ export class SurveyStateFrame extends SurveyElementBase<SurveyStateFrameProps> {
         })}
       >
         {html ? (
-          <SanitizedHtml html={html} {...this.sanitizedHtmlProps()} />
+          <SanitizedHtml
+            html={html}
+            linkContext="completed"
+            {...this.sanitizedHtmlProps()}
+          />
         ) : null}
       </View>
     );
@@ -125,7 +133,11 @@ export class SurveyStateFrame extends SurveyElementBase<SurveyStateFrameProps> {
         })}
       >
         {html ? (
-          <SanitizedHtml html={html} {...this.sanitizedHtmlProps()} />
+          <SanitizedHtml
+            html={html}
+            linkContext="loading"
+            {...this.sanitizedHtmlProps()}
+          />
         ) : null}
       </View>
     );

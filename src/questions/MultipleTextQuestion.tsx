@@ -67,7 +67,8 @@ export class MultipleTextQuestion extends QuestionElementBase<QuestionElementBas
         {SurveyElementBase.renderLocString(
           (error as { locText: LocalizableString }).locText,
           undefined,
-          `err-text-${index}`
+          `err-text-${index}`,
+          'error'
         )}
       </Text>
     ));
@@ -92,7 +93,8 @@ export class MultipleTextQuestion extends QuestionElementBase<QuestionElementBas
         {SurveyElementBase.renderLocString(
           item.locTitle,
           undefined,
-          `title-${item.name}`
+          `title-${item.name}`,
+          'title'
         )}
         <TextQuestion question={item.editor} creator={this.creator} />
       </View>

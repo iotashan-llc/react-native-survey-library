@@ -722,7 +722,13 @@ export class MatrixTable extends SurveyElementBase<
         render = () => <MatrixOtherCell cell={cell} />;
         break;
       case 'title':
-        render = () => SurveyElementBase.renderLocString(cell.locTitle);
+        render = () =>
+          SurveyElementBase.renderLocString(
+            cell.locTitle,
+            undefined,
+            undefined,
+            'choice'
+          );
         break;
       case 'actions':
         // 3.3b: the core-built detail toggle is REAL (§3c); every OTHER
@@ -781,7 +787,12 @@ export class MatrixTable extends SurveyElementBase<
         !intrinsic && !!dataCell && classifyCell(dataCell) === 'title';
       const header = cell.hasTitle ? (
         <View style={localStyles.headerContent}>
-          {SurveyElementBase.renderLocString(cell.locTitle)}
+          {SurveyElementBase.renderLocString(
+            cell.locTitle,
+            undefined,
+            undefined,
+            'choice'
+          )}
           {cell.requiredMark ? <Text>{` ${cell.requiredMark}`}</Text> : null}
         </View>
       ) : null;

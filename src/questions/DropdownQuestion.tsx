@@ -331,7 +331,12 @@ export class DropdownQuestion extends OverlayControlBase<DropdownQuestionProps> 
     if (loc) {
       return (
         <View testID="sv-dropdown-value">
-          {SurveyElementBase.renderLocString(loc, undefined, 'dd-value')}
+          {SurveyElementBase.renderLocString(
+            loc,
+            undefined,
+            'dd-value',
+            'choice'
+          )}
         </View>
       );
     }
@@ -348,7 +353,8 @@ export class DropdownQuestion extends OverlayControlBase<DropdownQuestionProps> 
           SurveyElementBase.renderLocString(
             question.locPlaceholder,
             undefined,
-            'dd-placeholder'
+            'dd-placeholder',
+            'choice'
           )
         ) : (
           <Text>{''}</Text>

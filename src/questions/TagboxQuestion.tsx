@@ -309,7 +309,8 @@ export class TagboxQuestion extends OverlayControlBase<TagboxQuestionProps> {
               SurveyElementBase.renderLocString(
                 question.locPlaceholder,
                 undefined,
-                'tb-select-placeholder'
+                'tb-select-placeholder',
+                'choice'
               )
             ) : (
               <Text>{''}</Text>
@@ -343,7 +344,8 @@ export class TagboxQuestion extends OverlayControlBase<TagboxQuestionProps> {
               SurveyElementBase.renderLocString(
                 question.locPlaceholder,
                 undefined,
-                'tb-pending-placeholder'
+                'tb-pending-placeholder',
+                'choice'
               )
             ) : (
               <Text>{''}</Text>

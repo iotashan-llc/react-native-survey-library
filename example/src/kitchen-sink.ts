@@ -410,11 +410,12 @@ export const kitchenSinkJson = {
           // html question (pulled forward from M5) — renders rich content
           // through the 0.9 SanitizedHtml sink: allowlisted tags only,
           // URI/scheme policy, no auto-navigation (invariant 8). Link
-          // presses are currently inert (no host callback is wired yet);
-          // event-surfacing lands with the onLinkPress task.
+          // presses surface through the Survey-level onLinkPress handler
+          // wired in App.tsx ({url, context}); the HOST decides whether
+          // to navigate — this library never calls Linking.openURL.
           type: 'html',
           name: 'htmlContent',
-          html: '<p>The <code>html</code> question type renders rich content natively via the sanitized HTML pipeline: <strong>bold</strong>, <em>italic</em>, and <a href="https://surveyjs.io">links</a> (the renderer never auto-navigates; link presses are currently inert — a host callback for them is not wired yet).</p>',
+          html: '<p>The <code>html</code> question type renders rich content natively via the sanitized HTML pipeline: <strong>bold</strong>, <em>italic</em>, and <a href="https://surveyjs.io">links</a> (the renderer never auto-navigates; a press surfaces a {url, context} event to the onLinkPress handler this example logs to the console).</p>',
         },
         {
           // A genuinely still-unsupported type (ranking, planned for M4):

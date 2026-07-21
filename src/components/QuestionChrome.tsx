@@ -321,6 +321,7 @@ export class QuestionChrome extends QuestionElementBase<
     const titleTextEl = this.renderLocString(
       question.locRenderedTitle,
       composeStyles(titleStyles, { override: titleOverrides?.title }),
+      'title',
       'title'
     );
 
@@ -408,7 +409,8 @@ export class QuestionChrome extends QuestionElementBase<
       composeStyles([chromeRecipe.fragments.description, locationFragment], {
         override: chromeOverrides?.description,
       }),
-      key
+      key,
+      'description'
     );
   }
 

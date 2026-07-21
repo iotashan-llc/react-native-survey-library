@@ -38,6 +38,8 @@ import { RNElementFactory } from '../factories/ElementFactory';
 import { preflightSurveyJson } from '../security/json-preflight';
 import type { UriPolicyConfig } from '../security/uri-policy';
 import { UriPolicyContext } from '../security/UriPolicyContext';
+import { LinkPressContext } from '../security/LinkPressContext';
+import type { SurveyLinkPressHandler } from '../security/LinkPressContext';
 import {
   acquireChoicesByUrlGate,
   installChoicesByUrlGate,
@@ -113,6 +115,17 @@ export interface SurveyOwnProps {
   /** RN-level scroll interception with preventDefault semantics — consumed
    * by the 1.2 bridge (NOT a model event; excluded from event wiring). */
   onScrollToElement?: (event: SurveyScrollToElementEvent) => void;
+  /** Host opt-in link events (NOT a model event; excluded from event
+   * wiring). Provided through `LinkPressContext` to EVERY sanitized-HTML
+   * sink in the tree (titles/descriptions/errors/completed-page/html
+   * question/choices): an anchor press that passes the URI policy's
+   * press-time revalidation delivers `{ url, context }` — the canonical
+   * validated URL plus the sink label — and the HOST decides what to do
+   * (e.g. `Linking.openURL(event.url)` is the host's line to write; this
+   * library NEVER navigates — invariant 8). Without this prop (and
+   * without a per-sink `SanitizedHtml onLinkPress`), anchors render as
+   * plain text: no link a11y role, no pressable. */
+  onLinkPress?: SurveyLinkPressHandler;
 }
 
 export type SurveyProps = SurveyOwnProps & SurveyModelEventProps;
@@ -542,6 +555,7 @@ export const Survey = React.forwardRef<SurveyRefHandle, SurveyProps>(
       styles,
       uriPolicy,
       onScrollToElement,
+      onLinkPress,
       ...rest
     } = props;
 
@@ -801,18 +815,20 @@ export const Survey = React.forwardRef<SurveyRefHandle, SurveyProps>(
 
     return (
       <UriPolicyContext.Provider value={uriPolicy}>
-        <SurveyThemeProvider theme={theme} styles={styles} narrow={narrow}>
-          {activeModel ? (
-            <SurveyRoot
-              key={entryRef.current!.key}
-              ref={innerRef}
-              survey={activeModel}
-              eventProps={eventProps}
-              onScrollToElement={onScrollToElement}
-              onNarrowChange={setNarrow}
-            />
-          ) : null}
-        </SurveyThemeProvider>
+        <LinkPressContext.Provider value={onLinkPress}>
+          <SurveyThemeProvider theme={theme} styles={styles} narrow={narrow}>
+            {activeModel ? (
+              <SurveyRoot
+                key={entryRef.current!.key}
+                ref={innerRef}
+                survey={activeModel}
+                eventProps={eventProps}
+                onScrollToElement={onScrollToElement}
+                onNarrowChange={setNarrow}
+              />
+            ) : null}
+          </SurveyThemeProvider>
+        </LinkPressContext.Provider>
       </UriPolicyContext.Provider>
     );
   }

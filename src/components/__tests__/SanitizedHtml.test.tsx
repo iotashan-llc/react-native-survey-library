@@ -176,3 +176,42 @@ describe('<SanitizedHtml> — end-to-end mount + press', () => {
     expect(openURLSpy).not.toHaveBeenCalled();
   });
 });
+
+describe('<SanitizedHtml> — a11y-honest anchors (link role only when actionable)', () => {
+  let openURLSpy: jest.SpiedFunction<typeof Linking.openURL>;
+
+  beforeEach(() => {
+    openURLSpy = jest.spyOn(Linking, 'openURL').mockImplementation(() => {
+      throw new Error('Linking.openURL must never be called by this library');
+    });
+  });
+
+  afterEach(() => {
+    openURLSpy.mockRestore();
+  });
+
+  const HTML = '<p><a href="https://example.com/x">click me</a></p>';
+
+  it('no callback anywhere: the anchor renders as PLAIN TEXT — no link a11y role, no onPress (no dead a11y control)', () => {
+    render(<SanitizedHtml html={HTML} contentWidth={320} />);
+
+    const anchor = screen.getByTestId('a');
+    expect(anchor.props.accessibilityRole).toBeUndefined();
+    expect(anchor.props.onPress).toBeUndefined();
+    expect(screen.queryByRole('link')).toBeNull();
+
+    // A press attempt is a structural no-op — and never auto-navigation:
+    // the renderer's own default anchor onPress is Linking.openURL, which
+    // must never survive the override.
+    expect(() => fireEvent.press(screen.getByText('click me'))).not.toThrow();
+    expect(openURLSpy).not.toHaveBeenCalled();
+  });
+
+  it('with an onLinkPress callback: the link a11y role IS present (actionable ⇔ exposed)', () => {
+    render(
+      <SanitizedHtml html={HTML} onLinkPress={jest.fn()} contentWidth={320} />
+    );
+
+    expect(screen.getByTestId('a').props.accessibilityRole).toBe('link');
+  });
+});

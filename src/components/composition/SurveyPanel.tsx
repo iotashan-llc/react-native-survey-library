@@ -68,10 +68,15 @@ export class SurveyPanel extends SurveyPanelBase<SurveyPanelProps> {
     return (
       <View>
         {panel.hasTitle
-          ? this.renderLocString(panel.locTitle, undefined, 'title')
+          ? this.renderLocString(panel.locTitle, undefined, 'title', 'title')
           : null}
         {panel.hasDescription
-          ? this.renderLocString(panel.locDescription, undefined, 'description')
+          ? this.renderLocString(
+              panel.locDescription,
+              undefined,
+              'description',
+              'description'
+            )
           : null}
       </View>
     );

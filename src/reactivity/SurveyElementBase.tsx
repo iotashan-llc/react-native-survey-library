@@ -21,6 +21,7 @@ import type {
 import { SurveyLocStringViewer } from '../components/LocStringViewer';
 import { RNElementFactory } from '../factories/ElementFactory';
 import { SurveyThemeContext } from '../theme-rn/provider';
+import type { SurveyLinkPressContext } from '../security/LinkPressContext';
 
 /**
  * Reserved base state shape. `__svRev` is a monotonically-bumped counter —
@@ -113,12 +114,14 @@ export class SurveyElementBase<
   public static renderLocString(
     locStr: LocalizableString,
     style?: unknown,
-    key?: string
+    key?: string,
+    linkContext?: SurveyLinkPressContext
   ): React.JSX.Element {
     const rendered = RNElementFactory.createElement(locStr.renderAs, {
       model: locStr.renderAsData,
       style,
       key,
+      linkContext,
     });
     if (rendered) return rendered;
     return (
@@ -126,6 +129,7 @@ export class SurveyElementBase<
         model={locStr}
         style={style as StyleProp<TextStyle>}
         key={key}
+        linkContext={linkContext}
       />
     );
   }
@@ -304,9 +308,10 @@ export class SurveyElementBase<
   protected renderLocString(
     locStr: LocalizableString,
     style?: unknown,
-    key?: string
+    key?: string,
+    linkContext?: SurveyLinkPressContext
   ): React.JSX.Element {
-    return SurveyElementBase.renderLocString(locStr, style, key);
+    return SurveyElementBase.renderLocString(locStr, style, key, linkContext);
   }
 
   protected canUsePropInState(_key: string): boolean {
