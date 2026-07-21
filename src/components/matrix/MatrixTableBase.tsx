@@ -299,18 +299,25 @@ interface MatrixDetailToggleCellProps {
   cell: QuestionMatrixDropdownRenderedCell;
   matrix: QuestionMatrixDropdownModelBase;
   testID: string;
+  /** The `show-detail`/`show-detail-mobile` `Action` this button renders
+   * — its `enabled` flag (mutable via `onGetMatrixRowActions`) drives the
+   * web-parity disabled state. */
+  action?: RowActionLike;
 }
 
 /**
- * 3.3b polish: the toggle's worst-case content box is the 16dp glyph wide
- * x the recipe's 32dp `minHeight` tall — under the 44pt (iOS) / 48dp
- * (Android) platform touch minimums. This slop bridges both axes to a
- * >=44dp effective target (16+14+14 / 32+6+6); the recipe's square
- * `minWidth`/`minHeight` grows the visual box where the intrinsic actions
- * column allows. The toggle is the only interactive element in its
- * column, so the slop cannot collide with a neighboring target.
+ * 3.3b polish (shared by the 3.4 remove button): an action button's
+ * worst-case content box is a 16dp glyph wide x the recipe's 32dp
+ * `minHeight` tall — under the 44pt (iOS) / 48dp (Android) platform touch
+ * minimums. This slop bridges both axes to a >=44dp effective target
+ * (16+14+14 / 32+6+6); the recipe's square `minWidth`/`minHeight` grows
+ * the visual box where the intrinsic actions column allows. When two
+ * actions co-locate in one cell (mobile detail toggle + remove), their
+ * 32dp visual boxes sit side by side, so the horizontal slop overlap
+ * stays within each button's nearer half (RN resolves a tap to the
+ * closest target).
  */
-const DETAIL_TOGGLE_HIT_SLOP = {
+const ACTION_HIT_SLOP = {
   top: 6,
   bottom: 6,
   left: 14,
@@ -343,7 +350,9 @@ export class MatrixDetailToggleCell extends SurveyElementBase<MatrixDetailToggle
   }
 
   protected getStateElement(): Base | null {
-    return null;
+    // The Action itself (see actionAsStateElement): `enabled` flips are
+    // reactive; expand/collapse re-render stays on the row callback.
+    return actionAsStateElement(this.props.action);
   }
 
   private attach(): void {
@@ -385,17 +394,22 @@ export class MatrixDetailToggleCell extends SurveyElementBase<MatrixDetailToggle
     const { matrix, testID } = this.props;
     const row = this.row;
     const expanded = row.isDetailPanelShowing;
+    // Web-parity Action.disabled semantics (NOT isInputReadOnly — details
+    // stay viewable on a read-only matrix, matching web; core never sets
+    // the show-detail action's enabled from readonly).
+    const disabled = isRowActionDisabled(this.props.action);
     const matrixRecipe = this.themeContext.recipes.matrix;
     return (
       <Pressable
         testID={testID}
         accessibilityRole="button"
-        accessibilityState={{ expanded }}
+        accessibilityState={{ expanded, disabled }}
         accessibilityLabel={matrix.getLocalizationString(
           expanded ? 'hideDetails' : 'showDetails'
         )}
+        disabled={disabled}
         onPress={() => row.showHideDetailPanelClick()}
-        hitSlop={DETAIL_TOGGLE_HIT_SLOP}
+        hitSlop={ACTION_HIT_SLOP}
         style={matrixRecipe.fragments.detailToggle}
       >
         <RNIcon
@@ -408,25 +422,146 @@ export class MatrixDetailToggleCell extends SurveyElementBase<MatrixDetailToggle
   }
 }
 
-/** Structural read of an actions cell's `ActionContainer` (`cell.item.value`)
- * for the ONE action kind 3.3b supports: the core-built detail toggle
- * (`show-detail` wide / `show-detail-mobile`,
- * question_matrixdropdownrendered.ts:800-825). Custom row actions remain
- * v1-unsupported no-ops (DIFFERENCES). */
-function hasDetailToggleAction(
+/** The structural slice of a core row `Action` the per-action walk reads
+ * (§2b action mapping — dispatch by `action.id`, slot by `location`;
+ * `enabled` is the core getter backed by the `@property() _enabled`
+ * field, action.ts:434/532-538 — consumers mutate it through
+ * `survey.onGetMatrixRowActions`, and core stores those SAME mutated
+ * `Action` instances into the cell's `ActionContainer`). */
+interface RowActionLike {
+  id?: string;
+  location?: string;
+  visible?: boolean;
+  enabled?: boolean;
+}
+
+/**
+ * Web-parity per-action disabled read (`Action.disabled`,
+ * action.ts:268-270: `enabled !== undefined && !enabled`) — an action a
+ * consumer never touched (`enabled === undefined`) stays enabled; an
+ * explicit `enabled=false` (e.g. a "locked" row via
+ * `onGetMatrixRowActions`) disables its button. Core's own default
+ * `remove-row` action is built with `enabled: !matrix.isInputReadOnly`
+ * (question_matrixdropdownrendered.ts:774/791), so this read subsumes the
+ * readonly gate for the remove path too.
+ */
+function isRowActionDisabled(action: RowActionLike | undefined): boolean {
+  const enabled = action?.enabled;
+  return enabled !== undefined && !enabled;
+}
+
+/**
+ * Row actions are real core `Action` instances — `Base` subclasses whose
+ * `_enabled` is a core `@property`, so `action.enabled = …` mutations
+ * fire the standard `addOnPropertyValueChangedCallback` notification the
+ * existing `SurveyElementBase` subscription mechanism consumes. Returning
+ * the action as the state element makes the per-action disabled state
+ * REACTIVE (a consumer re-enabling a locked row re-renders the button).
+ * The cast is guarded downstream by `canMakeReact` (a non-`Base` custom
+ * action object simply stays a static read).
+ */
+function actionAsStateElement(action: RowActionLike | undefined): Base | null {
+  return (action as unknown as Base) ?? null;
+}
+
+/**
+ * Per-action read of an actions cell's `ActionContainer`
+ * (`cell.item.value`) — 3.4 §2b: EACH action renders (replacing 3.3b's
+ * whole-cell detail-toggle takeover), ordered start-slot actions first
+ * per `action.location` (core builds desktop `show-detail` as
+ * `location:"start"`; `remove-row`/`show-detail-mobile` as `"end"`,
+ * question_matrixdropdownrendered.ts:766-829). Supported ids:
+ * `remove-row` → removeRowUI button; `show-detail`/`show-detail-mobile`
+ * → the 3.3b toggle. Any other id (custom `onGetMatrixRowActions`
+ * actions) stays a v1-unsupported no-op (DIFFERENCES 6) — filtered here,
+ * never crashed on.
+ */
+function readSupportedRowActions(
   cell: QuestionMatrixDropdownRenderedCell
-): boolean {
+): RowActionLike[] {
   const container = (
     cell.item as unknown as {
-      value?: { actions?: Array<{ id?: string }> };
+      value?: { actions?: RowActionLike[] };
     }
   )?.value;
   const actions = container?.actions;
-  if (!Array.isArray(actions)) return false;
-  return actions.some(
+  if (!Array.isArray(actions)) return [];
+  const supported = actions.filter(
     (action) =>
-      action?.id === 'show-detail' || action?.id === 'show-detail-mobile'
+      action?.visible !== false &&
+      (action?.id === 'remove-row' ||
+        action?.id === 'show-detail' ||
+        action?.id === 'show-detail-mobile')
   );
+  return [
+    ...supported.filter((action) => action.location !== 'end'),
+    ...supported.filter((action) => action.location === 'end'),
+  ];
+}
+
+/** The §3e removeRowUI surface on the dynamic matrix (present only when
+ * core pushed a `remove-row` action — i.e. the matrix IS matrixdynamic
+ * with `hasRemoveRows && canRemoveRow(row)`). One isolated structural
+ * view, same pattern as the select-base slice above. */
+type RemoveRowMatrixLike = QuestionMatrixDropdownModelBase & {
+  removeRowUI(value: unknown): void;
+  removeRowText: string;
+};
+
+interface MatrixRemoveRowButtonProps {
+  cell: QuestionMatrixDropdownRenderedCell;
+  matrix: QuestionMatrixDropdownModelBase;
+  testID: string;
+  /** The `remove-row` `Action` this button renders — its `enabled` flag
+   * (mutable via `onGetMatrixRowActions`) adds to the readonly gate the
+   * web-parity disabled state. */
+  action?: RowActionLike;
+}
+
+/**
+ * The per-row remove button (3.4, §3e) — the RN analog of web's
+ * `sv-matrix-remove-button` / remove-icon action: press calls
+ * **`removeRowUI(row)`** (NEVER raw `removeRow`), which routes the
+ * `confirmDelete` decision through core → `settings.showDialog` → the 2.2
+ * dialog adapter → OverlayHost (identical to paneldynamic; this renderer
+ * never builds the dialog). Presence is core-gated (`hasRemoveRows &&
+ * canRemoveRow(row)` decided when the action was pushed); enablement
+ * mirrors the action's own `!isInputReadOnly`. Caption/a11y from
+ * `removeRowText`; the glyph is core's own remove-action icon id
+ * (`icon-delete-24x24`, bundled).
+ */
+export class MatrixRemoveRowButton extends SurveyElementBase<MatrixRemoveRowButtonProps> {
+  protected getStateElement(): Base | null {
+    // The Action itself (see actionAsStateElement): `enabled` flips are
+    // reactive, so a consumer re-enabling a locked row re-renders here.
+    return actionAsStateElement(this.props.action);
+  }
+
+  protected renderElement(): React.JSX.Element {
+    const { cell, matrix, testID } = this.props;
+    const dynamic = matrix as RemoveRowMatrixLike;
+    const matrixRecipe = this.themeContext.recipes.matrix;
+    const disabled =
+      matrix.isInputReadOnly || isRowActionDisabled(this.props.action);
+    return (
+      <Pressable
+        testID={testID}
+        accessibilityRole="button"
+        accessibilityLabel={dynamic.removeRowText}
+        accessibilityState={{ disabled }}
+        disabled={disabled}
+        onPress={() => dynamic.removeRowUI(cell.row)}
+        hitSlop={ACTION_HIT_SLOP}
+        style={matrixRecipe.fragments.removeRowButton}
+      >
+        <RNIcon
+          iconName="icon-delete-24x24"
+          size={matrixRecipe.removeIconSize}
+          fill={matrixRecipe.removeIconColor}
+        />
+      </Pressable>
+    );
+  }
 }
 
 /** §2b cell-kind precedence — ALL no-question structural cells FIRST. */
@@ -576,6 +711,23 @@ interface MatrixTableProps {
   /** Monotonic reset signal from the OUTER (§4) — its change schedules the
    * deferred ensure that picks up the recreated renderedTable. */
   resetToken: number;
+  /** The OUTER's per-consumer hooks (§1 — `MatrixTableBase` is the
+   * `OverlayControlBase` analogue: dynamic adds add-row buttons + the
+   * empty placeholder, dropdown adds nothing). They execute HERE, inside
+   * the INNER's render over the HELD `state.table` — the OUTER never
+   * reads the renderedTable during render (§4 render purity), and the
+   * held table is the subscribed state element, so the
+   * `showTable`/`showAddRow*` property flips these read re-render
+   * reactively. */
+  renderAboveTable?: (
+    table: QuestionMatrixDropdownRenderedTable
+  ) => React.ReactNode;
+  renderBelowTable?: (
+    table: QuestionMatrixDropdownRenderedTable
+  ) => React.ReactNode;
+  renderEmptyState?: (
+    table: QuestionMatrixDropdownRenderedTable
+  ) => React.ReactNode;
 }
 
 interface MatrixTableState extends SurveyElementBaseState {
@@ -730,25 +882,48 @@ export class MatrixTable extends SurveyElementBase<
             'choice'
           );
         break;
-      case 'actions':
-        // 3.3b: the core-built detail toggle is REAL (§3c); every OTHER
-        // row action remains a v1-unsupported no-op — an inert placeholder
-        // keeps the column aligned without building an action bar.
-        if (hasDetailToggleAction(cell)) {
+      case 'actions': {
+        // 3.4 §2b PER-ACTION rendering (supersedes 3.3b's whole-cell
+        // toggle takeover): every supported action in the cell's
+        // ActionContainer renders side by side — `remove-row` → the
+        // removeRowUI button, `show-detail`/`show-detail-mobile` → the
+        // 3.3b toggle (core co-locates BOTH in the one end cell on
+        // mobile). Unknown/custom ids stay v1-unsupported no-ops; a cell
+        // with none keeps the inert aligned placeholder (plain themed
+        // buttons, never an AdaptiveActionContainer — DIFFERENCES 6).
+        const actions = readSupportedRowActions(cell);
+        if (actions.length > 0) {
           const rowName = String(
             (cell.row as unknown as { rowName?: unknown })?.rowName ?? rowKey
           );
           render = () => (
-            <MatrixDetailToggleCell
-              cell={cell}
-              matrix={question}
-              testID={`matrix-detail-toggle-${rowName}`}
-            />
+            <View style={localStyles.actionsCell}>
+              {actions.map((action, index) =>
+                action.id === 'remove-row' ? (
+                  <MatrixRemoveRowButton
+                    key={`remove:${index}`}
+                    cell={cell}
+                    matrix={question}
+                    action={action}
+                    testID={`matrix-remove-row-${rowName}`}
+                  />
+                ) : (
+                  <MatrixDetailToggleCell
+                    key={`detail:${index}`}
+                    cell={cell}
+                    matrix={question}
+                    action={action}
+                    testID={`matrix-detail-toggle-${rowName}`}
+                  />
+                )
+              )}
+            </View>
           );
         } else {
           render = () => <View testID={`matrix-actions-${rowKey}-${slot}`} />;
         }
         break;
+      }
       default:
         render = () => null;
     }
@@ -901,6 +1076,18 @@ export class MatrixTable extends SurveyElementBase<
   protected renderElement(): React.JSX.Element {
     const table = this.state.table!;
     const question = this.props.question;
+    // §3e empty state: the table is HIDDEN precisely when
+    // `renderedTable.showTable === false` (hideColumnsIfEmpty + no rows).
+    // A consumer-provided placeholder replaces the grid entirely; its add
+    // button gates SEPARATELY on the standalone `showAddRow` (inside the
+    // hook), NOT on showAddRowOnTop/Bottom (both false while hidden).
+    // Without a hook (matrixdropdown) the grid path is unchanged.
+    if (!table.showTable) {
+      const empty = this.props.renderEmptyState?.(table);
+      if (empty !== undefined && empty !== null) {
+        return <>{empty}</>;
+      }
+    }
     const config: MatrixWidthConfig = {
       columnMinWidth: question.columnMinWidth || undefined,
       // Read live through the facade (consumer-overridable), never
@@ -908,7 +1095,11 @@ export class MatrixTable extends SurveyElementBase<
       columnWidthsByType: settings.matrix.columnWidthsByType,
     };
     return (
-      <MatrixGridRoot contract={this.buildContract(table)} config={config} />
+      <>
+        {this.props.renderAboveTable?.(table) ?? null}
+        <MatrixGridRoot contract={this.buildContract(table)} config={config} />
+        {this.props.renderBelowTable?.(table) ?? null}
+      </>
     );
   }
 }
@@ -978,9 +1169,38 @@ export class MatrixTableBase<
     super.componentWillUnmount();
   }
 
+  /**
+   * The §1 per-consumer hooks (`OverlayControlBase` pattern): 3.4's
+   * `MatrixDynamicQuestion` overrides these for add-row buttons + the
+   * empty placeholder; the base (matrixdropdown) contributes nothing.
+   * They are INVOKED by the INNER over its held `state.table` (§4 render
+   * purity — the OUTER never reads the renderedTable in render), so
+   * implementations may freely read `table.showAddRow*`/`showTable`.
+   */
+  protected renderAboveTable(
+    _table: QuestionMatrixDropdownRenderedTable
+  ): React.ReactNode {
+    return null;
+  }
+
+  protected renderBelowTable(
+    _table: QuestionMatrixDropdownRenderedTable
+  ): React.ReactNode {
+    return null;
+  }
+
+  /** Rendered INSTEAD of the grid when `table.showTable === false` (§3e);
+   * `null` (the base) keeps the grid path. */
+  protected getEmptyState(
+    _table: QuestionMatrixDropdownRenderedTable
+  ): React.ReactNode {
+    return null;
+  }
+
   protected renderElement(): React.JSX.Element {
     // NO renderedTable read here (§4): the INNER holds/ensures the table;
-    // this pass-through only forwards the monotonic reset signal. The
+    // this pass-through only forwards the monotonic reset signal and the
+    // per-consumer hooks (executed by the INNER over the held table). The
     // INNER's React identity is stable (no key off the renderedTable).
     return (
       <View testID="matrixdropdown-table" style={localStyles.container}>
@@ -988,6 +1208,9 @@ export class MatrixTableBase<
           question={this.matrix}
           creator={this.creator}
           resetToken={this.state.resetToken ?? 0}
+          renderAboveTable={(table) => this.renderAboveTable(table)}
+          renderBelowTable={(table) => this.renderBelowTable(table)}
+          renderEmptyState={(table) => this.getEmptyState(table)}
         />
       </View>
     );
@@ -998,4 +1221,11 @@ const localStyles = StyleSheet.create({
   container: { alignSelf: 'stretch' } as ViewStyle,
   cellBody: { alignSelf: 'stretch' } as ViewStyle,
   headerContent: { flexDirection: 'row', flexWrap: 'wrap' } as ViewStyle,
+  // Co-located actions (mobile detail toggle + remove) sit side by side,
+  // centered in the intrinsic actions column (§2b).
+  actionsCell: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  } as ViewStyle,
 });

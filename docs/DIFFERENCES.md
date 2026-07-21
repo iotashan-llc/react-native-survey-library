@@ -1430,16 +1430,62 @@ follows; collapse keeps the panel instance, so values entered in a detail
 panel persist across collapse/expand (they live in the row value, e.g.
 `{ r1: { d1: … } }`).
 
-### Custom row actions remain no-ops (3.4 scope)
+### Row actions are plain themed buttons; custom row actions remain no-ops
 
-Custom row actions (`onGetMatrixRowActions`) and action overflow-to-popup
-remain v1 unsupported: an actions cell without a detail toggle renders as
-an inert, aligned placeholder (no `AdaptiveActionContainer`). **Tracked
-3.4 obligation — per-action rendering in shared actions cells:** today an
-actions cell containing a detail toggle renders ONLY the toggle, so
-actions that co-locate with it in the same container (e.g. mobile
-`show-detail-mobile` + matrixdynamic `remove-row`) are not each rendered;
-3.4 must walk the cell's `ActionContainer` and render every supported
-action side by side. An unsupported `cellType` (e.g. `file` before M5)
-degrades to the non-throwing fallback panel **in that one cell** with a
-structured diagnostic — the rest of the matrix keeps working.
+Actions cells render PER ACTION (the 3.4 obligation, now met): the walk
+iterates the cell's `ActionContainer` and renders every supported action
+side by side — `remove-row` as the matrixdynamic remove button,
+`show-detail`/`show-detail-mobile` as the detail toggle — so web's mobile
+co-location of `show-detail-mobile` + `remove-row` in one shared end cell
+renders both. They are plain themed `Pressable`s, never an
+`AdaptiveActionContainer`: custom row actions (`onGetMatrixRowActions`)
+and action overflow-to-popup remain v1 unsupported — an unknown
+`action.id` renders nothing (no crash), and an actions cell with no
+supported actions renders as an inert, aligned placeholder. An
+unsupported `cellType` (e.g. `file` before M5) degrades to the
+non-throwing fallback panel **in that one cell** with a structured
+diagnostic — the rest of the matrix keeps working.
+
+## Matrix dynamic question (task 3.4)
+
+### Add/remove affordances are plain themed buttons driven by core's renderedTable gates
+
+The add-row button(s) render exactly where core says
+(`renderedTable.showAddRowOnTop`/`showAddRowOnBottom` — computed from
+`addRowLocation`; the RN renderer never recomputes placement), captioned
+with `addRowText`, and call core's **`addRowUI()`** wrapper (guards
+inside core; the button is absent — not disabled — at `maxRowCount` /
+`allowAddRows: false`, mirroring web's `canAddRow` gate). Per-row removal
+renders as a delete-glyph button inside the shared actions cell (see the
+per-action item above), a11y-labeled with `removeRowText`, calling
+**`removeRowUI(row)`** — presence is core-gated by `canRemoveRows &&
+canRemoveRow(row)` (honoring `minRowCount`, `lockedRowCount`, and the
+`onMatrixRenderRemoveButton` event), so remove buttons disappear entirely
+at `minRowCount` and the whole actions column appears/disappears with
+row removability (a full renderedTable rebuild core drives).
+
+### `confirmDelete` presents through the RN dialog adapter
+
+The delete confirmation is core's own flow: `removeRowUI` →
+`confirmActionAsync` → `settings.showDialog` → the task-2.2 dialog
+adapter → the overlay host — identical to paneldynamic's
+`confirmDelete`. The RN renderer never builds the dialog; Apply removes
+the row, Cancel keeps it, and with no overlay host mounted the adapter's
+fail-safe CANCELS (the row is kept, never silently deleted). Web instead
+shows its DOM popup.
+
+### The empty-state placeholder is full-width; its add button gates on `showAddRow`
+
+With `hideColumnsIfEmpty: true` and no rows, the grid is replaced by the
+full-width `noRowsText` placeholder (matching web's
+`sv-placeholder-matrixdynamic`), whose add button gates on the
+STANDALONE `renderedTable.showAddRow` — NOT the in-table
+`showAddRowOnTop`/`showAddRowOnBottom` (both false while the table is
+hidden). The first row is added from the placeholder itself.
+
+### Row drag reorder is deferred to task 4.3
+
+`allowRowReorder` produces core's drag-handle cells, which render inert
+(an empty aligned slot, no gesture wiring) until the M4 drag primitive
+lands (4.1/4.3). Web's `DragDropMatrixRows` DOM machinery is bypassed
+entirely (the repo-wide no-DOM posture).

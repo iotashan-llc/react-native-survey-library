@@ -435,6 +435,21 @@ exports[`curated recipe golden snapshots ContrastLight: recipes build to a stabl
     "detailIconColor": "rgba(0, 0, 0, 1)",
     "detailIconSize": 16,
     "fragments": {
+      "addRowButton": {
+        "alignItems": "center",
+        "alignSelf": "flex-start",
+        "flexDirection": "row",
+        "minHeight": 32,
+        "paddingHorizontal": 16,
+        "paddingVertical": 8,
+      },
+      "addRowText": {
+        "color": "rgba(0, 0, 0, 1)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "fontWeight": "600",
+        "lineHeight": 24,
+      },
       "cellText": {
         "color": "rgba(0, 0, 0, 1)",
         "fontFamily": undefined,
@@ -493,6 +508,23 @@ exports[`curated recipe golden snapshots ContrastLight: recipes build to a stabl
         "fontWeight": "600",
         "lineHeight": 24,
       },
+      "placeholder": {
+        "alignItems": "center",
+        "paddingHorizontal": 16,
+        "paddingVertical": 16,
+      },
+      "placeholderText": {
+        "color": "rgba(0, 0, 0, 1)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "lineHeight": 24,
+      },
+      "removeRowButton": {
+        "alignItems": "center",
+        "justifyContent": "center",
+        "minHeight": 32,
+        "minWidth": 32,
+      },
       "rowHeaderCell": {
         "backgroundColor": "rgba(255, 216, 77, 1)",
         "borderBottomWidth": 0.5,
@@ -547,6 +579,8 @@ exports[`curated recipe golden snapshots ContrastLight: recipes build to a stabl
         "minHeight": 32,
       },
     },
+    "removeIconColor": "rgba(0, 0, 0, 1)",
+    "removeIconSize": 24,
   },
   "overlay": {
     "fragments": {
@@ -1546,6 +1580,21 @@ exports[`curated recipe golden snapshots DefaultLight: recipes build to a stable
     "detailIconColor": "rgba(0, 0, 0, 0.91)",
     "detailIconSize": 16,
     "fragments": {
+      "addRowButton": {
+        "alignItems": "center",
+        "alignSelf": "flex-start",
+        "flexDirection": "row",
+        "minHeight": 32,
+        "paddingHorizontal": 16,
+        "paddingVertical": 8,
+      },
+      "addRowText": {
+        "color": "rgba(25, 179, 148, 1)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "fontWeight": "600",
+        "lineHeight": 24,
+      },
       "cellText": {
         "color": "rgba(0, 0, 0, 0.91)",
         "fontFamily": undefined,
@@ -1604,6 +1653,23 @@ exports[`curated recipe golden snapshots DefaultLight: recipes build to a stable
         "fontWeight": "600",
         "lineHeight": 24,
       },
+      "placeholder": {
+        "alignItems": "center",
+        "paddingHorizontal": 16,
+        "paddingVertical": 16,
+      },
+      "placeholderText": {
+        "color": "rgba(0, 0, 0, 0.91)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "lineHeight": 24,
+      },
+      "removeRowButton": {
+        "alignItems": "center",
+        "justifyContent": "center",
+        "minHeight": 32,
+        "minWidth": 32,
+      },
       "rowHeaderCell": {
         "backgroundColor": "rgba(243, 243, 243, 1)",
         "borderBottomWidth": 0.5,
@@ -1658,6 +1724,8 @@ exports[`curated recipe golden snapshots DefaultLight: recipes build to a stable
         "minHeight": 32,
       },
     },
+    "removeIconColor": "rgba(0, 0, 0, 0.91)",
+    "removeIconSize": 24,
   },
   "overlay": {
     "fragments": {
@@ -2721,6 +2789,21 @@ exports[`curated recipe golden snapshots LayeredDark: recipes build to a stable 
     "detailIconColor": "rgba(213, 215, 238, 1)",
     "detailIconSize": 16,
     "fragments": {
+      "addRowButton": {
+        "alignItems": "center",
+        "alignSelf": "flex-start",
+        "flexDirection": "row",
+        "minHeight": 32,
+        "paddingHorizontal": 16,
+        "paddingVertical": 8,
+      },
+      "addRowText": {
+        "color": "rgba(164, 127, 243, 1)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "fontWeight": "600",
+        "lineHeight": 24,
+      },
       "cellText": {
         "color": "rgba(213, 215, 238, 1)",
         "fontFamily": undefined,
@@ -2779,6 +2862,23 @@ exports[`curated recipe golden snapshots LayeredDark: recipes build to a stable 
         "fontWeight": "600",
         "lineHeight": 24,
       },
+      "placeholder": {
+        "alignItems": "center",
+        "paddingHorizontal": 16,
+        "paddingVertical": 16,
+      },
+      "placeholderText": {
+        "color": "rgba(213, 215, 238, 1)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "lineHeight": 24,
+      },
+      "removeRowButton": {
+        "alignItems": "center",
+        "justifyContent": "center",
+        "minHeight": 32,
+        "minWidth": 32,
+      },
       "rowHeaderCell": {
         "backgroundColor": "rgba(30, 31, 40, 1)",
         "borderBottomWidth": 0.5,
@@ -2833,6 +2933,8 @@ exports[`curated recipe golden snapshots LayeredDark: recipes build to a stable 
         "minHeight": 32,
       },
     },
+    "removeIconColor": "rgba(213, 215, 238, 1)",
+    "removeIconSize": 24,
   },
   "overlay": {
     "fragments": {
@@ -3928,6 +4030,21 @@ exports[`curated recipe golden snapshots SharpDark: recipes build to a stable sn
     "detailIconColor": "rgba(255, 255, 255, 0.78)",
     "detailIconSize": 16,
     "fragments": {
+      "addRowButton": {
+        "alignItems": "center",
+        "alignSelf": "flex-start",
+        "flexDirection": "row",
+        "minHeight": 32,
+        "paddingHorizontal": 16,
+        "paddingVertical": 8,
+      },
+      "addRowText": {
+        "color": "rgba(16, 226, 255, 1)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "fontWeight": "600",
+        "lineHeight": 24,
+      },
       "cellText": {
         "color": "rgba(255, 255, 255, 0.78)",
         "fontFamily": undefined,
@@ -3986,6 +4103,23 @@ exports[`curated recipe golden snapshots SharpDark: recipes build to a stable sn
         "fontWeight": "600",
         "lineHeight": 24,
       },
+      "placeholder": {
+        "alignItems": "center",
+        "paddingHorizontal": 16,
+        "paddingVertical": 16,
+      },
+      "placeholderText": {
+        "color": "rgba(255, 255, 255, 0.78)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "lineHeight": 24,
+      },
+      "removeRowButton": {
+        "alignItems": "center",
+        "justifyContent": "center",
+        "minHeight": 32,
+        "minWidth": 32,
+      },
       "rowHeaderCell": {
         "backgroundColor": "rgba(27, 27, 27, 1)",
         "borderBottomWidth": 0.5,
@@ -4040,6 +4174,8 @@ exports[`curated recipe golden snapshots SharpDark: recipes build to a stable sn
         "minHeight": 32,
       },
     },
+    "removeIconColor": "rgba(255, 255, 255, 0.78)",
+    "removeIconSize": 24,
   },
   "overlay": {
     "fragments": {
@@ -5087,6 +5223,21 @@ exports[`curated recipe golden snapshots ThreeDimensionalLight: recipes build to
     "detailIconColor": "rgba(0, 0, 0, 0.91)",
     "detailIconSize": 16,
     "fragments": {
+      "addRowButton": {
+        "alignItems": "center",
+        "alignSelf": "flex-start",
+        "flexDirection": "row",
+        "minHeight": 32,
+        "paddingHorizontal": 16,
+        "paddingVertical": 8,
+      },
+      "addRowText": {
+        "color": "rgba(217, 74, 100, 1)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "fontWeight": "600",
+        "lineHeight": 24,
+      },
       "cellText": {
         "color": "rgba(0, 0, 0, 0.91)",
         "fontFamily": undefined,
@@ -5145,6 +5296,23 @@ exports[`curated recipe golden snapshots ThreeDimensionalLight: recipes build to
         "fontWeight": "600",
         "lineHeight": 24,
       },
+      "placeholder": {
+        "alignItems": "center",
+        "paddingHorizontal": 16,
+        "paddingVertical": 16,
+      },
+      "placeholderText": {
+        "color": "rgba(0, 0, 0, 0.91)",
+        "fontFamily": undefined,
+        "fontSize": 16,
+        "lineHeight": 24,
+      },
+      "removeRowButton": {
+        "alignItems": "center",
+        "justifyContent": "center",
+        "minHeight": 32,
+        "minWidth": 32,
+      },
       "rowHeaderCell": {
         "backgroundColor": "rgba(255, 255, 255, 1)",
         "borderBottomWidth": 0.5,
@@ -5199,6 +5367,8 @@ exports[`curated recipe golden snapshots ThreeDimensionalLight: recipes build to
         "minHeight": 32,
       },
     },
+    "removeIconColor": "rgba(0, 0, 0, 0.91)",
+    "removeIconSize": 24,
   },
   "overlay": {
     "fragments": {

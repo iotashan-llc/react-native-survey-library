@@ -73,6 +73,32 @@ describe('matrix recipe — build shape', () => {
     expect(typeof recipe.detailIconColor).toBe('string');
     expect(recipe.detailIconColor.length).toBeGreaterThan(0);
   });
+
+  it('exposes the 3.4 matrixdynamic add/remove/placeholder fragments + remove-icon metrics', () => {
+    for (const key of [
+      'addRowButton',
+      'addRowText',
+      'removeRowButton',
+      'placeholder',
+      'placeholderText',
+    ] as const) {
+      expect(recipe.fragments[key]).toBeDefined();
+    }
+    // The remove button mirrors the detail toggle's square visual target
+    // inside the intrinsic actions column.
+    const remove = flat(recipe.fragments.removeRowButton);
+    expect(remove.alignItems).toBe('center');
+    expect(remove.justifyContent).toBe('center');
+    expect(remove.minWidth).toBe(remove.minHeight);
+    expect(remove.minWidth as number).toBeGreaterThan(0);
+    // Accent-toned add caption (token-derived, never a literal).
+    const addText = flat(recipe.fragments.addRowText);
+    expect(typeof addText.color).toBe('string');
+    // delete-24x24 glyph metrics ride the recipe.
+    expect(recipe.removeIconSize).toBeGreaterThan(0);
+    expect(typeof recipe.removeIconColor).toBe('string');
+    expect(recipe.removeIconColor.length).toBeGreaterThan(0);
+  });
 });
 
 describe('matrix recipe — wired into the aggregate Recipes', () => {

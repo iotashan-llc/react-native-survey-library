@@ -472,6 +472,48 @@
               "text": "Engineering"
             }
           ]
+        },
+        {
+          "type": "matrixdynamic",
+          "name": "milestonesPlan",
+          "title": "Release milestones (matrixdynamic)",
+          "confirmDelete": true,
+          "rowCount": 2,
+          "minRowCount": 1,
+          "maxRowCount": 4,
+          "columns": [
+            {
+              "name": "milestone",
+              "title": "Milestone",
+              "cellType": "text"
+            },
+            {
+              "name": "status",
+              "title": "Status",
+              "cellType": "dropdown",
+              "choices": [
+                "Planned",
+                "In progress",
+                "Done"
+              ]
+            }
+          ]
+        },
+        {
+          "type": "matrixdynamic",
+          "name": "openIssues",
+          "title": "Open issues (matrixdynamic, empty state)",
+          "rowCount": 0,
+          "minRowCount": 0,
+          "hideColumnsIfEmpty": true,
+          "noRowsText": "No issues filed yet — add the first one.",
+          "columns": [
+            {
+              "name": "summary",
+              "title": "Summary",
+              "cellType": "text"
+            }
+          ]
         }
       ]
     },

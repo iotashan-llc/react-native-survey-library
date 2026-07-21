@@ -264,7 +264,20 @@ export const MODEL_TYPE_CLASSIFICATION: Readonly<
       },
     },
   },
-  matrixdynamic: { status: 'planned', milestone: 'M3', reason: 'task 3.4' },
+  matrixdynamic: {
+    status: 'supported',
+    milestone: 'M3',
+    reason: 'task 3.4',
+    runtimeRenderable: {
+      expectedTemplate: 'matrixdynamic',
+      expectedRoute: 'template',
+      fixtureJson: {
+        type: 'matrixdynamic',
+        columns: [{ name: 'a', cellType: 'text' }],
+        rowCount: 1,
+      },
+    },
+  },
 
   // Phase 4 — v0.4 (M4).
   ranking: { status: 'planned', milestone: 'M4', reason: 'task 4.2' },
