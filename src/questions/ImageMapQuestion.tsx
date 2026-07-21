@@ -275,8 +275,11 @@ export class ImageMapQuestion extends QuestionElementBase<
       return { width: this.state.layoutWidth, height: undefined };
     }
     const avail = this.state.layoutWidth;
-    const scale =
-      avail !== undefined && natural.w > avail ? avail / natural.w : 1;
+    // Fill the measured container width preserving aspect (web parity:
+    // `.sd-imagemap-bg { width:100% }` — upscales small images too, not
+    // just downscale). The SVG overlay tracks the same box, so hotspot
+    // coordinate mapping stays proportional at any scale.
+    const scale = avail !== undefined ? avail / natural.w : 1;
     return { width: natural.w * scale, height: natural.h * scale };
   }
 

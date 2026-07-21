@@ -1936,7 +1936,12 @@ its SVG element).
 A **read-only** question still draws the overlay (so the selected highlight
 shows) but taps do not commit. Each shape is an accessible tappable labeled
 with its area `text` and carrying `checked` (selected) + `disabled`
-(read-only) state, with role `checkbox` (multi) or `radio` (single). The
+(read-only) state, with role `checkbox` (multi) or `radio` (single).
+**Native caveat:** these per-shape accessibility props ride
+`react-native-svg`'s child-element a11y, whose mapping to native
+assistive tech (notably Android TalkBack on SVG children) is inconsistent
+and **not yet device-verified** — the on-device a11y pass is a pending
+gate. The
 base image's `imageLink` is validated through the central URI policy
 (context `image`, fail-closed) — a blocked link drops the image and emits
 an `image-uri-blocked` diagnostic (source `imagemap`); data-URI images are
