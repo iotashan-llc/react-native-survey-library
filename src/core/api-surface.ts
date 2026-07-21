@@ -1842,4 +1842,49 @@ export const API_SURFACE_WATCHLIST: readonly WatchedApiMember[] = [
       'choicesByUrl gate registry lookup — sender → owning model for ' +
       'runtime re-run policy resolution.',
   },
+  {
+    id: 'ChoicesRestful.getCachedItemsResult',
+    member: 'getCachedItemsResult',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.ChoicesRestful,
+    reason:
+      'choicesByUrl gate cache-delivery enforcement — private-in-typings ' +
+      "STATIC the gate wraps: core's run() consults the static itemsResult " +
+      'cache BEFORE sendRequest, so a cached payload would otherwise bypass ' +
+      'the request-time policy entirely.',
+  },
+  {
+    id: 'ChoicesRestful.addSameRequest',
+    member: 'addSameRequest',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.ChoicesRestful,
+    reason:
+      'choicesByUrl gate coalescing enforcement — private-in-typings ' +
+      'STATIC the gate wraps so a gated sender never coalesces onto an ' +
+      'in-flight request whose delivery bypasses the request-time hook.',
+  },
+  {
+    id: 'ChoicesRestful.objHash',
+    member: 'objHash',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.ChoicesRestful.prototype,
+    reason:
+      'choicesByUrl gate cache-provenance key — the SAME hash core keys ' +
+      'itemsResult/sendingSameRequests by; the gate records validated ' +
+      'end URLs under it for cache-read re-validation.',
+  },
+  {
+    id: 'ChoicesRestful.processedUrl',
+    member: 'processedUrl',
+    // Assigned in the ChoicesRestful constructor — an OWN data property
+    // on each INSTANCE, probed on a fresh instance (constructor verified
+    // side-effect-free: field assignments only), same pattern as the
+    // QuestionCustomWidget probe above.
+    expectedKind: 'data',
+    resolveHost: (sc) => new sc.ChoicesRestful(),
+    reason:
+      'choicesByUrl gate cache-time validation input — the fully ' +
+      'text-processed request URL, protected-in-typings instance field ' +
+      'set by run() BEFORE the cache/coalescing lookups.',
+  },
 ];

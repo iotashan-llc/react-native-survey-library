@@ -11,6 +11,7 @@
 import {
   validateUri,
   lintChoicesByUrlTemplate,
+  redactUriForDiagnostics,
   requiresManualRedirect,
   type UriContext,
 } from '../uri-policy';
@@ -533,6 +534,43 @@ describe('lintChoicesByUrlTemplate', () => {
     expect(lintChoicesByUrlTemplate('https://api.example.com/items')).toEqual({
       ok: true,
     });
+  });
+});
+
+describe('redactUriForDiagnostics', () => {
+  it('strips userinfo, query, and fragment; keeps scheme + host + path', () => {
+    expect(
+      redactUriForDiagnostics(
+        'https://user:hunter2@evil.example/cb?token=SECRET#frag'
+      )
+    ).toBe('https://evil.example/cb');
+  });
+
+  it('keeps a non-default port (it is part of the origin)', () => {
+    expect(redactUriForDiagnostics('https://api.example.com:8443/x?y=1')).toBe(
+      'https://api.example.com:8443/x'
+    );
+  });
+
+  it('truncates long paths to 32 chars with an ellipsis', () => {
+    const redacted = redactUriForDiagnostics(
+      'https://h.example/' + 'a'.repeat(64)
+    );
+    expect(redacted).toBe('https://h.example/' + 'a'.repeat(31) + '…');
+  });
+
+  it('handles opaque schemes and relative references', () => {
+    expect(redactUriForDiagnostics('mailto:someone@example.com?bcc=x')).toBe(
+      'mailto:someone@example.com'
+    );
+    expect(redactUriForDiagnostics('items/relative?secret=1')).toBe(
+      'items/relative'
+    );
+  });
+
+  it('returns an empty string for empty/non-string input', () => {
+    expect(redactUriForDiagnostics('')).toBe('');
+    expect(redactUriForDiagnostics(undefined as unknown as string)).toBe('');
   });
 });
 

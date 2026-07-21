@@ -362,9 +362,15 @@ export interface ChoicesByUrlBlockedPayload {
   code: 'choices-by-url-blocked';
   phase: 'request' | 'redirect';
   /** The offending URL — the request URL for `'request'`, the final
-   * (post-redirect) URL for `'redirect'`. */
+   * (post-redirect) URL for `'redirect'`. REDACTED for display: scheme +
+   * host + path truncated to 32 chars; userinfo, query, and fragment are
+   * stripped (embedded credentials/API tokens must never reach the dev
+   * console or a host handler — security review finding 3). The gate
+   * dedupes on the RAW url, so distinct blocked URLs that redact alike
+   * still each report. */
   url: string;
-  /** The URL the request was (or would have been) sent to. */
+  /** The URL the request was (or would have been) sent to — redacted the
+   * same way as `url`. */
   requestUrl: string;
   /** Stable `validateUri` reason code (plus `'response-url-unavailable'`
    * when the runtime exposed no end URL to validate — fail-closed). */
@@ -508,20 +514,23 @@ export function reportMatrixNullCellOnce(
  * `(phase, url, reason)` inner key: re-running the SAME blocked URL on
  * the same question reports once; a DIFFERENT blocked URL (or the same
  * URL blocked at a different phase) is separately actionable and
- * re-emits.
+ * re-emits. The payload's `url` is REDACTED, so the gate passes the
+ * RAW-url composite via `dedupeKey` — two distinct blocked URLs that
+ * redact identically must still each report once.
  */
 const choicesByUrlBlockedEmitted = new WeakMap<object, Set<string>>();
 
 export function reportChoicesByUrlBlockedOnce(
   sender: object,
-  payload: ChoicesByUrlBlockedPayload
+  payload: ChoicesByUrlBlockedPayload,
+  dedupeKey?: string
 ): void {
   let emittedKeys = choicesByUrlBlockedEmitted.get(sender);
   if (!emittedKeys) {
     emittedKeys = new Set<string>();
     choicesByUrlBlockedEmitted.set(sender, emittedKeys);
   }
-  const key = `${payload.phase}|${payload.url}|${payload.reason}`;
+  const key = dedupeKey ?? `${payload.phase}|${payload.url}|${payload.reason}`;
   if (emittedKeys.has(key)) return;
   emittedKeys.add(key);
   reportDiagnostic(payload);

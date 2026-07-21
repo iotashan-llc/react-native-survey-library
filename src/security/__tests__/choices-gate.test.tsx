@@ -21,7 +21,7 @@
 import * as React from 'react';
 import { render, act } from '@testing-library/react-native';
 
-import { Model, settings } from '../../core/facade';
+import { ChoicesRestful, Model, settings } from '../../core/facade';
 import { Survey } from '../../survey/Survey';
 import type { SurveyRefHandle } from '../../survey/Survey';
 import { setDiagnosticHandler } from '../../diagnostics';
@@ -524,6 +524,46 @@ describe('choicesByUrl gate — <Survey> wiring', () => {
     expect(FakeXHR.sent).toHaveLength(2);
   });
 
+  it('a mutation re-run cannot consume a cache entry poisoned by a permissive Survey (mounted path)', async () => {
+    ChoicesRestful.clearCache();
+    const seen = captureDiagnostics();
+    const evil = evilUrl();
+    const permissive: UriPolicyConfig = {
+      allowedOrigins: ['https://evil.example'],
+    };
+    // Permissive Survey legitimately loads (and core caches) the payload.
+    const first = render(
+      <Survey json={jsonWithUrl(evil)} uriPolicy={permissive} />
+    );
+    expect(FakeXHR.sent).toHaveLength(1);
+    act(() => {
+      FakeXHR.sent[0]!.respond(200, JSON.stringify(['a', 'b']), evil);
+    });
+    first.unmount();
+    // Strict Survey: a post-construction mutation re-run to the cached
+    // URL must NOT be served the permissive-cached payload.
+    const okUrl = allowedUrl();
+    const refB = React.createRef<SurveyRefHandle>();
+    render(<Survey json={jsonWithUrl(okUrl)} uriPolicy={ALLOW} ref={refB} />);
+    act(() => {
+      FakeXHR.sent[1]!.respond(200, JSON.stringify(['x']), okUrl);
+    });
+    const q = dropdownRuntime(refB.current!.model);
+    expect(q.visibleChoices).toHaveLength(1);
+    act(() => {
+      q.choicesByUrl.url = evil;
+      q.runChoicesByUrl();
+    });
+    await flush();
+    expect(FakeXHR.sent).toHaveLength(2);
+    expect(q.visibleChoices).toHaveLength(0);
+    expect(q.isRunningChoices).toBe(false);
+    expect(blockedDiagnostics(seen)).toEqual([
+      expect.objectContaining({ phase: 'request', url: evil }),
+    ]);
+    ChoicesRestful.clearCache();
+  });
+
   it('survives multiple mounts and restores the prior hook after the last unmount', async () => {
     const seen = captureDiagnostics();
     const first = render(
@@ -544,5 +584,327 @@ describe('choicesByUrl gate — <Survey> wiring', () => {
     expect(blockedDiagnostics(seen)).toHaveLength(1);
     second.unmount();
     expect(settings.web.onBeforeRequestChoices).toBe(originalHook);
+  });
+});
+
+// ---------------------------------------------------------------------
+// Static cache + same-request coalescing (security review finding 1):
+// core's `run()` consults `ChoicesRestful.itemsResult` (static cache) and
+// `sendingSameRequests` (coalescing) BEFORE `sendRequest()` — i.e. before
+// the `onBeforeRequestChoices` hook ever fires — so both are delivery
+// paths that bypass the request-time gate unless gated separately.
+// ---------------------------------------------------------------------
+
+describe('choicesByUrl gate — static cache / coalescing enforcement', () => {
+  const PERMISSIVE: UriPolicyConfig = {
+    allowedOrigins: ['https://evil.example', 'https://api.example.com'],
+  };
+
+  beforeEach(() => {
+    FakeXHR.reset();
+    g.XMLHttpRequest = FakeXHR;
+    ChoicesRestful.clearCache();
+  });
+  afterEach(() => {
+    ChoicesRestful.clearCache();
+    delete g.XMLHttpRequest;
+  });
+
+  it('a strict-policy survey does NOT receive a permissive-cached payload for a URL its policy blocks', async () => {
+    const seen = captureDiagnostics();
+    const url = evilUrl();
+    // Survey 1: permissive policy loads (and core caches) the payload.
+    const permissiveModel = runWithConstructionUriPolicy(
+      PERMISSIVE,
+      () => new Model(jsonWithUrl(url))
+    );
+    expect(FakeXHR.sent).toHaveLength(1);
+    FakeXHR.sent[0]!.respond(200, JSON.stringify(['a', 'b']), url);
+    expect(dropdownRuntime(permissiveModel).visibleChoices).toHaveLength(2);
+    // Survey 2: strict policy, same URL — the cached payload must NOT be
+    // handed over; the block must fail closed exactly like a fired
+    // request (empty choices + diagnostic), with no network egress.
+    const strictModel = runWithConstructionUriPolicy(
+      ALLOW,
+      () => new Model(jsonWithUrl(url))
+    );
+    await flush();
+    expect(FakeXHR.sent).toHaveLength(1);
+    const q = dropdownRuntime(strictModel);
+    expect(q.visibleChoices).toHaveLength(0);
+    expect(q.isRunningChoices).toBe(false);
+    expect(q.choicesByUrl.error).toBeTruthy();
+    expect(blockedDiagnostics(seen)).toEqual([
+      expect.objectContaining({ phase: 'request', url }),
+    ]);
+  });
+
+  it('a strict-policy question does NOT coalesce onto an in-flight permissive request', async () => {
+    const seen = captureDiagnostics();
+    const url = evilUrl();
+    // Permissive request goes in flight (no response yet).
+    const permissiveModel = runWithConstructionUriPolicy(
+      PERMISSIVE,
+      () => new Model(jsonWithUrl(url))
+    );
+    expect(FakeXHR.sent).toHaveLength(1);
+    // Strict survey, same URL, while the permissive request is in flight:
+    // it must NOT register as a same-request waiter.
+    const strictModel = runWithConstructionUriPolicy(
+      ALLOW,
+      () => new Model(jsonWithUrl(url))
+    );
+    FakeXHR.sent[0]!.respond(200, JSON.stringify(['a', 'b']), url);
+    await flush();
+    expect(FakeXHR.sent).toHaveLength(1);
+    expect(dropdownRuntime(permissiveModel).visibleChoices).toHaveLength(2);
+    const q = dropdownRuntime(strictModel);
+    expect(q.visibleChoices).toHaveLength(0);
+    expect(q.isRunningChoices).toBe(false);
+    expect(blockedDiagnostics(seen)).toEqual([
+      expect.objectContaining({ phase: 'request', url }),
+    ]);
+  });
+
+  it('serves the cache between gated surveys under the same-passing policy (no refetch)', () => {
+    const url = allowedUrl();
+    runWithConstructionUriPolicy(ALLOW, () => new Model(jsonWithUrl(url)));
+    expect(FakeXHR.sent).toHaveLength(1);
+    FakeXHR.sent[0]!.respond(200, JSON.stringify(['a', 'b']), url);
+    const second = runWithConstructionUriPolicy(
+      ALLOW,
+      () => new Model(jsonWithUrl(url))
+    );
+    // Cache hit is fine when the requesting survey's own policy passes
+    // BOTH the request URL and the recorded end URL.
+    expect(FakeXHR.sent).toHaveLength(1);
+    expect(dropdownRuntime(second).visibleChoices).toHaveLength(2);
+  });
+
+  it('refetches (never serves) a cache entry of unknown provenance (loaded by a trusted survey)', () => {
+    const url = allowedUrl();
+    // Trusted host model loads UNGATED — its cache entry has no recorded
+    // end URL, so its provenance is unknown to any policy.
+    installChoicesByUrlGate();
+    const trusted = new Model(jsonWithUrl(url));
+    expect(FakeXHR.sent).toHaveLength(1);
+    FakeXHR.sent[0]!.respond(200, JSON.stringify(['a', 'b']), url);
+    expect(dropdownRuntime(trusted).visibleChoices).toHaveLength(2);
+    // A gated survey must not consume it — it refires (fully gated).
+    const gated = runWithConstructionUriPolicy(
+      ALLOW,
+      () => new Model(jsonWithUrl(url))
+    );
+    expect(FakeXHR.sent).toHaveLength(2);
+    FakeXHR.sent[1]!.respond(200, JSON.stringify(['a', 'b']), url);
+    expect(dropdownRuntime(gated).visibleChoices).toHaveLength(2);
+  });
+
+  it('refetches when the cached payload arrived via a redirect the strict policy blocks', async () => {
+    const seen = captureDiagnostics();
+    const url = allowedUrl();
+    const finalUrl = 'https://evil.example/final';
+    // Permissive survey: request URL passes BOTH policies, but the
+    // response landed on evil.example (allowed under permissive only).
+    const permissiveModel = runWithConstructionUriPolicy(
+      PERMISSIVE,
+      () => new Model(jsonWithUrl(url))
+    );
+    FakeXHR.sent[0]!.respond(200, JSON.stringify(['a', 'b']), finalUrl);
+    expect(dropdownRuntime(permissiveModel).visibleChoices).toHaveLength(2);
+    // Strict survey: request URL passes, but the cache entry's recorded
+    // end URL fails the strict policy — refetch instead of serving it.
+    const strictModel = runWithConstructionUriPolicy(
+      ALLOW,
+      () => new Model(jsonWithUrl(url))
+    );
+    expect(FakeXHR.sent).toHaveLength(2);
+    FakeXHR.sent[1]!.respond(200, JSON.stringify(['a', 'b']), finalUrl);
+    await flush();
+    // The fresh request's own end-URL gate then discards the payload.
+    expect(dropdownRuntime(strictModel).visibleChoices).toHaveLength(0);
+    expect(blockedDiagnostics(seen)).toEqual([
+      expect.objectContaining({ phase: 'redirect', url: finalUrl }),
+    ]);
+  });
+});
+
+// ---------------------------------------------------------------------
+// Diagnostic URL redaction (security review finding 3): blocked-URL
+// diagnostics must not leak embedded credentials or query/fragment
+// secrets to the dev console / host handlers.
+// ---------------------------------------------------------------------
+
+describe('choicesByUrl gate — diagnostic URL redaction', () => {
+  beforeEach(() => {
+    FakeXHR.reset();
+    g.XMLHttpRequest = FakeXHR;
+    ChoicesRestful.clearCache();
+  });
+  afterEach(() => {
+    ChoicesRestful.clearCache();
+    delete g.XMLHttpRequest;
+  });
+
+  it('strips userinfo, query, and fragment from the request-phase diagnostic', async () => {
+    const seen = captureDiagnostics();
+    const secretUrl =
+      'https://user:secretpass@evil.example/cb?token=SECRETTOKEN#sekrit';
+    runWithConstructionUriPolicy(
+      ALLOW,
+      () => new Model(jsonWithUrl(secretUrl))
+    );
+    expect(FakeXHR.sent).toHaveLength(0);
+    await flush();
+    const blocked = blockedDiagnostics(seen);
+    expect(blocked).toHaveLength(1);
+    const payload = JSON.stringify(blocked[0]);
+    expect(payload).not.toContain('secretpass');
+    expect(payload).not.toContain('SECRETTOKEN');
+    expect(payload).not.toContain('sekrit');
+    expect(blocked[0]).toEqual(
+      expect.objectContaining({
+        phase: 'request',
+        url: 'https://evil.example/cb',
+        requestUrl: 'https://evil.example/cb',
+      })
+    );
+  });
+
+  it('truncates long paths and redacts the redirect-phase end URL', async () => {
+    const seen = captureDiagnostics();
+    const url = allowedUrl();
+    runWithConstructionUriPolicy(ALLOW, () => new Model(jsonWithUrl(url)));
+    const longPath = '/' + 'a'.repeat(60);
+    const finalUrl = `https://evil.example${longPath}?leak=SECRETTOKEN`;
+    FakeXHR.sent[0]!.respond(200, JSON.stringify(['a', 'b']), finalUrl);
+    await flush();
+    const blocked = blockedDiagnostics(seen);
+    expect(blocked).toHaveLength(1);
+    const payload = JSON.stringify(blocked[0]);
+    expect(payload).not.toContain('SECRETTOKEN');
+    const redacted = (blocked[0] as { url: string }).url;
+    expect(redacted.startsWith('https://evil.example/')).toBe(true);
+    expect(redacted.length).toBeLessThan(finalUrl.length);
+    expect(redacted).not.toContain('?');
+  });
+});
+
+// ---------------------------------------------------------------------
+// Reentrancy + throwing policy (security review finding 4): a synchronous
+// re-entrant request fired from inside the chained host hook must still
+// be validated, and a THROWING validateUri (hostile/broken config) must
+// block fail-closed instead of propagating.
+// ---------------------------------------------------------------------
+
+describe('choicesByUrl gate — reentrancy and throwing-policy fail-closed', () => {
+  beforeEach(() => {
+    FakeXHR.reset();
+    g.XMLHttpRequest = FakeXHR;
+    ChoicesRestful.clearCache();
+  });
+  afterEach(() => {
+    ChoicesRestful.clearCache();
+    delete g.XMLHttpRequest;
+  });
+
+  it('validates a DIFFERENT request fired synchronously from inside the chained host hook', async () => {
+    const seen = captureDiagnostics();
+    const urlB = allowedUrl();
+    const modelB = runWithConstructionUriPolicy(
+      ALLOW,
+      () => new Model(jsonWithUrl(urlB))
+    );
+    registerModelUriPolicy(modelB as object, ALLOW);
+    FakeXHR.sent[0]!.respond(200, JSON.stringify(['a']), urlB);
+    const qB = dropdownRuntime(modelB);
+    const evil = evilUrl();
+    let reentered = false;
+    const hostHook = jest.fn(() => {
+      if (reentered) return;
+      reentered = true;
+      // Synchronously trigger ANOTHER question's (blocked) request while
+      // the gate frame for the first request is still on the stack.
+      qB.choicesByUrl.url = evil;
+      qB.runChoicesByUrl();
+    });
+    settings.web.onBeforeRequestChoices =
+      hostHook as typeof settings.web.onBeforeRequestChoices;
+    installChoicesByUrlGate();
+    runWithConstructionUriPolicy(
+      ALLOW,
+      () => new Model(jsonWithUrl(allowedUrl()))
+    );
+    await flush();
+    // The re-entrant evil request must have been blocked: no evil XHR
+    // was ever sent, and the block was reported.
+    expect(FakeXHR.sent.map((x) => x.url)).not.toContain(evil);
+    expect(qB.visibleChoices).toHaveLength(0);
+    expect(blockedDiagnostics(seen)).toEqual([
+      expect.objectContaining({ phase: 'request', url: evil }),
+    ]);
+  });
+
+  it('treats a validateUri THROW at request time as a violation (fail-closed, uri-policy-error)', async () => {
+    const seen = captureDiagnostics();
+    const throwingConfig = {} as UriPolicyConfig;
+    Object.defineProperty(throwingConfig, 'allowedOrigins', {
+      configurable: true,
+      enumerable: true,
+      get(): string[] {
+        throw new Error('hostile config');
+      },
+    });
+    const url = allowedUrl();
+    let model: unknown;
+    expect(() => {
+      model = runWithConstructionUriPolicy(
+        throwingConfig,
+        () => new Model(jsonWithUrl(url))
+      );
+    }).not.toThrow();
+    expect(FakeXHR.sent).toHaveLength(0);
+    await flush();
+    const q = dropdownRuntime(model);
+    expect(q.visibleChoices).toHaveLength(0);
+    expect(q.isRunningChoices).toBe(false);
+    expect(blockedDiagnostics(seen)).toEqual([
+      expect.objectContaining({
+        phase: 'request',
+        reason: 'uri-policy-error',
+      }),
+    ]);
+  });
+
+  it('treats a validateUri THROW at end-URL time as a violation (payload discarded)', async () => {
+    const seen = captureDiagnostics();
+    let throwNow = false;
+    const flippableConfig = {} as UriPolicyConfig;
+    Object.defineProperty(flippableConfig, 'allowedOrigins', {
+      configurable: true,
+      enumerable: true,
+      get(): string[] {
+        if (throwNow) throw new Error('hostile config');
+        return ['https://api.example.com'];
+      },
+    });
+    const url = allowedUrl();
+    const model = runWithConstructionUriPolicy(
+      flippableConfig,
+      () => new Model(jsonWithUrl(url))
+    );
+    expect(FakeXHR.sent).toHaveLength(1);
+    throwNow = true;
+    FakeXHR.sent[0]!.respond(200, JSON.stringify(['a', 'b']), url);
+    await flush();
+    const q = dropdownRuntime(model);
+    expect(q.visibleChoices).toHaveLength(0);
+    expect(q.isRunningChoices).toBe(false);
+    expect(blockedDiagnostics(seen)).toEqual([
+      expect.objectContaining({
+        phase: 'redirect',
+        reason: 'uri-policy-error',
+      }),
+    ]);
   });
 });

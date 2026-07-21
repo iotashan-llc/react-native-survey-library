@@ -199,15 +199,41 @@ The preflight above is a construction-time check on authored JSON. On top
 of it, a **request-time gate** (`src/security/choices-gate.ts`, armed
 automatically whenever a `<Survey>` is mounted — no consumer opt-in) hooks
 survey-core's `settings.web.onBeforeRequestChoices` seam and validates
-**every** `choicesByUrl` request URL — the fully text-processed URL at the
-moment the request would fire — against the same central URI policy. This
-covers what the preflight cannot see: post-construction model mutation
+the request URL of every **gated** `choicesByUrl` request (gated = the
+json path, plus any model registered with a `uriPolicy` — see "Scope and
+composition" below; ungated host-model requests stay trusted by
+contract) — the fully text-processed URL at the moment the request would
+fire — against the same central URI policy. This covers what the
+preflight cannot see: post-construction model mutation
 (`question.choicesByUrl.url = ...` re-runs the request) and dynamic
 `{placeholder}` re-runs. On violation the request **never fires** (the
 gate defuses the XHR before `send`), the question receives **empty
 choices** plus core's own `WebRequestError` (fail-closed, never a crash,
 never partial data), and a `choices-by-url-blocked` diagnostic
-(`phase: 'request'`, deduped) is emitted.
+(`phase: 'request'`, deduped) is emitted. Diagnostic URL fields are
+**redacted** — scheme + host + truncated path only; userinfo, query, and
+fragment (where embedded credentials/API tokens live) are stripped
+before the payload reaches the console or a host diagnostic handler. A
+`uriPolicy` config that makes the validator **throw** is treated as a
+violation (`reason: 'uri-policy-error'`), never propagated.
+
+**Static cache and request coalescing:** survey-core keeps a
+process-wide static results cache (`ChoicesRestful.itemsResult`) and a
+same-request coalescing registry, and consults both **before** firing a
+request — i.e. before the request-time hook can run — so either could
+hand a question choices the gate never saw. The gate closes both
+delivery paths for gated questions: a cached payload is served only when
+the requesting survey's **own** policy passes both the request URL *and*
+the cache entry's recorded final (post-redirect) URL — provenance the
+gate records whenever a gated request's payload passes the end-URL check
+below. Entries with no recorded provenance (cached by a trusted/ungated
+survey) and entries whose provenance fails the requesting policy are
+**refetched** through a fresh, fully gated request instead of served;
+blocked request URLs fail closed exactly as above (empty choices +
+diagnostic, no network). Gated questions never join same-request
+coalescing — each fires its own fully gated request (a rare duplicate
+concurrent GET between surveys under different policies is the
+documented cost).
 
 **Redirects:** React Native follows HTTP redirects inside the native stack
 (NSURLSession/OkHttp) with no JS per-hop callback and no
