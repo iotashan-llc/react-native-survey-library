@@ -69,6 +69,7 @@ import { MatrixDropdownQuestionElement } from '../questions/MatrixDropdownQuesti
 import { MatrixDynamicQuestionElement } from '../questions/MatrixDynamicQuestion';
 import { CustomQuestion } from '../questions/CustomQuestion';
 import { CompositeQuestion } from '../questions/CompositeQuestion';
+import { RankingQuestion } from '../questions/RankingQuestion';
 import { SingleInputSummary } from '../questions/SingleInputSummaryQuestion';
 import { ListItemGroupContent, ListPickerElement } from '../overlay/ListPicker';
 
@@ -384,6 +385,20 @@ export const DESCRIPTOR_TABLE: readonly Descriptor[] = [
     route: 'template',
     component: () => MatrixDropdownQuestionElement,
     milestone: 'M3',
+  },
+  // Task 4.1 (M4) — ranking (drag-to-reorder). getTemplate() === 'ranking'
+  // (extends QuestionCheckboxModel, no override); template route,
+  // dispatchKey === questionType. selectToRank two-area mode + a11y move
+  // controls + gesture-handler/reanimated drag (lazy-required, device gate)
+  // all self-branch INSIDE the component. No renderAs variants upstream
+  // (reactquestion_ranking.tsx registers a single "ranking" key).
+  {
+    status: 'supported',
+    questionType: 'ranking',
+    dispatchKey: 'ranking',
+    route: 'template',
+    component: () => RankingQuestion,
+    milestone: 'M4',
   },
   // Task 3.4 (M3) — matrixdynamic (dynamic rows) over the SAME
   // MatrixTableBase via the §1 hooks (add-row buttons + empty

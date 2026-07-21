@@ -1571,3 +1571,81 @@ class name), it lives in the descriptor table's element route and the
 `ELEMENT_KEY_INVENTORY`, not in `MODEL_TYPE_CLASSIFICATION` (a class-name
 entry there would trip the model-type inventory gate against the live
 survey-core build).
+
+## Ranking question (task 4.1)
+
+The `ranking` question is supported. Reorder is driven **entirely through
+the core model** — `question.dragDropRankingChoices.reorderRankedItem(q, i, j)`
+followed by `q.setValue()` in default mode, and
+`question.handleKeydownSelectToRank(evt, item, key, /* isNeedFocus */ false)`
+in `selectToRankEnabled` mode. The RN renderer never reimplements the
+ordering array, so `value`, `onValueChanged`, `min/maxSelectedChoices`
+gating, and validation stay 100% core-correct.
+
+### Drag is a native gesture (gesture-handler + reanimated), not HTML5 drag-and-drop
+
+Web's `DragDropRankingChoices` uses pointer events + a cloned DOM
+shortcut and mutates the model **continuously** on every `dragOver`
+(`afterDragOver` → `reorderRankedItem` per hovered slot). RN instead
+wraps each row in a **react-native-gesture-handler `Gesture.Pan()`** with
+a **reanimated** `translateY` shared value, both **lazy-required** inside
+an isolated hooks child (`RankingDragRow`, the ChoiceItemRow precedent —
+invariant 7). The drag animates on the UI thread and **commits ONCE on
+release** via the same `reorderRankedItem` + `setValue` primitive; it does
+**not** reproduce web's per-`dragOver` model splices (continuous model
+mutation fights the shared-value animation and churns re-renders). The
+drop-placeholder / dragging **"ghost"** is web's **model-driven** state
+(core sets `currentDropTarget` → `itemGhostMod`) which the commit-once RN
+drag never produces, so it has **no ported analog** — the recipe carries no
+ghost fragment and the placeholder styling is **deferred** to the Layer-2
+device-gate work (when/if a continuous drop-target model is adopted).
+
+The fine drag Pan wrapper engages **only in default single-list ranking**.
+In `selectToRank` mode it is **disabled** (button reorder is the affordance
+there): mapping a Pan target to the correct slot spans two areas and
+multiple slots, and a single `ArrowUp`/`ArrowDown` per drag would collapse a
+multi-slot move to one step — the two-area drop-index math is unverified
+on-device, so v1 gates it off rather than ship a wrong reorder.
+
+`react-native-gesture-handler` and `react-native-reanimated` are
+**required peerDependencies** (batteries-included, A10). The consumer app
+must mount a `GestureHandlerRootView` at its root and add the
+reanimated/worklets Babel plugin (last plugin) — the standard setup for
+either library. When the peers are absent, `RankingDragRow` degrades to
+the accessible move controls below (no crash).
+
+### Accessible move controls replace fine drag as the primary affordance
+
+Every ranked row renders explicit **move-up / move-down** buttons (and,
+in `selectToRank` mode, **add / remove** buttons) that drive the same
+core reorder API. This is the a11y-first path: ranking is fully operable
+without the fine drag gesture (which needs a UI thread and is verified on
+the New-Arch example via maestro, not in jest). The buttons disable at
+the list boundaries and whenever the question is read-only or the item is
+disabled (gated through `getItemEnabled` /
+`checkMaxSelectedChoicesUnreached`, never a hand-rolled length check). The
+web keyboard handler's post-move `setTimeout(focusItem, 1)` is **not**
+scheduled — the renderer calls the direct `reorderRankedItem` primitive
+(and passes `isNeedFocus: false` on the selectToRank path), so no timer is
+left querying the null RN `domNode`; screen-reader focus management is the
+platform's own.
+
+### `selectToRank` stacks its two areas vertically (RN chooses the layout)
+
+In `selectToRankEnabled` mode the renderer draws two areas (unranked ↔
+ranked). It does **not** read `renderedSelectToRankAreasLayout`
+(`horizontal`/`vertical`): the facade never sets survey-core's `IsMobile`,
+so that getter would always report the desktop `horizontal` value. RN
+screens are narrow, so the renderer stacks the areas **vertically**
+itself regardless of the property. `selectToRankSwapAreas` is likewise
+not honored (it only reorders the horizontal columns).
+
+### Rank-number focus outline and move keyframe animations are not ported
+
+The web rank-number `:focus` outline ring and the
+`svdragdropmoveup`/`svdragdropmovedown` slide keyframes are web-only
+affordances with no ported analog; reorder is applied without the slide
+animation (the release-time reanimated translate is the only motion).
+DIFFERENCES for the item's `readOnly`/`preview`/`error` badge backgrounds
+and the disabled-label opacity are carried through the ranking recipe
+from the model's `getItemClass` string (bridge extraction, invariant 6).

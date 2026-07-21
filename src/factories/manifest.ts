@@ -280,7 +280,16 @@ export const MODEL_TYPE_CLASSIFICATION: Readonly<
   },
 
   // Phase 4 — v0.4 (M4).
-  ranking: { status: 'planned', milestone: 'M4', reason: 'task 4.2' },
+  ranking: {
+    status: 'supported',
+    milestone: 'M4',
+    reason: 'task 4.1',
+    runtimeRenderable: {
+      expectedTemplate: 'ranking',
+      expectedRoute: 'template',
+      fixtureJson: { type: 'ranking', choices: ['a', 'b'] },
+    },
+  },
   slider: { status: 'planned', milestone: 'M4', reason: 'task 4.4' },
 
   // Phase 5 — v0.5-v0.9 (M5).

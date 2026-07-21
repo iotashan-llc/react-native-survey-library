@@ -41,6 +41,7 @@ describe('DESCRIPTOR_TABLE (M0 + M1)', () => {
       'panel',
       'paneldynamic',
       'radiogroup',
+      'ranking',
       'rating',
       'survey-header',
       'sv-boolean-checkbox',

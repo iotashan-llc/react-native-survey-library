@@ -111,6 +111,15 @@ export interface ButtonGroupStyleOverrides {
   caption?: StyleProp<TextStyle>;
 }
 
+/** Ranking-question slots (task 4.1: `RankingQuestion`). */
+export interface RankingStyleOverrides {
+  item?: StyleProp<ViewStyle>;
+  handle?: StyleProp<ViewStyle>;
+  rankNumber?: StyleProp<ViewStyle>;
+  rankNumberText?: StyleProp<TextStyle>;
+  label?: StyleProp<TextStyle>;
+}
+
 /** List-picker slots (task 2.1: `ListPicker`). */
 export interface ListItemStyleOverrides {
   row?: StyleProp<ViewStyle>;
@@ -133,6 +142,7 @@ export interface SurveyComponentStyles {
   surveyState?: SurveyStateStyleOverrides;
   rating?: RatingStyleOverrides;
   buttonGroup?: ButtonGroupStyleOverrides;
+  ranking?: RankingStyleOverrides;
   listItem?: ListItemStyleOverrides;
 }
 

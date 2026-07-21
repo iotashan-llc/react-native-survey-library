@@ -69,6 +69,7 @@ describe('index.tsx: registrar wiring (design: docs/design/0.5-factories.md)', (
       'multipletext',
       'paneldynamic',
       'radiogroup',
+      'ranking',
       'rating',
       'sv-boolean-checkbox',
       'sv-boolean-radio',

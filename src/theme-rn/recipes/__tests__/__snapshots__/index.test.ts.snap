@@ -805,6 +805,82 @@ exports[`curated recipe golden snapshots ContrastLight: recipes build to a stabl
       },
     },
   },
+  "ranking": {
+    "fragments": {
+      "area": {
+        "flexBasis": 0,
+        "flexGrow": 1,
+      },
+      "areaDivider": {
+        "backgroundColor": "rgba(0, 0, 0, 1)",
+        "height": 1,
+        "marginVertical": 24,
+      },
+      "container": {
+        "alignSelf": "stretch",
+      },
+      "handle": {
+        "alignItems": "center",
+        "height": 24,
+        "justifyContent": "center",
+        "paddingHorizontal": 8,
+        "width": 24,
+      },
+      "item": {
+        "alignItems": "center",
+        "borderRadius": 100,
+        "columnGap": 8,
+        "flexDirection": "row",
+        "paddingVertical": 4,
+      },
+      "label": {
+        "color": "rgba(0, 0, 0, 1)",
+        "flexShrink": 1,
+        "fontSize": 16,
+        "lineHeight": 24,
+        "marginHorizontal": 16,
+        "paddingVertical": 8,
+      },
+      "labelDisabled": {
+        "opacity": 0.25,
+      },
+      "placeholder": {
+        "color": "rgba(0, 0, 0, 1)",
+        "paddingVertical": 4,
+        "textAlign": "center",
+      },
+      "rankNumber": {
+        "alignItems": "center",
+        "backgroundColor": "rgba(255, 216, 77, 1)",
+        "borderColor": "transparent",
+        "borderRadius": 20,
+        "borderWidth": 2,
+        "height": 40,
+        "justifyContent": "center",
+        "width": 40,
+      },
+      "rankNumberError": {
+        "backgroundColor": "rgba(229, 10, 62, 0.1)",
+      },
+      "rankNumberPreview": {
+        "backgroundColor": "transparent",
+        "borderColor": "rgba(0, 0, 0, 1)",
+        "borderWidth": 1,
+      },
+      "rankNumberReadOnly": {
+        "backgroundColor": "rgba(255, 216, 77, 1)",
+      },
+      "rankNumberText": {
+        "color": "rgba(0, 0, 0, 1)",
+        "fontSize": 16,
+        "fontWeight": "600",
+        "lineHeight": 24,
+      },
+    },
+    "handleIconFill": [Function],
+    "handleIconSize": 24,
+    "select": [Function],
+  },
   "rating": {
     "fragments": {
       "minMaxText": {
@@ -2013,6 +2089,82 @@ exports[`curated recipe golden snapshots DefaultLight: recipes build to a stable
         "lineHeight": 24,
       },
     },
+  },
+  "ranking": {
+    "fragments": {
+      "area": {
+        "flexBasis": 0,
+        "flexGrow": 1,
+      },
+      "areaDivider": {
+        "backgroundColor": "rgba(0, 0, 0, 0.16)",
+        "height": 1,
+        "marginVertical": 24,
+      },
+      "container": {
+        "alignSelf": "stretch",
+      },
+      "handle": {
+        "alignItems": "center",
+        "height": 24,
+        "justifyContent": "center",
+        "paddingHorizontal": 8,
+        "width": 24,
+      },
+      "item": {
+        "alignItems": "center",
+        "borderRadius": 100,
+        "columnGap": 8,
+        "flexDirection": "row",
+        "paddingVertical": 4,
+      },
+      "label": {
+        "color": "rgba(0, 0, 0, 0.91)",
+        "flexShrink": 1,
+        "fontSize": 16,
+        "lineHeight": 24,
+        "marginHorizontal": 16,
+        "paddingVertical": 8,
+      },
+      "labelDisabled": {
+        "opacity": 0.25,
+      },
+      "placeholder": {
+        "color": "rgba(0, 0, 0, 0.45)",
+        "paddingVertical": 4,
+        "textAlign": "center",
+      },
+      "rankNumber": {
+        "alignItems": "center",
+        "backgroundColor": "rgba(25, 179, 148, 0.1)",
+        "borderColor": "transparent",
+        "borderRadius": 20,
+        "borderWidth": 2,
+        "height": 40,
+        "justifyContent": "center",
+        "width": 40,
+      },
+      "rankNumberError": {
+        "backgroundColor": "rgba(229, 10, 62, 0.1)",
+      },
+      "rankNumberPreview": {
+        "backgroundColor": "transparent",
+        "borderColor": "rgba(0, 0, 0, 0.91)",
+        "borderWidth": 1,
+      },
+      "rankNumberReadOnly": {
+        "backgroundColor": "rgba(248, 248, 248, 1)",
+      },
+      "rankNumberText": {
+        "color": "rgba(0, 0, 0, 0.91)",
+        "fontSize": 16,
+        "fontWeight": "600",
+        "lineHeight": 24,
+      },
+    },
+    "handleIconFill": [Function],
+    "handleIconSize": 24,
+    "select": [Function],
   },
   "rating": {
     "fragments": {
@@ -3286,6 +3438,82 @@ exports[`curated recipe golden snapshots LayeredDark: recipes build to a stable 
         "lineHeight": 24,
       },
     },
+  },
+  "ranking": {
+    "fragments": {
+      "area": {
+        "flexBasis": 0,
+        "flexGrow": 1,
+      },
+      "areaDivider": {
+        "backgroundColor": "rgba(67, 69, 85, 1)",
+        "height": 1,
+        "marginVertical": 24,
+      },
+      "container": {
+        "alignSelf": "stretch",
+      },
+      "handle": {
+        "alignItems": "center",
+        "height": 24,
+        "justifyContent": "center",
+        "paddingHorizontal": 8,
+        "width": 24,
+      },
+      "item": {
+        "alignItems": "center",
+        "borderRadius": 100,
+        "columnGap": 8,
+        "flexDirection": "row",
+        "paddingVertical": 4,
+      },
+      "label": {
+        "color": "rgba(213, 215, 238, 1)",
+        "flexShrink": 1,
+        "fontSize": 16,
+        "lineHeight": 24,
+        "marginHorizontal": 16,
+        "paddingVertical": 8,
+      },
+      "labelDisabled": {
+        "opacity": 0.25,
+      },
+      "placeholder": {
+        "color": "rgba(117, 120, 140, 1)",
+        "paddingVertical": 4,
+        "textAlign": "center",
+      },
+      "rankNumber": {
+        "alignItems": "center",
+        "backgroundColor": "rgba(164, 127, 243, 0.1)",
+        "borderColor": "transparent",
+        "borderRadius": 20,
+        "borderWidth": 2,
+        "height": 40,
+        "justifyContent": "center",
+        "width": 40,
+      },
+      "rankNumberError": {
+        "backgroundColor": "rgba(254, 76, 108, 0.1)",
+      },
+      "rankNumberPreview": {
+        "backgroundColor": "transparent",
+        "borderColor": "rgba(213, 215, 238, 1)",
+        "borderWidth": 1,
+      },
+      "rankNumberReadOnly": {
+        "backgroundColor": "rgba(46, 47, 58, 1)",
+      },
+      "rankNumberText": {
+        "color": "rgba(213, 215, 238, 1)",
+        "fontSize": 16,
+        "fontWeight": "600",
+        "lineHeight": 24,
+      },
+    },
+    "handleIconFill": [Function],
+    "handleIconSize": 24,
+    "select": [Function],
   },
   "rating": {
     "fragments": {
@@ -4592,6 +4820,82 @@ exports[`curated recipe golden snapshots SharpDark: recipes build to a stable sn
       },
     },
   },
+  "ranking": {
+    "fragments": {
+      "area": {
+        "flexBasis": 0,
+        "flexGrow": 1,
+      },
+      "areaDivider": {
+        "backgroundColor": "rgba(255, 255, 255, 0.22)",
+        "height": 1,
+        "marginVertical": 24,
+      },
+      "container": {
+        "alignSelf": "stretch",
+      },
+      "handle": {
+        "alignItems": "center",
+        "height": 24,
+        "justifyContent": "center",
+        "paddingHorizontal": 8,
+        "width": 24,
+      },
+      "item": {
+        "alignItems": "center",
+        "borderRadius": 100,
+        "columnGap": 8,
+        "flexDirection": "row",
+        "paddingVertical": 4,
+      },
+      "label": {
+        "color": "rgba(255, 255, 255, 0.78)",
+        "flexShrink": 1,
+        "fontSize": 16,
+        "lineHeight": 24,
+        "marginHorizontal": 16,
+        "paddingVertical": 8,
+      },
+      "labelDisabled": {
+        "opacity": 0.25,
+      },
+      "placeholder": {
+        "color": "rgba(255, 255, 255, 0.5)",
+        "paddingVertical": 4,
+        "textAlign": "center",
+      },
+      "rankNumber": {
+        "alignItems": "center",
+        "backgroundColor": "rgba(0, 0, 0, 0.35)",
+        "borderColor": "transparent",
+        "borderRadius": 20,
+        "borderWidth": 2,
+        "height": 40,
+        "justifyContent": "center",
+        "width": 40,
+      },
+      "rankNumberError": {
+        "backgroundColor": "rgba(254, 76, 108, 0.1)",
+      },
+      "rankNumberPreview": {
+        "backgroundColor": "transparent",
+        "borderColor": "rgba(255, 255, 255, 0.78)",
+        "borderWidth": 1,
+      },
+      "rankNumberReadOnly": {
+        "backgroundColor": "rgba(58, 58, 58, 1)",
+      },
+      "rankNumberText": {
+        "color": "rgba(255, 255, 255, 0.78)",
+        "fontSize": 16,
+        "fontWeight": "600",
+        "lineHeight": 24,
+      },
+    },
+    "handleIconFill": [Function],
+    "handleIconSize": 24,
+    "select": [Function],
+  },
   "rating": {
     "fragments": {
       "minMaxText": {
@@ -5848,6 +6152,82 @@ exports[`curated recipe golden snapshots ThreeDimensionalLight: recipes build to
         "lineHeight": 24,
       },
     },
+  },
+  "ranking": {
+    "fragments": {
+      "area": {
+        "flexBasis": 0,
+        "flexGrow": 1,
+      },
+      "areaDivider": {
+        "backgroundColor": "rgba(0, 0, 0, 0.08)",
+        "height": 1,
+        "marginVertical": 24,
+      },
+      "container": {
+        "alignSelf": "stretch",
+      },
+      "handle": {
+        "alignItems": "center",
+        "height": 24,
+        "justifyContent": "center",
+        "paddingHorizontal": 8,
+        "width": 24,
+      },
+      "item": {
+        "alignItems": "center",
+        "borderRadius": 100,
+        "columnGap": 8,
+        "flexDirection": "row",
+        "paddingVertical": 4,
+      },
+      "label": {
+        "color": "rgba(0, 0, 0, 0.91)",
+        "flexShrink": 1,
+        "fontSize": 16,
+        "lineHeight": 24,
+        "marginHorizontal": 16,
+        "paddingVertical": 8,
+      },
+      "labelDisabled": {
+        "opacity": 0.25,
+      },
+      "placeholder": {
+        "color": "rgba(0, 0, 0, 0.45)",
+        "paddingVertical": 4,
+        "textAlign": "center",
+      },
+      "rankNumber": {
+        "alignItems": "center",
+        "backgroundColor": "rgba(217, 74, 100, 0.1)",
+        "borderColor": "transparent",
+        "borderRadius": 20,
+        "borderWidth": 2,
+        "height": 40,
+        "justifyContent": "center",
+        "width": 40,
+      },
+      "rankNumberError": {
+        "backgroundColor": "rgba(229, 10, 62, 0.1)",
+      },
+      "rankNumberPreview": {
+        "backgroundColor": "transparent",
+        "borderColor": "rgba(0, 0, 0, 0.91)",
+        "borderWidth": 1,
+      },
+      "rankNumberReadOnly": {
+        "backgroundColor": "rgba(242, 242, 242, 1)",
+      },
+      "rankNumberText": {
+        "color": "rgba(0, 0, 0, 0.91)",
+        "fontSize": 16,
+        "fontWeight": "600",
+        "lineHeight": 24,
+      },
+    },
+    "handleIconFill": [Function],
+    "handleIconSize": 24,
+    "select": [Function],
   },
   "rating": {
     "fragments": {
