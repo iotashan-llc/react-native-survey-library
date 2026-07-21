@@ -1425,11 +1425,19 @@ dropdowns are unchanged. An expanded detail panel renders as a full-width
 block below its card (the SurveyPanel owns its own layout), and the totals
 footer becomes a totals summary card (see the totals entry above). A runtime
 mobile flip re-renders grid ↔ cards through the same renderedTable-reset
-retarget the family already uses. `showInMultipleColumns` exploded choice
-cells share their column's label (web parity — the column title, with the
-individual choice caption hidden). The dp column-width allocation and the
-horizontal ScrollView are skipped entirely in card mode (cards take the
-natural available width, no measurement defer).
+retarget the family already uses. Core **disables** `showInMultipleColumns`
+explosion on mobile (`IsMultiplyColumn = isShowInMultipleColumns &&
+!isMobile`, question_matrixdropdownbase.ts:1696), so such a column renders
+as ONE whole-question card pair — the column label above the entire
+checkbox/radiogroup with its choice captions **shown** (a normal question
+cell), never per-choice exploded cells. A required column's card label
+carries the same required marker the wide header band renders
+(`cell.requiredMark`, set only when `column.isRenderedRequired`), matching
+web's mobile `SurveyQuestionMatrixHeaderRequired`; a cell hidden per row by
+its column `visibleIf` is omitted **whole** (no orphan label/slot),
+reactively both directions, as web omits the cell. The dp column-width
+allocation and the horizontal ScrollView are skipped entirely in card mode
+(cards take the natural available width, no measurement defer).
 
 ### Detail panels render FULL-WIDTH — core's leading/trailing detail-row slots are dropped (task 3.3b)
 

@@ -101,6 +101,42 @@ class MatrixGridRowSubscriber extends SurveyElementBase<MatrixGridRowSubscriberP
   }
 }
 
+interface MatrixCardCellSubscriberProps {
+  /** The cell's question `Base` — subscribed so a `visibleIf` flip re-renders. */
+  element: Base;
+  /** Live gate: the card renders NOTHING while this is false. */
+  isVisible(): boolean;
+  /** Fresh-per-render pair builder (thunk, not pre-built children). */
+  renderPair(): React.ReactNode;
+}
+
+/**
+ * The per-CELL reactive visibility unit (§3b, 3.1b review finding 2 — see
+ * the file doc's card-path note): mounts for a question cell its column
+ * `visibleIf` can hide per row on mobile, subscribes the cell's question,
+ * and renders the WHOLE pair (label + value) — or NOTHING — reactively on a
+ * flip. Web omits the whole cell; this matches it (vs. the wide path, where
+ * `MatrixQuestionCell` keeps the aligned slot and only blanks its body).
+ * ALWAYS mounted (even while hidden) so a flip-to-visible re-adds the pair.
+ * Same subscribable guard as `MatrixGridRowSubscriber` — a non-subscribable
+ * stub is filtered to null so the D4 retarget bump cannot loop.
+ */
+class MatrixCardCellSubscriber extends SurveyElementBase<MatrixCardCellSubscriberProps> {
+  protected getStateElement(): Base | null {
+    const element = this.props.element;
+    const subscribable =
+      !!element &&
+      typeof (element as { addOnPropertyValueChangedCallback?: unknown })
+        .addOnPropertyValueChangedCallback === 'function';
+    return subscribable ? element : null;
+  }
+
+  protected renderElement(): React.JSX.Element | null {
+    if (!this.props.isVisible()) return null;
+    return <>{this.props.renderPair()}</>;
+  }
+}
+
 export class MatrixGrid extends React.Component<MatrixGridProps> {
   static contextType = SurveyThemeContext;
 
@@ -215,10 +251,10 @@ export class MatrixGrid extends React.Component<MatrixGridProps> {
   // instead of column-aligned. The dp/contentWidth geometry is ignored here;
   // cards take the natural available width. No horizontal ScrollView.
 
-  /** One labelled cell pair inside a card: the owner-attached column label
-   * (§3b) above the reused cell content. A cell with no `label` renders just
-   * its content (e.g. a footer's leading text slot). */
-  private renderCardPair(cell: GridCell): React.ReactNode {
+  /** The {label, content} body of a card pair: the owner-attached column
+   * label (§3b) above the reused cell content. A cell with no `label`
+   * renders just its content (e.g. a footer's leading text slot). */
+  private renderCardPairContent(cell: GridCell): React.ReactNode {
     const { fragments } = this.themeContext.recipes.matrix;
     return (
       <View
@@ -237,6 +273,25 @@ export class MatrixGrid extends React.Component<MatrixGridProps> {
         </View>
       </View>
     );
+  }
+
+  /** One card pair. A cell carrying `cardVisibility` (a question cell its
+   * column `visibleIf` can hide per row, 3.1b finding 2) is wrapped in the
+   * per-cell subscriber so the WHOLE pair (label + slot) appears/disappears
+   * reactively — and is OMITTED while hidden, matching web. Cells with no
+   * gate render the pair directly. */
+  private renderCardPair(cell: GridCell): React.ReactNode {
+    if (cell.cardVisibility) {
+      return (
+        <MatrixCardCellSubscriber
+          key={cell.key}
+          element={cell.cardVisibility.element}
+          isVisible={cell.cardVisibility.isVisible}
+          renderPair={() => this.renderCardPairContent(cell)}
+        />
+      );
+    }
+    return this.renderCardPairContent(cell);
   }
 
   /**

@@ -76,6 +76,18 @@ export interface GridCell {
    * title) and `actions`/`empty` cells.
    */
   label?: ReactNode;
+  /**
+   * Card-path visibility gate (§3b, 3.1b review finding 2): a compound-matrix
+   * QUESTION cell whose column `visibleIf` can hide it PER ROW on mobile. The
+   * owner attaches the cell's question `Base` plus a live predicate; the card
+   * path renders NOTHING (no label, no value slot) while `isVisible()` is
+   * false — matching web, which omits the whole cell — and, subscribing
+   * `element`, adds/removes the pair on a flip in BOTH directions. Absent on
+   * the wide path and for non-question cells (there `MatrixQuestionCell` owns
+   * the body gate and keeps the aligned slot). `MatrixGrid` stays
+   * presentational: it only checks the predicate and wires the subscription.
+   */
+  cardVisibility?: { element: Base; isVisible(): boolean };
   render(): ReactNode;
 }
 

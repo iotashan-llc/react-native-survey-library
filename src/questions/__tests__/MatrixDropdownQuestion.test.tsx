@@ -913,3 +913,68 @@ describe('matrixdropdown — mobile stacked-card layout (§3b, 3.1b)', () => {
     expect(screen.queryByTestId('matrix-cards')).toBeNull();
   });
 });
+
+describe('matrixdropdown — mobile card labels carry the required marker (3.1b finding 1)', () => {
+  it('a required compound-matrix column card label shows the requiredMark; a non-required one does not', async () => {
+    const { model, question } = createMatrixDropdown({
+      columns: [
+        { name: 'c1', cellType: 'text', isRequired: true },
+        { name: 'c2', cellType: 'text' },
+      ],
+    });
+    setMobile(model);
+    await renderMatrixDropdown(question);
+    // Web's mobile table shows the required marker on card labels
+    // (SurveyQuestionMatrixHeaderRequired in the responsive title); core
+    // sets `cell.requiredMark` only when `column.isRenderedRequired`, so the
+    // card label reuses the SAME marker the wide header renders.
+    const mark = (model as unknown as { requiredMark: string }).requiredMark;
+    // The required c1 column → one marker per card (2 rows); the
+    // non-required c2 column contributes NONE, so the total equals the row
+    // count, not twice it.
+    expect(mark.length).toBeGreaterThan(0);
+    // RNTL trims the ` ${mark}` marker Text to the bare mark (`*`).
+    expect(screen.getAllByText(mark)).toHaveLength(2);
+    // Both column labels still render (the marker is appended, not a
+    // replacement); c2 stays unmarked.
+    expect(screen.getAllByText('c1')).toHaveLength(2);
+    expect(screen.getAllByText('c2')).toHaveLength(2);
+  });
+});
+
+describe('matrixdropdown — mobile card omits the pair for a per-row-invisible cell (3.1b finding 2)', () => {
+  it('a column hidden by visibleIf renders NO card label/pair, reactively both directions', async () => {
+    const { model, question } = createMatrixDropdown({
+      columns: [
+        { name: 'c1', cellType: 'text' },
+        { name: 'c2', cellType: 'text', visibleIf: "{row.c1} = 'go'" },
+      ],
+    });
+    setMobile(model);
+    await renderMatrixDropdown(question);
+    // c2 is invisible in BOTH rows → web omits the whole cell. The card must
+    // render NOTHING for it: no orphan 'c2' column label and no input.
+    expect(screen.queryAllByText('c2')).toHaveLength(0);
+    expect(screen.queryAllByTestId('c2-input')).toHaveLength(0);
+    // c1 (the driver) still renders its label in both cards.
+    expect(screen.getAllByText('c1')).toHaveLength(2);
+
+    // Flip row 0's driver → exactly that card's c2 pair APPEARS (label +
+    // value), row 1 stays hidden.
+    act(() => {
+      question.visibleRows[0]!.cells[0]!.question.value = 'go';
+    });
+    await flush();
+    expect(screen.getAllByText('c2')).toHaveLength(1);
+    expect(screen.getAllByTestId('c2-input')).toHaveLength(1);
+
+    // Flip back → the pair disappears again (label + value), proving the
+    // card pair observes `cell.question.isVisible` in BOTH directions.
+    act(() => {
+      question.visibleRows[0]!.cells[0]!.question.value = 'stop';
+    });
+    await flush();
+    expect(screen.queryAllByText('c2')).toHaveLength(0);
+    expect(screen.queryAllByTestId('c2-input')).toHaveLength(0);
+  });
+});
