@@ -27,7 +27,9 @@
  * docs/design/2.5-rating-dropdown-buttongroup-overflow-plan.md):
  * - CORE decides the threshold. The renderer only measures and feeds
  *   `Question.processResponsiveness(requiredWidth, availableWidth)`
- *   (protected in typings — isolated in ONE module-level cast, R3);
+ *   (protected in typings — isolated in the shared
+ *   `core/processResponsiveness` adapter's ONE cast, reused by rating
+ *   2.5c, R3);
  *   core applies the ±2 deadband and flips `renderAs` to its
  *   `getCompactRenderAs()` ('dropdown') / back to 'default'.
  * - Measurement (R2, strengthened by the review-findings pass): the
@@ -96,6 +98,7 @@ import type {
   PopupModel,
   Question,
 } from '../core/facade';
+import { callProcessResponsiveness } from '../core/processResponsiveness';
 import type { QuestionElementBaseProps } from '../reactivity/QuestionElementBase';
 import { SurveyElementBase } from '../reactivity/SurveyElementBase';
 import { OverlayControlBase } from '../reactivity/OverlayControlBase';
@@ -150,25 +153,6 @@ interface ButtonGroupItemRowProps {
   item: ItemValue;
   index: number;
   isLast: boolean;
-}
-
-/**
- * THE single protected-API cast (design R3). Core's
- * `Question.processResponsiveness` owns the compact decision (±2
- * deadband; it rounds availableWidth but NOT requiredWidth — the caller
- * pre-rounds both). Watchlisted as `Question.processResponsiveness`;
- * behavior pinned in core/__tests__/process-responsiveness-compat.test.ts.
- */
-function callProcessResponsiveness(
-  question: Question,
-  requiredWidth: number,
-  availableWidth: number
-): boolean {
-  return (
-    question as unknown as {
-      processResponsiveness(r: number, a: number): boolean;
-    }
-  ).processResponsiveness(requiredWidth, availableWidth);
 }
 
 /** Per-item reactive row — state elements: the ITEM (enableIf flips

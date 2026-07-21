@@ -888,16 +888,48 @@ core property notifications on the question, which must land in
 neither render nor the mount-commit window), so the very first tick
 renders an inert placeholder. Web constructs the model during render.
 
-### `displayMode: "auto"` never auto-collapses on RN
+### `displayMode: "auto"` auto-collapses via measurement (web parity)
 
 Core's DEFAULT `displayMode` is `"auto"`; on web a `ResizeObserver`
 feeds `processResponsiveness`, collapsing the rate buttons to the
-dropdown when they overflow. RN wires **no measurement seam for
-rating** (there is no ResizeObserver equivalent on the rating row), so
-`"auto"` always renders the buttons row regardless of available width
-— no dropdown VM is ever constructed. Hosts that want the collapsed
-control must set `displayMode: "dropdown"` explicitly. (Buttongroup is
-different: its overflow measurement is wired — see the next section.)
+dropdown when they overflow and expanding back when they fit. RN wires
+the **same measurement seam as buttongroup** (task 2.9/2.5b — see that
+section) through the shared `core/processResponsiveness` adapter: an
+always-mounted wrapper View's `onLayout` supplies the live available
+width and the rate-buttons `ScrollView`'s `onContentSizeChange` supplies
+the intrinsic required width; **CORE keeps the decision** (the ±2
+deadband, the `renderAs` flip to `"dropdown"` and back), and the same
+caller-side gates apply (widths rounded before the call, identical pairs
+deduped, invalid-width samples invalidate that dimension, and **design
+mode never compacts**). `"buttons"` (never collapses) and `"dropdown"`
+(always collapsed) are unchanged — core itself no-ops
+`processResponsiveness` for those modes, and the measurement seam is only
+mounted while `displayMode === "auto"`.
+
+Two RN mechanics differ from buttongroup because the rating dispatch
+**splits into two components** — `RatingQuestion` (buttons, template
+`"rating"`) and `RatingDropdownQuestion` (collapsed, renderer
+`"sv-rating-dropdown"`) — and an auto-collapse SWAPS them (SurveyRowElement
+re-dispatches on the `renderAs` notification), whereas buttongroup is one
+self-branching component:
+
+- The cached required + live available widths live on a **per-question
+  measurer** (`ResponsivenessMeasurer`, keyed by question identity) that
+  survives the component swap, rather than on a single component instance.
+  So a widen while collapsed still flips back from the cached required
+  width with no fresh content event (buttongroup's cached-required pin).
+- While collapsed, the buttons `ScrollView` is unmounted, so the required
+  width is **not re-measured until the buttons view remounts** (buttongroup
+  keeps a hidden measuring row and re-measures live). If the rate scale
+  grows while collapsed, the carried required width is briefly stale; the
+  next widen flips back to the buttons, which immediately re-measure the
+  wider row and re-collapse — self-correcting in one extra flip, never a
+  crash. (An `"auto"` rating that mounts already collapsed with no
+  in-session buttons render — reachable only by an imperative
+  `displayMode` toggle, not by serialization, which coerces a persisted
+  `renderAs: "dropdown"` to `displayMode: "dropdown"` — has no carried
+  required width and stays collapsed until re-narrowed through the buttons
+  view.)
 
 ## Buttongroup question (task 2.9, overflow 2.5b)
 
