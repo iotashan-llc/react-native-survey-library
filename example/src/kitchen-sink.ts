@@ -418,11 +418,14 @@ export const kitchenSinkJson = {
           // renderedTable.showAddRowOnBottom, per-row remove buttons via
           // removeRowUI with confirmDelete routed through the 2.2 RN dialog
           // adapter, min/maxRowCount gating both affordances (remove hidden
-          // at min, add hidden at max).
+          // at min, add hidden at max). M4 4.3 — allowRowsDragAndDrop adds
+          // the per-row drag handle (accessible move-up/down + device-gated
+          // Pan) driving core's moveRowByIndex.
           type: 'matrixdynamic',
           name: 'milestonesPlan',
           title: 'Release milestones (matrixdynamic)',
           confirmDelete: true,
+          allowRowsDragAndDrop: true,
           rowCount: 2,
           minRowCount: 1,
           maxRowCount: 4,

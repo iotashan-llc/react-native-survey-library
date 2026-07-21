@@ -74,6 +74,7 @@ import { ChoiceItemRow } from '../ChoiceItemRow';
 import type { ChoiceItemRowProps } from '../ChoiceItemRow';
 import { OtherCommentDraftAdapter } from '../../inputs/OtherCommentDraftAdapter';
 import { RNIcon } from '../RNIcon';
+import { RankingDragRow } from '../../questions/RankingQuestion';
 import { SurveyPanel } from '../composition/SurveyPanel';
 import {
   reportLayoutDiagnosticOnce,
@@ -565,6 +566,152 @@ export class MatrixRemoveRowButton extends SurveyElementBase<MatrixRemoveRowButt
   }
 }
 
+/** The §3f/4.3 row-reorder surface on the dynamic matrix — present only
+ * when core created a drag-handle cell (`isRowsDragAndDrop` && an unlocked
+ * row). One isolated structural view, same pattern as the remove/select-base
+ * slices above. */
+type ReorderMatrixLike = QuestionMatrixDropdownModelBase & {
+  moveRowByIndex(fromIndex: number, toIndex: number): void;
+  visibleRows: MatrixDropdownRowModelBase[];
+  /** matrixdynamic leading locked rows; a reorder target may never land
+   * at/above this band (core's `canInsertIntoThisRow`). `undefined` on a
+   * non-dynamic matrix ⇒ treated as 0. */
+  lockedRowCount?: number;
+};
+
+interface MatrixRowDragHandleProps {
+  cell: QuestionMatrixDropdownRenderedCell;
+  matrix: QuestionMatrixDropdownModelBase;
+  rowName: string;
+}
+
+/** ROW_HEIGHT estimate for the Layer-2 Pan delta math (device gate only;
+ * jest never loads the gesture libs, so this value is inert there). A matrix
+ * row's natural height varies with its tallest cell — a coarse estimate is
+ * acceptable for the commit-once-on-release drag; the a11y move buttons are
+ * the exact path. */
+const DRAG_ROW_HEIGHT = 44;
+
+/**
+ * The per-row drag handle (task 4.3) — the RN analog of web's
+ * `DragDropMatrixRows` handle, but reorder is driven ENTIRELY through the
+ * core model:
+ *
+ * - LAYER 1 (fully jest-tested): accessible move-up / move-down `Pressable`s
+ *   that call **`moveRowByIndex`** — the SAME primitive core's drag-drop
+ *   commits with (`question.value` reorders; the row MODELS stay put and
+ *   values flow through positions, so the existing per-cell subscriptions
+ *   re-render the new order with no table reset). Boundary-gated (first row
+ *   → no up, last row → no down).
+ * - LAYER 2 (device gate): the handle is wrapped in ranking's
+ *   `RankingDragRow` Pan primitive (lazy-required gesture-handler +
+ *   reanimated, invariant 7) which commits ONCE on release via the same
+ *   `moveRowByIndex`. When the peers are absent (jest, or an uninstalled
+ *   consumer) `RankingDragRow` degrades to its child — Layer 1 stands alone,
+ *   so every model path runs in jest with no new mocks (the ranking
+ *   precedent; the gesture itself is verified on the New-Arch example).
+ *
+ * Gating is core's: the drag cell is created only when `isRowsDragAndDrop`
+ * (`allowRowReorder`/`allowRowsDragAndDrop` && !readOnly && horizontal) and
+ * only on unlocked rows (`lockedRowCount`), so a readonly / locked /
+ * reorder-off matrix never mounts this. The state element is the row model
+ * so an in-place row notification re-renders the handle.
+ */
+export class MatrixRowDragHandle extends SurveyElementBase<MatrixRowDragHandleProps> {
+  private get row(): MatrixDropdownRowModelBase {
+    return this.props.cell.row as unknown as MatrixDropdownRowModelBase;
+  }
+
+  protected getStateElement(): Base | null {
+    return (this.row as unknown as Base) ?? null;
+  }
+
+  /** Move driven through core's own `moveRowByIndex` (never a hand-rolled
+   * value splice — invariant 6); guarded so an out-of-range/no-op press is
+   * inert even if the OS delivers a press to a disabled control. */
+  private move(fromIndex: number, toIndex: number, count: number): void {
+    const reorder = this.props.matrix as ReorderMatrixLike;
+    // Lower bound is the locked leading band: a target inside it would put an
+    // unlocked row at/above a locked row, which core forbids
+    // (`canInsertIntoThisRow`). `moveRowByIndex` itself does NOT guard this.
+    const lockedRowCount = reorder.lockedRowCount ?? 0;
+    if (toIndex < lockedRowCount || toIndex >= count || fromIndex === toIndex)
+      return;
+    if (this.props.matrix.isInputReadOnly) return;
+    reorder.moveRowByIndex(fromIndex, toIndex);
+  }
+
+  protected renderElement(): React.JSX.Element {
+    const { matrix, rowName } = this.props;
+    const reorder = matrix as ReorderMatrixLike;
+    const rows = reorder.visibleRows;
+    const index = Array.isArray(rows) ? rows.indexOf(this.row) : -1;
+    const count = Array.isArray(rows) ? rows.length : 0;
+    // Locked leading rows occupy visibleRows[0..lockedRowCount-1]; the first
+    // UNLOCKED row (index === lockedRowCount) must not move up into that band
+    // (core's `canInsertIntoThisRow`). lockedRowCount defaults to 0, so a
+    // matrix with no locked rows keeps the plain "no up on the first row".
+    const lockedRowCount = reorder.lockedRowCount ?? 0;
+    const readOnly = matrix.isInputReadOnly;
+    const canUp = !readOnly && index > lockedRowCount;
+    const canDown = !readOnly && index >= 0 && index < count - 1;
+    const matrixRecipe = this.themeContext.recipes.matrix;
+    return (
+      <RankingDragRow
+        enabled={!readOnly && index >= 0}
+        index={index}
+        count={count}
+        rowHeight={DRAG_ROW_HEIGHT}
+        lowerBound={lockedRowCount}
+        onReorder={(from, to) => this.move(from, to, count)}
+      >
+        <View
+          testID={`matrix-drag-handle-${rowName}`}
+          style={matrixRecipe.fragments.dragHandle}
+        >
+          <Pressable
+            testID={`matrix-move-row-up-${rowName}`}
+            accessibilityRole="button"
+            accessibilityLabel="Move row up"
+            accessibilityState={{ disabled: !canUp }}
+            disabled={!canUp}
+            onPress={() => this.move(index, index - 1, count)}
+            hitSlop={ACTION_HIT_SLOP}
+          >
+            <Text
+              accessibilityElementsHidden
+              style={matrixRecipe.fragments.dragArrowText}
+            >
+              {'▲'}
+            </Text>
+          </Pressable>
+          <RNIcon
+            iconName="icon-drag-24x24"
+            size={matrixRecipe.dragIconSize}
+            fill={matrixRecipe.dragIconColor}
+          />
+          <Pressable
+            testID={`matrix-move-row-down-${rowName}`}
+            accessibilityRole="button"
+            accessibilityLabel="Move row down"
+            accessibilityState={{ disabled: !canDown }}
+            disabled={!canDown}
+            onPress={() => this.move(index, index + 1, count)}
+            hitSlop={ACTION_HIT_SLOP}
+          >
+            <Text
+              accessibilityElementsHidden
+              style={matrixRecipe.fragments.dragArrowText}
+            >
+              {'▼'}
+            </Text>
+          </Pressable>
+        </View>
+      </RankingDragRow>
+    );
+  }
+}
+
 /** §2b cell-kind precedence — ALL no-question structural cells FIRST. */
 type WalkedCellKind =
   'drag' | 'empty' | 'actions' | 'question' | 'other' | 'choice' | 'title';
@@ -962,6 +1109,23 @@ export class MatrixTable extends SurveyElementBase<
         } else {
           render = () => <View testID={`matrix-actions-${rowKey}-${slot}`} />;
         }
+        break;
+      }
+      case 'drag': {
+        // 4.3 row reorder: the intrinsic drag column's handle drives core's
+        // `moveRowByIndex` (a11y move buttons + the device-gated Pan). Core
+        // gates the cell's very existence (isRowsDragAndDrop && unlocked
+        // row), so reaching here means the row is reorderable.
+        const rowName = String(
+          (cell.row as unknown as { rowName?: unknown })?.rowName ?? rowKey
+        );
+        render = () => (
+          <MatrixRowDragHandle
+            cell={cell}
+            matrix={question}
+            rowName={rowName}
+          />
+        );
         break;
       }
       default:

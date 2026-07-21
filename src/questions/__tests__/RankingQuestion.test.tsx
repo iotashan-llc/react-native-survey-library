@@ -22,7 +22,7 @@ import { Model } from '../../core/facade';
 import type { Question } from '../../core/facade';
 import '../../factories/register-all';
 import { RankingQuestion } from '../RankingQuestion';
-import { loadRankingDragLibs } from '../RankingQuestion';
+import { loadRankingDragLibs, clampReorderTarget } from '../RankingQuestion';
 import { RNQuestionFactory } from '../../factories/QuestionFactory';
 import { UnsupportedQuestion } from '../../components/UnsupportedQuestion';
 import { resolveQuestionDispatchKey } from '../../factories/dispatch-key';
@@ -268,5 +268,24 @@ describe('ranking — max-reached unranked add button a11y matches behavior', ()
     expect(bButton.props.accessibilityState?.disabled).toBe(true);
     fireEvent.press(bButton);
     expect(vals(question)).toEqual(['a']);
+  });
+});
+
+describe('clampReorderTarget — reorder target clamp (shared by ranking + matrixdynamic drag)', () => {
+  // The matrixdynamic drag consumer passes lockedRowCount as the lower bound
+  // so a dragged row never crosses ABOVE the locked leading band (core's
+  // canInsertIntoThisRow forbids a drop at/above a locked row). Ranking has
+  // no locked band and passes the default lower bound of 0.
+  it('clamps a matrix drag target below lockedRowCount up to the locked-band boundary', () => {
+    // Sole unlocked row (index 1, count 2) dragged hard up: must not cross
+    // into the locked leading band — clamps to the boundary (index 1).
+    expect(clampReorderTarget(1, -3, 2, 1)).toBe(1);
+    // A lower unlocked row can still rise only to the top of the unlocked band.
+    expect(clampReorderTarget(3, -5, 4, 1)).toBe(1);
+  });
+
+  it('ranking (default lowerBound 0) still reorders freely to index 0', () => {
+    expect(clampReorderTarget(2, -5, 4)).toBe(0);
+    expect(clampReorderTarget(2, -5, 4, 0)).toBe(0);
   });
 });

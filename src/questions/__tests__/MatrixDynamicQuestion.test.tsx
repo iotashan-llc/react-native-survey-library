@@ -782,3 +782,124 @@ describe('matrixdynamic — 3.4b minRowCount validation surfaces the question-le
     expect(screen.queryByText(MIN_ROW_TEXT)).toBeNull();
   });
 });
+
+// ————————————————————————————————————————————————————————————————
+// Task 4.3 — matrixdynamic ROW reorder (allowRowsDragAndDrop)
+//
+// Row reorder is driven ENTIRELY through the core model
+// (`moveRowByIndex` reorders `question.value`; the row MODELS stay put and
+// values flow through positions, which is why the cell subscriptions
+// reflect the new order without a full table reset). The drag-handle cell
+// is core-gated: it exists only when `isRowsDragAndDrop`
+// (`allowRowReorder`/`allowRowsDragAndDrop` && !readOnly && horizontal) and
+// only on unlocked rows (`lockedRowCount`). Layer 1 (below, fully
+// jest-tested) is the accessible move-up/move-down controls; the fine Pan
+// drag (Layer 2, reusing ranking's `RankingDragRow`) is a device gate whose
+// libs are absent in jest, so `RankingDragRow` degrades to Layer 1.
+// ————————————————————————————————————————————————————————————————
+
+const DRAG_HANDLE = /^matrix-drag-handle-/;
+const MOVE_UP = /^matrix-move-row-up-/;
+const MOVE_DOWN = /^matrix-move-row-down-/;
+
+function inputValues(): unknown[] {
+  return screen.getAllByTestId('c1-input').map((node) => node.props.value);
+}
+
+describe('matrixdynamic — row reorder (4.3): a11y move + gesture drag', () => {
+  it('allowRowsDragAndDrop renders a drag handle with move-up/move-down controls per row', async () => {
+    const { question } = createMatrixDynamic({ allowRowsDragAndDrop: true });
+    await renderMatrixDynamic(question);
+    expect(screen.getAllByTestId(DRAG_HANDLE)).toHaveLength(2);
+    expect(screen.getAllByTestId(MOVE_UP)).toHaveLength(2);
+    expect(screen.getAllByTestId(MOVE_DOWN)).toHaveLength(2);
+  });
+
+  it('allowRowsDragAndDrop:false (the default) renders NO drag handle', async () => {
+    const { question } = createMatrixDynamic();
+    await renderMatrixDynamic(question);
+    expect(screen.queryAllByTestId(DRAG_HANDLE)).toHaveLength(0);
+    expect(screen.queryAllByTestId(MOVE_UP)).toHaveLength(0);
+    expect(screen.queryAllByTestId(MOVE_DOWN)).toHaveLength(0);
+  });
+
+  it('move-down on the first row reorders the value + re-renders inputs in the new order (through core moveRowByIndex)', async () => {
+    const { model, question } = createMatrixDynamic({
+      allowRowsDragAndDrop: true,
+    });
+    model.data = { mdyn: [{ c1: 'A' }, { c1: 'B' }] };
+    await renderMatrixDynamic(question);
+    expect(inputValues()).toEqual(['A', 'B']);
+    fireEvent.press(screen.getAllByTestId(MOVE_DOWN)[0]!);
+    await settle();
+    expect(plainValue(question)).toEqual([{ c1: 'B' }, { c1: 'A' }]);
+    expect(inputValues()).toEqual(['B', 'A']);
+  });
+
+  it('move-up on the last row reorders the value symmetrically', async () => {
+    const { model, question } = createMatrixDynamic({
+      allowRowsDragAndDrop: true,
+    });
+    model.data = { mdyn: [{ c1: 'A' }, { c1: 'B' }] };
+    await renderMatrixDynamic(question);
+    const ups = screen.getAllByTestId(MOVE_UP);
+    fireEvent.press(ups[ups.length - 1]!);
+    await settle();
+    expect(plainValue(question)).toEqual([{ c1: 'B' }, { c1: 'A' }]);
+    expect(inputValues()).toEqual(['B', 'A']);
+  });
+
+  it('boundary gate: first-row move-up and last-row move-down are disabled and do not reorder', async () => {
+    const { model, question } = createMatrixDynamic({
+      allowRowsDragAndDrop: true,
+      rowCount: 3,
+    });
+    model.data = { mdyn: [{ c1: 'A' }, { c1: 'B' }, { c1: 'C' }] };
+    await renderMatrixDynamic(question);
+    const ups = screen.getAllByTestId(MOVE_UP);
+    const downs = screen.getAllByTestId(MOVE_DOWN);
+    expect(ups).toHaveLength(3);
+    expect(downs).toHaveLength(3);
+    // First row: up disabled, down enabled.
+    expect(ups[0]!.props.accessibilityState?.disabled).toBe(true);
+    expect(downs[0]!.props.accessibilityState?.disabled).toBe(false);
+    // Last row: down disabled, up enabled.
+    expect(downs[2]!.props.accessibilityState?.disabled).toBe(true);
+    expect(ups[2]!.props.accessibilityState?.disabled).toBe(false);
+    // Pressing the (guarded) disabled first-row up leaves the order intact.
+    fireEvent.press(ups[0]!);
+    await settle();
+    expect(inputValues()).toEqual(['A', 'B', 'C']);
+  });
+
+  it('readOnly gate: a read-only matrix renders NO drag handle even with allowRowsDragAndDrop', async () => {
+    const { question } = createMatrixDynamic({
+      allowRowsDragAndDrop: true,
+      readOnly: true,
+    });
+    await renderMatrixDynamic(question);
+    expect(screen.queryAllByTestId(DRAG_HANDLE)).toHaveLength(0);
+    expect(screen.queryAllByTestId(MOVE_UP)).toHaveLength(0);
+  });
+
+  it('lockedRowCount gate: a locked leading row gets no drag handle, and the sole unlocked row cannot move up into the locked band', async () => {
+    const { model, question } = createMatrixDynamic({
+      allowRowsDragAndDrop: true,
+    });
+    model.data = { mdyn: [{ c1: 'A' }, { c1: 'B' }] };
+    (question as unknown as { lockedRowCount: number }).lockedRowCount = 1;
+    await renderMatrixDynamic(question);
+    // Only the single unlocked (second) row carries a handle.
+    expect(screen.getAllByTestId(DRAG_HANDLE)).toHaveLength(1);
+    // That sole unlocked row sits at the top of the UNLOCKED band; moving it
+    // up would cross into the locked leading band, which core forbids
+    // (canInsertIntoThisRow: no drop at/above a locked row).
+    const ups = screen.getAllByTestId(MOVE_UP);
+    expect(ups).toHaveLength(1);
+    expect(ups[0]!.props.accessibilityState?.disabled).toBe(true);
+    // Pressing the guarded control is a no-op: the value order is unchanged.
+    fireEvent.press(ups[0]!);
+    await settle();
+    expect(inputValues()).toEqual(['A', 'B']);
+  });
+});

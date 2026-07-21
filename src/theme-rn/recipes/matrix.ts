@@ -85,6 +85,13 @@ export interface MatrixRecipe {
     /** Per-row remove button — centers the delete glyph in the intrinsic
      * actions column (same square target as the detail toggle). */
     removeRowButton: ViewStyle;
+    // --- 4.3 matrixdynamic row-reorder (allowRowsDragAndDrop) fragments. ---
+    /** Per-row drag-handle container — the intrinsic drag column's cell;
+     * stacks the move-up arrow, the drag glyph, and the move-down arrow
+     * (native interaction geometry; the reorder is core-driven). */
+    dragHandle: ViewStyle;
+    /** Move-up/move-down arrow glyph text inside the drag handle. */
+    dragArrowText: TextStyle;
     /** Empty-state (`noRowsText`) placeholder container — full-width,
      * centered (§3g: placeholder rows ignore per-column widths). */
     placeholder: ViewStyle;
@@ -122,6 +129,10 @@ export interface MatrixRecipe {
   removeIconSize: number;
   /** Remove-row icon tint — the general forecolor token. */
   removeIconColor: string;
+  /** Drag-handle glyph size — the 24dp `icon-drag-24x24` sprite, base-unit-derived. */
+  dragIconSize: number;
+  /** Drag-handle glyph tint — the general forecolor token. */
+  dragIconColor: string;
 }
 
 export function buildMatrixRecipe(
@@ -303,6 +314,19 @@ export function buildMatrixRecipe(
       minHeight: calcSize(resolved, 4),
       minWidth: calcSize(resolved, 4),
     },
+    dragHandle: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: calcSize(resolved, 4),
+      minWidth: calcSize(resolved, 4),
+    },
+    dragArrowText: {
+      fontFamily: baseFamily,
+      fontSize: calcFontSize(resolved, 1),
+      lineHeight: calcLineHeight(resolved, 1.5),
+      color: foreColor,
+      textAlign: 'center',
+    },
     placeholder: {
       alignItems: 'center',
       paddingVertical: calcSize(resolved, 2),
@@ -386,5 +410,7 @@ export function buildMatrixRecipe(
     detailIconColor: foreColor,
     removeIconSize: calcSize(resolved, 3),
     removeIconColor: foreColor,
+    dragIconSize: calcSize(resolved, 3),
+    dragIconColor: foreColor,
   };
 }

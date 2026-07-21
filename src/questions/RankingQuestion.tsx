@@ -147,11 +147,30 @@ export function loadRankingDragLibs(): RankingDragLibs | null {
 // Layer 2 drag wrapper — isolated hooks component (falls back to Layer 1)
 // ————————————————————————————————————————————————————————————————
 
+/**
+ * Clamp a reorder target to the legal band. `lowerBound` defaults to 0 —
+ * ranking has no locked region, so any slot (index 0 included) is reachable.
+ * The matrixdynamic drag consumer passes `lockedRowCount` so a dragged row
+ * never crosses ABOVE the locked leading band (core's `canInsertIntoThisRow`
+ * forbids a drop at/above a locked row); the target clamps to the top of the
+ * unlocked band instead.
+ */
+export function clampReorderTarget(
+  index: number,
+  delta: number,
+  count: number,
+  lowerBound = 0
+): number {
+  return Math.max(lowerBound, Math.min(count - 1, index + delta));
+}
+
 interface RankingDragRowProps {
   enabled: boolean;
   index: number;
   count: number;
   rowHeight: number;
+  /** Lowest legal target index (0 for ranking; lockedRowCount for matrix). */
+  lowerBound?: number;
   onReorder(fromIndex: number, toIndex: number): void;
   children: React.ReactNode;
 }
@@ -164,7 +183,15 @@ interface RankingDragRowProps {
  * (matrixdynamic row-reorder, task 4.3, reuses it).
  */
 export function RankingDragRow(props: RankingDragRowProps): React.JSX.Element {
-  const { enabled, index, count, rowHeight, onReorder, children } = props;
+  const {
+    enabled,
+    index,
+    count,
+    rowHeight,
+    lowerBound = 0,
+    onReorder,
+    children,
+  } = props;
   const libs = enabled ? loadRankingDragLibs() : null;
   if (!libs) return <>{children}</>;
   return (
@@ -173,6 +200,7 @@ export function RankingDragRow(props: RankingDragRowProps): React.JSX.Element {
       index={index}
       count={count}
       rowHeight={rowHeight}
+      lowerBound={lowerBound}
       onReorder={onReorder}
     >
       {children}
@@ -185,6 +213,7 @@ interface RankingDragRowActiveProps {
   index: number;
   count: number;
   rowHeight: number;
+  lowerBound: number;
   onReorder(fromIndex: number, toIndex: number): void;
   children: React.ReactNode;
 }
@@ -192,11 +221,12 @@ interface RankingDragRowActiveProps {
 function RankingDragRowActive(
   props: RankingDragRowActiveProps
 ): React.JSX.Element {
-  const { libs, index, count, rowHeight, onReorder, children } = props;
+  const { libs, index, count, rowHeight, lowerBound, onReorder, children } =
+    props;
   const { reanimated, Gesture, GestureDetector } = libs;
   const translateY = reanimated.useSharedValue(0);
   const commit = (delta: number): void => {
-    const to = Math.max(0, Math.min(count - 1, index + delta));
+    const to = clampReorderTarget(index, delta, count, lowerBound);
     if (to !== index) onReorder(index, to);
   };
   const pan = (

@@ -100,6 +100,24 @@ describe('matrix recipe — build shape', () => {
     expect(recipe.removeIconColor.length).toBeGreaterThan(0);
   });
 
+  it('exposes the 4.3 row-reorder drag-handle fragment + drag-icon metrics', () => {
+    // The drag handle centers the move-up arrow / drag glyph / move-down
+    // arrow in the intrinsic drag column (same square target as the other
+    // action affordances).
+    const handle = flat(recipe.fragments.dragHandle);
+    expect(handle.alignItems).toBe('center');
+    expect(handle.justifyContent).toBe('center');
+    expect(handle.minWidth).toBe(handle.minHeight);
+    expect(handle.minWidth as number).toBeGreaterThan(0);
+    // The arrow glyph text is token-tinted (never a literal color).
+    const arrow = flat(recipe.fragments.dragArrowText);
+    expect(typeof arrow.color).toBe('string');
+    // icon-drag-24x24 glyph metrics ride the recipe.
+    expect(recipe.dragIconSize).toBeGreaterThan(0);
+    expect(typeof recipe.dragIconColor).toBe('string');
+    expect(recipe.dragIconColor.length).toBeGreaterThan(0);
+  });
+
   it('exposes the 3.1b mobile stacked-card fragments (§3b/§3d)', () => {
     for (const key of [
       'card',
