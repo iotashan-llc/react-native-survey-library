@@ -35,6 +35,7 @@ import { buildSliderRecipe, type SliderRecipe } from './slider';
 import { buildSignatureRecipe, type SignatureRecipe } from './signature';
 import { buildImageMapRecipe, type ImageMapRecipe } from './imagemap';
 import { buildTimerPanelRecipe, type TimerPanelRecipe } from './timerPanel';
+import { buildProgressTocRecipe, type ProgressTocRecipe } from './progressToc';
 
 export interface Recipes {
   item: ItemRecipe;
@@ -70,6 +71,8 @@ export interface Recipes {
   imagemap: ImageMapRecipe;
   /** Survey timer panel: clock badge (major/minor) + plain-text root (task 5.7a). */
   timerPanel: TimerPanelRecipe;
+  /** Table-of-contents: side-column container + mobile hamburger toggle (task 5.7b). */
+  progressToc: ProgressTocRecipe;
 }
 
 export function buildRecipes(
@@ -96,6 +99,7 @@ export function buildRecipes(
     signature: buildSignatureRecipe(resolved, buildCtx),
     imagemap: buildImageMapRecipe(resolved, buildCtx),
     timerPanel: buildTimerPanelRecipe(resolved, buildCtx),
+    progressToc: buildProgressTocRecipe(resolved, buildCtx),
   };
 }
 
@@ -119,3 +123,4 @@ export * from './slider';
 export * from './signature';
 export * from './imagemap';
 export * from './timerPanel';
+export * from './progressToc';

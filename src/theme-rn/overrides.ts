@@ -162,6 +162,13 @@ export interface TimerPanelStyleOverrides {
   text?: StyleProp<TextStyle>;
 }
 
+/** Table-of-contents slots (task 5.7b: `SurveyTOC`). */
+export interface ProgressTocStyleOverrides {
+  container?: StyleProp<ViewStyle>;
+  toggle?: StyleProp<ViewStyle>;
+  toggleGlyph?: StyleProp<TextStyle>;
+}
+
 /** Per-component slot overrides distributed via `SurveyThemeProvider`'s `styles` prop and `SurveyThemeContext`'s `styles` field. */
 export interface SurveyComponentStyles {
   item?: ItemStyleOverrides;
@@ -183,6 +190,7 @@ export interface SurveyComponentStyles {
   imagemap?: ImageMapStyleOverrides;
   listItem?: ListItemStyleOverrides;
   timerPanel?: TimerPanelStyleOverrides;
+  progressToc?: ProgressTocStyleOverrides;
 }
 
 /** Stable default so an omitted `styles` prop never churns the provider's memoized context value. */
