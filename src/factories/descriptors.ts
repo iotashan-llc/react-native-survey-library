@@ -64,6 +64,7 @@ import { ImageQuestion } from '../questions/ImageQuestion';
 import { ImagePickerQuestion } from '../questions/ImagePickerQuestion';
 import { ButtonGroupQuestionElement } from '../questions/ButtonGroupQuestion';
 import { PanelDynamicQuestion } from '../questions/PanelDynamicQuestion';
+import { MatrixQuestionElement } from '../questions/MatrixQuestion';
 import { CustomQuestion } from '../questions/CustomQuestion';
 import { CompositeQuestion } from '../questions/CompositeQuestion';
 import { ListItemGroupContent, ListPickerElement } from '../overlay/ListPicker';
@@ -354,6 +355,20 @@ export const DESCRIPTOR_TABLE: readonly Descriptor[] = [
     route: 'template',
     component: () => PanelDynamicQuestion,
     milestone: 'M2',
+  },
+  // Task 3.2 (M3) — simple matrix (single/multi-select radio/checkbox
+  // tiles over the 3.1a MatrixGrid). getTemplate() === 'matrix' (no
+  // override); template route, dispatchKey === questionType. The
+  // OverlayContext-free `…QuestionElement` wrapper keeps the family shape
+  // uniform (simple matrix has no nested cell overlays). matrixdropdown/
+  // matrixdynamic (3.3/3.4) stay planned.
+  {
+    status: 'supported',
+    questionType: 'matrix',
+    dispatchKey: 'matrix',
+    route: 'template',
+    component: () => MatrixQuestionElement,
+    milestone: 'M3',
   },
   {
     status: 'supported',

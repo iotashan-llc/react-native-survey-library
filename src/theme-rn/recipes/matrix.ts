@@ -52,6 +52,26 @@ export interface MatrixRecipe {
     detailCell: ViewStyle;
     /** Base cell text. */
     cellText: TextStyle;
+    // --- 3.2 simple-matrix tile/rubric state fragments (invariant 4/6:
+    // native interaction geometry here; model-derived checked/error come
+    // from `getItemClass` via the bridge, and the decorator's own checked/
+    // error come from the shared `item` recipe). ---
+    /** Radio/checkbox TILE container — centers the shared item decorator inside a cell (§3.2). */
+    tile: ViewStyle;
+    /** Row-header caption text (default tone). */
+    rowHeaderText: TextStyle;
+    /** Row-header caption text when the row is in error (`row.hasError`, model-derived). */
+    rowHeaderTextError: TextStyle;
+    /** Inline error marker under a row header when `row.hasError` (eachRowRequired/eachRowUnique). */
+    rowHeaderErrorMarker: ViewStyle;
+    /** Rubric (`hasCellText`) tappable text cell — base. */
+    rubricCell: ViewStyle;
+    /** Rubric text cell when checked (`row.isChecked`, model-derived). */
+    rubricCellSelected: ViewStyle;
+    /** Rubric cell text — base tone. */
+    rubricText: TextStyle;
+    /** Rubric cell text when checked. */
+    rubricTextSelected: TextStyle;
   };
 }
 
@@ -75,6 +95,20 @@ export function buildMatrixRecipe(
     '--sjs-general-forecolor',
     sink
   ).css;
+  // 3.2 tile/rubric state colors: selected rubric rides the primary band;
+  // the row-error tone rides the shared red family (same tokens the item
+  // recipe's error decorator uses).
+  const primaryBg = resolveColorVar(
+    resolved,
+    '--sjs-primary-backcolor',
+    sink
+  ).css;
+  const primaryFore = resolveColorVar(
+    resolved,
+    '--sjs-primary-forecolor',
+    sink
+  ).css;
+  const errorColor = resolveColorVar(resolved, '--sjs-special-red', sink).css;
 
   // Cell padding — calcSize(1) vertical / calcSize(2) horizontal, the
   // v2.5.33 matrix `.sd-table__cell` rhythm (base-unit-derived).
@@ -130,6 +164,50 @@ export function buildMatrixRecipe(
       fontSize: calcFontSize(resolved, 1),
       lineHeight: calcLineHeight(resolved, 1.5),
       color: foreColor,
+    },
+    tile: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: calcSize(resolved, 4),
+    },
+    rowHeaderText: {
+      fontFamily: baseFamily,
+      fontSize: calcFontSize(resolved, 1),
+      lineHeight: calcLineHeight(resolved, 1.5),
+      color: foreColor,
+    },
+    rowHeaderTextError: {
+      fontFamily: baseFamily,
+      fontSize: calcFontSize(resolved, 1),
+      lineHeight: calcLineHeight(resolved, 1.5),
+      color: errorColor,
+    },
+    rowHeaderErrorMarker: {
+      marginTop: calcSize(resolved, 0.5),
+      height: borderW * 2,
+      backgroundColor: errorColor,
+    },
+    rubricCell: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: calcSize(resolved, 4),
+    },
+    rubricCellSelected: {
+      backgroundColor: primaryBg,
+    },
+    rubricText: {
+      fontFamily: baseFamily,
+      fontSize: calcFontSize(resolved, 1),
+      lineHeight: calcLineHeight(resolved, 1.5),
+      color: foreColor,
+      textAlign: 'center',
+    },
+    rubricTextSelected: {
+      fontFamily: baseFamily,
+      fontSize: calcFontSize(resolved, 1),
+      lineHeight: calcLineHeight(resolved, 1.5),
+      color: primaryFore,
+      textAlign: 'center',
     },
   });
 

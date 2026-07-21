@@ -1122,3 +1122,88 @@ identical; core popups never set `showCloseButton` on the dropdown/
 tagbox sheets, so the sheet revert path cannot re-enter through it. If
 a consumer popup sets `showCloseButton` on a non-modal popup and needs
 web's hide-only ✕, that is the one observable divergence.
+
+## Matrix (simple) question (task 3.2)
+
+### No `<table>` — a flex-`View` grid inside a horizontal `ScrollView`
+
+The single-select / multi-select matrix renders through the M3 3.1a
+`MatrixGrid` primitive: a flex-`View` grid, not an HTML `<table>`. Column
+widths are resolved once (against the measured outer width) and shared
+across the header and every body row so columns stay aligned without
+browser table auto-layout. The row-title column lives **inside** the one
+horizontal `ScrollView` as each row's first cell, so on a wide matrix it
+scrolls together with the data columns — there is no CSS `position:sticky`
+pinned first column (a split-pane pinned column is a deferred, optional
+3.1b enhancement). The grid is always wrapped in a horizontal ScrollView
+(inert when the content fits); core's `horizontalScroll` flag is not
+consulted — an always-present scroll affordance can only ever *add* the
+ability to scroll, never clip.
+
+### Cells are radio/checkbox tiles driven by the row model — no nested questions
+
+Each cell is a radio (default) or checkbox (`cellType: "checkbox"`) **tile**
+whose checked state comes straight from `row.isChecked(column)` and whose
+tap calls `row.cellClick(column)` — the same `MatrixRowModel` seam the web
+renderer uses. There is no `renderedTable` and there are no nested cell
+`Question` instances (those are the matrixdropdown/matrixdynamic family,
+tasks 3.3/3.4). Single-select commits the `{ row: column }` value shape;
+multi-select toggles a `{ row: [column, …] }` array, and an `isExclusive`
+column clears the other selections in its row. `hasCellText` (rubric) cells
+render tappable localized text instead of a radio/checkbox decorator.
+
+### Mobile card flip is deferred — a matrix always renders the wide scroll grid
+
+Web stacks a narrow matrix into per-row cards (its `isMobile` /
+`displayMode: "list"` path). In v0.3 the simple matrix always renders the
+wide horizontal-scroll grid and does **not** self-measure or auto-stack;
+the stacked-card path is the deferred 3.1b enhancement. `alternateRows` and
+`verticalAlign` are likewise not carried in 3.2 — the 3.1a grid applies
+uniform cell geometry. `rowOrder: "random"` is honored by rendering
+core's already-shuffled `visibleRows` order as-is (RN never reshuffles).
+
+### Row-level validation surfaces on the row, not per cell
+
+Whole-question `eachRowRequired` (`RequiredInAllRowsError`) and
+`eachRowUnique` (`EachRowUniqueError`) render through the normal
+`QuestionChrome` error slot, exactly like any other question's errors
+(matrix dispatches as an ordinary chrome-wrapped question). In addition,
+the per-row `row.hasError` flag tints that row's tiles (the shared item
+recipe's error decorator) and marks the row header inline, so a respondent
+sees *which* rows are missing an answer. Tile tinting follows core's
+`getItemClass` gate exactly: with `eachRowRequired`/`eachRowUnique` set the
+tint is per-row (`row.hasError`); with neither set, a question-level
+visible error (e.g. an unanswered `isRequired` matrix at validation) tints
+**all** tiles via the question's `hasCssError()` — web parity, no
+divergence.
+
+### The check glyph is fixed — consumer `itemSvgIconId` overrides are not honored
+
+The checkbox checkmark (and the preview check glyph) always render core's
+default `icon-check-16x16`. Web reads `question.itemSvgIcon`, which honors
+a consumer-customized `cssClasses.itemSvgIconId`/`itemPreviewSvgIconId`;
+the RN tile cannot read that getter in render because it dereferences
+`question.cssClasses`, which is built lazily on first access and fires a
+`cssRoot` property change — a setState-in-render hazard. Customizing the
+matrix check glyph via css classes is therefore not supported in v0.3
+(render-purity trade-off).
+
+### Rubric cell lookup stringifies the row key (numeric rows resolve correctly)
+
+`hasCellText` (rubric) cells look up their text with the row key passed as
+`String(row.name)`. Web passes the raw `row.name`, and a **numeric** row
+value is then misread as a row *index* by `MatrixCells.
+getCellRowColumnValue` (`question_matrix.ts`) — web resolves the wrong
+row's rubric text (or none) for `rows: [1, 2, …]`. The cells JSON is
+string-keyed, so RN's stringified key resolves the intended cell text for
+every row value — a deliberate, favorable divergence.
+
+### Grid a11y has no native grid/rowheader/columnheader roles
+
+React Native exposes no ARIA grid semantics. Each tile is an
+`accessibilityRole` of `radio` (single-select) or `checkbox`
+(multi-select) with a `{ checked, disabled }` state and an
+`accessibilityLabel` synthesized from core's `getCellAriaLabel(row,
+column)` (the localized row title + column title). There is no
+`role="grid"`/`columnheader`/`rowheader` wrapper and no header/cell
+association beyond that per-tile label.

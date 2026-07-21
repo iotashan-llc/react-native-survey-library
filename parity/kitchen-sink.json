@@ -332,20 +332,117 @@
       ]
     },
     {
+      "name": "matrix",
+      "title": "Matrix (simple)",
+      "elements": [
+        {
+          "type": "matrix",
+          "name": "agreement",
+          "title": "How much do you agree? (single-select matrix)",
+          "isAllRowRequired": true,
+          "columns": [
+            {
+              "value": 1,
+              "text": "Disagree"
+            },
+            {
+              "value": 2,
+              "text": "Neutral"
+            },
+            {
+              "value": 3,
+              "text": "Agree"
+            }
+          ],
+          "rows": [
+            {
+              "value": "speed",
+              "text": "Speed"
+            },
+            {
+              "value": "docs",
+              "text": "Documentation"
+            },
+            {
+              "value": "support",
+              "text": "Support"
+            }
+          ]
+        },
+        {
+          "type": "matrix",
+          "name": "usage",
+          "title": "Where do you use each platform? (multi-select matrix)",
+          "cellType": "checkbox",
+          "columns": [
+            {
+              "value": "work",
+              "text": "Work"
+            },
+            {
+              "value": "home",
+              "text": "Home"
+            },
+            {
+              "value": "none",
+              "text": "Not at all",
+              "isExclusive": true
+            }
+          ],
+          "rows": [
+            {
+              "value": "ios",
+              "text": "iOS"
+            },
+            {
+              "value": "android",
+              "text": "Android"
+            }
+          ]
+        },
+        {
+          "type": "matrix",
+          "name": "rubric",
+          "title": "Rate the release (rubric matrix)",
+          "columns": [
+            "low",
+            "mid",
+            "high"
+          ],
+          "rows": [
+            {
+              "value": "quality",
+              "text": "Quality"
+            }
+          ],
+          "cells": {
+            "quality": {
+              "low": "Rough",
+              "mid": "Solid",
+              "high": "Excellent"
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "fallback",
       "title": "HTML & graceful fallback",
       "elements": [
         {
           "type": "html",
           "name": "htmlContent",
-          "html": "<p>The <code>html</code> question type renders rich content natively via the sanitized HTML pipeline: <strong>bold</strong>, <em>italic</em>, and <a href=\"https://surveyjs.io\">links</a> (a link press surfaces an event — the host app decides; the renderer never auto-navigates).</p>"
+          "html": "<p>The <code>html</code> question type renders rich content natively via the sanitized HTML pipeline: <strong>bold</strong>, <em>italic</em>, and <a href=\"https://surveyjs.io\">links</a> (the renderer never auto-navigates; link presses are currently inert — a host callback for them is not wired yet).</p>"
         },
         {
-          "type": "matrix",
+          "type": "ranking",
           "name": "notSupportedDemo",
-          "title": "Unsupported in RN (matrix) — fallback demo",
-          "columns": ["Yes", "No"],
-          "rows": [{ "value": "q1", "text": "Example row" }]
+          "title": "Unsupported in RN (ranking) — fallback demo",
+          "choices": [
+            "First",
+            "Second",
+            "Third"
+          ]
         },
         {
           "type": "comment",

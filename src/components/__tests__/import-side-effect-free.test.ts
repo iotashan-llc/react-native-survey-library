@@ -72,6 +72,7 @@ describe('component modules are import-side-effect-free', () => {
       'html',
       'image',
       'imagepicker',
+      'matrix',
       'multipletext',
       'paneldynamic',
       'radiogroup',

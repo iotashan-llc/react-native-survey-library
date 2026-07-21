@@ -6,10 +6,10 @@
  * renderAs), checkbox/radiogroup (columns, other, comment), comment,
  * text (a spread of inputTypes incl. a pattern mask), rating (numbers,
  * stars, smileys, custom string rateValues), expression, html (sanitized
- * rich content), completedHtml. A single genuinely-unsupported type
- * (matrix, planned for M3) sits on the last page to demonstrate the
- * NON-THROWING fallback panel (invariant 9); the rest of the survey stays
- * representative.
+ * rich content), the M3 3.2 simple matrix (single/multi-select + rubric
+ * cells), completedHtml. A single genuinely-unsupported type (ranking,
+ * planned for M4) sits on the last page to demonstrate the NON-THROWING
+ * fallback panel (invariant 9); the rest of the survey stays representative.
  */
 
 // 1x1 blue PNG — data: logos involve no network fetch (URI policy).
@@ -311,6 +311,59 @@ export const kitchenSinkJson = {
       ],
     },
     {
+      name: 'matrix',
+      title: 'Matrix (simple)',
+      elements: [
+        {
+          // Single-select (radio) matrix (M3 3.2) — value is {row: col};
+          // eachRowRequired flags empty rows on validation.
+          type: 'matrix',
+          name: 'agreement',
+          title: 'How much do you agree? (single-select matrix)',
+          isAllRowRequired: true,
+          columns: [
+            { value: 1, text: 'Disagree' },
+            { value: 2, text: 'Neutral' },
+            { value: 3, text: 'Agree' },
+          ],
+          rows: [
+            { value: 'speed', text: 'Speed' },
+            { value: 'docs', text: 'Documentation' },
+            { value: 'support', text: 'Support' },
+          ],
+        },
+        {
+          // Multi-select matrix (cellType: checkbox) with an exclusive
+          // column — value is {row: [col, ...]}.
+          type: 'matrix',
+          name: 'usage',
+          title: 'Where do you use each platform? (multi-select matrix)',
+          cellType: 'checkbox',
+          columns: [
+            { value: 'work', text: 'Work' },
+            { value: 'home', text: 'Home' },
+            { value: 'none', text: 'Not at all', isExclusive: true },
+          ],
+          rows: [
+            { value: 'ios', text: 'iOS' },
+            { value: 'android', text: 'Android' },
+          ],
+        },
+        {
+          // Rubric matrix (hasCellText via `cells`) — cells render tappable
+          // text instead of a radio/checkbox decorator.
+          type: 'matrix',
+          name: 'rubric',
+          title: 'Rate the release (rubric matrix)',
+          columns: ['low', 'mid', 'high'],
+          rows: [{ value: 'quality', text: 'Quality' }],
+          cells: {
+            quality: { low: 'Rough', mid: 'Solid', high: 'Excellent' },
+          },
+        },
+      ],
+    },
+    {
       name: 'fallback',
       title: 'HTML & graceful fallback',
       elements: [
@@ -325,14 +378,14 @@ export const kitchenSinkJson = {
           html: '<p>The <code>html</code> question type renders rich content natively via the sanitized HTML pipeline: <strong>bold</strong>, <em>italic</em>, and <a href="https://surveyjs.io">links</a> (the renderer never auto-navigates; link presses are currently inert — a host callback for them is not wired yet).</p>',
         },
         {
-          // A genuinely still-unsupported type (matrix, planned for M3):
+          // A genuinely still-unsupported type (ranking, planned for M4):
           // the web reference renders it, RN shows the NON-THROWING
           // fallback panel (invariant 9). This is the graceful-fallback demo.
-          type: 'matrix',
+          // (matrix moved to the 'Matrix (simple)' page now that 3.2 lands.)
+          type: 'ranking',
           name: 'notSupportedDemo',
-          title: 'Unsupported in RN (matrix) — fallback demo',
-          columns: ['Yes', 'No'],
-          rows: [{ value: 'q1', text: 'Example row' }],
+          title: 'Unsupported in RN (ranking) — fallback demo',
+          choices: ['First', 'Second', 'Third'],
         },
         {
           type: 'comment',
