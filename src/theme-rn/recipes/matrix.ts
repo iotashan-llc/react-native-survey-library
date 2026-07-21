@@ -50,6 +50,8 @@ export interface MatrixRecipe {
     footerCell: ViewStyle;
     /** Full-width detail-panel container (edge-to-edge, §3g). */
     detailCell: ViewStyle;
+    /** Detail-toggle cell (3.3b) — centers the expand/collapse icon with a real hit target. */
+    detailToggle: ViewStyle;
     /** Base cell text. */
     cellText: TextStyle;
     // --- 3.2 simple-matrix tile/rubric state fragments (invariant 4/6:
@@ -73,6 +75,11 @@ export interface MatrixRecipe {
     /** Rubric cell text when checked. */
     rubricTextSelected: TextStyle;
   };
+  /** Detail-toggle icon size — the 16dp glyph family
+   * (`expanddetails-16x16`/`collapsedetails-16x16`), base-unit-derived. */
+  detailIconSize: number;
+  /** Detail-toggle icon tint — the general forecolor token. */
+  detailIconColor: string;
 }
 
 export function buildMatrixRecipe(
@@ -159,6 +166,13 @@ export function buildMatrixRecipe(
       borderStartWidth: borderW,
       borderEndWidth: borderW,
     },
+    detailToggle: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      // calcSize(4) = 32dp minimum hit target inside the intrinsic
+      // actions column (same target the tile/rubric fragments use).
+      minHeight: calcSize(resolved, 4),
+    },
     cellText: {
       fontFamily: baseFamily,
       fontSize: calcFontSize(resolved, 1),
@@ -211,5 +225,9 @@ export function buildMatrixRecipe(
     },
   });
 
-  return { fragments };
+  return {
+    fragments,
+    detailIconSize: calcSize(resolved, 2),
+    detailIconColor: foreColor,
+  };
 }

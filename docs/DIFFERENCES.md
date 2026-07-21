@@ -1279,13 +1279,38 @@ gated on `renderedTable.showFooter`. A dedicated mobile totals summary
 (and its footer band) renders on every width, so totals remain visible on
 phones via horizontal scroll.
 
-### Detail panels and row actions are deferred to 3.3b/3.4
+### Detail panels render FULL-WIDTH — core's leading/trailing detail-row slots are dropped (task 3.3b)
 
-`detailPanelMode` detail rows and their show/hide toggle actions are 3.3b:
-in 3.3a a detail-toggle actions cell renders as an inert, aligned no-op
-placeholder and detail rows are not emitted. Custom row actions
-(`onGetMatrixRowActions`) and action overflow-to-popup remain v1
-unsupported (plain themed buttons only, no `AdaptiveActionContainer`).
-An unsupported `cellType` (e.g. `file` before M5) degrades to the
+`detailPanelMode: "underRow" | "underRowSingle"` is supported. The
+detail-toggle actions cell renders a real button: press calls the row
+model's `showHideDetailPanelClick()` (both the wide `show-detail` action
+and the mobile `show-detail-mobile` id route to the same core toggle), the
+icon flips between core's own `getDetailPanelIconId` glyphs
+(`expanddetails-16x16`/`collapsedetails-16x16`), and the button exposes
+`accessibilityRole: "button"` with an `{ expanded }` a11y state and core's
+localized Show/Hide Details label. Web's `aria-controls` panel-id wiring
+has no RN analog and is not carried.
+
+An expanded row's detail rendered row is emitted as a **full-width band**
+spanning the whole grid content width — an approved divergence from web,
+which keeps a leading row-header slot (`colSpans: 2` with row text) and an
+optional trailing actions slot around the panel cell (`createDetailPanelRow`).
+The RN band drops those empty slots entirely and renders the row's real
+`row.detailPanel` `PanelModel` edge-to-edge through the same
+SurveyPanel/SurveyRow composition paneldynamic uses, so nested questions
+dispatch through the factory **with full question chrome** (title/
+description/errors) — the matrix's chrome-less rule applies to grid cells,
+not to detail-panel content. Expanding, collapsing, and `underRowSingle`'s
+expand-one-collapses-others rule are all core-enforced state the renderer
+follows; collapse keeps the panel instance, so values entered in a detail
+panel persist across collapse/expand (they live in the row value, e.g.
+`{ r1: { d1: … } }`).
+
+### Custom row actions remain no-ops (3.4 scope)
+
+Custom row actions (`onGetMatrixRowActions`) and action overflow-to-popup
+remain v1 unsupported: an actions cell without a detail toggle renders as
+an inert, aligned placeholder (no `AdaptiveActionContainer`). An
+unsupported `cellType` (e.g. `file` before M5) degrades to the
 non-throwing fallback panel **in that one cell** with a structured
 diagnostic — the rest of the matrix keeps working.

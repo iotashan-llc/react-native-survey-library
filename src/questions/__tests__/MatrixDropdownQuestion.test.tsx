@@ -118,6 +118,41 @@ function plainValue(question: QuestionMatrixDropdownModelBase): unknown {
   return JSON.parse(JSON.stringify(question.value ?? null));
 }
 
+/** Detail-panel content renders through the real SurveyPanel/SurveyRow
+ * composition, whose rows defer one frame until measured (1.3-design D3)
+ * — fire a layout on every `sv-row` so nested questions materialize. */
+function layoutRows(): void {
+  act(() => {
+    for (const row of screen.queryAllByTestId('sv-row')) {
+      fireEvent(row, 'layout', {
+        nativeEvent: { layout: { x: 0, y: 0, width: 700, height: 0 } },
+      });
+    }
+  });
+}
+
+/** 3.3b fixture: two static rows + a text detail panel (§3c). */
+function createDetailMatrix(
+  extra: Record<string, unknown> = {}
+): MatrixFixture {
+  return createMatrixDropdown({
+    detailPanelMode: 'underRow',
+    detailElements: [{ type: 'text', name: 'd1', title: 'Detail One' }],
+    columns: [{ name: 'c1', cellType: 'text' }],
+    ...extra,
+  });
+}
+
+/** Press a row's detail toggle, then settle panel rows (flush + layout). */
+async function pressToggle(rowName: string): Promise<void> {
+  fireEvent.press(screen.getByTestId(`matrix-detail-toggle-${rowName}`));
+  await flush();
+  layoutRows();
+  await flush();
+}
+
+const DETAIL_BAND = /^matrix-detail-row:/;
+
 describe('matrixdropdown — dispatch flip (unsupported → supported)', () => {
   it('registers a `matrixdropdown` template row so it no longer hits the fallback', () => {
     expect(RNQuestionFactory.getAllTypes()).toContain('matrixdropdown');
@@ -643,5 +678,112 @@ describe('matrixdropdown — Other choice cell renders the controlled Other-comm
     const cellQuestion = question.visibleRows[0]!.cells[0]!
       .question as unknown as { otherValue?: string };
     expect(cellQuestion.otherValue).toBe('free text');
+  });
+});
+
+describe('matrixdropdown — detail panels (3.3b §3c): toggle cells expand a full-width SurveyPanel band', () => {
+  it('renders a REAL detail-toggle button per row; press expands the panel with FULL question chrome', async () => {
+    const { question } = createDetailMatrix();
+    await renderMatrixDropdown(question);
+
+    // One toggle per data row, collapsed a11y state, core-localized label.
+    const toggles = [
+      screen.getByTestId('matrix-detail-toggle-r1'),
+      screen.getByTestId('matrix-detail-toggle-r2'),
+    ];
+    for (const toggle of toggles) {
+      expect(toggle.props.accessibilityRole).toBe('button');
+      expect(toggle.props.accessibilityState.expanded).toBe(false);
+      expect(toggle.props.accessibilityLabel).toBe('Show Details');
+    }
+    expect(screen.queryAllByTestId(DETAIL_BAND)).toHaveLength(0);
+
+    await pressToggle('r1');
+
+    // The detail band renders (full-width row keyed `row:<id>:detail`)...
+    expect(screen.getAllByTestId(DETAIL_BAND)).toHaveLength(1);
+    // ...containing the row's REAL detail PanelModel through SurveyPanel,
+    // with FULL chrome INSIDE the panel (§3c: the chrome-less rule applies
+    // to CELLS, not detail content): the d1 title renders.
+    expect(screen.getByText('Detail One')).toBeTruthy();
+    expect(screen.getByTestId('d1-input')).toBeTruthy();
+    // Toggle flips to expanded.
+    const expandedToggle = screen.getByTestId('matrix-detail-toggle-r1');
+    expect(expandedToggle.props.accessibilityState.expanded).toBe(true);
+    expect(expandedToggle.props.accessibilityLabel).toBe('Hide Details');
+  });
+
+  it('detail-panel questions commit through the normal draft adapters into the row value slot', async () => {
+    const { question } = createDetailMatrix();
+    await renderMatrixDropdown(question);
+    await pressToggle('r1');
+
+    const input = screen.getByTestId('d1-input');
+    fireEvent.changeText(input, 'detail-draft');
+    // onBlur mode: no commit until blur.
+    expect(plainValue(question)).toBeNull();
+    fireEvent(input, 'blur');
+    expect(plainValue(question)).toEqual({ r1: { d1: 'detail-draft' } });
+  });
+
+  it('pressing the expanded toggle collapses: the band unmounts and a11y state returns to collapsed', async () => {
+    const { question } = createDetailMatrix();
+    await renderMatrixDropdown(question);
+    await pressToggle('r1');
+    expect(screen.getAllByTestId(DETAIL_BAND)).toHaveLength(1);
+
+    await pressToggle('r1');
+    expect(screen.queryAllByTestId(DETAIL_BAND)).toHaveLength(0);
+    expect(
+      screen.getByTestId('matrix-detail-toggle-r1').props.accessibilityState
+        .expanded
+    ).toBe(false);
+    expect(screen.queryByTestId('d1-input')).toBeNull();
+  });
+
+  it('underRowSingle: expanding one row collapses the other (core-enforced; render follows)', async () => {
+    const { question } = createDetailMatrix({
+      detailPanelMode: 'underRowSingle',
+    });
+    await renderMatrixDropdown(question);
+
+    await pressToggle('r1');
+    expect(screen.getAllByTestId(DETAIL_BAND)).toHaveLength(1);
+    expect(
+      screen.getByTestId('matrix-detail-toggle-r1').props.accessibilityState
+        .expanded
+    ).toBe(true);
+
+    await pressToggle('r2');
+    // Exactly ONE band remains — r2's; r1 collapsed.
+    expect(screen.getAllByTestId(DETAIL_BAND)).toHaveLength(1);
+    expect(
+      screen.getByTestId('matrix-detail-toggle-r1').props.accessibilityState
+        .expanded
+    ).toBe(false);
+    expect(
+      screen.getByTestId('matrix-detail-toggle-r2').props.accessibilityState
+        .expanded
+    ).toBe(true);
+  });
+
+  it('values entered in the detail panel persist across collapse/expand (model-backed panel survives)', async () => {
+    const { question } = createDetailMatrix();
+    await renderMatrixDropdown(question);
+    await pressToggle('r1');
+
+    const input = screen.getByTestId('d1-input');
+    fireEvent.changeText(input, 'kept-value');
+    fireEvent(input, 'blur');
+    expect(plainValue(question)).toEqual({ r1: { d1: 'kept-value' } });
+
+    await pressToggle('r1');
+    expect(screen.queryByTestId('d1-input')).toBeNull();
+    // Collapse does NOT destroy the value (hideDetailPanel keeps the
+    // panel instance; the committed value lives in the question model).
+    expect(plainValue(question)).toEqual({ r1: { d1: 'kept-value' } });
+
+    await pressToggle('r1');
+    expect(screen.getByTestId('d1-input').props.value).toBe('kept-value');
   });
 });

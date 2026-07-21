@@ -432,6 +432,8 @@ exports[`curated recipe golden snapshots ContrastLight: recipes build to a stabl
     "select": [Function],
   },
   "matrix": {
+    "detailIconColor": "rgba(0, 0, 0, 1)",
+    "detailIconSize": 16,
     "fragments": {
       "cellText": {
         "color": "rgba(0, 0, 0, 1)",
@@ -454,6 +456,11 @@ exports[`curated recipe golden snapshots ContrastLight: recipes build to a stabl
         "borderStartWidth": 0.5,
         "paddingHorizontal": 16,
         "paddingVertical": 8,
+      },
+      "detailToggle": {
+        "alignItems": "center",
+        "justifyContent": "center",
+        "minHeight": 32,
       },
       "footerCell": {
         "backgroundColor": "rgba(255, 216, 77, 1)",
@@ -1535,6 +1542,8 @@ exports[`curated recipe golden snapshots DefaultLight: recipes build to a stable
     "select": [Function],
   },
   "matrix": {
+    "detailIconColor": "rgba(0, 0, 0, 0.91)",
+    "detailIconSize": 16,
     "fragments": {
       "cellText": {
         "color": "rgba(0, 0, 0, 0.91)",
@@ -1557,6 +1566,11 @@ exports[`curated recipe golden snapshots DefaultLight: recipes build to a stable
         "borderStartWidth": 0.5,
         "paddingHorizontal": 16,
         "paddingVertical": 8,
+      },
+      "detailToggle": {
+        "alignItems": "center",
+        "justifyContent": "center",
+        "minHeight": 32,
       },
       "footerCell": {
         "backgroundColor": "rgba(243, 243, 243, 1)",
@@ -2702,6 +2716,8 @@ exports[`curated recipe golden snapshots LayeredDark: recipes build to a stable 
     "select": [Function],
   },
   "matrix": {
+    "detailIconColor": "rgba(213, 215, 238, 1)",
+    "detailIconSize": 16,
     "fragments": {
       "cellText": {
         "color": "rgba(213, 215, 238, 1)",
@@ -2724,6 +2740,11 @@ exports[`curated recipe golden snapshots LayeredDark: recipes build to a stable 
         "borderStartWidth": 0.5,
         "paddingHorizontal": 16,
         "paddingVertical": 8,
+      },
+      "detailToggle": {
+        "alignItems": "center",
+        "justifyContent": "center",
+        "minHeight": 32,
       },
       "footerCell": {
         "backgroundColor": "rgba(30, 31, 40, 1)",
@@ -3901,6 +3922,8 @@ exports[`curated recipe golden snapshots SharpDark: recipes build to a stable sn
     "select": [Function],
   },
   "matrix": {
+    "detailIconColor": "rgba(255, 255, 255, 0.78)",
+    "detailIconSize": 16,
     "fragments": {
       "cellText": {
         "color": "rgba(255, 255, 255, 0.78)",
@@ -3923,6 +3946,11 @@ exports[`curated recipe golden snapshots SharpDark: recipes build to a stable sn
         "borderStartWidth": 0.5,
         "paddingHorizontal": 16,
         "paddingVertical": 8,
+      },
+      "detailToggle": {
+        "alignItems": "center",
+        "justifyContent": "center",
+        "minHeight": 32,
       },
       "footerCell": {
         "backgroundColor": "rgba(27, 27, 27, 1)",
@@ -5052,6 +5080,8 @@ exports[`curated recipe golden snapshots ThreeDimensionalLight: recipes build to
     "select": [Function],
   },
   "matrix": {
+    "detailIconColor": "rgba(0, 0, 0, 0.91)",
+    "detailIconSize": 16,
     "fragments": {
       "cellText": {
         "color": "rgba(0, 0, 0, 0.91)",
@@ -5074,6 +5104,11 @@ exports[`curated recipe golden snapshots ThreeDimensionalLight: recipes build to
         "borderStartWidth": 0.5,
         "paddingHorizontal": 16,
         "paddingVertical": 8,
+      },
+      "detailToggle": {
+        "alignItems": "center",
+        "justifyContent": "center",
+        "minHeight": 32,
       },
       "footerCell": {
         "backgroundColor": "rgba(255, 255, 255, 1)",
