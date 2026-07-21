@@ -1550,14 +1550,22 @@ events, a cloned DOM shortcut, per-`dragOver` model splices, the ghost row)
 is bypassed entirely (the repo-wide no-DOM posture).
 
 **Accessible move controls are the primary affordance.** Each unlocked row's
-handle exposes **move-up / move-down** buttons (boundary-gated: no up on the
-first row, no down on the last), so the matrix is fully reorderable without
-any fine-drag gesture — and this is the jest-tested path.
+handle exposes **move-up / move-down** buttons, boundary-gated to core's
+`lockedRowCount` band: the first **unlocked** row (`index === lockedRowCount`)
+cannot move up into the locked leading rows and the last row cannot move
+down — matching core's `canInsertIntoThisRow` (`lockedRows <= 0 ||
+row.rowIndex > lockedRows`), so no reorder lands at/above a locked row. With
+no locked rows (`lockedRowCount === 0`) this is just the plain first/last
+boundary. The matrix is fully reorderable without any fine-drag gesture —
+and this is the jest-tested path.
 
 **Fine drag is a device gate.** The handle is wrapped in the SAME lazy
 `RankingDragRow` Pan primitive ranking uses (gesture-handler + reanimated,
 the required peers), which commits ONCE on release via `moveRowByIndex` — not
-web's continuous per-`dragOver` splices. When those peers are absent (or in
+web's continuous per-`dragOver` splices. The release target is clamped to the
+same `lockedRowCount` lower bound (`RankingDragRow`'s `lowerBound` prop;
+ranking passes the default `0`), so a hard upward drag stops at the top of
+the unlocked band rather than crossing into the locked rows. When those peers are absent (or in
 jest) `RankingDragRow` degrades to the buttons, so the accessible path always
 works; the gesture itself is verified on the New-Arch example, not in jest.
 The drag translates the handle glyph (the reorder is applied on release);

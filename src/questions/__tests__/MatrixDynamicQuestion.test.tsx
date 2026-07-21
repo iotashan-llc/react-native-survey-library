@@ -882,11 +882,24 @@ describe('matrixdynamic — row reorder (4.3): a11y move + gesture drag', () => 
     expect(screen.queryAllByTestId(MOVE_UP)).toHaveLength(0);
   });
 
-  it('lockedRowCount gate: a locked leading row gets no drag handle', async () => {
-    const { question } = createMatrixDynamic({ allowRowsDragAndDrop: true });
+  it('lockedRowCount gate: a locked leading row gets no drag handle, and the sole unlocked row cannot move up into the locked band', async () => {
+    const { model, question } = createMatrixDynamic({
+      allowRowsDragAndDrop: true,
+    });
+    model.data = { mdyn: [{ c1: 'A' }, { c1: 'B' }] };
     (question as unknown as { lockedRowCount: number }).lockedRowCount = 1;
     await renderMatrixDynamic(question);
     // Only the single unlocked (second) row carries a handle.
     expect(screen.getAllByTestId(DRAG_HANDLE)).toHaveLength(1);
+    // That sole unlocked row sits at the top of the UNLOCKED band; moving it
+    // up would cross into the locked leading band, which core forbids
+    // (canInsertIntoThisRow: no drop at/above a locked row).
+    const ups = screen.getAllByTestId(MOVE_UP);
+    expect(ups).toHaveLength(1);
+    expect(ups[0]!.props.accessibilityState?.disabled).toBe(true);
+    // Pressing the guarded control is a no-op: the value order is unchanged.
+    fireEvent.press(ups[0]!);
+    await settle();
+    expect(inputValues()).toEqual(['A', 'B']);
   });
 });

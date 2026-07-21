@@ -573,6 +573,10 @@ export class MatrixRemoveRowButton extends SurveyElementBase<MatrixRemoveRowButt
 type ReorderMatrixLike = QuestionMatrixDropdownModelBase & {
   moveRowByIndex(fromIndex: number, toIndex: number): void;
   visibleRows: MatrixDropdownRowModelBase[];
+  /** matrixdynamic leading locked rows; a reorder target may never land
+   * at/above this band (core's `canInsertIntoThisRow`). `undefined` on a
+   * non-dynamic matrix ⇒ treated as 0. */
+  lockedRowCount?: number;
 };
 
 interface MatrixRowDragHandleProps {
@@ -626,9 +630,15 @@ export class MatrixRowDragHandle extends SurveyElementBase<MatrixRowDragHandlePr
    * value splice — invariant 6); guarded so an out-of-range/no-op press is
    * inert even if the OS delivers a press to a disabled control. */
   private move(fromIndex: number, toIndex: number, count: number): void {
-    if (toIndex < 0 || toIndex >= count || fromIndex === toIndex) return;
+    const reorder = this.props.matrix as ReorderMatrixLike;
+    // Lower bound is the locked leading band: a target inside it would put an
+    // unlocked row at/above a locked row, which core forbids
+    // (`canInsertIntoThisRow`). `moveRowByIndex` itself does NOT guard this.
+    const lockedRowCount = reorder.lockedRowCount ?? 0;
+    if (toIndex < lockedRowCount || toIndex >= count || fromIndex === toIndex)
+      return;
     if (this.props.matrix.isInputReadOnly) return;
-    (this.props.matrix as ReorderMatrixLike).moveRowByIndex(fromIndex, toIndex);
+    reorder.moveRowByIndex(fromIndex, toIndex);
   }
 
   protected renderElement(): React.JSX.Element {
@@ -637,8 +647,13 @@ export class MatrixRowDragHandle extends SurveyElementBase<MatrixRowDragHandlePr
     const rows = reorder.visibleRows;
     const index = Array.isArray(rows) ? rows.indexOf(this.row) : -1;
     const count = Array.isArray(rows) ? rows.length : 0;
+    // Locked leading rows occupy visibleRows[0..lockedRowCount-1]; the first
+    // UNLOCKED row (index === lockedRowCount) must not move up into that band
+    // (core's `canInsertIntoThisRow`). lockedRowCount defaults to 0, so a
+    // matrix with no locked rows keeps the plain "no up on the first row".
+    const lockedRowCount = reorder.lockedRowCount ?? 0;
     const readOnly = matrix.isInputReadOnly;
-    const canUp = !readOnly && index > 0;
+    const canUp = !readOnly && index > lockedRowCount;
     const canDown = !readOnly && index >= 0 && index < count - 1;
     const matrixRecipe = this.themeContext.recipes.matrix;
     return (
@@ -647,6 +662,7 @@ export class MatrixRowDragHandle extends SurveyElementBase<MatrixRowDragHandlePr
         index={index}
         count={count}
         rowHeight={DRAG_ROW_HEIGHT}
+        lowerBound={lockedRowCount}
         onReorder={(from, to) => this.move(from, to, count)}
       >
         <View
