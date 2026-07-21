@@ -557,10 +557,14 @@ picker, no color swatch, no slider. Core's VALUE-level validation
 web; the FORMAT guarantee a browser widget provides is a different
 story — see the next section.
 
-**Migration path:** native date/time pickers are scheduled for M5 and
-`range` gets a real slider in task 4.4 (see
-`docs/IMPLEMENTATION-PLAN.md`); until then hosts needing a picker UX
-should use a custom question or collect the value as text.
+**Migration path:** native date/time pickers are scheduled for M5. The
+`slider` **question type** is now supported (task 4.4 — see the Slider
+question section below), but the text `inputType: "range"` remains a
+plain-text fallback: it is a different feature (a text question asking for
+a number in a range, not a `slider` question). Hosts wanting a real
+slider affordance should author a `slider` question; until the date/time
+pickers land, date-family fallbacks should use a custom question or
+collect the value as text.
 
 ### Date/time fallback types: format validation is component-side, not browser-side
 
@@ -1649,3 +1653,100 @@ animation (the release-time reanimated translate is the only motion).
 DIFFERENCES for the item's `readOnly`/`preview`/`error` badge backgrounds
 and the disabled-label opacity are carried through the ranking recipe
 from the model's `getItemClass` string (bridge extraction, invariant 6).
+
+## Slider question (task 4.4)
+
+The `slider` question is supported. Every value operation is driven
+**through the core model** — `setSliderValue` writes the value (a scalar
+in `single` mode, a `[lo, hi]` array in `range` mode), and step-snapping,
+min/max clamping, and range spacing/`allowSwap` all go through the
+model's own `getClosestToStepValue` / `ensureMinRangeBorders` /
+`ensureMaxRangeBorders` helpers. The renderer never reimplements that
+math (invariant 6), so committed values and `onValueChanged` events match
+web exactly.
+
+### Single mode uses `@react-native-community/slider`, not an `<input type=range>`
+
+Web renders a styled `<input type="range">`. The RN single-thumb slider
+wraps the batteries-included **`@react-native-community/slider`** (a
+required peer dependency; native single-thumb view), lazy-required so it
+is only loaded when a `slider` question actually renders. Continuous
+`onValueChange` updates a **visual draft only** (mirroring web mutating
+`renderedValue` in place during drag); the value is committed **once** on
+`onSlidingComplete` via `setSliderValue`. Web commits on the pointer-up
+of a `type=range` input the same way.
+
+### Single mode degrades to an accessible +/- stepper when the peer is absent
+
+If `@react-native-community/slider` is not installed (or unresolvable),
+the single-thumb slider renders a **non-throwing accessible +/- stepper**
+(an `adjustable` control with increment/decrement buttons and
+min/max/now values) that commits through the same `setSliderValue`
+primitive — operable and screen-reader-friendly, never a crash
+(invariant 9). Install the peer for the native slider look.
+
+### Range mode is a custom dual-thumb track (no community range slider)
+
+`@react-native-community/slider` is single-thumb only, so `sliderType:
+"range"` renders a **custom** track with two thumbs. The primary,
+always-available affordance is a pair of **a11y adjustable thumbs** with
++/- steppers (each an `adjustable` with min/max/now); moving a thumb
+recomputes `[lo, hi]` through the model's spacing/`allowSwap` enforcement,
+so the range is **fully operable without fine drag**. The web hidden
+aggregate range `<input>` (whole-range drag) has no RN analog; drag the
+individual thumbs (below) or use the steppers.
+
+### Fine drag is a device gate (gesture-handler Pan)
+
+Each range thumb additionally wraps in a react-native-gesture-handler
+`Gesture.Pan()` (reusing ranking's lazy `loadRankingDragLibs`), mapping
+horizontal translation to a value and committing **once** on release — no
+continuous per-frame model mutation (that would fight the shared-value
+animation). This layer needs a UI thread + the gesture-handler/reanimated
+peers, so it is a **device gate**: absent the peers (jest, or an
+uninstalled consumer) each thumb renders verbatim and only the a11y
+steppers drive it. The gesture is verified on the New-Arch example via
+maestro, not in jest.
+
+### Tooltip is an RN bubble; `"auto"` maps to drag/focus, not hover
+
+The thumb tooltip (`getTooltipValue(i)`) is a small RN `View` bubble above
+the thumb. `tooltipVisibility: "never"` hides it and `"always"` always
+shows it, matching web. `"auto"` on web means "show on hover **or**
+focus"; RN has no hover, so `"auto"` shows the tooltip **during
+drag/focus** only. During a single-thumb drag the bubble follows the
+thumb but its text reflects the last committed value (the native slider
+does not expose the in-flight value to the tooltip); the range thumbs
+show the live value.
+
+### Scale labels are absolutely positioned; ticks are per-label
+
+`showLabels` renders the model's `renderedLabels` as absolutely
+positioned label columns (each at `getPercent(value)%`), each with a tick
+mark and its text; a `SliderLabelItemValue` with `showValue: true` shows
+the numeric value above its text. Web's CSS-grid label track and its
+`labelTick` pseudo-elements are reproduced as RN Views. Custom labels,
+`labelFormat`, `labelCount`, and auto-generation are all model-driven and
+unchanged.
+
+### Read-only and error/preview state
+
+A read-only slider disables the community input / stepper / thumb
+steppers and `setSliderValue` no-ops at the model layer (`isAllowToChange`
+gates readOnly/disabled/preview). Like the other question types, invalid
+state reaches users through the question-chrome error text rather than a
+platform `aria-invalid` (React Native has no analog on Views).
+
+### `allowClear` is not surfaced (title-action toolbar not ported)
+
+On web, `allowClear: true` adds a clear button to the question **title
+actions** (core's `getDefaultTitleActions` → `clearValueFromUI`). This
+library's `QuestionChrome` renders the title, number, required mark,
+description, errors, and comment, but **not** the title-action toolbar, so
+the slider's clear button does not appear in v1 — the same limitation as
+any other question that surfaces affordances through title actions.
+`allowClear` still works programmatically (`question.clearValue()`);
+hosts needing a visible clear control should add one in their own chrome.
+(Overlay-backed questions — dropdown/tagbox/rating-dropdown — render their
+own in-control clear affordance via `OverlayControlBase`, which is a
+separate mechanism, not the title-action toolbar.)

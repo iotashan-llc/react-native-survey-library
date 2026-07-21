@@ -53,12 +53,13 @@ describe('SurveyRowElement — dispatch', () => {
     expect(screen.queryByTestId('unsupported-question-panel')).toBeNull();
   });
 
-  it('falls back to UnsupportedQuestion on a dispatch miss (planned type "slider"), never throwing', () => {
-    // 'slider' stays planned until M4 task 4.4 — the M1/M2 types, the whole
-    // matrix family (3.2/3.3a/3.4), and ranking (4.1) have since landed as
-    // supported, so they can no longer model a dispatch miss.
+  it('falls back to UnsupportedQuestion on a dispatch miss (planned type "signaturepad"), never throwing', () => {
+    // 'signaturepad' stays planned until M5 task 5.1 — the M1/M2 types, the
+    // whole matrix family (3.2/3.3a/3.4), ranking (4.1), and slider (4.4)
+    // have since landed as supported, so they can no longer model a
+    // dispatch miss.
     const { model, question } = firstQuestion({
-      elements: [{ type: 'slider', name: 'q-text' }],
+      elements: [{ type: 'signaturepad', name: 'q-text' }],
     });
     render(
       <SurveyRowElement
@@ -99,7 +100,7 @@ describe('SurveyRowElement — QuestionChrome at the dispatch boundary (M1 dispa
 
   it('the unsupported fallback is wrapped in chrome too (title chrome renders around the fallback panel)', () => {
     const { model, question } = firstQuestion({
-      elements: [{ type: 'slider', name: 'q-text', title: 'Text Title' }],
+      elements: [{ type: 'signaturepad', name: 'q-text', title: 'Text Title' }],
     });
     render(
       <SurveyRowElement

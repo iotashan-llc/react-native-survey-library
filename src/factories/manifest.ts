@@ -290,7 +290,15 @@ export const MODEL_TYPE_CLASSIFICATION: Readonly<
       fixtureJson: { type: 'ranking', choices: ['a', 'b'] },
     },
   },
-  slider: { status: 'planned', milestone: 'M4', reason: 'task 4.4' },
+  slider: {
+    status: 'supported',
+    milestone: 'M4',
+    reason: 'task 4.4',
+    runtimeRenderable: {
+      expectedTemplate: 'slider',
+      expectedRoute: 'template',
+    },
+  },
 
   // Phase 5 — v0.5-v0.9 (M5).
   signaturepad: { status: 'planned', milestone: 'M5', reason: 'task 5.1' },

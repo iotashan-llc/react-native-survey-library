@@ -5,9 +5,11 @@
  *  - the `ranking` question (task 4.1) now renders as a SUPPORTED question —
  *    its rows + move controls, NOT the unsupported fallback (default mode),
  *  - a second `ranking` in selectToRank mode renders its two-area layout,
- *  - a genuinely still-unsupported type (`slider`, M4 task 4.4) renders the
- *    NON-THROWING fallback panel (invariant 9) — so the graceful-fallback
- *    demo survives ranking becoming supported.
+ *  - the `slider` questions (task 4.4) render as SUPPORTED — the single-thumb
+ *    community input and the range dual-thumb track, NOT the fallback,
+ *  - a genuinely still-unsupported type (`signaturepad`, M5 task 5.1) renders
+ *    the NON-THROWING fallback panel (invariant 9) — so the graceful-fallback
+ *    demo survives slider becoming supported.
  *
  * SCOPE NOTE: jest has no Yoga; SurveyRow defers children one frame until
  * onLayout measures the row (1.3-design D3). This harness hand-feeds every
@@ -117,8 +119,21 @@ describe('kitchen-sink page 5 — ranking selectToRank two-area mode', () => {
   });
 });
 
+describe('kitchen-sink page 5 — slider is supported (single + range)', () => {
+  it('renders the single-thumb community input and the range dual-thumb, never the fallback', async () => {
+    await renderFallbackPage();
+    expect(screen.getByTestId('sv-slider-volume')).toBeTruthy();
+    // single-thumb community slider (root manual mock)
+    expect(screen.getByTestId('sv-slider-input-volume')).toBeTruthy();
+    expect(screen.getByTestId('sv-slider-priceRange')).toBeTruthy();
+    // range dual-thumb — two a11y adjustable thumbs (Layer 1)
+    expect(screen.getByTestId('sv-slider-thumb-priceRange-0')).toBeTruthy();
+    expect(screen.getByTestId('sv-slider-thumb-priceRange-1')).toBeTruthy();
+  });
+});
+
 describe('kitchen-sink page 5 — a genuinely unsupported type still falls back', () => {
-  it('the slider question renders the NON-THROWING fallback panel', async () => {
+  it('the signaturepad question renders the NON-THROWING fallback panel', async () => {
     await renderFallbackPage();
     expect(screen.getByTestId('unsupported-question-panel')).toBeTruthy();
   });

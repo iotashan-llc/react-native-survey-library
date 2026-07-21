@@ -31,6 +31,7 @@ import { buildOverlayRecipe, type OverlayRecipe } from './overlay';
 import { buildListItemRecipe, type ListItemRecipe } from './listItem';
 import { buildMatrixRecipe, type MatrixRecipe } from './matrix';
 import { buildRankingRecipe, type RankingRecipe } from './ranking';
+import { buildSliderRecipe, type SliderRecipe } from './slider';
 
 export interface Recipes {
   item: ItemRecipe;
@@ -58,6 +59,8 @@ export interface Recipes {
   matrix: MatrixRecipe;
   /** Ranking item row: handle/rank-number/label + selectToRank areas (task 4.1). */
   ranking: RankingRecipe;
+  /** Slider track/thumb/tooltip/label + single-mode stepper fallback (task 4.4). */
+  slider: SliderRecipe;
 }
 
 export function buildRecipes(
@@ -80,6 +83,7 @@ export function buildRecipes(
     listItem: buildListItemRecipe(resolved, buildCtx),
     matrix: buildMatrixRecipe(resolved, buildCtx),
     ranking: buildRankingRecipe(resolved, buildCtx),
+    slider: buildSliderRecipe(resolved, buildCtx),
   };
 }
 
@@ -99,3 +103,4 @@ export * from './overlay';
 export * from './listItem';
 export * from './matrix';
 export * from './ranking';
+export * from './slider';

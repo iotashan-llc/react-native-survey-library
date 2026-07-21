@@ -120,6 +120,16 @@ export interface RankingStyleOverrides {
   label?: StyleProp<TextStyle>;
 }
 
+/** Slider-question slots (task 4.4: `SliderQuestion`). */
+export interface SliderStyleOverrides {
+  container?: StyleProp<ViewStyle>;
+  track?: StyleProp<ViewStyle>;
+  activeBar?: StyleProp<ViewStyle>;
+  thumb?: StyleProp<ViewStyle>;
+  tooltip?: StyleProp<ViewStyle>;
+  label?: StyleProp<ViewStyle>;
+}
+
 /** List-picker slots (task 2.1: `ListPicker`). */
 export interface ListItemStyleOverrides {
   row?: StyleProp<ViewStyle>;
@@ -143,6 +153,7 @@ export interface SurveyComponentStyles {
   rating?: RatingStyleOverrides;
   buttonGroup?: ButtonGroupStyleOverrides;
   ranking?: RankingStyleOverrides;
+  slider?: SliderStyleOverrides;
   listItem?: ListItemStyleOverrides;
 }
 
