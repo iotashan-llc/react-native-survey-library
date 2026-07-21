@@ -27,6 +27,7 @@ import { createOverlayStack } from '../../overlay/stack';
 import type { OverlayPayload } from '../../overlay/popup-bridge';
 import { registerDialogHost } from '../../overlay/dialog-adapter';
 import { setDiagnosticHandler } from '../../diagnostics';
+import { QuestionChrome } from '../../components/QuestionChrome';
 import {
   MatrixDynamicQuestion,
   MatrixDynamicQuestionElement,
@@ -639,5 +640,145 @@ describe('matrixdynamic — mobile stacked-card layout (§3b/§3e, 3.1b)', () =>
     // No cards, the placeholder shows (with its add button gated on showAddRow).
     expect(screen.getByTestId('matrixdynamic-placeholder')).toBeTruthy();
     expect(screen.getByTestId('matrixdynamic-add-placeholder')).toBeTruthy();
+  });
+});
+
+/** The validate()/hasErrors() surface the 3.4b edge cases drive (kept as one
+ * structural view, mirroring `MatrixDynamicLike`). */
+interface MatrixValidateLike extends MatrixDynamicLike {
+  validate(): boolean;
+  hasErrors(fireCallback?: boolean): boolean;
+  isRequired: boolean;
+  minRowCount: number;
+}
+
+const KEY_DUP_TEXT = 'This value should be unique.';
+const MIN_ROW_TEXT = 'Please fill in at least 2 row(s).';
+
+describe('matrixdynamic — 3.4b keyName duplication surfaces inline in the offending cells (§2a chrome-less QuestionErrors)', () => {
+  it('duplicate keyName values render the KeyDuplicationError inline in EACH offending cell; fixing clears it', async () => {
+    const { model, question } = createMatrixDynamic({ keyName: 'c1' });
+    const q = question as unknown as MatrixValidateLike;
+    model.data = { mdyn: [{ c1: 'dup' }, { c1: 'dup' }] };
+    await renderMatrixDynamic(question);
+    // Before validation core has not run the duplication check yet.
+    expect(screen.queryAllByText(KEY_DUP_TEXT)).toHaveLength(0);
+    // Core adds a KeyDuplicationError to the cell question in BOTH offending
+    // rows on validate (survey-core question_matrixdynamictests
+    // "Matrixdynamic duplicationError"). isValueInColumnDuplicated → addError
+    // lands on `visibleRows[i].getQuestionByColumnName('c1')`, which IS the
+    // rendered cell question, so the 3.3a per-cell QuestionErrors renders it.
+    act(() => {
+      q.validate();
+    });
+    await flush();
+    expect(screen.getAllByText(KEY_DUP_TEXT)).toHaveLength(2);
+    // Fix the duplicate → re-validate → the inline errors clear in both cells
+    // (removeDuplicatedErrorsInRows), proving the cell QuestionErrors is
+    // reactive in BOTH directions.
+    act(() => {
+      q.value = [{ c1: 'a' }, { c1: 'b' }];
+      q.validate();
+    });
+    await settle();
+    expect(screen.queryAllByText(KEY_DUP_TEXT)).toHaveLength(0);
+  });
+
+  it('unique keyName values never produce the inline error', async () => {
+    const { model, question } = createMatrixDynamic({ keyName: 'c1' });
+    const q = question as unknown as MatrixValidateLike;
+    model.data = { mdyn: [{ c1: 'a' }, { c1: 'b' }] };
+    await renderMatrixDynamic(question);
+    act(() => {
+      q.validate();
+    });
+    await flush();
+    expect(screen.queryAllByText(KEY_DUP_TEXT)).toHaveLength(0);
+  });
+});
+
+describe('matrixdynamic — 3.4b detailPanelShowOnAdding auto-expands the new row detail on add (§3c)', () => {
+  it('adding a row auto-expands ITS detail panel (core addRow → showDetailPanel)', async () => {
+    const { question } = createDetailDynamic({
+      detailPanelShowOnAdding: true,
+      rowCount: 1,
+    });
+    await renderMatrixDynamic(question);
+    // Nothing expanded on the initial single row.
+    expect(screen.queryAllByTestId(DETAIL_BAND)).toHaveLength(0);
+    fireEvent.press(screen.getByTestId('matrixdynamic-add-bottom'));
+    await settle();
+    layoutRows();
+    await flush();
+    expect(question.rowCount).toBe(2);
+    // The newly-added (last) row's detail panel is expanded automatically —
+    // exactly one detail band, and its real detail question renders.
+    expect(screen.getAllByTestId(DETAIL_BAND)).toHaveLength(1);
+    expect(screen.getByTestId('d1-input')).toBeTruthy();
+  });
+
+  it('WITHOUT detailPanelShowOnAdding, adding a row leaves the detail collapsed', async () => {
+    const { question } = createDetailDynamic({ rowCount: 1 });
+    await renderMatrixDynamic(question);
+    fireEvent.press(screen.getByTestId('matrixdynamic-add-bottom'));
+    await settle();
+    layoutRows();
+    await flush();
+    expect(question.rowCount).toBe(2);
+    expect(screen.queryAllByTestId(DETAIL_BAND)).toHaveLength(0);
+  });
+});
+
+/** Render the matrix wrapped in `QuestionChrome` — the production path
+ * (SurveyRowElement wraps every dispatched question in chrome), where the
+ * matrix's OWN question-level errors surface through the chrome error panel. */
+async function renderMatrixInChrome(
+  question: MatrixDynamicLike
+): Promise<void> {
+  render(
+    <QuestionChrome question={question as unknown as Question} creator={{}}>
+      <MatrixDynamicQuestionElement question={question} creator={{}} />
+    </QuestionChrome>
+  );
+  await flush();
+  layoutGrid();
+  await flush();
+}
+
+describe('matrixdynamic — 3.4b minRowCount validation surfaces the question-level error via chrome', () => {
+  it('a required matrix below minRowCount shows the MinRowCountError through the question chrome', async () => {
+    const { model, question } = createMatrixDynamic({
+      isRequired: true,
+      minRowCount: 2,
+    });
+    // One filled row + one (min-padded) empty row → non-empty count 1 <
+    // minRowCount 2, and the matrix itself is non-empty (no plain required
+    // error competing).
+    model.data = { mdyn: [{ c1: 'x' }] };
+    const q = question as unknown as MatrixValidateLike;
+    await renderMatrixInChrome(question);
+    expect(screen.queryByText(MIN_ROW_TEXT)).toBeNull();
+    // Explicit validation (isOnValueChanged === false) pushes
+    // MinRowCountError onto the QUESTION; the chrome error panel renders it.
+    act(() => {
+      q.hasErrors(true);
+    });
+    await flush();
+    expect(screen.getByText(MIN_ROW_TEXT)).toBeTruthy();
+  });
+
+  it('with enough non-empty rows there is no MinRowCountError', async () => {
+    const { model, question } = createMatrixDynamic({
+      isRequired: true,
+      minRowCount: 2,
+    });
+    model.data = { mdyn: [{ c1: 'a' }, { c1: 'b' }] };
+    const q = question as unknown as MatrixValidateLike;
+    await renderMatrixInChrome(question);
+    act(() => {
+      q.hasErrors(true);
+    });
+    await flush();
+    expect(screen.queryByText(MIN_ROW_TEXT)).toBeNull();
   });
 });

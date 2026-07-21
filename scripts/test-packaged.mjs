@@ -92,7 +92,10 @@ function writeReactNativeStub(consumerDir) {
       '// reactivity), StyleSheet (theme-rn recipes), I18nManager/Platform\n' +
       '// (theme-rn provider), Image (1.6 LogoImage), Pressable (1.5\n' +
       '// ActionButton), Switch (1.13 boolean), TextInput (1.7 chrome),\n' +
-      '// Linking (security URL policy).\n' +
+      '// Linking (security URL policy), PixelRatio (1.4 SurveyRowElement\n' +
+      '// pixel-grid width rounding), FlatList (2.1 ListPicker),\n' +
+      '// Modal/SafeAreaView/KeyboardAvoidingView/AccessibilityInfo/\n' +
+      '// findNodeHandle (2.x OverlayHost + OverlayControlBase presenter).\n' +
       "export const View = 'View';\n" +
       "export const Text = 'Text';\n" +
       "export const Image = 'Image';\n" +
@@ -122,7 +125,32 @@ function writeReactNativeStub(consumerDir) {
       // Task 1.1's <Survey> root (src/survey/Survey.tsx) imports
       // ScrollView as a VALUE (its LayoutChangeEvent/NativeScrollEvent
       // imports are type-only and erased).
-      "export const ScrollView = 'ScrollView';\n"
+      "export const ScrollView = 'ScrollView';\n" +
+      // Task 1.4's SurveyRowElement imports PixelRatio as a VALUE and calls
+      // `roundToNearestPixel` to snap resolved width lengths to the pixel
+      // grid; the other methods round out the real RN API shape so a future
+      // package-root-reachable caller finds them present + functional.
+      'export const PixelRatio = {\n' +
+      '  get: () => 1,\n' +
+      '  getFontScale: () => 1,\n' +
+      '  roundToNearestPixel: (n) => n,\n' +
+      '  getPixelSizeForLayoutSize: (n) => n,\n' +
+      '};\n' +
+      // 2.x overlay presenter chain (OverlayHost is reachable via the 1.1
+      // <Survey> root; ListPicker via the descriptor table; OverlayControlBase
+      // via the dropdown/tagbox questions). Components are string tags like
+      // View/Text; findNodeHandle/AccessibilityInfo are only invoked inside
+      // method bodies no 7a-7f case exercises, so no-op shapes suffice.
+      "export const FlatList = 'FlatList';\n" +
+      "export const Modal = 'Modal';\n" +
+      "export const SafeAreaView = 'SafeAreaView';\n" +
+      "export const KeyboardAvoidingView = 'KeyboardAvoidingView';\n" +
+      'export const findNodeHandle = () => null;\n' +
+      'export const AccessibilityInfo = {\n' +
+      '  setAccessibilityFocus: () => {},\n' +
+      '  announceForAccessibility: () => {},\n' +
+      '  isScreenReaderEnabled: async () => false,\n' +
+      '};\n'
   );
 }
 
@@ -191,25 +219,42 @@ console.log('7c: UNEXPECTED SUCCESS');
   {
     id: '7d',
     description:
-      "registrar side effect survives packaging: import('<pkg>') registers exactly the supported descriptor-table keys " +
-      '(design: docs/design/0.5-factories.md, "Registration & packaging" — must track src/factories/descriptors.ts as milestones land)',
+      "registrar side effect survives packaging: import('<pkg>') yields a sorted, deduped, all-string registry containing the stable core dispatch keys " +
+      '(design: docs/design/0.5-factories.md, "Registration & packaging" — structural + core-subset check, so new-milestone types need no edit here)',
     script: `${RN_PREAMBLE}
 const pkg = await import(${JSON.stringify(PKG_NAME)});
-const expectedQuestionTypes = JSON.stringify(['boolean', 'empty', 'expression', 'sv-boolean-checkbox', 'sv-boolean-radio']);
-const expectedElementTypes = JSON.stringify(['survey-header', 'sv-logo-image', 'sv-string-viewer']);
-const actualQuestionTypes = JSON.stringify(pkg.RNQuestionFactory.getAllTypes());
-const actualElementTypes = JSON.stringify(pkg.RNElementFactory.getAllTypes());
-if (actualQuestionTypes !== expectedQuestionTypes) {
-  throw new Error(
-    'RNQuestionFactory: expected ' + expectedQuestionTypes + ' got ' + actualQuestionTypes
-  );
-}
-if (actualElementTypes !== expectedElementTypes) {
-  throw new Error(
-    'RNElementFactory: expected ' + expectedElementTypes + ' got ' + actualElementTypes
-  );
-}
-console.log('7d: OK', actualQuestionTypes, actualElementTypes);
+// The built package IS the source of truth for the registered set (the
+// descriptor table is compiled in + register-all runs at import). Rather
+// than a frozen list that restales every milestone, assert the packaging
+// side-effect STRUCTURALLY: a sorted, deduped, all-string registry that
+// CONTAINS the stable core dispatch keys. New milestones add keys freely;
+// this catches a core type dropping out of the packaged registrar.
+const qTypes = pkg.RNQuestionFactory.getAllTypes();
+const eTypes = pkg.RNElementFactory.getAllTypes();
+const requiredQuestionTypes = ['boolean', 'checkbox', 'comment', 'dropdown', 'empty', 'expression', 'html', 'image', 'imagepicker', 'matrix', 'matrixdropdown', 'matrixdynamic', 'multipletext', 'paneldynamic', 'radiogroup', 'rating', 'tagbox', 'text'];
+const requiredElementTypes = ['survey-header', 'sv-logo-image', 'sv-string-viewer'];
+const assertRegistry = (label, actual, required) => {
+  if (!Array.isArray(actual) || actual.length === 0) {
+    throw new Error(label + ': empty or non-array registry: ' + JSON.stringify(actual));
+  }
+  if (!actual.every((k) => typeof k === 'string' && k.length > 0)) {
+    throw new Error(label + ': non-string key in ' + JSON.stringify(actual));
+  }
+  const sorted = [...actual].slice().sort();
+  if (JSON.stringify(actual) !== JSON.stringify(sorted)) {
+    throw new Error(label + ': not sorted: ' + JSON.stringify(actual));
+  }
+  if (new Set(actual).size !== actual.length) {
+    throw new Error(label + ': duplicate keys in ' + JSON.stringify(actual));
+  }
+  const missing = required.filter((k) => !actual.includes(k));
+  if (missing.length > 0) {
+    throw new Error(label + ': missing core keys ' + JSON.stringify(missing) + ' in ' + JSON.stringify(actual));
+  }
+};
+assertRegistry('RNQuestionFactory', qTypes, requiredQuestionTypes);
+assertRegistry('RNElementFactory', eTypes, requiredElementTypes);
+console.log('7d: OK', JSON.stringify(qTypes), JSON.stringify(eTypes));
 `,
     expectSuccess: true,
   },
