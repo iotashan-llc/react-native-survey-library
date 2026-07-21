@@ -163,6 +163,31 @@ exports[`curated recipe golden snapshots ContrastLight: recipes build to a stabl
       },
     },
   },
+  "imagemap": {
+    "fragments": {
+      "container": {
+        "alignSelf": "stretch",
+        "position": "relative",
+      },
+      "fallback": {
+        "rowGap": 4,
+      },
+      "fallbackText": {
+        "color": "rgba(0, 0, 0, 1)",
+        "fontSize": 16,
+      },
+      "image": {},
+      "imageBox": {
+        "position": "relative",
+      },
+    },
+    "idleFill": "transparent",
+    "idleStroke": "transparent",
+    "idleStrokeWidth": 0,
+    "selectedFill": "rgba(255, 216, 77, 1)",
+    "selectedStroke": "rgba(0, 0, 0, 1)",
+    "selectedStrokeWidth": 1,
+  },
   "input": {
     "fragments": {
       "base": {
@@ -1671,6 +1696,31 @@ exports[`curated recipe golden snapshots DefaultLight: recipes build to a stable
       },
     },
   },
+  "imagemap": {
+    "fragments": {
+      "container": {
+        "alignSelf": "stretch",
+        "position": "relative",
+      },
+      "fallback": {
+        "rowGap": 4,
+      },
+      "fallbackText": {
+        "color": "rgba(0, 0, 0, 0.45)",
+        "fontSize": 16,
+      },
+      "image": {},
+      "imageBox": {
+        "position": "relative",
+      },
+    },
+    "idleFill": "transparent",
+    "idleStroke": "transparent",
+    "idleStrokeWidth": 0,
+    "selectedFill": "rgba(25, 179, 148, 0.1)",
+    "selectedStroke": "rgba(25, 179, 148, 1)",
+    "selectedStrokeWidth": 1,
+  },
   "input": {
     "fragments": {
       "base": {
@@ -3178,6 +3228,31 @@ exports[`curated recipe golden snapshots LayeredDark: recipes build to a stable 
         "lineHeight": 40,
       },
     },
+  },
+  "imagemap": {
+    "fragments": {
+      "container": {
+        "alignSelf": "stretch",
+        "position": "relative",
+      },
+      "fallback": {
+        "rowGap": 4,
+      },
+      "fallbackText": {
+        "color": "rgba(117, 120, 140, 1)",
+        "fontSize": 16,
+      },
+      "image": {},
+      "imageBox": {
+        "position": "relative",
+      },
+    },
+    "idleFill": "transparent",
+    "idleStroke": "transparent",
+    "idleStrokeWidth": 0,
+    "selectedFill": "rgba(164, 127, 243, 0.1)",
+    "selectedStroke": "rgba(164, 127, 243, 1)",
+    "selectedStrokeWidth": 1,
   },
   "input": {
     "fragments": {
@@ -4783,6 +4858,31 @@ exports[`curated recipe golden snapshots SharpDark: recipes build to a stable sn
       },
     },
   },
+  "imagemap": {
+    "fragments": {
+      "container": {
+        "alignSelf": "stretch",
+        "position": "relative",
+      },
+      "fallback": {
+        "rowGap": 4,
+      },
+      "fallbackText": {
+        "color": "rgba(255, 255, 255, 0.5)",
+        "fontSize": 16,
+      },
+      "image": {},
+      "imageBox": {
+        "position": "relative",
+      },
+    },
+    "idleFill": "transparent",
+    "idleStroke": "transparent",
+    "idleStrokeWidth": 0,
+    "selectedFill": "rgba(0, 0, 0, 0.35)",
+    "selectedStroke": "rgba(16, 226, 255, 1)",
+    "selectedStrokeWidth": 1,
+  },
   "input": {
     "fragments": {
       "base": {
@@ -6274,6 +6374,31 @@ exports[`curated recipe golden snapshots ThreeDimensionalLight: recipes build to
         "lineHeight": 40,
       },
     },
+  },
+  "imagemap": {
+    "fragments": {
+      "container": {
+        "alignSelf": "stretch",
+        "position": "relative",
+      },
+      "fallback": {
+        "rowGap": 4,
+      },
+      "fallbackText": {
+        "color": "rgba(0, 0, 0, 0.45)",
+        "fontSize": 16,
+      },
+      "image": {},
+      "imageBox": {
+        "position": "relative",
+      },
+    },
+    "idleFill": "transparent",
+    "idleStroke": "transparent",
+    "idleStrokeWidth": 0,
+    "selectedFill": "rgba(217, 74, 100, 0.1)",
+    "selectedStroke": "rgba(217, 74, 100, 1)",
+    "selectedStrokeWidth": 1,
   },
   "input": {
     "fragments": {

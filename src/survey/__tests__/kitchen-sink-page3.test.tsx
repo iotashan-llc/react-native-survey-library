@@ -115,6 +115,22 @@ describe('kitchen-sink page 3 — static panel `scores` (expression questions)',
   });
 });
 
+describe('kitchen-sink page 3 — imagemap `region` (task 5.4)', () => {
+  it('dispatches to the SUPPORTED imagemap renderer — base image + container, not the unsupported fallback', async () => {
+    await renderPage3();
+    // Chrome title text.
+    expect(screen.getByText(/Tap a region \(imagemap/)).toBeTruthy();
+    // The imagemap renders its container + policy-gated base image through
+    // the full row -> dispatch chain — NOT the unsupported fallback panel.
+    // (jest fires no native image decode, so the svg hotspot overlay only
+    // mounts once onLoad reports the natural size — covered by the
+    // component suite; here the composition/dispatch contract is the gate.)
+    expect(screen.getByTestId('imagemap-container-region')).toBeTruthy();
+    expect(screen.getByTestId('imagemap-image-region')).toBeTruthy();
+    expect(screen.queryByTestId('unsupported-question-panel')).toBeNull();
+  });
+});
+
 describe('kitchen-sink page 3 — paneldynamic `devices`', () => {
   it('renders the title, the panel body (Model/OS inputs), and the add button', async () => {
     await renderPage3();

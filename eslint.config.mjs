@@ -298,6 +298,35 @@ export default defineConfig([
     },
   },
   {
+    // `ImageMapQuestion` (task 5.4) is the SECOND sanctioned
+    // `react-native-svg` sink: it lazy-requires the shape primitives
+    // (`Svg`/`Rect`/`Circle`/`Polygon`) to draw the tappable hotspot
+    // overlay — a fundamentally geometric use, distinct from RNIcon's
+    // sanitized-markup `SvgXml`. Re-narrow to the survey-core + native-html
+    // restrictions here (same seam pattern as the RNIcon exception above).
+    files: ['src/questions/ImageMapQuestion.tsx'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            ...SURVEY_CORE_RESTRICTED_IMPORTS.paths,
+            ...NATIVE_HTML_RESTRICTED_IMPORTS.paths,
+          ],
+          patterns: [
+            ...SURVEY_CORE_RESTRICTED_IMPORTS.patterns,
+            ...NATIVE_HTML_RESTRICTED_IMPORTS.patterns,
+          ],
+        },
+      ],
+      'no-restricted-syntax': [
+        'error',
+        ...SURVEY_CORE_RESTRICTED_SYNTAX,
+        ...NATIVE_HTML_RESTRICTED_SYNTAX,
+      ],
+    },
+  },
+  {
     // Design: docs/design/0.6-theme-core.md, "Module layout" — theme-core
     // is pure TS with ZERO `react-native` imports (theme-rn, 0.7, is where
     // tokens become StyleSheet). This block's `files` glob is a SUBSET of

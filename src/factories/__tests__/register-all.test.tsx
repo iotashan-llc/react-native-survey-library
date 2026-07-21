@@ -191,6 +191,7 @@ describe('registerAll (module side effect)', () => {
       'expression',
       'html',
       'image',
+      'imagemap',
       'imagepicker',
       'matrix',
       'matrixdropdown',

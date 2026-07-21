@@ -139,6 +139,14 @@ export interface SignatureStyleOverrides {
   image?: StyleProp<ImageStyle>;
 }
 
+/** Image-map slots (task 5.4: `ImageMapQuestion`). */
+export interface ImageMapStyleOverrides {
+  container?: StyleProp<ViewStyle>;
+  imageBox?: StyleProp<ViewStyle>;
+  image?: StyleProp<ImageStyle>;
+  fallback?: StyleProp<ViewStyle>;
+}
+
 /** List-picker slots (task 2.1: `ListPicker`). */
 export interface ListItemStyleOverrides {
   row?: StyleProp<ViewStyle>;
@@ -164,6 +172,7 @@ export interface SurveyComponentStyles {
   ranking?: RankingStyleOverrides;
   slider?: SliderStyleOverrides;
   signature?: SignatureStyleOverrides;
+  imagemap?: ImageMapStyleOverrides;
   listItem?: ListItemStyleOverrides;
 }
 
