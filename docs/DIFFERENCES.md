@@ -1914,6 +1914,91 @@ stored value, never a crash (invariant 9). `storeDataAsText: false`
 ported** — RN always stores the data URL as text; hosts needing an upload
 should read `question.value` (the data URL) and upload it themselves.
 
+## File question (task 5.2)
+
+The `file` question is supported. Web renders a hidden `<input type=file>`
+(with `capture` for the camera) plus a drag-and-drop area and a getUserMedia
+`<video>` preview for in-page photo capture. RN has none of those, so the
+renderer drives the platform's **native pickers** instead: `expo-document-picker`
+for local files and `expo-image-picker`'s `launchCameraAsync` for the camera.
+Both are **required, batteries-included peerDependencies**, **lazy-required**
+so they load only when a `file` question actually renders.
+
+survey-core still owns the entire file state machine. The renderer never
+binds a picker result to `question.value` directly — it converts each picked
+asset to a `File` and calls `question.loadFiles(files, sourceType)`, and core
+validates `maxSize`/`maxFiles`, stores the value as `[{ name, type, content }]`,
+mirrors it into `previewValue`, builds the paged `renderedPages`, and drives
+`currentState`/`isUploading` exactly as on web.
+
+### `sourceType` maps to the native pickers (no web camera pipeline)
+
+| `sourceType` | RN behavior |
+| --- | --- |
+| `"file"` (default) | a single **Choose** action → `expo-document-picker` `getDocumentAsync` (`allowMultiple` → `multiple`, `renderedAcceptedTypes` → the picker's `type` filter). |
+| `"camera"` | a single **Take photo** action → `expo-image-picker` `launchCameraAsync`, after `requestCameraPermissionsAsync()` (a denied permission is a silent no-op). |
+| `"file-camera"` | **both** actions side by side. |
+
+Web's model camera methods (`startVideo`/`snapPicture`/`flipCamera`, the
+getUserMedia `<video>` element, the in-page `changeCamera`/`closeCamera`
+controls, `allowCameraAccess`) are **bypassed entirely** — a capture flows
+through the OS camera UI and then `loadFiles(files, "camera")`, the same model
+entry point web's `snapPicture` uses. `renderCapture`/`isPlayingVideo` and the
+live video overlay are therefore not rendered.
+
+### `storeDataAsText` (default) stores base64; upload mode needs a host handler
+
+On the default `storeDataAsText: true` path, each picked asset is read to a
+`data:<type>;base64,…` string and stored as `{ name, type, content }` — the
+same value shape and content as web. The renderer builds a real `File` from
+each asset via `fetch(uri).blob()` so `file.size` feeds core's `maxSize` check
+and core's runtime `FileReader` reads the true bytes. `storeDataAsText: false`
+(server upload) routes through core's `onUploadFiles` event exactly as on web —
+the **host must implement `SurveyModel.onUploadFiles`**; without it core
+reports its usual "no upload handler" error (web behaves identically).
+
+### Preview: image thumbnails (URI-policy-gated) + a name decorator otherwise
+
+`allowShowPreview`/`allowImagesPreview` drive the preview, same as web.
+An **image** file (`canPreviewImage` — an `allowImagesPreview` question whose
+file is a `data:image` / `image/*` type) renders a thumbnail through the
+**central URI policy** (`image` context, fail-closed, invariant 8) — a blocked
+or **oversized** `data:` image (the policy caps decoded `data:` images at 1 MB)
+drops the thumbnail to the name decorator + an `image-uri-blocked` diagnostic,
+never a broken image. A **non-image** file renders a name **decorator** (the
+file name; web's file-type SVG glyph has no bundled RN analog). Each preview
+item carries a per-file **remove** control (`question.removeFile`) unless
+read-only.
+
+### Multiple files paginate; the responsive page-fit is not ported
+
+Multiple files paginate through core's `fileNavigator` (prev / `n of m` /
+next), driven by core's own navigator actions. Web measures the file-list DOM
+to fit as many thumbnails per page as the width allows (`processResponsiveness`);
+RN has no DOM to measure, so `pageSize` stays at core's default (**one file per
+page**) and the navigator pages one at a time.
+
+### Read-only and drag-and-drop
+
+A **read-only** question shows the stored files as a read-only preview (no
+choose/remove affordances); a read-only empty question shows the
+`noFileChosenCaption` placeholder. **Drag-and-drop** upload (`onDrop`/`dragArea`/
+`isDragging`) is a desktop-web affordance with no touch analog and is **not
+ported**. Folder upload and clipboard paste are likewise web-only and not
+ported.
+
+### The pickers are a device gate; absence degrades gracefully
+
+`expo-document-picker` and `expo-image-picker` are declared peerDependencies
+but are **not installed** here, so the native pick + the `fetch(file://)` blob
+read are a pending **device gate** (not yet verified); jest drives OUR contract
+(the assets handed to `loadFiles`, the resulting value/preview/remove/
+pagination) through the pickers' root manual mocks. When the peer needed for
+the current `sourceType` is **absent** — jest without it, or a consumer who has
+not installed it — the loader resolves null and the choose action degrades to a
+**non-throwing DISABLED button** + a `file-picker-lib-unavailable` diagnostic,
+never a crash (invariant 9). Install both peers to enable choosing.
+
 ## Imagemap question (task 5.4)
 
 The `imagemap` question is supported. Web renders an `<img>` plus an

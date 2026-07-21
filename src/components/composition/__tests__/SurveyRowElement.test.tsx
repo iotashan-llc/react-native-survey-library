@@ -53,13 +53,15 @@ describe('SurveyRowElement — dispatch', () => {
     expect(screen.queryByTestId('unsupported-question-panel')).toBeNull();
   });
 
-  it('falls back to UnsupportedQuestion on a dispatch miss (planned type "file"), never throwing', () => {
-    // 'file' stays planned until M5 task 5.2 — the M1/M2 types, the whole
-    // matrix family (3.2/3.3a/3.4), ranking (4.1), slider (4.4), and
-    // signaturepad (5.1) have since landed as supported, so they can no
-    // longer model a dispatch miss.
+  it('falls back to UnsupportedQuestion on a dispatch miss (internal-base type "matrixdropdownbase"), never throwing', () => {
+    // Every standalone survey-core question type is now supported (file, the
+    // last M5 holdout, landed in 5.2). `matrixdropdownbase` is an
+    // internal-base class — a real serializer type with a creator that is
+    // never used as a standalone JSON `type` and is never registered as a
+    // renderer (manifest classification 'internal-base') — so it durably
+    // models a dispatch miss without rotting the way file/imagepicker did.
     const { model, question } = firstQuestion({
-      elements: [{ type: 'file', name: 'q-text' }],
+      elements: [{ type: 'matrixdropdownbase', name: 'q-text' }],
     });
     render(
       <SurveyRowElement
@@ -100,7 +102,9 @@ describe('SurveyRowElement — QuestionChrome at the dispatch boundary (M1 dispa
 
   it('the unsupported fallback is wrapped in chrome too (title chrome renders around the fallback panel)', () => {
     const { model, question } = firstQuestion({
-      elements: [{ type: 'file', name: 'q-text', title: 'Text Title' }],
+      elements: [
+        { type: 'matrixdropdownbase', name: 'q-text', title: 'Text Title' },
+      ],
     });
     render(
       <SurveyRowElement

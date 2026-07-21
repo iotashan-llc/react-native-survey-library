@@ -31,6 +31,7 @@ describe('DESCRIPTOR_TABLE (M0 + M1)', () => {
       'dropdown',
       'empty',
       'expression',
+      'file',
       'html',
       'image',
       'imagemap',

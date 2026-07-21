@@ -310,7 +310,15 @@ export const MODEL_TYPE_CLASSIFICATION: Readonly<
       expectedRoute: 'template',
     },
   },
-  file: { status: 'planned', milestone: 'M5', reason: 'task 5.2' },
+  file: {
+    status: 'supported',
+    milestone: 'M5',
+    reason: 'task 5.2',
+    runtimeRenderable: {
+      expectedTemplate: 'file',
+      expectedRoute: 'template',
+    },
+  },
   // html: pulled forward to M2 (see Phase 2 section above).
   imagemap: {
     status: 'supported',

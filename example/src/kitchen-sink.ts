@@ -9,10 +9,10 @@
  * rich content), the M3 3.2 simple matrix (single/multi-select + rubric
  * cells), ranking (drag-to-reorder + selectToRank, M4 4.1), slider
  * (single + range dual-thumb, M4 4.4), signaturepad (WebView signature
- * pad, M5 5.1), completedHtml. A single genuinely-unsupported type (file,
- * planned for M5 task 5.2) sits on the last page to demonstrate the
- * NON-THROWING fallback panel (invariant 9); the rest of the survey stays
- * representative.
+ * pad, M5 5.1), file (native document/camera pickers, M5 5.2),
+ * completedHtml. Every question type on the survey now renders as a
+ * SUPPORTED native question; the graceful-fallback path (invariant 9) is
+ * exercised by the unit suites rather than a live unsupported demo.
  */
 
 // 1x1 blue PNG — data: logos involve no network fetch (URI policy).
@@ -554,13 +554,21 @@ export const kitchenSinkJson = {
           signatureHeight: 180,
         },
         {
-          // A genuinely still-unsupported type (file, planned for M5 task
-          // 5.2): the web reference renders it, RN shows the NON-THROWING
-          // fallback panel (invariant 9). This is the graceful-fallback demo
-          // (signaturepad is supported as of 5.1).
+          // file — SUPPORTED in RN as of task 5.2. Drives the batteries-
+          // included native pickers (expo-document-picker for files,
+          // expo-image-picker launchCameraAsync for the camera); sourceType
+          // 'file-camera' offers both. storeDataAsText (default) stores each
+          // pick as a base64 {name,type,content}; image files preview as
+          // thumbnails, others as a name decorator; multiple files paginate.
+          // Absent the picker peers the choose action degrades to a disabled
+          // button + diagnostic (invariant 9). Install expo-image-picker +
+          // expo-document-picker in the example to enable choosing on-device.
           type: 'file',
-          name: 'notSupportedDemo',
-          title: 'Unsupported in RN (file) — graceful fallback demo',
+          name: 'attachments',
+          title: 'Attach files (file — supported in RN as of 5.2)',
+          sourceType: 'file-camera',
+          allowMultiple: true,
+          allowImagesPreview: true,
         },
         {
           type: 'comment',

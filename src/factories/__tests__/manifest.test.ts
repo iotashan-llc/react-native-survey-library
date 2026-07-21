@@ -26,7 +26,6 @@ import {
 } from '../manifest';
 import type { ModelTypeClassification } from '../manifest';
 import { DESCRIPTOR_TABLE } from '../descriptors';
-import type { Descriptor } from '../descriptors';
 
 function liveQuestionClassNames(): string[] {
   return Serializer.getChildrenClasses('question', true).map((c) => c.name);
@@ -208,26 +207,20 @@ describe('manifest: classification/descriptor status consistency', () => {
   });
 
   it('detects a supported descriptor row whose model-type classification is not supported', () => {
-    // 'file' is still classified 'planned' (task 5.2, M5) — a supported
-    // descriptor row for it is the inconsistency this test wants
-    // ('signaturepad' can't be reused here anymore: task 5.1 landed it as
-    // genuinely supported on both sides, as slider did before it).
-    const descriptors: Descriptor[] = [
-      ...DESCRIPTOR_TABLE,
-      {
-        status: 'supported',
-        questionType: 'file',
-        dispatchKey: 'file',
-        route: 'template',
-        component: () => (() => null) as never,
-        milestone: 'M5',
-      },
-    ];
+    // task 5.2 landed 'file' as genuinely supported on both sides (as
+    // signaturepad/slider did before it), so no real type is left classified
+    // 'planned' to reuse here. Instead, override an EXISTING supported type's
+    // classification to 'planned' in a local copy: its real supported
+    // descriptor row is now the inconsistency this test wants.
+    const classification: Record<string, ModelTypeClassification> = {
+      ...MODEL_TYPE_CLASSIFICATION,
+      text: { status: 'planned', milestone: 'M1', reason: 'test override' },
+    };
     const violations = diffManifestConsistency(
-      MODEL_TYPE_CLASSIFICATION,
-      descriptors
+      classification,
+      DESCRIPTOR_TABLE
     );
-    expect(violations.some((v) => v.includes('file'))).toBe(true);
+    expect(violations.some((v) => v.includes('text'))).toBe(true);
   });
 
   it('detects a supported classification entry lacking runtimeRenderable safe-construction metadata', () => {

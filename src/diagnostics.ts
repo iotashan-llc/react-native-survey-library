@@ -345,6 +345,19 @@ export interface ImageMapLibUnavailablePayload {
   questionName: string;
 }
 
+/** 5.2 file — the batteries-included native picker peer needed for the
+ * current `sourceType` is not installed/resolvable: `expo-document-picker`
+ * for `"file"`, `expo-image-picker` for `"camera"` (both for
+ * `"file-camera"`). The choose action degrades to a non-throwing DISABLED
+ * button + this diagnostic rather than crashing (invariant 9). Install the
+ * peer(s) to enable choosing. `sourceType` names the mode whose picker was
+ * missing. Deduped per (question, sourceType), commit-phase. */
+export interface FilePickerLibUnavailablePayload {
+  code: 'file-picker-lib-unavailable';
+  questionName: string;
+  sourceType: string;
+}
+
 /** 2.2 dialog adapter — a consumer `settings.showDialog` was displaced
  * while Surveys are mounted (restored on last unmount; design
  * 2.2-dialog-adapter D2). */
@@ -471,7 +484,8 @@ export type DiagnosticPayload =
   | PanelDynamicModeUnsupportedPayload
   | CustomContentMissingPayload
   | SignaturePadLibUnavailablePayload
-  | ImageMapLibUnavailablePayload;
+  | ImageMapLibUnavailablePayload
+  | FilePickerLibUnavailablePayload;
 
 export type DiagnosticHandler = (payload: DiagnosticPayload) => void;
 

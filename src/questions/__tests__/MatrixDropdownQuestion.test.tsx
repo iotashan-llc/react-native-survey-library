@@ -651,11 +651,15 @@ describe('matrixdropdown — transposed end-actions row (§4 keying + invariant 
 });
 
 describe('matrixdropdown — unsupported cellType degrades per cell (invariant 9)', () => {
-  it('a `file` column renders the non-throwing fallback in each cell; the rest of the matrix still works', async () => {
+  it('a `matrixdropdownbase` column renders the non-throwing fallback in each cell; the rest of the matrix still works', async () => {
+    // Every standalone question type is now supported (file, the last
+    // holdout, landed in 5.2), so a cell dispatch miss needs an internal-base
+    // type: `matrixdropdownbase` has a creator but is never registered as a
+    // renderer (manifest 'internal-base') — a durable unsupported cellType.
     const { question } = createMatrixDropdown({
       columns: [
         { name: 'c1', cellType: 'text' },
-        { name: 'cf', cellType: 'file' },
+        { name: 'cf', cellType: 'matrixdropdownbase' },
       ],
     });
     await renderMatrixDropdown(question);
