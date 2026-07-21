@@ -52,6 +52,7 @@ import { settings } from '../../core/facade';
 import type {
   Base,
   ItemValue,
+  LocalizableString,
   MatrixDropdownRowModelBase,
   PanelModel,
   Question,
@@ -850,6 +851,30 @@ export class MatrixTable extends SurveyElementBase<
     });
   }
 
+  /**
+   * The mobile card COLUMN LABEL for a labelled cell (§3b, 3.1b) — the
+   * cell's responsive column title (`responsiveLocTitle === cell.column.
+   * locTitle`), rendered with the `cardLabel` fragment. Returned only for
+   * the labelled kinds (question / Other-comment / exploded choice); the
+   * wide grid ignores it (the header band carries the label there), so
+   * building it eagerly is harmless. `undefined` when the cell has no
+   * column (e.g. a text/title slot) — the card then shows just the content.
+   */
+  private cardLabelFor(
+    cell: QuestionMatrixDropdownRenderedCell
+  ): React.ReactNode | undefined {
+    const loc = (
+      cell.column as unknown as { locTitle?: LocalizableString } | undefined
+    )?.locTitle;
+    if (!loc) return undefined;
+    return SurveyElementBase.renderLocString(
+      loc,
+      this.themeContext.recipes.matrix.fragments.cardLabel,
+      undefined,
+      'choice'
+    );
+  }
+
   /** Build one walked grid cell (render thunk per §2/§2a/§2b). */
   private buildGridCell(
     cell: QuestionMatrixDropdownRenderedCell,
@@ -927,10 +952,18 @@ export class MatrixTable extends SurveyElementBase<
       default:
         render = () => null;
     }
+    // §3b card-mode label: only the labelled kinds (question / Other /
+    // choice) carry a column label; the row-header title, actions, drag and
+    // empty cells get none (the title cell becomes the card title).
+    const label =
+      kind === 'question' || kind === 'other' || kind === 'choice'
+        ? this.cardLabelFor(cell)
+        : undefined;
     return {
       key,
       kind: toGridCellKind(kind),
       span: cell.colSpans > 1 ? cell.colSpans : undefined,
+      label,
       render,
     };
   }

@@ -1265,15 +1265,21 @@ multi-select toggles a `{ row: [column, …] }` array, and an `isExclusive`
 column clears the other selections in its row. `hasCellText` (rubric) cells
 render tappable localized text instead of a radio/checkbox decorator.
 
-### Mobile card flip is deferred — a matrix always renders the wide scroll grid
+### Mobile card flip is survey-`isMobile`-driven (600px), not self-measured
 
 Web stacks a narrow matrix into per-row cards (its `isMobile` /
-`displayMode: "list"` path). In v0.3 the simple matrix always renders the
-wide horizontal-scroll grid and does **not** self-measure or auto-stack;
-the stacked-card path is the deferred 3.1b enhancement. `alternateRows` and
-`verticalAlign` are likewise not carried in 3.2 — the 3.1a grid applies
-uniform cell geometry. `rowOrder: "random"` is honored by rendering
-core's already-shuffled `visibleRows` order as-is (RN never reshuffles).
+`displayMode: "list"` path). This library ships that stacked-card path
+(3.1b): when the survey flag `isMobile` is true (`<Survey>`'s 600px
+`NARROW_BREAKPOINT` layout flip, or `displayMode: "list"`), each row renders
+as a **card** — the row text is the card title and each column becomes a
+`{columnLabel, tile}` pair (the label is `column.locText`); a wide screen
+keeps the horizontal-scroll grid. Unlike web the matrix does **not**
+self-measure its own intrinsic width to auto-stack on a wide screen — it is
+a survey-flag flip only (a wide matrix on a wide screen scrolls
+horizontally; see the matrixdropdown card entry below). `alternateRows` and
+`verticalAlign` are still not carried — the grid applies uniform cell
+geometry. `rowOrder: "random"` is honored by rendering core's
+already-shuffled `visibleRows` order as-is (RN never reshuffles).
 
 ### Row-level validation surfaces on the row, not per cell
 
@@ -1387,10 +1393,43 @@ polish gaps. The totals footer is absent in this layout (core's
 the normal expression renderer, aligned to the shared column-dp array
 (the footer is a column-aligned band, not a full-width strip);
 `totalText` renders in the footer's row-title slot. The footer band is
-gated on `renderedTable.showFooter`. A dedicated mobile totals summary
-*card* arrives with the 3.1b/3.3b stacked-card path — until then the grid
-(and its footer band) renders on every width, so totals remain visible on
-phones via horizontal scroll.
+gated on `renderedTable.showFooter`. On mobile (`isMobile`, where
+`showFooter` is **true** because `isColumnLayoutHorizontal` forces
+horizontal) the totals render instead as a **totals summary card** appended
+after the data cards — the footer text is the card title and each
+`totalType` column is a `{columnLabel, total}` pair — matching web, which
+also emits `<tfoot>` on phones. Totals are absent only in the wide
+transposed layout (`transposeData: true` on a wide screen, where
+`showFooter` is genuinely false).
+
+### Mobile stacked-card layout (task 3.1b)
+
+On mobile (`isMobile` — `<Survey>`'s 600px layout flip, or
+`displayMode: "list"`) the renderedTable-backed matrix family
+(`matrixdropdown`/`matrixdynamic`) stacks into **cards** instead of the
+wide horizontal-scroll grid, matching web's mobile table. Engagement is the
+survey `isMobile` flag flip only (core rebuilds `renderedTable` for mobile
+on `onMobileChanged`, so `isColumnLayoutHorizontal` becomes true and the
+mobile cell shape is used) — the matrix does **not** self-measure its own
+intrinsic width, so a wide matrix on a wide screen scrolls horizontally
+rather than auto-stacking (web additionally uses a ResizeObserver). Each
+renderedRow becomes one card: the row text is the card title, every data
+cell is a `{columnLabel, cellContent}` pair (the label is the cell's
+responsive column title, `cell.column.locTitle`), and the co-located mobile
+actions (`remove-row` + `show-detail-mobile`, which core groups into one
+end-actions container on mobile) render at the card foot. The **exact same**
+chrome-less cell dispatch, `QuestionErrors`, choice-item and Other-comment
+renderers the wide grid uses are reused verbatim — only the layout differs,
+so cell reactivity, draft/commit, and OverlayContext for nested cell
+dropdowns are unchanged. An expanded detail panel renders as a full-width
+block below its card (the SurveyPanel owns its own layout), and the totals
+footer becomes a totals summary card (see the totals entry above). A runtime
+mobile flip re-renders grid ↔ cards through the same renderedTable-reset
+retarget the family already uses. `showInMultipleColumns` exploded choice
+cells share their column's label (web parity — the column title, with the
+individual choice caption hidden). The dp column-width allocation and the
+horizontal ScrollView are skipped entirely in card mode (cards take the
+natural available width, no measurement defer).
 
 ### Detail panels render FULL-WIDTH — core's leading/trailing detail-row slots are dropped (task 3.3b)
 

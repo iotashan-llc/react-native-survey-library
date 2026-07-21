@@ -99,6 +99,36 @@ describe('matrix recipe — build shape', () => {
     expect(typeof recipe.removeIconColor).toBe('string');
     expect(recipe.removeIconColor.length).toBeGreaterThan(0);
   });
+
+  it('exposes the 3.1b mobile stacked-card fragments (§3b/§3d)', () => {
+    for (const key of [
+      'card',
+      'cardTitle',
+      'cardRow',
+      'cardLabel',
+      'cardValue',
+      'cardActions',
+      'cardDetail',
+      'totalsCard',
+      'totalsCardTitle',
+    ] as const) {
+      expect(recipe.fragments[key]).toBeDefined();
+    }
+    // The card is a bordered, rounded, padded container.
+    const card = flat(recipe.fragments.card);
+    expect(card.borderWidth as number).toBeGreaterThan(0);
+    expect(card.borderRadius as number).toBeGreaterThan(0);
+    expect(typeof card.borderColor).toBe('string');
+    // The column label rides the dim secondary tone (token-derived).
+    const label = flat(recipe.fragments.cardLabel);
+    expect(typeof label.color).toBe('string');
+    // The totals summary card takes the band emphasis background.
+    const totals = flat(recipe.fragments.totalsCard);
+    expect(typeof totals.backgroundColor).toBe('string');
+    // Card actions sit at the foot in a row.
+    const actions = flat(recipe.fragments.cardActions);
+    expect(actions.flexDirection).toBe('row');
+  });
 });
 
 describe('matrix recipe — wired into the aggregate Recipes', () => {

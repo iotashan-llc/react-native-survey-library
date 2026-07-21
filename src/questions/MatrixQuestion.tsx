@@ -369,6 +369,9 @@ export class MatrixQuestion extends QuestionElementBase<MatrixQuestionProps> {
     const columnMinWidth = question.columnMinWidth || undefined;
     const rowTitleWidth = question.rowTitleWidth || undefined;
     const visibleColumns = question.visibleColumns as MatrixColumnLike[];
+    // §3b card-mode column-label style (consumed only by the mobile card
+    // path; the wide grid uses the header band).
+    const cardLabel = this.themeContext.recipes.matrix.fragments.cardLabel;
 
     const columns: GridColumn[] = [];
     if (hasRows) {
@@ -415,6 +418,16 @@ export class MatrixQuestion extends QuestionElementBase<MatrixQuestionProps> {
           cells.push({
             key: `${rowName}:col-${column.uniqueId}`,
             kind: 'choice' as const,
+            // §3b card-mode label: the choice column's own caption
+            // (`column.locText`) — used ONLY by the mobile card path (the
+            // wide grid carries it in the header band). The tile itself is
+            // reused verbatim as the card cell content.
+            label: this.renderLocString(
+              column.locText,
+              cardLabel,
+              undefined,
+              'choice'
+            ),
             render: (): React.ReactNode => (
               <MatrixSimpleCell question={question} row={row} column={column} />
             ),

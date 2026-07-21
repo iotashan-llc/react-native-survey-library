@@ -322,12 +322,15 @@ describe('matrixdynamic — per-action rendering in shared actions cells (§2b)'
     // (3.3b rendered only the toggle).
     expect(screen.getAllByTestId(/^matrix-detail-toggle-/)).toHaveLength(2);
     expect(screen.getAllByTestId(REMOVE_BTN)).toHaveLength(2);
-    // Both actions stay live: toggle expands, remove removes.
+    // Both actions stay live: toggle expands, remove removes. In mobile
+    // mode the matrix now stacks into cards (3.1b), so the expanded detail
+    // renders as the card-mode full-width band (`matrix-card-detail-row:`),
+    // not the wide-grid `matrix-detail-row:` band.
     fireEvent.press(screen.getAllByTestId(/^matrix-detail-toggle-/)[0]!);
     await flush();
     layoutRows();
     await flush();
-    expect(screen.getAllByTestId(DETAIL_BAND)).toHaveLength(1);
+    expect(screen.getAllByTestId(/^matrix-card-detail-row:/)).toHaveLength(1);
     fireEvent.press(screen.getAllByTestId(REMOVE_BTN)[1]!);
     await settle();
     expect(question.rowCount).toBe(1);
@@ -565,5 +568,76 @@ describe('matrixdynamic — detail preservation across unrelated add/remove (§3
     expect(screen.getAllByTestId(DATA_ROW)).toHaveLength(3);
     expect(screen.getAllByTestId(DETAIL_BAND)).toHaveLength(1);
     expect(screen.getByTestId('d1-input')).toBeTruthy();
+  });
+});
+
+/** Flip the survey into mobile mode — drives the §3b stacked-card path
+ * (core rebuilds `renderedTable` on `onMobileChanged`). */
+function setMobile(model: InstanceType<typeof Model>, value = true): void {
+  (model as unknown as { setIsMobile(v: boolean): void }).setIsMobile(value);
+}
+
+const CARD_BAND = /^matrix-card-row:/;
+const CARD_DETAIL_BAND = /^matrix-card-detail-row:/;
+
+describe('matrixdynamic — mobile stacked-card layout (§3b/§3e, 3.1b)', () => {
+  it('renders rows as cards and the add button still adds a row (card grows)', async () => {
+    const { model, question } = createMatrixDynamic();
+    setMobile(model);
+    await renderMatrixDynamic(question);
+    // Cards, not the wide scroll grid.
+    expect(screen.getByTestId('matrix-cards')).toBeTruthy();
+    expect(screen.queryByTestId('matrix-scroll')).toBeNull();
+    expect(screen.getAllByTestId(CARD_BAND)).toHaveLength(2);
+    // Add button (a consumer hook OUTSIDE the grid) still renders + works.
+    fireEvent.press(screen.getByTestId('matrixdynamic-add-bottom'));
+    await settle();
+    expect(question.rowCount).toBe(3);
+    expect(screen.getAllByTestId(CARD_BAND)).toHaveLength(3);
+  });
+
+  it('the per-row remove button lives in the card actions foot and removes THAT row', async () => {
+    const { model, question } = createMatrixDynamic();
+    model.data = { mdyn: [{ c1: 'first' }, { c1: 'second' }] };
+    setMobile(model);
+    await renderMatrixDynamic(question);
+    const removes = screen.getAllByTestId(REMOVE_BTN);
+    expect(removes).toHaveLength(2);
+    fireEvent.press(removes[0]!);
+    await settle();
+    expect(question.rowCount).toBe(1);
+    expect(plainValue(question)).toEqual([{ c1: 'second' }]);
+    // Still a card stack after the remove.
+    expect(screen.getAllByTestId(CARD_BAND)).toHaveLength(1);
+  });
+
+  it('detail toggle + panel work in card mode (panel stacks full-width below the card)', async () => {
+    const { model, question } = createDetailDynamic();
+    setMobile(model);
+    await renderMatrixDynamic(question);
+    // The mobile-colocated actions cell carries BOTH the detail toggle and
+    // the remove button at the card foot.
+    const toggle = screen.getAllByTestId(/^matrix-detail-toggle-/)[0]!;
+    expect(toggle).toBeTruthy();
+    expect(screen.queryAllByTestId(CARD_DETAIL_BAND)).toHaveLength(0);
+    fireEvent.press(toggle);
+    await settle();
+    layoutRows();
+    await flush();
+    expect(screen.getAllByTestId(CARD_DETAIL_BAND)).toHaveLength(1);
+    expect(screen.getByText('Detail One')).toBeTruthy();
+    expect(screen.getByTestId('d1-input')).toBeTruthy();
+  });
+
+  it('the empty-state placeholder still renders in mobile mode', async () => {
+    const { model, question } = createMatrixDynamic({
+      rowCount: 0,
+      hideColumnsIfEmpty: true,
+    });
+    setMobile(model);
+    await renderMatrixDynamic(question);
+    // No cards, the placeholder shows (with its add button gated on showAddRow).
+    expect(screen.getByTestId('matrixdynamic-placeholder')).toBeTruthy();
+    expect(screen.getByTestId('matrixdynamic-add-placeholder')).toBeTruthy();
   });
 });

@@ -65,6 +65,17 @@ export interface GridCell {
   kind: GridCellKind;
   /** Colspan (default 1); a spanned cell sums the spanned column dp widths. */
   span?: number;
+  /**
+   * The column LABEL node for the mobile stacked-card path (§3b, 3.1b) —
+   * the owner attaches it to every LABELLED cell (`question`/`choice`),
+   * sourced from the cell's responsive column title (dropdown pair) or the
+   * `column.locText` (simple matrix). `MatrixGrid`'s card path pairs it
+   * with `render()` as `{label, content}`; the WIDE grid ignores it (the
+   * column header band carries the label there). `undefined` for cells that
+   * get no label — the row-header `title` cell (which becomes the card
+   * title) and `actions`/`empty` cells.
+   */
+  label?: ReactNode;
   render(): ReactNode;
 }
 

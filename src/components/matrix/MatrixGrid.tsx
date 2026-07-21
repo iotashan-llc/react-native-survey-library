@@ -32,8 +32,15 @@
  * is one flex View whose cells share the resolved dp array (§3a.3f), so
  * natural per-row flex height keeps a row's cells the same height for free
  * — no split-pane, no height-sync. Sticky-first-column is a deferred 3.1b
- * enhancement (§3a.5). The mobile stacked-card path is 3.1b (§3b); 3.1a
- * always renders the wide grid.
+ * enhancement (§3a.5, still deferred).
+ *
+ * The 3.1b mobile stacked-card path (§3b / §3d): when `contract.mobile` is
+ * true (the survey `isMobile` flag flip — core has already rebuilt
+ * `renderedRows` for mobile) `render()` branches to `renderCards()` — each
+ * renderedRow becomes a CARD of `{columnLabel, cellContent}` pairs (row
+ * header = card title, actions at the foot, detail full-width below) and
+ * the footer becomes a totals summary card. It REUSES the SAME per-cell
+ * `render()` thunks the wide grid dispatches; only the layout differs.
  *
  * Row topology (§3g): `data`/`footer` rows are COLUMN-ALIGNED — each cell
  * takes the summed dp of the columns it spans (a colSpan cell is one View
@@ -50,6 +57,7 @@ import { SurveyElementBase } from '../../reactivity/SurveyElementBase';
 import { SurveyThemeContext } from '../../theme-rn/provider';
 import type { SurveyThemeContextValue } from '../../theme-rn/provider';
 import type {
+  GridCell,
   GridRow,
   ResolvedGridColumn,
   ResolvedGridContract,
@@ -198,8 +206,145 @@ export class MatrixGrid extends React.Component<MatrixGridProps> {
       : this.renderColumnAlignedRow(row);
   }
 
+  // --- Mobile stacked-card path (§3b / §3d, 3.1b) --------------------------
+  // Engages when `contract.mobile` is true (the survey `isMobile` flag flip;
+  // core has already rebuilt `renderedRows` for mobile). Each renderedRow is
+  // laid out as a CARD of `{columnLabel, cellContent}` pairs — reusing the
+  // SAME per-cell `render()` thunks the wide grid dispatches (chrome-less
+  // cell questions / choice items / QuestionErrors), just stacked vertically
+  // instead of column-aligned. The dp/contentWidth geometry is ignored here;
+  // cards take the natural available width. No horizontal ScrollView.
+
+  /** One labelled cell pair inside a card: the owner-attached column label
+   * (§3b) above the reused cell content. A cell with no `label` renders just
+   * its content (e.g. a footer's leading text slot). */
+  private renderCardPair(cell: GridCell): React.ReactNode {
+    const { fragments } = this.themeContext.recipes.matrix;
+    return (
+      <View
+        key={cell.key}
+        testID={`matrix-card-cell-${cell.key}`}
+        style={fragments.cardRow}
+      >
+        {cell.label != null ? (
+          <View testID={`matrix-card-label-${cell.key}`}>{cell.label}</View>
+        ) : null}
+        <View
+          testID={`matrix-card-value-${cell.key}`}
+          style={fragments.cardValue}
+        >
+          {cell.render()}
+        </View>
+      </View>
+    );
+  }
+
+  /**
+   * A `data` (or `footer` totals) row → a card. The row-header `title` cell
+   * is the card TITLE (row.text); `actions` cells (remove + detail toggle,
+   * co-located by core on mobile) render at the card foot with no label;
+   * `empty` filler is skipped; every other cell is a `{label, content}`
+   * pair. The footer row uses the totals-card look and its leading footer
+   * text becomes the totals-card title (§3d).
+   */
+  private renderCard(row: GridRow): React.ReactNode {
+    const { fragments } = this.themeContext.recipes.matrix;
+    const isTotals = row.kind === 'footer';
+    const cardStyle = isTotals ? fragments.totalsCard : fragments.card;
+    const titleStyle = isTotals
+      ? fragments.totalsCardTitle
+      : fragments.cardTitle;
+    const containerTestID = isTotals
+      ? 'matrix-totals-card'
+      : `matrix-card-${row.key}`;
+    const titles: React.ReactNode[] = [];
+    const pairs: React.ReactNode[] = [];
+    const actions: React.ReactNode[] = [];
+    for (const cell of row.cells) {
+      switch (cell.kind) {
+        case 'title':
+          titles.push(
+            <View
+              key={cell.key}
+              testID={`matrix-card-title-${row.key}`}
+              style={titleStyle}
+            >
+              {cell.render()}
+            </View>
+          );
+          break;
+        case 'actions':
+          actions.push(
+            <View
+              key={cell.key}
+              testID={`matrix-card-actions-${row.key}`}
+              style={fragments.cardActions}
+            >
+              {cell.render()}
+            </View>
+          );
+          break;
+        case 'empty':
+          break;
+        default:
+          pairs.push(this.renderCardPair(cell));
+      }
+    }
+    return (
+      <View key={row.key} testID={containerTestID} style={cardStyle}>
+        {titles}
+        {pairs}
+        {actions}
+      </View>
+    );
+  }
+
+  /** A `detail` row in card mode → a full-width block below the data card
+   * (§3c): the SurveyPanel owns its own layout, so no column alignment and
+   * no dp width — it stacks edge-to-edge in the card list. */
+  private renderCardDetail(row: GridRow): React.ReactNode {
+    const { fragments } = this.themeContext.recipes.matrix;
+    return (
+      <View
+        key={row.key}
+        testID={`matrix-card-detail-${row.key}`}
+        style={fragments.cardDetail}
+      >
+        {row.cells.map((cell) => (
+          <React.Fragment key={cell.key}>{cell.render()}</React.Fragment>
+        ))}
+      </View>
+    );
+  }
+
+  private renderCardRow(row: GridRow): React.ReactNode {
+    return row.kind === 'detail'
+      ? this.renderCardDetail(row)
+      : this.renderCard(row);
+  }
+
+  private renderCards(): React.JSX.Element {
+    return (
+      <View testID="matrix-cards">
+        {this.props.contract.rows.map((row) => (
+          <MatrixGridRowSubscriber
+            key={row.key}
+            row={row}
+            renderRow={() => this.renderCardRow(row)}
+          />
+        ))}
+      </View>
+    );
+  }
+
   render(): React.JSX.Element {
     const { contract } = this.props;
+    // §3b: the survey-flag mobile flip stacks the grid into cards; the wide
+    // horizontal-scroll grid is the tablet/wide affordance (a matrix in
+    // mobile mode ALWAYS stacks — not a self-measured width flip).
+    if (contract.mobile) {
+      return this.renderCards();
+    }
     const { fragments } = this.themeContext.recipes.matrix;
     return (
       <ScrollView

@@ -158,7 +158,46 @@ export class MatrixGridRoot extends React.Component<
     };
   }
 
+  /**
+   * Card-mode resolved contract (§3b, 3.1b): the mobile card path ignores
+   * the dp/contentWidth geometry entirely (cards take the natural available
+   * width, no horizontal scroll), so there is NOTHING to measure or
+   * allocate — resolve the columns to dp:0 and hand `MatrixGrid` the rows
+   * verbatim. This lets card mode render on the FIRST frame with no
+   * one-frame `onLayout` defer (the wide-grid measurement contract does not
+   * apply when `mobile` is true).
+   */
+  private resolveMobileContract(): ResolvedGridContract {
+    const { contract } = this.props;
+    const columns: ResolvedGridColumn[] = contract.columns.map((column) => ({
+      key: column.key,
+      header: column.header,
+      isRowHeader: column.isRowHeader,
+      dp: 0,
+    }));
+    return {
+      columns,
+      contentWidth: 0,
+      rows: contract.rows,
+      showHeader: contract.showHeader,
+      hasFooter: contract.hasFooter,
+      mobile: true,
+      stickyFirstColumn: contract.stickyFirstColumn,
+      regime: 'fit',
+    };
+  }
+
   render(): React.JSX.Element {
+    // §3b: mobile is a survey-flag flip decided BEFORE measurement (it rides
+    // on the raw contract), so the card path renders without the wide grid's
+    // one-frame measure/allocate defer.
+    if (this.props.contract.mobile) {
+      return (
+        <View testID="matrix-root">
+          <MatrixGrid contract={this.resolveMobileContract()} />
+        </View>
+      );
+    }
     const { measuredWidth } = this.state;
     return (
       <View testID="matrix-root" onLayout={this.handleLayout}>
