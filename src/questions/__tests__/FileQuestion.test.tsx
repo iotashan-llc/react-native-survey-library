@@ -41,6 +41,7 @@ import { UnsupportedQuestion } from '../../components/UnsupportedQuestion';
 import { resolveQuestionDispatchKey } from '../../factories/dispatch-key';
 import * as DocumentPickerMock from '../../../__mocks__/expo-document-picker';
 import * as ImagePickerMock from '../../../__mocks__/expo-image-picker';
+import { setDiagnosticHandler } from '../../diagnostics';
 
 // ---- FileReader polyfill (RN provides it on-device; node/jest does not) ----
 class NodeFileReader {
@@ -124,8 +125,14 @@ describe('file — choosing via the document picker (sourceType "file")', () => 
     expect(question.previewValue).toHaveLength(1);
   });
 
-  it('passes allowMultiple + the accepted-types filter to getDocumentAsync', async () => {
-    const question = makeFile({ allowMultiple: true });
+  it('passes allowMultiple + maps accepted-types EXTENSIONS to MIME for getDocumentAsync', async () => {
+    // Review #1: renderedAcceptedTypes emits <input accept> extension tokens
+    // (".pdf", ".png"), but expo-document-picker's `type` expects MIME — raw
+    // extensions silently apply NO filter. The renderer must map them.
+    const question = makeFile({
+      allowMultiple: true,
+      acceptedTypes: '.pdf,.png',
+    });
     renderFile(question);
     DocumentPickerMock.__setDocumentResult({ canceled: true, assets: [] });
     fireEvent.press(screen.getByTestId('sv-file-choose-f'));
@@ -134,8 +141,25 @@ describe('file — choosing via the document picker (sourceType "file")', () => 
     );
     const opts = DocumentPickerMock.__getDocumentCalls()[0] as {
       multiple?: boolean;
+      type?: string[] | string;
     };
     expect(opts.multiple).toBe(true);
+    // MIME-mapped, not the raw extension tokens.
+    expect(opts.type).toEqual(['application/pdf', 'image/png']);
+  });
+
+  it('passes MIME-form accepted-types through untouched', async () => {
+    const question = makeFile({ acceptedTypes: 'image/*' });
+    renderFile(question);
+    DocumentPickerMock.__setDocumentResult({ canceled: true, assets: [] });
+    fireEvent.press(screen.getByTestId('sv-file-choose-f'));
+    await waitFor(() =>
+      expect(DocumentPickerMock.__getDocumentCalls().length).toBe(1)
+    );
+    const opts = DocumentPickerMock.__getDocumentCalls()[0] as {
+      type?: string[] | string;
+    };
+    expect(opts.type).toEqual(['image/*']);
   });
 
   it('a canceled pick leaves the value empty (no crash)', async () => {
@@ -177,6 +201,51 @@ describe('file — camera capture (sourceType "camera")', () => {
     await new Promise((r) => setTimeout(r, 10));
     expect(ImagePickerMock.__getCameraCalls().length).toBe(0);
     expect(question.isEmpty()).toBe(true);
+  });
+
+  it('a denied camera permission emits a file-camera-permission-denied diagnostic (once)', async () => {
+    // Review #3: the library performs the permission request, so it is the
+    // only party that sees a denial — it must surface a structured
+    // diagnostic (parity with the missing-picker-lib path), not a silent
+    // no-op. Deduped per instance.
+    const codes: string[] = [];
+    setDiagnosticHandler((payload) => codes.push(payload.code));
+    try {
+      const question = makeFile({ sourceType: 'camera' });
+      renderFile(question);
+      ImagePickerMock.__setPermission({ granted: false, status: 'denied' });
+      fireEvent.press(screen.getByTestId('sv-file-camera-f'));
+      await new Promise((r) => setTimeout(r, 10));
+      fireEvent.press(screen.getByTestId('sv-file-camera-f'));
+      await new Promise((r) => setTimeout(r, 10));
+      expect(
+        codes.filter((c) => c === 'file-camera-permission-denied')
+      ).toHaveLength(1);
+    } finally {
+      setDiagnosticHandler(undefined);
+    }
+  });
+
+  it('names distinct no-name captures uniquely so removeFile targets one file (review #2)', async () => {
+    // Two captures lacking name/fileName must not both collapse to "file"
+    // (core removeFile(name) matches the FIRST name → cannot target a
+    // specific duplicate). Distinct uris → distinct fallback names.
+    const question = makeFile({ sourceType: 'camera', allowMultiple: true });
+    renderFile(question);
+    ImagePickerMock.__setCameraResult({
+      canceled: false,
+      assets: [{ uri: PNG, mimeType: 'image/png' }],
+    });
+    fireEvent.press(screen.getByTestId('sv-file-camera-f'));
+    await waitFor(() => expect(question.value).toHaveLength(1));
+    ImagePickerMock.__setCameraResult({
+      canceled: false,
+      assets: [{ uri: PDF, mimeType: 'application/pdf' }],
+    });
+    fireEvent.press(screen.getByTestId('sv-file-camera-f'));
+    await waitFor(() => expect(question.value).toHaveLength(2));
+    const names = question.value.map((v: { name: string }) => v.name);
+    expect(new Set(names).size).toBe(2);
   });
 
   it('sourceType "file-camera" offers BOTH the file and camera actions', () => {

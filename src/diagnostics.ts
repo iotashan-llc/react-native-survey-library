@@ -358,6 +358,12 @@ export interface FilePickerLibUnavailablePayload {
   sourceType: string;
 }
 
+export interface FileCameraPermissionDeniedPayload {
+  code: 'file-camera-permission-denied';
+  questionName: string;
+  sourceType: string;
+}
+
 /** 2.2 dialog adapter — a consumer `settings.showDialog` was displaced
  * while Surveys are mounted (restored on last unmount; design
  * 2.2-dialog-adapter D2). */
@@ -485,7 +491,8 @@ export type DiagnosticPayload =
   | CustomContentMissingPayload
   | SignaturePadLibUnavailablePayload
   | ImageMapLibUnavailablePayload
-  | FilePickerLibUnavailablePayload;
+  | FilePickerLibUnavailablePayload
+  | FileCameraPermissionDeniedPayload;
 
 export type DiagnosticHandler = (payload: DiagnosticPayload) => void;
 

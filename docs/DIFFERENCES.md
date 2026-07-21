@@ -1935,8 +1935,8 @@ mirrors it into `previewValue`, builds the paged `renderedPages`, and drives
 
 | `sourceType` | RN behavior |
 | --- | --- |
-| `"file"` (default) | a single **Choose** action → `expo-document-picker` `getDocumentAsync` (`allowMultiple` → `multiple`, `renderedAcceptedTypes` → the picker's `type` filter). |
-| `"camera"` | a single **Take photo** action → `expo-image-picker` `launchCameraAsync`, after `requestCameraPermissionsAsync()` (a denied permission is a silent no-op). |
+| `"file"` (default) | a single **Choose** action → `expo-document-picker` `getDocumentAsync` (`allowMultiple` → `multiple`, `renderedAcceptedTypes` → the picker's `type` filter — see the MIME mapping note below). |
+| `"camera"` | a single **Take photo** action → `expo-image-picker` `launchCameraAsync`, after `requestCameraPermissionsAsync()` (a denied permission is a no-op that emits a `file-camera-permission-denied` diagnostic, deduped per instance). |
 | `"file-camera"` | **both** actions side by side. |
 
 Web's model camera methods (`startVideo`/`snapPicture`/`flipCamera`, the
@@ -1945,6 +1945,24 @@ controls, `allowCameraAccess`) are **bypassed entirely** — a capture flows
 through the OS camera UI and then `loadFiles(files, "camera")`, the same model
 entry point web's `snapPicture` uses. `renderCapture`/`isPlayingVideo` and the
 live video overlay are therefore not rendered.
+
+**`acceptedTypes` MIME mapping.** `renderedAcceptedTypes` yields
+`<input accept>`-style tokens, which are commonly **extensions** (`.pdf`,
+`.png` — survey-core's default `acceptedFileCategories` are extension-only),
+but `expo-document-picker`'s `type` option expects **MIME types / UTIs**. The
+renderer maps known extension tokens to MIME (a bundled table covering the
+image/document/video/audio defaults), passes MIME-form tokens (`image/*`)
+through untouched, and falls back to `*/*` if nothing maps — so an
+extension-form filter actually restricts the picker instead of silently
+no-op'ing. Extensions outside the bundled table are dropped from the filter
+(never over-restrict); core still enforces `maxSize`/`maxFiles` (it does not
+validate type, matching web).
+
+**Camera capture names.** A capture that arrives without a `name`/`fileName`
+(some platforms) falls back to the asset uri's basename (unique per capture)
+rather than a constant `"file"`, so core's name-keyed `removeFile(name)` can
+target a specific file when several unnamed captures coexist under
+`allowMultiple`.
 
 ### `storeDataAsText` (default) stores base64; upload mode needs a host handler
 

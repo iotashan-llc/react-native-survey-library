@@ -185,6 +185,86 @@ export function loadImagePicker(): ImagePickerModule | null {
 // ————————————————————————————————————————————————————————————————
 
 /**
+ * Extension → MIME table covering survey-core's default
+ * `acceptedFileCategories` (image/document/video/audio). `renderedAcceptedTypes`
+ * emits `<input accept>`-style tokens, which are commonly EXTENSIONS (".pdf",
+ * ".png") — but `expo-document-picker`'s `type` option expects MIME types /
+ * UTIs, so extension tokens silently apply NO filter (review #1). Map what we
+ * can; pass MIME-form tokens (containing "/", incl. "image/*") through
+ * untouched; drop unknown extensions rather than over-restrict.
+ */
+const EXT_TO_MIME: Record<string, string> = {
+  pdf: 'application/pdf',
+  doc: 'application/msword',
+  docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  xls: 'application/vnd.ms-excel',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  ppt: 'application/vnd.ms-powerpoint',
+  pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  txt: 'text/plain',
+  csv: 'text/csv',
+  rtf: 'application/rtf',
+  json: 'application/json',
+  xml: 'application/xml',
+  zip: 'application/zip',
+  png: 'image/png',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  gif: 'image/gif',
+  webp: 'image/webp',
+  bmp: 'image/bmp',
+  svg: 'image/svg+xml',
+  heic: 'image/heic',
+  heif: 'image/heif',
+  tiff: 'image/tiff',
+  mp4: 'video/mp4',
+  mov: 'video/quicktime',
+  avi: 'video/x-msvideo',
+  webm: 'video/webm',
+  mkv: 'video/x-matroska',
+  mp3: 'audio/mpeg',
+  wav: 'audio/wav',
+  ogg: 'audio/ogg',
+  m4a: 'audio/mp4',
+  aac: 'audio/aac',
+};
+
+/**
+ * Convert `renderedAcceptedTypes` (comma-separated `<input accept>` tokens)
+ * into the MIME-type array `expo-document-picker` expects. MIME-form tokens
+ * (with a slash) pass through; extension tokens map via {@link EXT_TO_MIME}.
+ * Returns the wildcard filter when nothing usable remains, so an all-unknown
+ * filter never traps the user into an empty picker.
+ */
+function acceptedTypesToMime(rendered: string | undefined): string[] | string {
+  if (!rendered) return '*/*';
+  const mimes: string[] = [];
+  for (const raw of rendered.split(',')) {
+    const token = raw.trim();
+    if (!token) continue;
+    if (token.includes('/')) {
+      mimes.push(token);
+      continue;
+    }
+    const ext = token.replace(/^\./, '').toLowerCase();
+    const mime = EXT_TO_MIME[ext];
+    if (mime && !mimes.includes(mime)) mimes.push(mime);
+  }
+  return mimes.length > 0 ? mimes : '*/*';
+}
+
+/** Last path segment of a `file://`/`content://` uri (query/hash stripped) —
+ * a unique fallback name for pickers that omit `name`/`fileName` (e.g. some
+ * camera captures), so name-keyed core ops like `removeFile(name)` can target
+ * a specific file rather than collapsing every unnamed capture to "file"
+ * (review #2). */
+function uriBasename(uri: string): string {
+  const path = uri.split(/[?#]/)[0] ?? '';
+  const seg = path.split('/').pop() ?? '';
+  return seg.trim();
+}
+
+/**
  * Turn a picked asset into a real `File` so core's `storeDataAsText`
  * `FileReader` path reads the true bytes (and `file.size` feeds `maxSize`).
  * `fetch(uri).blob()` is the standard RN idiom for reading a local `file://`
@@ -192,7 +272,8 @@ export function loadImagePicker(): ImagePickerModule | null {
  * the runtime provides the constructor, else a name-annotated Blob.
  */
 async function assetToFile(asset: PickedAsset): Promise<unknown> {
-  const name = asset.name ?? asset.fileName ?? 'file';
+  const name =
+    asset.name ?? asset.fileName ?? (uriBasename(asset.uri) || 'file');
   const res = await fetch(asset.uri);
   const blob = await res.blob();
   const type = asset.mimeType ?? blob.type ?? '';
@@ -320,6 +401,7 @@ export interface FileQuestionProps extends QuestionElementBaseProps {
 
 export class FileQuestion extends QuestionElementBase<FileQuestionProps> {
   private reportedPickerModes = new Set<string>();
+  private reportedCameraDenied = false;
 
   protected getStateElement(): Base {
     return this.questionBase;
@@ -367,14 +449,10 @@ export class FileQuestion extends QuestionElementBase<FileQuestionProps> {
     const picker = loadDocumentPicker();
     if (!picker) return;
     try {
-      const acceptedTypes = q.renderedAcceptedTypes;
       const result = await picker.getDocumentAsync({
-        type: acceptedTypes
-          ? acceptedTypes
-              .split(',')
-              .map((t) => t.trim())
-              .filter(Boolean)
-          : '*/*',
+        // Map <input accept> tokens → MIME (expo-document-picker's `type`
+        // contract); extension tokens alone silently no-op the filter.
+        type: acceptedTypesToMime(q.renderedAcceptedTypes),
         multiple: q.allowMultiple,
         copyToCacheDirectory: true,
       });
@@ -392,7 +470,21 @@ export class FileQuestion extends QuestionElementBase<FileQuestionProps> {
     try {
       if (typeof picker.requestCameraPermissionsAsync === 'function') {
         const perm = await picker.requestCameraPermissionsAsync();
-        if (perm && perm.granted === false) return;
+        if (perm && perm.granted === false) {
+          // The library itself performs the permission request, so it is the
+          // only party that sees a denial — emit a structured diagnostic
+          // (parity with the missing-picker-lib path) rather than a silent
+          // no-op, deduped per instance. (review #3)
+          if (!this.reportedCameraDenied) {
+            this.reportedCameraDenied = true;
+            reportDiagnostic({
+              code: 'file-camera-permission-denied',
+              questionName: q.name,
+              sourceType: q.sourceType || 'camera',
+            });
+          }
+          return;
+        }
       }
       const mediaTypes = picker.MediaTypeOptions?.Images ?? ['images'];
       const result = await picker.launchCameraAsync({ mediaTypes, quality: 1 });
