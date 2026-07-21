@@ -53,12 +53,12 @@ describe('SurveyRowElement — dispatch', () => {
     expect(screen.queryByTestId('unsupported-question-panel')).toBeNull();
   });
 
-  it('falls back to UnsupportedQuestion on a dispatch miss (planned type "matrixdropdown"), never throwing', () => {
-    // 'matrixdropdown' stays planned until M3 (task 3.3) — the M1/M2 types
-    // and the simple 'matrix' (task 3.2) have since landed as supported, so
-    // they can no longer model a dispatch miss.
+  it('falls back to UnsupportedQuestion on a dispatch miss (planned type "matrixdynamic"), never throwing', () => {
+    // 'matrixdynamic' stays planned until M3 task 3.4 — the M1/M2 types,
+    // the simple 'matrix' (3.2), and 'matrixdropdown' (3.3a) have since
+    // landed as supported, so they can no longer model a dispatch miss.
     const { model, question } = firstQuestion({
-      elements: [{ type: 'matrixdropdown', name: 'q-text' }],
+      elements: [{ type: 'matrixdynamic', name: 'q-text' }],
     });
     render(
       <SurveyRowElement
@@ -100,7 +100,7 @@ describe('SurveyRowElement — QuestionChrome at the dispatch boundary (M1 dispa
   it('the unsupported fallback is wrapped in chrome too (title chrome renders around the fallback panel)', () => {
     const { model, question } = firstQuestion({
       elements: [
-        { type: 'matrixdropdown', name: 'q-text', title: 'Text Title' },
+        { type: 'matrixdynamic', name: 'q-text', title: 'Text Title' },
       ],
     });
     render(

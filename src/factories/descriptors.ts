@@ -65,6 +65,7 @@ import { ImagePickerQuestion } from '../questions/ImagePickerQuestion';
 import { ButtonGroupQuestionElement } from '../questions/ButtonGroupQuestion';
 import { PanelDynamicQuestion } from '../questions/PanelDynamicQuestion';
 import { MatrixQuestionElement } from '../questions/MatrixQuestion';
+import { MatrixDropdownQuestionElement } from '../questions/MatrixDropdownQuestion';
 import { CustomQuestion } from '../questions/CustomQuestion';
 import { CompositeQuestion } from '../questions/CompositeQuestion';
 import { ListItemGroupContent, ListPickerElement } from '../overlay/ListPicker';
@@ -360,14 +361,27 @@ export const DESCRIPTOR_TABLE: readonly Descriptor[] = [
   // tiles over the 3.1a MatrixGrid). getTemplate() === 'matrix' (no
   // override); template route, dispatchKey === questionType. The
   // OverlayContext-free `…QuestionElement` wrapper keeps the family shape
-  // uniform (simple matrix has no nested cell overlays). matrixdropdown/
-  // matrixdynamic (3.3/3.4) stay planned.
+  // uniform (simple matrix has no nested cell overlays). matrixdynamic
+  // (3.4) stays planned.
   {
     status: 'supported',
     questionType: 'matrix',
     dispatchKey: 'matrix',
     route: 'template',
     component: () => MatrixQuestionElement,
+    milestone: 'M3',
+  },
+  // Task 3.3a (M3) — matrixdropdown (static rows) over renderedTable:
+  // MatrixTableBase two-level split + chrome-less cell dispatch (design
+  // M3 §2/§4). getTemplate() === 'matrixdropdown'; template route. Cell
+  // questions dispatch through the SAME factory rows (dropdown/text/
+  // boolean/…), so no `sv-matrix-*` element rows exist (design §6).
+  {
+    status: 'supported',
+    questionType: 'matrixdropdown',
+    dispatchKey: 'matrixdropdown',
+    route: 'template',
+    component: () => MatrixDropdownQuestionElement,
     milestone: 'M3',
   },
   {

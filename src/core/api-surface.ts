@@ -1701,4 +1701,98 @@ export const API_SURFACE_WATCHLIST: readonly WatchedApiMember[] = [
     reason:
       'CompositeQuestion (2.11) renders the live contentPanel via SurveyPanel.',
   },
+  // Task 3.3a — matrixdropdown/matrixdynamic renderedTable bindings
+  // (design M3 §6 watchlist). `onRenderedTableResetCallback` is an
+  // INSTANCE field (not on the prototype) — covered behaviorally by the
+  // MatrixDropdownQuestion reset suite instead. Cell flags that are plain
+  // instance-field initializers (`isActionsCell`/`isOtherChoice`/
+  // `choiceIndex`/`colSpans`/`width`/`minWidth`) are likewise
+  // behaviorally covered by the walker tests.
+  {
+    id: 'Base.getPropertyValueWithoutDefault',
+    member: 'getPropertyValueWithoutDefault',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.Base.prototype,
+    reason:
+      '3.3a NON-CREATING renderedTable read (render purity §4/§11.3; ' +
+      'protected — ONE isolated cast in MatrixTableBase + behavioral compat test).',
+  },
+  ...(
+    [
+      ['renderedTable', 'accessor'],
+      ['resetRenderedTable', 'method'],
+      ['isColumnLayoutHorizontal', 'accessor'],
+      ['transposeData', 'accessor'],
+      ['getRowTitleWidth', 'method'],
+      ['getColumnWidth', 'method'],
+      ['hasFooter', 'accessor'],
+      ['getCellAriaLabel', 'method'],
+    ] as const
+  ).map(([member, expectedKind]) => ({
+    id: `QuestionMatrixDropdownModelBase.${member}`,
+    member,
+    expectedKind: expectedKind as MemberKind,
+    resolveHost: (sc: typeof FacadeModule) =>
+      (sc as { QuestionMatrixDropdownModelBase: { prototype: unknown } })
+        .QuestionMatrixDropdownModelBase.prototype,
+    reason:
+      '3.3a MatrixTableBase renderedTable lifecycle / layout-mode / ' +
+      'width-input / a11y-label binding.',
+  })),
+  ...(
+    [
+      ['renderedRows', 'accessor'],
+      ['headerRow', 'accessor'],
+      ['footerRow', 'accessor'],
+      ['showHeader', 'accessor'],
+      ['showFooter', 'accessor'],
+      ['showTable', 'accessor'],
+    ] as const
+  ).map(([member, expectedKind]) => ({
+    id: `QuestionMatrixDropdownRenderedTable.${member}`,
+    member,
+    expectedKind: expectedKind as MemberKind,
+    resolveHost: (sc: typeof FacadeModule) =>
+      (sc as { QuestionMatrixDropdownRenderedTable: { prototype: unknown } })
+        .QuestionMatrixDropdownRenderedTable.prototype,
+    reason: '3.3a walker reads the rendered bands + visibility gates.',
+  })),
+  ...(
+    [
+      ['hasQuestion', 'accessor'],
+      ['hasTitle', 'accessor'],
+      ['isChoice', 'accessor'],
+      ['isCheckbox', 'accessor'],
+      ['isRadio', 'accessor'],
+      ['isFirstChoice', 'accessor'],
+      ['item', 'accessor'],
+    ] as const
+  ).map(([member, expectedKind]) => ({
+    id: `QuestionMatrixDropdownRenderedCell.${member}`,
+    member,
+    expectedKind: expectedKind as MemberKind,
+    resolveHost: (sc: typeof FacadeModule) =>
+      (sc as { QuestionMatrixDropdownRenderedCell: { prototype: unknown } })
+        .QuestionMatrixDropdownRenderedCell.prototype,
+    reason:
+      '3.3a §2b cell-kind precedence (structural -> question -> other -> ' +
+      'choice) + choice-item reads.',
+  })),
+  {
+    id: 'QuestionCheckboxModel.clickItemHandler',
+    member: 'clickItemHandler',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.QuestionCheckboxModel.prototype,
+    reason:
+      '3.3a MatrixChoiceCell checkbox write — two-arg toggle form ' +
+      'clickItemHandler(item, nextChecked).',
+  },
+  {
+    id: 'QuestionRadiogroupModel.clickItemHandler',
+    member: 'clickItemHandler',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.QuestionRadiogroupModel.prototype,
+    reason:
+      '3.3a MatrixChoiceCell radiogroup write — single-arg select-only form.',
+  },
 ];

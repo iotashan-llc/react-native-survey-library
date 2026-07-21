@@ -87,6 +87,20 @@ export interface ChoiceItemRowProps {
   onPress: () => void;
   testID?: string;
   otherInputTestID?: string;
+  /**
+   * Matrix-cell mode (M3 design §2b): a `showInMultipleColumns` exploded
+   * cell's column header already carries the choice text, so the item
+   * caption is suppressed (web parity — `hideCaption={true}` on the
+   * exploded item button; core also flags `item.hideCaption`).
+   */
+  hideCaption?: boolean;
+  /**
+   * Matrix-cell mode (M3 design §2b): with the caption hidden the row has
+   * no text child to derive a label from — the caller supplies the
+   * synthesized cell label (core `getCellAriaLabel`: row-header +
+   * column-header). Absent -> RN derives the label from children as today.
+   */
+  accessibilityLabel?: string;
 }
 
 export function ChoiceItemRow(props: ChoiceItemRowProps): React.JSX.Element {
@@ -143,6 +157,7 @@ export function ChoiceItemRow(props: ChoiceItemRowProps): React.JSX.Element {
         onBlur={() => setFocused(false)}
         accessibilityRole={shape === 'radio' ? 'radio' : 'checkbox'}
         accessibilityState={{ checked, disabled: pressDisabled }}
+        accessibilityLabel={props.accessibilityLabel}
         // The recipe's CONTAINER slot lands here (codex PR-18 review
         // major 3): selectItemStyles returns container/decorator as
         // separate slots, and the container carries the theme's row
@@ -225,13 +240,15 @@ export function ChoiceItemRow(props: ChoiceItemRowProps): React.JSX.Element {
                   />
                 ) : null}
               </View>
-              <Text
-                style={composeStyles(recipes.item.fragments.label, {
-                  override: overrides.item?.label,
-                })}
-              >
-                {item.text}
-              </Text>
+              {props.hideCaption ? null : (
+                <Text
+                  style={composeStyles(recipes.item.fragments.label, {
+                    override: overrides.item?.label,
+                  })}
+                >
+                  {item.text}
+                </Text>
+              )}
             </>
           );
         }}

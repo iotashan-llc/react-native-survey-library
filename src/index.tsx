@@ -31,6 +31,15 @@ export {
   MatrixQuestion,
   MatrixQuestionElement,
 } from './questions/MatrixQuestion';
+export {
+  MatrixDropdownQuestion,
+  MatrixDropdownQuestionElement,
+} from './questions/MatrixDropdownQuestion';
+export {
+  MatrixTableBase,
+  MatrixTable,
+  MatrixChoiceCell,
+} from './components/matrix/MatrixTableBase';
 export { CustomQuestion } from './questions/CustomQuestion';
 export { CompositeQuestion } from './questions/CompositeQuestion';
 export type { QuestionChromeProps } from './components/QuestionChrome';

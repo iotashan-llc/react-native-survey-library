@@ -35,6 +35,7 @@ describe('DESCRIPTOR_TABLE (M0 + M1)', () => {
       'image',
       'imagepicker',
       'matrix',
+      'matrixdropdown',
       'multipletext',
       'panel',
       'paneldynamic',

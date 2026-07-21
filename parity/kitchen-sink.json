@@ -422,6 +422,56 @@
               "high": "Excellent"
             }
           }
+        },
+        {
+          "type": "matrixdropdown",
+          "name": "teams",
+          "title": "Team assessment (matrixdropdown)",
+          "totalText": "Totals",
+          "columns": [
+            {
+              "name": "lead",
+              "title": "Lead",
+              "cellType": "dropdown",
+              "choices": [
+                "Ada",
+                "Grace",
+                "Linus"
+              ]
+            },
+            {
+              "name": "headcount",
+              "title": "Headcount",
+              "cellType": "text",
+              "inputType": "number",
+              "totalType": "sum"
+            },
+            {
+              "name": "onTrack",
+              "title": "On track?",
+              "cellType": "boolean"
+            },
+            {
+              "name": "platforms",
+              "title": "Platforms",
+              "cellType": "checkbox",
+              "showInMultipleColumns": true,
+              "choices": [
+                "iOS",
+                "Android"
+              ]
+            }
+          ],
+          "rows": [
+            {
+              "value": "design",
+              "text": "Design"
+            },
+            {
+              "value": "engineering",
+              "text": "Engineering"
+            }
+          ]
         }
       ]
     },
