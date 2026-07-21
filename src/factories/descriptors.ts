@@ -70,6 +70,7 @@ import { MatrixDynamicQuestionElement } from '../questions/MatrixDynamicQuestion
 import { CustomQuestion } from '../questions/CustomQuestion';
 import { CompositeQuestion } from '../questions/CompositeQuestion';
 import { RankingQuestion } from '../questions/RankingQuestion';
+import { SliderQuestion } from '../questions/SliderQuestion';
 import { SingleInputSummary } from '../questions/SingleInputSummaryQuestion';
 import { ListItemGroupContent, ListPickerElement } from '../overlay/ListPicker';
 
@@ -398,6 +399,24 @@ export const DESCRIPTOR_TABLE: readonly Descriptor[] = [
     dispatchKey: 'ranking',
     route: 'template',
     component: () => RankingQuestion,
+    milestone: 'M4',
+  },
+  // Task 4.4 (M4) — slider (single-thumb + range dual-thumb).
+  // getTemplate() === 'slider' (extends Question, no override); template
+  // route, dispatchKey === questionType. No renderAs variants upstream
+  // (reactquestion_slider.tsx registers a single 'slider' key). The
+  // component self-branches on `question.sliderType`: single-mode wraps the
+  // lazy-required `@react-native-community/slider` (native single-thumb) and
+  // degrades to an accessible +/- stepper when the peer is absent; range
+  // mode is a custom dual-thumb track whose fine drag (gesture-handler Pan,
+  // lazy-required — reuses ranking's loadRankingDragLibs) is a device gate,
+  // with a11y adjustable steppers as the jest-testable Layer 1.
+  {
+    status: 'supported',
+    questionType: 'slider',
+    dispatchKey: 'slider',
+    route: 'template',
+    component: () => SliderQuestion,
     milestone: 'M4',
   },
   // Task 3.4 (M3) — matrixdynamic (dynamic rows) over the SAME

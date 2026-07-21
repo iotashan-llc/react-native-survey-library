@@ -564,8 +564,30 @@
         },
         {
           "type": "slider",
+          "name": "volume",
+          "title": "Volume (slider — single-thumb, supported in RN as of 4.4)",
+          "min": 0,
+          "max": 100,
+          "step": 5,
+          "defaultValue": 40
+        },
+        {
+          "type": "slider",
+          "name": "priceRange",
+          "title": "Price range (slider — range dual-thumb)",
+          "sliderType": "range",
+          "min": 0,
+          "max": 1000,
+          "step": 50,
+          "defaultValue": [
+            200,
+            800
+          ]
+        },
+        {
+          "type": "signaturepad",
           "name": "notSupportedDemo",
-          "title": "Unsupported in RN (slider) — graceful fallback demo"
+          "title": "Unsupported in RN (signaturepad) — graceful fallback demo"
         },
         {
           "type": "comment",

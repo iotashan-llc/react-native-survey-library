@@ -7,9 +7,10 @@
  * text (a spread of inputTypes incl. a pattern mask), rating (numbers,
  * stars, smileys, custom string rateValues), expression, html (sanitized
  * rich content), the M3 3.2 simple matrix (single/multi-select + rubric
- * cells), ranking (drag-to-reorder + selectToRank, M4 4.1), completedHtml.
- * A single genuinely-unsupported type (slider, planned for M4 task 4.4)
- * sits on the last page to demonstrate the NON-THROWING fallback panel
+ * cells), ranking (drag-to-reorder + selectToRank, M4 4.1), slider
+ * (single + range dual-thumb, M4 4.4), completedHtml. A single
+ * genuinely-unsupported type (signaturepad, planned for M5 task 5.1) sits
+ * on the last page to demonstrate the NON-THROWING fallback panel
  * (invariant 9); the rest of the survey stays representative.
  */
 
@@ -492,12 +493,38 @@ export const kitchenSinkJson = {
           ],
         },
         {
-          // A genuinely still-unsupported type (slider, planned for M4 task
-          // 4.4): the web reference renders it, RN shows the NON-THROWING
-          // fallback panel (invariant 9). This is the graceful-fallback demo.
+          // slider — SUPPORTED in RN as of task 4.4. Single-thumb wraps the
+          // batteries-included @react-native-community/slider (native); a11y
+          // adjustable stepper fallback when the peer is absent.
           type: 'slider',
+          name: 'volume',
+          title: 'Volume (slider — single-thumb, supported in RN as of 4.4)',
+          min: 0,
+          max: 100,
+          step: 5,
+          defaultValue: 40,
+        },
+        {
+          // Range dual-thumb: a custom track with two a11y adjustable thumbs;
+          // the fine drag (gesture-handler Pan) is a device gate. allowSwap +
+          // spacing enforced through the core model.
+          type: 'slider',
+          name: 'priceRange',
+          title: 'Price range (slider — range dual-thumb)',
+          sliderType: 'range',
+          min: 0,
+          max: 1000,
+          step: 50,
+          defaultValue: [200, 800],
+        },
+        {
+          // A genuinely still-unsupported type (signaturepad, planned for M5
+          // task 5.1): the web reference renders it, RN shows the
+          // NON-THROWING fallback panel (invariant 9). This is the
+          // graceful-fallback demo (slider is supported as of 4.4).
+          type: 'signaturepad',
           name: 'notSupportedDemo',
-          title: 'Unsupported in RN (slider) — graceful fallback demo',
+          title: 'Unsupported in RN (signaturepad) — graceful fallback demo',
         },
         {
           type: 'comment',

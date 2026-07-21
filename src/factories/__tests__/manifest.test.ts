@@ -208,26 +208,26 @@ describe('manifest: classification/descriptor status consistency', () => {
   });
 
   it('detects a supported descriptor row whose model-type classification is not supported', () => {
-    // 'slider' is still classified 'planned' (task 4.4, M4) — a supported
-    // descriptor row for it is the inconsistency this test wants ('ranking'
-    // can't be reused here anymore: task 4.1 landed it as genuinely
-    // supported on both sides).
+    // 'signaturepad' is still classified 'planned' (task 5.1, M5) — a
+    // supported descriptor row for it is the inconsistency this test wants
+    // ('slider' can't be reused here anymore: task 4.4 landed it as
+    // genuinely supported on both sides).
     const descriptors: Descriptor[] = [
       ...DESCRIPTOR_TABLE,
       {
         status: 'supported',
-        questionType: 'slider',
-        dispatchKey: 'slider',
+        questionType: 'signaturepad',
+        dispatchKey: 'signaturepad',
         route: 'template',
         component: () => (() => null) as never,
-        milestone: 'M4',
+        milestone: 'M5',
       },
     ];
     const violations = diffManifestConsistency(
       MODEL_TYPE_CLASSIFICATION,
       descriptors
     );
-    expect(violations.some((v) => v.includes('slider'))).toBe(true);
+    expect(violations.some((v) => v.includes('signaturepad'))).toBe(true);
   });
 
   it('detects a supported classification entry lacking runtimeRenderable safe-construction metadata', () => {

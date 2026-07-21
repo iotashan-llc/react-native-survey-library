@@ -92,6 +92,7 @@
     "@eslint/eslintrc": "^3.3.5",
     "@eslint/js": "^10.0.1",
     "@native-html/render": "~1.0.3",
+    "@react-native-community/slider": "^5.2.0",
     "@react-native/babel-preset": "0.86.0",
     "@react-native/eslint-config": "0.86.0",
     "@react-native/jest-preset": "0.86.0",
@@ -117,6 +118,7 @@
   },
   "peerDependencies": {
     "@native-html/render": "~1.0.3",
+    "@react-native-community/slider": ">=4.5.0 <6.0.0",
     "react": "*",
     "react-native": "*",
     "react-native-gesture-handler": ">=2.20.0 <3.0.0",

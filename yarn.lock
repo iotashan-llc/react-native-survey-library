@@ -2240,6 +2240,7 @@ __metadata:
   resolution: "@iotashan-llc/react-native-survey-library-example@workspace:example"
   dependencies:
     "@expo/metro-runtime": "npm:~57.0.3"
+    "@react-native-community/slider": "npm:^5.2.0"
     expo: "npm:^57.0.0"
     expo-status-bar: "npm:~57.0.0"
     react: "npm:19.2.3"
@@ -2260,6 +2261,7 @@ __metadata:
     "@eslint/eslintrc": "npm:^3.3.5"
     "@eslint/js": "npm:^10.0.1"
     "@native-html/render": "npm:~1.0.3"
+    "@react-native-community/slider": "npm:^5.2.0"
     "@react-native/babel-preset": "npm:0.86.0"
     "@react-native/eslint-config": "npm:0.86.0"
     "@react-native/jest-preset": "npm:0.86.0"
@@ -2287,6 +2289,7 @@ __metadata:
     typescript: "npm:^6.0.3"
   peerDependencies:
     "@native-html/render": ~1.0.3
+    "@react-native-community/slider": ">=4.5.0 <6.0.0"
     react: "*"
     react-native: "*"
     react-native-gesture-handler: ">=2.20.0 <3.0.0"
@@ -2755,6 +2758,13 @@ __metadata:
   version: 0.3.6
   resolution: "@pkgr/core@npm:0.3.6"
   checksum: 10c0/153f0f4563f505faeba13c733efa0e05e467ce1c6b941055a5fd3b4560da60fbf1dff4b11da0075f034ddda11f2842b90395f60895dde5825875b616edccc11c
+  languageName: node
+  linkType: hard
+
+"@react-native-community/slider@npm:^5.2.0":
+  version: 5.2.0
+  resolution: "@react-native-community/slider@npm:5.2.0"
+  checksum: 10c0/58ec6a47b5aafefd98a61c79aeae05f1ab8371782eb497d9af665bf2f62a1c372da8fed6dead30e1d6c9e01bfb12bfdbafcde7890736f4f5d55502dabf2e01ad
   languageName: node
   linkType: hard
 
