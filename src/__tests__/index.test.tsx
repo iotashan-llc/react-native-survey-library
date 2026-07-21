@@ -87,6 +87,7 @@ describe('index.tsx: registrar wiring (design: docs/design/0.5-factories.md)', (
       'sv-rating-item',
       'sv-rating-item-smiley',
       'sv-rating-item-star',
+      'sv-singleinput-summary',
       'sv-string-viewer',
     ]);
   });

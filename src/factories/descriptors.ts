@@ -69,6 +69,7 @@ import { MatrixDropdownQuestionElement } from '../questions/MatrixDropdownQuesti
 import { MatrixDynamicQuestionElement } from '../questions/MatrixDynamicQuestion';
 import { CustomQuestion } from '../questions/CustomQuestion';
 import { CompositeQuestion } from '../questions/CompositeQuestion';
+import { SingleInputSummary } from '../questions/SingleInputSummaryQuestion';
 import { ListItemGroupContent, ListPickerElement } from '../overlay/ListPicker';
 
 export type DescriptorRoute = 'template' | 'renderer' | 'element';
@@ -397,6 +398,29 @@ export const DESCRIPTOR_TABLE: readonly Descriptor[] = [
     dispatchKey: 'matrixdynamic',
     route: 'template',
     component: () => MatrixDynamicQuestionElement,
+    milestone: 'M3',
+  },
+  // Task 3.5 (M3) — singleinputsummary, the phase-3 tail type. PROBE
+  // FINDING (2026-07-21): `singleinputsummary` is NOT a serializer question
+  // class (`Serializer.findClass` is undefined; absent from
+  // getChildrenClasses('question')). It is the plain helper
+  // `QuestionSingleInputSummary`, dispatched by web through
+  // ReactElementFactory under `sv-singleinput-summary` (its renderer takes
+  // a `summary` prop, not a question). So it is an ELEMENT-route row — NOT
+  // a MODEL_TYPE_CLASSIFICATION entry (that would trip
+  // `diffModelTypeInventory.missingFromLive`, since no live question class
+  // matches). Its only producer — the
+  // `questionsOnPageMode:"inputPerPage"` single-input MODE — is a v0.3
+  // NON-GOAL (design §11.5; DIFFERENCES "Single-input summary"), so the key
+  // is unreachable through normal v0.3 authoring; registered as a minimal
+  // correct renderer so a future dispatch resolves cleanly instead of the
+  // unsupported fallback.
+  {
+    status: 'supported',
+    questionType: 'sv-singleinput-summary',
+    dispatchKey: 'sv-singleinput-summary',
+    route: 'element',
+    component: () => SingleInputSummary,
     milestone: 'M3',
   },
   {

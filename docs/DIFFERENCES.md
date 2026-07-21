@@ -1536,3 +1536,38 @@ hidden). The first row is added from the placeholder itself.
 (an empty aligned slot, no gesture wiring) until the M4 drag primitive
 lands (4.1/4.3). Web's `DragDropMatrixRows` DOM machinery is bypassed
 entirely (the repo-wide no-DOM posture).
+
+## Single-input summary (`singleinputsummary`, task 3.5)
+
+### The type is registered and rendered; the `inputPerPage` mode that produces it is a v0.3 non-goal
+
+`singleinputsummary` is registered and rendered — but as an **element**,
+not a question type. It is NOT a survey-core serializer question class:
+`Serializer.findClass('singleinputsummary')` is `undefined` and it never
+appears in `Serializer.getChildrenClasses('question', true)`. It is the
+plain helper `QuestionSingleInputSummary` (`question`, `noEntry`,
+`items[]`, `isEmpty()`), which survey-react-ui dispatches through its
+element factory under the key **`sv-singleinput-summary`** (the renderer
+receives a `summary` prop, not a question). This library registers the
+same key on the RN element factory with a minimal, correct renderer:
+empty summaries render the `noEntry` string, non-empty summaries render
+each item's `locText` read-only.
+
+The item-level **edit / remove** affordances (`btnEdit` / `btnRemove`,
+which web draws as icon buttons) are deliberately omitted: they are the
+single-input **navigation** surface (edit → focus that input; remove →
+drop the entry), which belongs to the deferred mode below.
+
+The summary's ONLY producer is the matrix/panel single-input rendering
+mode — the survey-level **`questionsOnPageMode: "inputPerPage"`** driving
+`question.singleInputQuestion` / `QuestionSingleInputBehavior.createSingleInputSummary`
+— and that mode is a **documented v0.3 NON-GOAL for the matrix family**
+(design M3 §11.5, resolution 5). In v0.3 a matrix always renders its full
+grid/cards; the one-input-at-a-time flow that would surface this summary
+is not wired. The type therefore ships as a clean-dispatching element
+(never the unsupported fallback) even though it is unreachable through
+normal v0.3 authoring. Because it is an element key (not a serializer
+class name), it lives in the descriptor table's element route and the
+`ELEMENT_KEY_INVENTORY`, not in `MODEL_TYPE_CLASSIFICATION` (a class-name
+entry there would trip the model-type inventory gate against the live
+survey-core build).
