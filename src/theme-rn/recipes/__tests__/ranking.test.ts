@@ -3,8 +3,9 @@
  * docs/design/0.7-metrics-fixture.md analog). Fixtures:
  * `default-theme/blocks/sv-ranking.scss` + `sd-ranking.scss`. The recipe
  * owns ONLY model-derived tokens (rank-number readOnly/preview/error, the
- * disabled label opacity) plus the native-interaction ghost/drop-placeholder
- * (invariant 6); the component owns pressed/focused/dragging.
+ * disabled label opacity) per invariant 6; the component owns
+ * pressed/focused/dragging. The drop-placeholder/ghost has no ported analog
+ * (RN never sets core's `currentDropTarget`) and carries no recipe fragment.
  */
 import { StyleSheet } from 'react-native';
 import { resolveTheme } from '../../../theme-core/resolve';
@@ -29,7 +30,6 @@ function input(
     readOnly: false,
     preview: false,
     error: false,
-    ghost: false,
     ...overrides,
   };
 }
@@ -73,11 +73,6 @@ describe('buildRankingRecipe — formulas from resolved tokens (base-unit 8)', (
     expect(recipe.fragments.label.paddingVertical).toBe(8);
   });
 
-  it('itemGhost (drop-placeholder): height calcSize(5)=40, borderRadius calcSize(12.5)=100', () => {
-    expect(recipe.fragments.itemGhost.height).toBe(40);
-    expect(recipe.fragments.itemGhost.borderRadius).toBe(100);
-  });
-
   it('formulas track a custom --sjs-base-unit (formula-first, not hardcoded)', () => {
     const custom = resolveTheme({
       cssVariables: { '--sjs-base-unit': '10px' },
@@ -96,14 +91,6 @@ describe('selectRankingItemStyles — model-state token composition', () => {
     expect(styles.item).toEqual([recipe.fragments.item]);
     expect(styles.label).toEqual([recipe.fragments.label]);
     expect(styles.rankNumber).toEqual([recipe.fragments.rankNumber]);
-  });
-
-  it('ghost: appends itemGhost to the item slot (native drop-placeholder)', () => {
-    const styles = selectRankingItemStyles(recipe, input({ ghost: true }));
-    expect(styles.item).toEqual([
-      recipe.fragments.item,
-      recipe.fragments.itemGhost,
-    ]);
   });
 
   it('disabled: appends labelDisabled (opacity 0.25) to the label slot', () => {
@@ -159,7 +146,6 @@ describe('rankingHandleIconFill', () => {
 describe('ranking recipe — finite platform-correct styles across all 40 themes', () => {
   const STATES: RankingItemStateInput[] = [
     input(),
-    input({ ghost: true }),
     input({ disabled: true }),
     input({ readOnly: true }),
     input({ preview: true }),

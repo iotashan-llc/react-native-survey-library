@@ -833,11 +833,6 @@ exports[`curated recipe golden snapshots ContrastLight: recipes build to a stabl
         "flexDirection": "row",
         "paddingVertical": 4,
       },
-      "itemGhost": {
-        "backgroundColor": "rgba(255, 216, 77, 1)",
-        "borderRadius": 100,
-        "height": 40,
-      },
       "label": {
         "color": "rgba(0, 0, 0, 1)",
         "flexShrink": 1,
@@ -2122,11 +2117,6 @@ exports[`curated recipe golden snapshots DefaultLight: recipes build to a stable
         "columnGap": 8,
         "flexDirection": "row",
         "paddingVertical": 4,
-      },
-      "itemGhost": {
-        "backgroundColor": "rgba(243, 243, 243, 1)",
-        "borderRadius": 100,
-        "height": 40,
       },
       "label": {
         "color": "rgba(0, 0, 0, 0.91)",
@@ -3476,11 +3466,6 @@ exports[`curated recipe golden snapshots LayeredDark: recipes build to a stable 
         "columnGap": 8,
         "flexDirection": "row",
         "paddingVertical": 4,
-      },
-      "itemGhost": {
-        "backgroundColor": "rgba(30, 31, 40, 1)",
-        "borderRadius": 100,
-        "height": 40,
       },
       "label": {
         "color": "rgba(213, 215, 238, 1)",
@@ -4863,11 +4848,6 @@ exports[`curated recipe golden snapshots SharpDark: recipes build to a stable sn
         "flexDirection": "row",
         "paddingVertical": 4,
       },
-      "itemGhost": {
-        "backgroundColor": "rgba(27, 27, 27, 1)",
-        "borderRadius": 100,
-        "height": 40,
-      },
       "label": {
         "color": "rgba(255, 255, 255, 0.78)",
         "flexShrink": 1,
@@ -6200,11 +6180,6 @@ exports[`curated recipe golden snapshots ThreeDimensionalLight: recipes build to
         "columnGap": 8,
         "flexDirection": "row",
         "paddingVertical": 4,
-      },
-      "itemGhost": {
-        "backgroundColor": "rgba(255, 255, 255, 1)",
-        "borderRadius": 100,
-        "height": 40,
       },
       "label": {
         "color": "rgba(0, 0, 0, 0.91)",

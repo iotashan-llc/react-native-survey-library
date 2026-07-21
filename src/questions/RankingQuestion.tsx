@@ -38,9 +38,10 @@
  * paths run in jest with no new mocks; the gesture itself is verified on the
  * New-Arch example via maestro (project MEMORY).
  *
- * The drop-placeholder / dragging "ghost" is native interaction state owned
- * by the recipe/component (invariant 6), NOT the model — the renderer never
- * sets core's `currentDropTarget`.
+ * A drop-placeholder / dragging "ghost" has NO ported analog yet: RN's
+ * commit-once drag never sets core's model-driven `currentDropTarget`, so
+ * that styling is deferred to the Layer-2 device-gate work (the recipe
+ * carries no dead ghost fragment).
  */
 import * as React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -272,10 +273,16 @@ function RankingRow(props: RankingRowProps): React.JSX.Element {
     readOnly: variant.variant.readOnly ?? false,
     preview: variant.variant.preview ?? false,
     error: variant.variant.error ?? false,
-    ghost: false,
   };
   const styles = selectRankingItemStyles(recipe, state);
   const controlsDisabled = readOnly || !enabled;
+  // Unranked "add" gates on the SAME model check core's select path uses
+  // (`checkMaxSelectedChoicesUnreached`) so a11y/disabled match behavior at
+  // max. Core also flips `item.enabled` at max via its enable-condition
+  // cycle; this makes the RN contract explicit rather than relying on it.
+  const selectDisabled =
+    controlsDisabled ||
+    (area === 'unranked' && !question.checkMaxSelectedChoicesUnreached());
 
   const numberText =
     area === 'unranked' ? '' : question.getNumberByIndex(index);
@@ -328,8 +335,8 @@ function RankingRow(props: RankingRowProps): React.JSX.Element {
           testID={`sv-ranking-select-${name}-${keyId}`}
           accessibilityRole="button"
           accessibilityLabel={`Add ${item.text} to ranking`}
-          accessibilityState={{ disabled: controlsDisabled }}
-          disabled={controlsDisabled}
+          accessibilityState={{ disabled: selectDisabled }}
+          disabled={selectDisabled}
           onPress={props.onSelect}
           style={localStyles.control}
         >
@@ -488,8 +495,12 @@ export class RankingQuestion extends QuestionElementBase<RankingQuestionProps> {
         {/* Unranked area (RN stacks vertically; screens are narrow). */}
         <View testID={`sv-ranking-unranked-area-${q.name}`}>
           {unranked.length === 0 ? (
+            // Web parity: the FROM/unranked container empty renders
+            // `locSelectToRankEmptyRankedAreaText` ("All choices are
+            // selected for ranking") — the core property names are
+            // deliberately counterintuitive (reactquestion_ranking.tsx).
             <Text testID={`sv-ranking-unranked-empty-${q.name}`}>
-              {locText(q.locSelectToRankEmptyUnrankedAreaText)}
+              {locText(q.locSelectToRankEmptyRankedAreaText)}
             </Text>
           ) : (
             unranked.map((item, index) => (
@@ -514,37 +525,33 @@ export class RankingQuestion extends QuestionElementBase<RankingQuestionProps> {
         {/* Ranked area. */}
         <View testID={`sv-ranking-ranked-area-${q.name}`}>
           {ranked.length === 0 ? (
+            // Web parity: the TO/ranked container empty renders
+            // `locSelectToRankEmptyUnrankedAreaText` ("Drag choices here to
+            // rank them").
             <Text testID={`sv-ranking-ranked-empty-${q.name}`}>
-              {locText(q.locSelectToRankEmptyRankedAreaText)}
+              {locText(q.locSelectToRankEmptyUnrankedAreaText)}
             </Text>
           ) : (
+            // Fine drag is DISABLED in selectToRank v1: the two-area
+            // multi-slot drop-index math (mapping a Pan target to the right
+            // slot across both areas) is unverified on-device, and a naive
+            // single-slot mapping collapses a multi-slot drag to one step.
+            // Button reorder (move-up/down) is the affordance here; the Pan
+            // wrapper stays on default single-list ranking only (DIFFERENCES).
             ranked.map((item, index) => (
-              <RankingDragRow
+              <RankingRow
                 key={`r-${itemKey(item, index)}`}
-                enabled={!q.isInputReadOnly}
+                question={q}
+                item={item}
                 index={index}
+                area="ranked"
                 count={ranked.length}
-                rowHeight={ROW_HEIGHT}
-                onReorder={(from, to) =>
-                  this.selectToRankKey(
-                    item,
-                    to < from ? 'ArrowUp' : 'ArrowDown'
-                  )
-                }
-              >
-                <RankingRow
-                  question={q}
-                  item={item}
-                  index={index}
-                  area="ranked"
-                  count={ranked.length}
-                  name={q.name}
-                  keyId={String(index)}
-                  onMoveUp={() => this.selectToRankKey(item, 'ArrowUp')}
-                  onMoveDown={() => this.selectToRankKey(item, 'ArrowDown')}
-                  onUnselect={() => this.selectToRankKey(item, ' ')}
-                />
-              </RankingDragRow>
+                name={q.name}
+                keyId={String(index)}
+                onMoveUp={() => this.selectToRankKey(item, 'ArrowUp')}
+                onMoveDown={() => this.selectToRankKey(item, 'ArrowDown')}
+                onUnselect={() => this.selectToRankKey(item, ' ')}
+              />
             ))
           )}
         </View>

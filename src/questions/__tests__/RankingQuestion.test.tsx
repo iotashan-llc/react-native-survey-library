@@ -230,3 +230,43 @@ describe('ranking — drag gesture is a device gate', () => {
     expect(screen.getByTestId('sv-ranking-movedown-r-0')).toBeTruthy();
   });
 });
+
+describe('ranking — selectToRank empty-area placeholders (web from/to→text mapping)', () => {
+  // Web (reactquestion_ranking.tsx): the FROM/unranked container empty →
+  // locSelectToRankEmptyRankedAreaText; the TO/ranked container empty →
+  // locSelectToRankEmptyUnrankedAreaText (deliberately counterintuitive
+  // core property names).
+  it('empty ranked (to) area shows the Unranked text; empty unranked (from) area shows the Ranked text', () => {
+    const question = makeRanking({ selectToRankEnabled: true });
+    renderRanking(question);
+    // Default: all choices unranked → the RANKED (to) area is empty.
+    expect(screen.getByTestId('sv-ranking-ranked-empty-r').props.children).toBe(
+      'Drag choices here to rank them'
+    );
+    // Rank every choice → the UNRANKED (from) area becomes empty.
+    act(() => {
+      question.value = ['a', 'b', 'c'];
+    });
+    expect(
+      screen.getByTestId('sv-ranking-unranked-empty-r').props.children
+    ).toBe('All choices are selected for ranking');
+  });
+});
+
+describe('ranking — max-reached unranked add button a11y matches behavior', () => {
+  it('at maxSelectedChoices the remaining unranked add button reports disabled and no-ops', () => {
+    const question = makeRanking({
+      selectToRankEnabled: true,
+      maxSelectedChoices: 1,
+    });
+    renderRanking(question);
+    fireEvent.press(screen.getByTestId('sv-ranking-select-r-a'));
+    expect(vals(question)).toEqual(['a']);
+    // Max reached: the still-unranked 'b' add button must report disabled
+    // (a11y matches the model gate) and its press must not add.
+    const bButton = screen.getByTestId('sv-ranking-select-r-b');
+    expect(bButton.props.accessibilityState?.disabled).toBe(true);
+    fireEvent.press(bButton);
+    expect(vals(question)).toEqual(['a']);
+  });
+});

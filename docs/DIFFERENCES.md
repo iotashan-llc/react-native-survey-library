@@ -1594,9 +1594,18 @@ invariant 7). The drag animates on the UI thread and **commits ONCE on
 release** via the same `reorderRankedItem` + `setValue` primitive; it does
 **not** reproduce web's per-`dragOver` model splices (continuous model
 mutation fights the shared-value animation and churns re-renders). The
-drop-placeholder / dragging **"ghost"** is native interaction state owned
-by the recipe/component (invariant 6) — the renderer never sets core's
-`currentDropTarget`, so the model's `itemGhostMod` class never appears.
+drop-placeholder / dragging **"ghost"** is web's **model-driven** state
+(core sets `currentDropTarget` → `itemGhostMod`) which the commit-once RN
+drag never produces, so it has **no ported analog** — the recipe carries no
+ghost fragment and the placeholder styling is **deferred** to the Layer-2
+device-gate work (when/if a continuous drop-target model is adopted).
+
+The fine drag Pan wrapper engages **only in default single-list ranking**.
+In `selectToRank` mode it is **disabled** (button reorder is the affordance
+there): mapping a Pan target to the correct slot spans two areas and
+multiple slots, and a single `ArrowUp`/`ArrowDown` per drag would collapse a
+multi-slot move to one step — the two-area drop-index math is unverified
+on-device, so v1 gates it off rather than ship a wrong reorder.
 
 `react-native-gesture-handler` and `react-native-reanimated` are
 **required peerDependencies** (batteries-included, A10). The consumer app

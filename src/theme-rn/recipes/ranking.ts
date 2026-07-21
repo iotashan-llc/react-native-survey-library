@@ -2,13 +2,17 @@
  * Ranking recipe (task 4.1). Fixtures:
  * `default-theme/blocks/sv-ranking.scss` + `sd-ranking.scss`.
  *
- * Per invariant 6 the recipe owns ONLY:
- *  - model-derived tokens the bridge extracts from `question.getItemClass`
- *    (rank-number readOnly/preview/error backgrounds, the disabled label
- *    opacity — `.sv-ranking-item--readonly/--preview/--error` +
- *    `.sv-ranking-item--disabled .sv-ranking-item__text`), and
- *  - the native drop-placeholder ("ghost" — `.sv-ranking-item__ghost`),
- *    which is interaction state the component drives on drag.
+ * Per invariant 6 the recipe owns ONLY model-derived tokens the bridge
+ * extracts from `question.getItemClass` (rank-number readOnly/preview/error
+ * backgrounds, the disabled label opacity —
+ * `.sv-ranking-item--readonly/--preview/--error` +
+ * `.sv-ranking-item--disabled .sv-ranking-item__text`).
+ *
+ * The drop-placeholder / dragging "ghost" (`.sv-ranking-item__ghost`,
+ * model-driven via core's `currentDropTarget`) has NO ported analog — RN's
+ * commit-once drag never sets `currentDropTarget` — so no ghost fragment is
+ * carried here; that styling is deferred to the Layer-2 device-gate work
+ * (see DIFFERENCES).
  *
  * The component owns pressed/focused/dragging shadow — those are NOT here
  * (same split as the item/buttonGroup recipes). Rank-number FOCUS outline
@@ -32,19 +36,16 @@ import {
 import type { BuildContext } from './types';
 
 /**
- * RAW model-state inputs (bridge flags) plus the component-owned native
- * `ghost` (drop-placeholder). `disabled` is the reachable label-opacity
- * family (`.sv-ranking-item--disabled .sv-ranking-item__text`, reachable
- * via `choicesEnableIf` unlike the base select item). `readOnly`/`preview`/
- * `error` drive the rank-number badge only.
+ * RAW model-state inputs (bridge flags). `disabled` is the reachable
+ * label-opacity family (`.sv-ranking-item--disabled .sv-ranking-item__text`,
+ * reachable via `choicesEnableIf` unlike the base select item).
+ * `readOnly`/`preview`/`error` drive the rank-number badge only.
  */
 export interface RankingItemStateInput {
   disabled: boolean;
   readOnly: boolean;
   preview: boolean;
   error: boolean;
-  /** Native drop-placeholder while a drag hovers this row (component-owned). */
-  ghost: boolean;
 }
 
 export interface RankingRecipe {
@@ -53,8 +54,6 @@ export interface RankingRecipe {
     container: ViewStyle;
     /** `.sv-ranking-item__content` — the row (handle · index · text). */
     item: ViewStyle;
-    /** `.sv-ranking-item__ghost` — drop-placeholder shown while dragging over. */
-    itemGhost: ViewStyle;
     /** `.sv-ranking-item__icon-container` — drag-handle box. */
     handle: ViewStyle;
     /** `.sv-ranking-item__index` badge base (circle). */
@@ -128,11 +127,6 @@ export function buildRankingRecipe(
     '--sjs-general-backcolor-dark',
     sink
   ).css;
-  const backcolorDim = resolveColorVar(
-    resolved,
-    '--sjs-general-backcolor-dim',
-    sink
-  ).css;
   const redLight = resolveColorVar(
     resolved,
     '--sjs-special-red-light',
@@ -153,11 +147,6 @@ export function buildRankingRecipe(
       columnGap: calcSize(resolved, 1),
       paddingVertical: calcSize(resolved, 0.5),
       borderRadius: calcSize(resolved, 12.5),
-    },
-    itemGhost: {
-      backgroundColor: backcolorDim,
-      borderRadius: calcSize(resolved, 12.5),
-      height: badgeSize,
     },
     handle: {
       width: handleSize,
@@ -225,7 +214,6 @@ export function buildRankingRecipe(
     handleIconSize: handleSize,
     select(input: RankingItemStateInput) {
       const item: ViewStyle[] = [fragments.item];
-      if (input.ghost) item.push(fragments.itemGhost);
       const rankNumber: ViewStyle[] = [fragments.rankNumber];
       // Fixture precedence: error > preview > readOnly > base.
       if (input.error) rankNumber.push(fragments.rankNumberError);
