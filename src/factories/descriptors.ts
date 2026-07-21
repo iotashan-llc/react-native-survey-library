@@ -72,6 +72,7 @@ import { CompositeQuestion } from '../questions/CompositeQuestion';
 import { RankingQuestion } from '../questions/RankingQuestion';
 import { SliderQuestion } from '../questions/SliderQuestion';
 import { SignaturePadQuestion } from '../questions/SignaturePadQuestion';
+import { ImageMapQuestion } from '../questions/ImageMapQuestion';
 import { SingleInputSummary } from '../questions/SingleInputSummaryQuestion';
 import { ListItemGroupContent, ListPickerElement } from '../overlay/ListPicker';
 
@@ -436,6 +437,23 @@ export const DESCRIPTOR_TABLE: readonly Descriptor[] = [
     dispatchKey: 'signaturepad',
     route: 'template',
     component: () => SignaturePadQuestion,
+    milestone: 'M5',
+  },
+  // Task 5.4 (M5) — imagemap. getTemplate() === 'imagemap' (extends
+  // Question, no override); template route, dispatchKey === questionType.
+  // No renderAs variants upstream (reactquestion_imagemap.tsx registers a
+  // single 'imagemap' key). The component draws the base image (RN Image,
+  // imageLink URI-policy-gated) with a lazy-required react-native-svg
+  // overlay of the tappable hotspot AREAS (rect/circle/poly), scaled via
+  // the Svg viewBox = source-image size; area tap -> model mapItemToggle
+  // (single toggle-clear / multi array toggle). Peer-absent degrades to the
+  // plain base image + diagnostic (invariant 9).
+  {
+    status: 'supported',
+    questionType: 'imagemap',
+    dispatchKey: 'imagemap',
+    route: 'template',
+    component: () => ImageMapQuestion,
     milestone: 'M5',
   },
   // Task 3.4 (M3) — matrixdynamic (dynamic rows) over the SAME

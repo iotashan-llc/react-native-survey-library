@@ -312,7 +312,15 @@ export const MODEL_TYPE_CLASSIFICATION: Readonly<
   },
   file: { status: 'planned', milestone: 'M5', reason: 'task 5.2' },
   // html: pulled forward to M2 (see Phase 2 section above).
-  imagemap: { status: 'planned', milestone: 'M5', reason: 'task 5.4' },
+  imagemap: {
+    status: 'supported',
+    milestone: 'M5',
+    reason: 'task 5.4',
+    runtimeRenderable: {
+      expectedTemplate: 'imagemap',
+      expectedRoute: 'template',
+    },
+  },
 };
 
 export interface ModelTypeInventoryDiff {

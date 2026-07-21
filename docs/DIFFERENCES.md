@@ -1862,3 +1862,96 @@ stored value, never a crash (invariant 9). `storeDataAsText: false`
 (server upload of the signature as a file via `waitForUpload`) is **not
 ported** — RN always stores the data URL as text; hosts needing an upload
 should read `question.value` (the data URL) and upload it themselves.
+
+## Imagemap question (task 5.4)
+
+The `imagemap` question is supported. Web renders an `<img>` plus an
+`<svg>` whose area shapes are appended imperatively (`renderSVG`); RN draws
+the base image with a **`react-native-svg`** overlay of the tappable
+hotspot AREAS. `react-native-svg` is a batteries-included core
+peerDependency (also the icon adapter's peer); the shape primitives
+(`Svg`/`Rect`/`Circle`/`Polygon`) are **lazy-required** so they load only
+when an `imagemap` question actually renders.
+
+### Coordinate scaling is delegated to the SVG `viewBox` (web parity)
+
+Each area's `coords` live in the SOURCE image's pixel space. Web sets the
+`<svg viewBox>` to the base image's natural pixel size (from the `<img>`'s
+`onload`) and lets SVG scale the shapes to the displayed box. RN does the
+same: the base `<Image onLoad>` reports the source's natural size, the
+container's `onLayout` reports the available width, and the `<Svg>` is
+sized to the **aspect-preserved rendered box** with
+`viewBox="0 0 naturalW naturalH"` — react-native-svg performs the
+coordinate scaling. The shapes carry their raw source-space geometry
+straight from `area.getSVGCoords()` (rect → `x`/`y`/`width`/`height`,
+circle → `cx`/`cy`/`r`, poly → `points`). The overlay mounts only **after**
+the base image reports its natural size (before that there is no correct
+viewBox); web has the same pre-load window (its viewBox is unset until the
+image loads). There is no model `imageWidth`/`imageHeight`/`imageFit` on
+`imagemap` (unlike `image`/`imagepicker`), so the image is fitted to the
+measured container width preserving aspect.
+
+### Shapes: circle / rect / poly only (no ellipse)
+
+survey-core's `imagemap` shape choices are `circle`, `rect`, and `poly`
+(area-level also `inherit`, resolving to the question's `shape`, default
+`poly`) — there is **no ellipse**. The renderer draws exactly those three;
+an unknown shape draws nothing rather than throwing.
+
+### Single-select toggle-clears; multi-select is the default
+
+Selection is controlled entirely through the model
+(`question.mapItemToggle(area)` on a shape tap — the same method web's
+click handler calls). `multiSelect` defaults to **`true`** (an array
+value). With `multiSelect: false` the scalar value is set and **re-tapping
+the selected area clears it** — this is core's own built-in toggle (the
+"allowClear" affordance; there is no separate `allowClear` property).
+`maxSelectedAreas`/`minSelectedAreas` bound the multi-select array and
+raise core's own validation errors.
+
+### The selection is re-rendered imperatively after a tap
+
+`multiSelect` toggles run through core's `PropertyNameArray.toggle`, which
+mutates the value array **in place and reassigns the same reference**, so
+survey-core's reference-based change detection fires no property
+notification for a second+ toggle. The renderer therefore re-renders after
+each tap — the RN analog of web's `onValueChanged → renderSVG` imperative
+repaint. The model remains the single source of truth (`isItemSelected`);
+the tap only nudges React to re-read it.
+
+### Selected highlight; hover is not rendered
+
+An idle shape is transparent-filled with a zero-width stroke; a selected
+shape takes `--sd-imagemap-selected-fill-color` (default
+`--sjs-primary-backcolor-light`) / `--sd-imagemap-selected-stroke-color`
+(default `--sjs-primary-backcolor`) / `stroke-width: 1`. The area's own
+`idle*`/`selected*` color props (then the question's) override the recipe
+defaults, mirroring survey-core's `--sd-imagemap-*` CSS-variable cascade.
+Web's **hover** state has no touch analog and is not rendered. A disabled
+or invisible area is not drawn (web hides it via `display: none` / skips
+its SVG element).
+
+### Read-only, accessibility, and the base-image URI policy
+
+A **read-only** question still draws the overlay (so the selected highlight
+shows) but taps do not commit. Each shape is an accessible tappable labeled
+with its area `text` and carrying `checked` (selected) + `disabled`
+(read-only) state, with role `checkbox` (multi) or `radio` (single).
+**Native caveat:** these per-shape accessibility props ride
+`react-native-svg`'s child-element a11y, whose mapping to native
+assistive tech (notably Android TalkBack on SVG children) is inconsistent
+and **not yet device-verified** — the on-device a11y pass is a pending
+gate. The
+base image's `imageLink` is validated through the central URI policy
+(context `image`, fail-closed) — a blocked link drops the image and emits
+an `image-uri-blocked` diagnostic (source `imagemap`); data-URI images are
+allowed.
+
+### Fallback when `react-native-svg` is absent
+
+Although `react-native-svg` is a required peer, if it is ever
+unresolvable `loadImageMapSvg()` resolves null and the question degrades to
+the **plain base image with no tappable hotspot overlay** plus an
+`imagemap-lib-unavailable` diagnostic — never a throw (invariant 9). The
+design-mode SVG editing (control-point dragging, `addCoord`/`removeCoord`)
+is authoring-only and not ported.

@@ -307,6 +307,17 @@ export interface SignaturePadLibUnavailablePayload {
   questionName: string;
 }
 
+/** 5.4 imagemap — the batteries-included `react-native-svg` peer (a core
+ * peerDependency) is not installed/resolvable, so the tappable hotspot
+ * overlay cannot be drawn. The question degrades to a non-throwing
+ * fallback (the plain, URI-policy-gated base image, no hotspots) + this
+ * diagnostic rather than crashing (invariant 9). Install the peer for the
+ * interactive hotspots. */
+export interface ImageMapLibUnavailablePayload {
+  code: 'imagemap-lib-unavailable';
+  questionName: string;
+}
+
 /** 2.2 dialog adapter — a consumer `settings.showDialog` was displaced
  * while Surveys are mounted (restored on last unmount; design
  * 2.2-dialog-adapter D2). */
@@ -430,7 +441,8 @@ export type DiagnosticPayload =
   | ImageContentModeUnsupportedPayload
   | PanelDynamicModeUnsupportedPayload
   | CustomContentMissingPayload
-  | SignaturePadLibUnavailablePayload;
+  | SignaturePadLibUnavailablePayload
+  | ImageMapLibUnavailablePayload;
 
 export type DiagnosticHandler = (payload: DiagnosticPayload) => void;
 

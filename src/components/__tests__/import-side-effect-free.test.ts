@@ -71,6 +71,7 @@ describe('component modules are import-side-effect-free', () => {
       'expression',
       'html',
       'image',
+      'imagemap',
       'imagepicker',
       'matrix',
       'matrixdropdown',

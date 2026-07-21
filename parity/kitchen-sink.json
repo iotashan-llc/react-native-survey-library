@@ -277,6 +277,33 @@
           ]
         },
         {
+          "type": "imagemap",
+          "name": "region",
+          "title": "Tap a region (imagemap, task 5.4)",
+          "multiSelect": false,
+          "imageLink": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPj/HwADBwIAMCbHYQAAAABJRU5ErkJggg==",
+          "areas": [
+            {
+              "value": "north",
+              "shape": "rect",
+              "coords": "0,0,50,50",
+              "text": "North"
+            },
+            {
+              "value": "core",
+              "shape": "circle",
+              "coords": "75,75,20",
+              "text": "Core"
+            },
+            {
+              "value": "wedge",
+              "shape": "poly",
+              "coords": "10,10,90,10,50,90",
+              "text": "Wedge"
+            }
+          ]
+        },
+        {
           "type": "panel",
           "name": "scores",
           "title": "Computed (expression)",

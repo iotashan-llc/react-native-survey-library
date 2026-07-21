@@ -33,6 +33,7 @@ import { buildMatrixRecipe, type MatrixRecipe } from './matrix';
 import { buildRankingRecipe, type RankingRecipe } from './ranking';
 import { buildSliderRecipe, type SliderRecipe } from './slider';
 import { buildSignatureRecipe, type SignatureRecipe } from './signature';
+import { buildImageMapRecipe, type ImageMapRecipe } from './imagemap';
 
 export interface Recipes {
   item: ItemRecipe;
@@ -64,6 +65,8 @@ export interface Recipes {
   slider: SliderRecipe;
   /** Signature-pad canvas/placeholder/clear + read-only image + fallback (task 5.1). */
   signature: SignatureRecipe;
+  /** Image-map base image + svg-hotspot idle/selected color defaults + fallback (task 5.4). */
+  imagemap: ImageMapRecipe;
 }
 
 export function buildRecipes(
@@ -88,6 +91,7 @@ export function buildRecipes(
     ranking: buildRankingRecipe(resolved, buildCtx),
     slider: buildSliderRecipe(resolved, buildCtx),
     signature: buildSignatureRecipe(resolved, buildCtx),
+    imagemap: buildImageMapRecipe(resolved, buildCtx),
   };
 }
 
@@ -109,3 +113,4 @@ export * from './matrix';
 export * from './ranking';
 export * from './slider';
 export * from './signature';
+export * from './imagemap';
