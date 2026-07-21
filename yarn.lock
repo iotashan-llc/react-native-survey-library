@@ -2290,6 +2290,7 @@ __metadata:
   peerDependencies:
     "@native-html/render": ~1.0.3
     "@react-native-community/slider": ">=4.5.0 <6.0.0"
+    expo-video: ">=2.0.0"
     react: "*"
     react-native: "*"
     react-native-gesture-handler: ">=2.20.0 <3.0.0"

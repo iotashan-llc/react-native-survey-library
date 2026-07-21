@@ -803,15 +803,53 @@ each item keeps its own `checkbox` role + checked state. Radiogroup and
 rating containers DO map their core `radiogroup` role natively.
 
 
-## Image question (task 2.10)
+## Image question (task 2.10 image; task 5.5 video/youtube)
 
-### `contentMode: "video"` is deferred; `"youtube"` is never supported
+### `contentMode: "video"` renders a native player (expo-video)
 
-v0.2 renders only `renderedMode === "image"`. A video content mode
-renders nothing and reports an `image-content-mode-unsupported`
-diagnostic (native video arrives with the expo-video capability task);
-YouTube iframes are a documented won't-support (WebView/expo-video path
-described in the plan).
+A `video` content mode — explicit, or `auto` resolving to video by the
+`imageLink` extension (`.mp4`/`.mov`/`.wmv`/`.flv`/`.avi`/`.mkv`) — renders
+the batteries-included **expo-video** player (`useVideoPlayer` +
+`VideoView`, lazy-required inside an isolated hooks child — invariant 7)
+with native controls, `contentFit` mapped from `imageFit`
+(contain/cover/fill; `none` → contain, since expo-video has no `none`),
+and dimensions from core's `renderedWidth`/`renderedHeight`. The video
+source loads through the central URI policy in the **`video`** context
+(invariant 8, fail-closed): an allowlisted `https:` source plays; a
+non-allowlisted remote source is dropped fail-closed with an
+`image-uri-blocked` diagnostic and the question shows a non-throwing poster
+fallback (the alt text). When expo-video itself is absent (a consumer who
+has not installed the peer, or jest), the player degrades to the same
+poster fallback plus an `image-video-lib-unavailable` diagnostic — never a
+crash. Playback is a device gate (verified on the example app, not in
+jest). Note: a `data:` video source is NOT accepted — the `data:` scheme
+exception is `image`-context-only; a video must be an allowlisted `https:`
+URL.
+
+### `contentMode: "youtube"` embeds via react-native-webview (documented, limited)
+
+A `youtube` content mode — explicit, or `auto` resolving to youtube by the
+link — renders core's already-derived embed URL
+(`https://www.youtube.com/embed/<id>`, computed by core's
+`getCorrectImageLink`) in a lazy-required **react-native-webview**. The
+embed URL is validated through the URI policy in the same fail-closed
+`video` context, so the consumer must allowlist `https://www.youtube.com`
+(invariant 8) to present it — otherwise, or when react-native-webview is
+absent, the question degrades to a documented text fallback (the alt text /
+link) plus an `image-uri-blocked` (not-allowlisted) or
+`image-youtube-webview-unavailable` (webview-absent) diagnostic. YouTube
+remains a documented-limited path: no poster thumbnail, no
+inline-vs-fullscreen control parity, and the embed pulls YouTube's own
+network resources inside the WebView (its own scripts/hosts are not
+individually policy-gated — only the top embed URL is).
+
+### A non-image, non-media `contentMode` still renders nothing + a diagnostic
+
+Only `image`/`video`/`youtube` render. Any other `renderedMode` — most
+notably an empty `contentMode: ""`, which survey-core preserves as
+`renderedMode: ""` rather than defaulting to `"image"` — renders nothing
+and reports an `image-content-mode-unsupported` diagnostic (invariant 9's
+honest degradation).
 
 ### A failed image load shows the alt text (web shows nothing)
 

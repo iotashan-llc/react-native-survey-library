@@ -243,6 +243,24 @@ export const kitchenSinkJson = {
           altText: 'Sample image (task 2.10)',
         },
         {
+          // Video content mode (task 5.5) — renders the expo-video player
+          // (native controls, contentFit from imageFit). The source loads
+          // through the URI policy 'video' context (fail-closed): allowlist
+          // this origin via the survey's UriPolicyContext to play it,
+          // otherwise it degrades to a non-throwing poster fallback. YouTube
+          // (contentMode: 'youtube') embeds via react-native-webview and is a
+          // documented-limited path.
+          type: 'image',
+          name: 'heroVideo',
+          contentMode: 'video',
+          imageLink:
+            'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+          imageFit: 'contain',
+          imageWidth: '240',
+          imageHeight: '135',
+          altText: 'Sample video (contentMode: video, task 5.5)',
+        },
+        {
           type: 'imagepicker',
           name: 'swatches',
           title: 'Pick swatches (imagepicker)',
