@@ -32,6 +32,7 @@ import { buildListItemRecipe, type ListItemRecipe } from './listItem';
 import { buildMatrixRecipe, type MatrixRecipe } from './matrix';
 import { buildRankingRecipe, type RankingRecipe } from './ranking';
 import { buildSliderRecipe, type SliderRecipe } from './slider';
+import { buildSignatureRecipe, type SignatureRecipe } from './signature';
 
 export interface Recipes {
   item: ItemRecipe;
@@ -61,6 +62,8 @@ export interface Recipes {
   ranking: RankingRecipe;
   /** Slider track/thumb/tooltip/label + single-mode stepper fallback (task 4.4). */
   slider: SliderRecipe;
+  /** Signature-pad canvas/placeholder/clear + read-only image + fallback (task 5.1). */
+  signature: SignatureRecipe;
 }
 
 export function buildRecipes(
@@ -84,6 +87,7 @@ export function buildRecipes(
     matrix: buildMatrixRecipe(resolved, buildCtx),
     ranking: buildRankingRecipe(resolved, buildCtx),
     slider: buildSliderRecipe(resolved, buildCtx),
+    signature: buildSignatureRecipe(resolved, buildCtx),
   };
 }
 
@@ -104,3 +108,4 @@ export * from './listItem';
 export * from './matrix';
 export * from './ranking';
 export * from './slider';
+export * from './signature';

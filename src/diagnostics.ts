@@ -297,6 +297,16 @@ export interface CustomContentMissingPayload {
   questionType: string;
 }
 
+/** 5.1 signaturepad — the batteries-included `react-native-signature-canvas`
+ * peer (a WebView signature pad) is not installed/resolvable, so there is no
+ * interactive drawing surface. The question degrades to a non-throwing
+ * fallback (a read-only image of any stored value) + this diagnostic rather
+ * than crashing (invariant 9). Install the peer for the drawing canvas. */
+export interface SignaturePadLibUnavailablePayload {
+  code: 'signaturepad-lib-unavailable';
+  questionName: string;
+}
+
 /** 2.2 dialog adapter — a consumer `settings.showDialog` was displaced
  * while Surveys are mounted (restored on last unmount; design
  * 2.2-dialog-adapter D2). */
@@ -419,7 +429,8 @@ export type DiagnosticPayload =
   | ProgressBarTypeUnsupportedPayload
   | ImageContentModeUnsupportedPayload
   | PanelDynamicModeUnsupportedPayload
-  | CustomContentMissingPayload;
+  | CustomContentMissingPayload
+  | SignaturePadLibUnavailablePayload;
 
 export type DiagnosticHandler = (payload: DiagnosticPayload) => void;
 

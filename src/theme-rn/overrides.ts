@@ -130,6 +130,15 @@ export interface SliderStyleOverrides {
   label?: StyleProp<ViewStyle>;
 }
 
+/** Signature-pad slots (task 5.1: `SignaturePadQuestion`). */
+export interface SignatureStyleOverrides {
+  container?: StyleProp<ViewStyle>;
+  canvas?: StyleProp<ViewStyle>;
+  placeholder?: StyleProp<ViewStyle>;
+  clearButton?: StyleProp<ViewStyle>;
+  image?: StyleProp<ImageStyle>;
+}
+
 /** List-picker slots (task 2.1: `ListPicker`). */
 export interface ListItemStyleOverrides {
   row?: StyleProp<ViewStyle>;
@@ -154,6 +163,7 @@ export interface SurveyComponentStyles {
   buttonGroup?: ButtonGroupStyleOverrides;
   ranking?: RankingStyleOverrides;
   slider?: SliderStyleOverrides;
+  signature?: SignatureStyleOverrides;
   listItem?: ListItemStyleOverrides;
 }
 

@@ -80,6 +80,7 @@ describe('component modules are import-side-effect-free', () => {
       'radiogroup',
       'ranking',
       'rating',
+      'signaturepad',
       'slider',
       'sv-boolean-checkbox',
       'sv-boolean-radio',

@@ -301,7 +301,15 @@ export const MODEL_TYPE_CLASSIFICATION: Readonly<
   },
 
   // Phase 5 — v0.5-v0.9 (M5).
-  signaturepad: { status: 'planned', milestone: 'M5', reason: 'task 5.1' },
+  signaturepad: {
+    status: 'supported',
+    milestone: 'M5',
+    reason: 'task 5.1',
+    runtimeRenderable: {
+      expectedTemplate: 'signaturepad',
+      expectedRoute: 'template',
+    },
+  },
   file: { status: 'planned', milestone: 'M5', reason: 'task 5.2' },
   // html: pulled forward to M2 (see Phase 2 section above).
   imagemap: { status: 'planned', milestone: 'M5', reason: 'task 5.4' },

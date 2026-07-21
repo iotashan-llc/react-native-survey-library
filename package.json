@@ -84,7 +84,7 @@
       "<rootDir>/.claude/"
     ],
     "transformIgnorePatterns": [
-      "node_modules/(?!((jest-)?react-native|@react-native(-community)?|@native-html|react-native-svg|stringify-entities|character-entities-html4|character-entities-legacy)/)"
+      "node_modules/(?!((jest-)?react-native|@react-native(-community)?|@native-html|react-native-svg|react-native-signature-canvas|stringify-entities|character-entities-html4|character-entities-legacy)/)"
     ]
   },
   "devDependencies": {
@@ -123,7 +123,9 @@
     "react-native": "*",
     "react-native-gesture-handler": ">=2.20.0 <3.0.0",
     "react-native-reanimated": ">=3.16.0 <5.0.0",
+    "react-native-signature-canvas": ">=5.0.0 <6.0.0",
     "react-native-svg": ">=15.0.0 <16.0.0",
+    "react-native-webview": ">=13.0.0",
     "survey-core": ">=2.5.32 <2.6.0"
   },
   "workspaces": [

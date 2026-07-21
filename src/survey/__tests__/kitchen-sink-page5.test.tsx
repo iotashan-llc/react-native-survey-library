@@ -7,9 +7,11 @@
  *  - a second `ranking` in selectToRank mode renders its two-area layout,
  *  - the `slider` questions (task 4.4) render as SUPPORTED — the single-thumb
  *    community input and the range dual-thumb track, NOT the fallback,
- *  - a genuinely still-unsupported type (`signaturepad`, M5 task 5.1) renders
- *    the NON-THROWING fallback panel (invariant 9) — so the graceful-fallback
- *    demo survives slider becoming supported.
+ *  - the `signaturepad` question (task 5.1) renders as SUPPORTED — the WebView
+ *    signature canvas (via the peer's root manual mock), NOT the fallback,
+ *  - a genuinely still-unsupported type (`file`, M5 task 5.2) renders the
+ *    NON-THROWING fallback panel (invariant 9) — so the graceful-fallback demo
+ *    survives signaturepad becoming supported.
  *
  * SCOPE NOTE: jest has no Yoga; SurveyRow defers children one frame until
  * onLayout measures the row (1.3-design D3). This harness hand-feeds every
@@ -132,8 +134,16 @@ describe('kitchen-sink page 5 — slider is supported (single + range)', () => {
   });
 });
 
+describe('kitchen-sink page 5 — signaturepad is supported (WebView canvas)', () => {
+  it('renders the signature canvas (via the peer manual mock), never the fallback', async () => {
+    await renderFallbackPage();
+    expect(screen.getByTestId('sv-signature-signature')).toBeTruthy();
+    expect(screen.getByTestId('sv-signature-input-signature')).toBeTruthy();
+  });
+});
+
 describe('kitchen-sink page 5 — a genuinely unsupported type still falls back', () => {
-  it('the signaturepad question renders the NON-THROWING fallback panel', async () => {
+  it('the file question renders the NON-THROWING fallback panel', async () => {
     await renderFallbackPage();
     expect(screen.getByTestId('unsupported-question-panel')).toBeTruthy();
   });
