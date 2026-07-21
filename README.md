@@ -12,14 +12,30 @@ React Native rendering engine for the [SurveyJS Form Library](https://surveyjs.i
 npm install @iotashan-llc/react-native-survey-library survey-core
 ```
 
-Required peer dependencies (batteries-included — install once):
+Required peer dependencies (batteries-included — install once). Each backs a specific capability and is lazy-loaded only when a question needs it:
 
 ```sh
-npx expo install react-native-svg
-npm install @native-html/render
+# native modules — install with expo so versions match your SDK
+npx expo install react-native-svg react-native-gesture-handler \
+  react-native-reanimated @react-native-community/slider \
+  react-native-webview expo-video expo-image-picker expo-document-picker
+
+# JS-only
+npm install @native-html/render react-native-signature-canvas
 ```
 
-Later milestones add more capability peers (gesture-handler, reanimated, slider, signature canvas, expo pickers/video) as the question types that need them land.
+| Peer | Backs |
+|---|---|
+| `react-native-svg` | rating stars/smileys, `imagemap` hotspots, SVG icons |
+| `react-native-gesture-handler` + `react-native-reanimated` | `ranking` drag, `matrixdynamic` row reorder |
+| `@react-native-community/slider` | `slider` (single); range uses a custom dual-thumb |
+| `react-native-signature-canvas` | `signaturepad` |
+| `react-native-webview` | `signaturepad` canvas, YouTube `image` embeds |
+| `expo-video` | `image` `contentMode: video` |
+| `expo-image-picker` + `expo-document-picker` | `file` (camera / gallery / document) |
+| `@native-html/render` | rich HTML rendering |
+
+A missing peer degrades **only** the question that needs it — a non-throwing fallback + diagnostic, never a crash.
 
 ## Quick start
 
@@ -65,11 +81,23 @@ The bundled kitchen-sink example (iPad Pro 13" simulator) — same SurveyModel J
 |---|---|
 | ![Ratings page: number pills, SVG stars filled to position, smileys, custom rate values, expressions — Default Dark theme applied live](docs/screenshots/ratings-dark.png) | ![Completed state: sanitized completedHtml frame](docs/screenshots/completed-dark.png) |
 
-## Supported in v0.1 (M1)
+## Supported question types
 
-Question types: `text` (all 13 inputTypes, input masks, character counter), `comment`, `boolean` (default/checkbox/radio renderAs), `checkbox`, `radiogroup`, `rating` (numbers/stars/smileys/custom rateValues), `expression` — plus panels, multi-element rows, pages, navigation (start/prev/next/preview/complete), percentage progress bar, survey header (title/description/logo), completed/loading/empty state frames, and the full theme JSON pipeline (validated across all 40 `survey-core/themes`; golden snapshots for the curated set).
+Every type below renders natively from the same SurveyModel JSON you'd run on web. Anything not listed renders a **non-throwing fallback panel** with a structured diagnostic — an unsupported type never crashes the survey.
 
-Anything else renders a **non-throwing fallback panel** with a structured diagnostic — an unsupported type never crashes the survey.
+| Category | Types |
+|---|---|
+| **Text & input** | `text` (all 13 inputTypes, input masks, character counter), `comment`, `multipletext` |
+| **Choice** | `radiogroup`, `checkbox` (columns, Select All, Other), `dropdown`, `tagbox`, `boolean` (default/checkbox/radio renderAs), `imagepicker`, `buttongroup` |
+| **Rating & ranking** | `rating` (numbers/stars/smileys/custom rateValues, dropdown renderAs), `ranking`, `slider` (single + range) |
+| **Matrix family** | `matrix`, `matrixdropdown`, `matrixdynamic` (add/remove/reorder rows) |
+| **Media & rich** | `image` (+ `contentMode: video`), `imagemap`, `signaturepad`, `file` (camera / gallery / document pickers), `html` |
+| **Structure** | `panel`, `paneldynamic` (add/remove, carousel), multi-element rows, pages, `expression` |
+| **Custom** | `ComponentCollection` **custom** + **composite** components |
+
+**Survey shell:** navigation (start/prev/next/preview/complete), progress as a **percentage bar**, **page-step buttons**, or a **table-of-contents** drawer; **advanced header/cover** (background image + 3×3 positioning); **timer panel**; **notifier** toasts; completed / loading / empty-state frames; and the full theme JSON pipeline (validated across all 40 `survey-core/themes`, golden snapshots for the curated set).
+
+> Runtime/rendering only — no Creator, Dashboard, or Analytics. See [docs/DIFFERENCES.md](docs/DIFFERENCES.md) for every observable divergence from `survey-react-ui`, each with its rationale.
 
 ## Security defaults (different from web — deliberate)
 
