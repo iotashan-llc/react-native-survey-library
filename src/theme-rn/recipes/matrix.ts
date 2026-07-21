@@ -18,10 +18,12 @@
  * by the later M3 phases (3.2 tiles, 3.3 dropdown pair, 3.4 dynamic) that
  * introduce those states — kept out of 3.1a to keep the primitive lean.
  *
- * `narrow`/RTL are NOT cache keys here (the 3.1a wide grid's geometry is
- * identical in both), so — unlike the row recipe — there are no
- * prebuilt narrow variants; the mobile card path (3.1b) will add its own
- * fragments when it lands.
+ * `narrow`/RTL are NOT cache keys here (the wide grid's geometry is
+ * identical in both), so — unlike the row recipe — there are no prebuilt
+ * narrow variants; the mobile card path (3.1b) adds its own `card` /
+ * `cardTitle` / `cardRow` / `cardLabel` / `cardValue` / `cardActions` /
+ * `cardDetail` / `totalsCard` fragments below, selected at render by
+ * `contract.mobile` rather than baked into a cache key.
  */
 import { StyleSheet } from 'react-native';
 import type { ViewStyle, TextStyle } from 'react-native';
@@ -88,6 +90,28 @@ export interface MatrixRecipe {
     placeholder: ViewStyle;
     /** Empty-state placeholder text. */
     placeholderText: TextStyle;
+    // --- 3.1b mobile stacked-card fragments (§3b/§3d). The card path
+    // ignores the wide grid's dp geometry and stacks each renderedRow as a
+    // card of {columnLabel, cellContent} pairs; the footer becomes a totals
+    // summary card. ---
+    /** Mobile card container — a bordered, rounded, padded block per data row. */
+    card: ViewStyle;
+    /** Card title (the row-header row.text) — emphasised. */
+    cardTitle: TextStyle;
+    /** One {label, content} pair inside a card — divider + vertical rhythm. */
+    cardRow: ViewStyle;
+    /** The column label above a card cell's content (dim, secondary tone). */
+    cardLabel: TextStyle;
+    /** The card cell content container (holds the reused chrome-less cell). */
+    cardValue: ViewStyle;
+    /** The per-card actions row (remove + detail toggle) at the card foot. */
+    cardActions: ViewStyle;
+    /** A detail panel rendered full-width inside the card stack (§3c card mode). */
+    cardDetail: ViewStyle;
+    /** Totals summary card container (§3d) — the card look with band emphasis. */
+    totalsCard: ViewStyle;
+    /** Totals summary card title. */
+    totalsCardTitle: TextStyle;
   };
   /** Detail-toggle icon size — the 16dp glyph family
    * (`expanddetails-16x16`/`collapsedetails-16x16`), base-unit-derived. */
@@ -134,6 +158,18 @@ export function buildMatrixRecipe(
     sink
   ).css;
   const errorColor = resolveColorVar(resolved, '--sjs-special-red', sink).css;
+  // Dim secondary tone for the mobile card's column labels (the same token
+  // the questionTitle/rating recipes use for their subdued text).
+  const foreColorLight = resolveColorVar(
+    resolved,
+    '--sjs-general-forecolor-light',
+    sink
+  ).css;
+  const generalBg = resolveColorVar(
+    resolved,
+    '--sjs-general-backcolor',
+    sink
+  ).css;
 
   // Cell padding — calcSize(1) vertical / calcSize(2) horizontal, the
   // v2.5.33 matrix `.sd-table__cell` rhythm (base-unit-derived).
@@ -277,6 +313,70 @@ export function buildMatrixRecipe(
       fontSize: calcFontSize(resolved, 1),
       lineHeight: calcLineHeight(resolved, 1.5),
       color: foreColor,
+    },
+    card: {
+      backgroundColor: generalBg,
+      borderColor: gridline,
+      borderWidth: borderW,
+      borderRadius: calcSize(resolved, 1),
+      paddingVertical: padV,
+      paddingHorizontal: padH,
+      marginBottom: calcSize(resolved, 2),
+    },
+    cardTitle: {
+      fontFamily: baseFamily,
+      fontSize: calcFontSize(resolved, 1),
+      lineHeight: calcLineHeight(resolved, 1.5),
+      fontWeight: '600',
+      color: foreColor,
+      marginBottom: calcSize(resolved, 1),
+    },
+    cardRow: {
+      paddingVertical: padV,
+      borderTopColor: gridline,
+      borderTopWidth: borderW,
+    },
+    cardLabel: {
+      fontFamily: baseFamily,
+      fontSize: calcFontSize(resolved, 1),
+      lineHeight: calcLineHeight(resolved, 1.5),
+      fontWeight: '500',
+      color: foreColorLight,
+      marginBottom: calcSize(resolved, 0.5),
+    },
+    cardValue: {
+      alignSelf: 'stretch',
+    },
+    cardActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'flex-end',
+      marginTop: calcSize(resolved, 1),
+    },
+    cardDetail: {
+      marginBottom: calcSize(resolved, 2),
+      paddingVertical: padV,
+      paddingHorizontal: padH,
+      borderColor: gridline,
+      borderWidth: borderW,
+      borderRadius: calcSize(resolved, 1),
+    },
+    totalsCard: {
+      backgroundColor: bandBg,
+      borderColor: gridline,
+      borderWidth: borderW,
+      borderRadius: calcSize(resolved, 1),
+      paddingVertical: padV,
+      paddingHorizontal: padH,
+      marginBottom: calcSize(resolved, 2),
+    },
+    totalsCardTitle: {
+      fontFamily: baseFamily,
+      fontSize: calcFontSize(resolved, 1),
+      lineHeight: calcLineHeight(resolved, 1.5),
+      fontWeight: '600',
+      color: foreColor,
+      marginBottom: calcSize(resolved, 1),
     },
   });
 

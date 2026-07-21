@@ -14,7 +14,7 @@
  */
 import { Text } from 'react-native';
 import { StyleSheet } from 'react-native';
-import { act, render, screen } from '@testing-library/react-native';
+import { act, render, screen, within } from '@testing-library/react-native';
 
 import { Model } from '../../../core/facade';
 import { MatrixGrid } from '../MatrixGrid';
@@ -261,6 +261,140 @@ describe('MatrixGrid — showHeader gates the header band', () => {
     expect(screen.queryByTestId('matrix-band-header')).toBeNull();
     // body still renders
     expect(screen.getByTestId('matrix-row-r1')).toBeTruthy();
+  });
+});
+
+describe('MatrixGrid — mobile stacked-card path (§3b / §3d, 3.1b)', () => {
+  /**
+   * A mobile contract: `mobile: true`. In card mode the grid ignores the
+   * dp/contentWidth geometry entirely and lays each row out as a card of
+   * `{label, content}` pairs; the row-header `title` cell is the card
+   * title, the `actions` cell renders at the card foot, and the footer row
+   * becomes a totals summary card (§3d). Labels ride the owner-attached
+   * `cell.label` node (§3b).
+   */
+  function labelledCell(key: string, label: string, value: string): GridCell {
+    return {
+      key,
+      kind: 'question',
+      label: <Text testID={`lbl-${key}`}>{label}</Text>,
+      render: () => <Text testID={`content-${key}`}>{value}</Text>,
+    };
+  }
+
+  function mobileContract(): ResolvedGridContract {
+    return {
+      columns: [col('rowh', 0, true), col('c1', 0), col('c2', 0)],
+      contentWidth: 0,
+      showHeader: true,
+      hasFooter: true,
+      mobile: true,
+      stickyFirstColumn: false,
+      regime: 'fit',
+      rows: [
+        row('r1', 'data', [
+          {
+            key: 'r1-title',
+            kind: 'title',
+            render: () => <Text testID="r1-titletext">Row One</Text>,
+          },
+          labelledCell('r1-c1', 'Column 1', 'a'),
+          labelledCell('r1-c2', 'Column 2', 'b'),
+          {
+            key: 'r1-actions',
+            kind: 'actions',
+            render: () => <Text testID="r1-actionbtns">actions</Text>,
+          },
+        ]),
+        row('ftr', 'footer', [
+          {
+            key: 'ftr-title',
+            kind: 'title',
+            render: () => <Text testID="ftr-titletext">Totals</Text>,
+          },
+          labelledCell('ftr-c1', 'Column 1', '10'),
+          labelledCell('ftr-c2', 'Column 2', '20'),
+        ]),
+      ],
+    };
+  }
+
+  it('renders stacked cards (NOT the wide horizontal ScrollView) when contract.mobile is true', () => {
+    render(<MatrixGrid contract={mobileContract()} />);
+    // the wide-grid affordances are absent in card mode
+    expect(screen.queryByTestId('matrix-scroll')).toBeNull();
+    expect(screen.queryByTestId('matrix-content')).toBeNull();
+    expect(screen.queryByTestId('matrix-band-header')).toBeNull();
+    // the card container IS present
+    expect(screen.getByTestId('matrix-cards')).toBeTruthy();
+    expect(screen.getByTestId('matrix-card-r1')).toBeTruthy();
+  });
+
+  it('renders each data row as a card whose row-header title is the card title', () => {
+    render(<MatrixGrid contract={mobileContract()} />);
+    const title = screen.getByTestId('matrix-card-title-r1');
+    expect(title).toBeTruthy();
+    expect(screen.getByTestId('r1-titletext')).toBeTruthy();
+  });
+
+  it('lays out each non-title/non-actions cell as a {label, content} pair', () => {
+    render(<MatrixGrid contract={mobileContract()} />);
+    for (const [key, label, value] of [
+      ['r1-c1', 'Column 1', 'a'],
+      ['r1-c2', 'Column 2', 'b'],
+    ] as const) {
+      expect(screen.getByTestId(`matrix-card-cell-${key}`)).toBeTruthy();
+      const labelNode = screen.getByTestId(`matrix-card-label-${key}`);
+      const valueNode = screen.getByTestId(`matrix-card-value-${key}`);
+      expect(within(labelNode).getByText(label)).toBeTruthy();
+      expect(within(valueNode).getByText(value)).toBeTruthy();
+    }
+  });
+
+  it('renders the actions cell at the card foot (no label)', () => {
+    render(<MatrixGrid contract={mobileContract()} />);
+    const actions = screen.getByTestId('matrix-card-actions-r1');
+    expect(actions).toBeTruthy();
+    expect(within(actions).getByTestId('r1-actionbtns')).toBeTruthy();
+    // an actions cell is NEVER wrapped in a labelled pair
+    expect(screen.queryByTestId('matrix-card-cell-r1-actions')).toBeNull();
+  });
+
+  it('renders the footer row as a totals summary card of {label, total} pairs (§3d)', () => {
+    render(<MatrixGrid contract={mobileContract()} />);
+    const totals = screen.getByTestId('matrix-totals-card');
+    expect(totals).toBeTruthy();
+    // the footer text cell is the totals-card title
+    expect(within(totals).getByText('Totals')).toBeTruthy();
+    // each visible total column is a labelled pair
+    expect(within(totals).getByTestId('matrix-card-cell-ftr-c1')).toBeTruthy();
+    expect(within(totals).getByText('10')).toBeTruthy();
+    expect(within(totals).getByText('20')).toBeTruthy();
+  });
+
+  it('renders a detail row as a full-width block inside the card stack (§3c card mode)', () => {
+    const c = mobileContract();
+    c.rows.splice(1, 0, {
+      key: 'r1-detail',
+      kind: 'detail',
+      cells: [
+        {
+          key: 'r1-detail-panel',
+          kind: 'panel',
+          render: () => <Text testID="card-detail-body">detail</Text>,
+        },
+      ],
+      getStateElement: () => ({}) as never,
+    });
+    render(<MatrixGrid contract={c} />);
+    expect(screen.getByTestId('matrix-card-detail-r1-detail')).toBeTruthy();
+    expect(screen.getByTestId('card-detail-body')).toBeTruthy();
+  });
+
+  it('a wide (mobile:false) contract is UNCHANGED — still the horizontal ScrollView, no cards', () => {
+    render(<MatrixGrid contract={fitContract()} />);
+    expect(screen.getByTestId('matrix-scroll')).toBeTruthy();
+    expect(screen.queryByTestId('matrix-cards')).toBeNull();
   });
 });
 

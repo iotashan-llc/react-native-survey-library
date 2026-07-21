@@ -13,7 +13,13 @@
  * (invariant 9) — every assertion below is RED until MatrixTableBase +
  * MatrixDropdownQuestion + the descriptor flip ship.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react-native';
 import { Model } from '../../core/facade';
 import type {
   Question,
@@ -802,5 +808,173 @@ describe('matrixdropdown — detail panels (3.3b §3c): toggle cells expand a fu
 
     await pressToggle('r1');
     expect(screen.getByTestId('d1-input').props.value).toBe('kept-value');
+  });
+});
+
+/** Flip the whole survey (and its questions) into mobile mode — the survey
+ * `isMobile` flag flip that drives the §3b stacked-card path (core rebuilds
+ * `renderedTable` on `onMobileChanged`). */
+function setMobile(model: InstanceType<typeof Model>, value = true): void {
+  (model as unknown as { setIsMobile(v: boolean): void }).setIsMobile(value);
+}
+
+const CARD_BAND = /^matrix-card-row:/;
+const CARD_DETAIL_BAND = /^matrix-card-detail-row:/;
+
+describe('matrixdropdown — mobile stacked-card layout (§3b, 3.1b)', () => {
+  it('renders each row as a CARD (not the wide scroll grid) with the row text as the card title', async () => {
+    const { model, question } = createMatrixDropdown();
+    setMobile(model);
+    await renderMatrixDropdown(question);
+    // Card stack, NOT the wide horizontal ScrollView.
+    expect(screen.getByTestId('matrix-cards')).toBeTruthy();
+    expect(screen.queryByTestId('matrix-scroll')).toBeNull();
+    // One card per data row; the row text is the card title.
+    expect(screen.getAllByTestId(CARD_BAND)).toHaveLength(2);
+    expect(screen.getAllByTestId(/^matrix-card-title-row:/)).toHaveLength(2);
+    expect(screen.getByText('Row One')).toBeTruthy();
+    expect(screen.getByText('Row Two')).toBeTruthy();
+  });
+
+  it('lays each cell out as a {column-label, cellContent} pair reusing the SAME chrome-less cell dispatch', async () => {
+    const { model, question } = createMatrixDropdown();
+    setMobile(model);
+    await renderMatrixDropdown(question);
+    // Column labels come from the cell's responsive column title — one per
+    // card (2 rows), for the dropdown (c1) and text (c2) columns. In card
+    // mode there is NO header band, so these texts are the card labels only.
+    expect(screen.getAllByText('c1')).toHaveLength(2);
+    expect(screen.getAllByText('c2')).toHaveLength(2);
+    // The reused cell renderers still dispatch: the text cell's input and
+    // the dropdown cell's control render inside their card value slots.
+    expect(screen.getAllByTestId('c2-input')).toHaveLength(2);
+    // Labels sit in the labelled-pair containers.
+    expect(screen.getAllByTestId(/^matrix-card-label-/).length).toBeGreaterThan(
+      0
+    );
+    expect(screen.getAllByTestId(/^matrix-card-cell-/).length).toBeGreaterThan(
+      0
+    );
+  });
+
+  it('renders the totals as a summary CARD on mobile (§3d — showFooter is TRUE on mobile)', async () => {
+    const { model, question } = createMatrixDropdown({
+      columns: [
+        { name: 'c1', cellType: 'text' },
+        { name: 'c2', cellType: 'text', totalType: 'sum' },
+      ],
+      totalText: 'Totals',
+    });
+    question.value = { r1: { c2: 3 }, r2: { c2: 4 } };
+    setMobile(model);
+    await renderMatrixDropdown(question);
+    // The totals summary card (NOT the wide footer band).
+    expect(screen.getByTestId('matrix-totals-card')).toBeTruthy();
+    expect(screen.queryByTestId('matrix-row-footer')).toBeNull();
+    // Its total value + label render inside.
+    const totals = screen.getByTestId('matrix-totals-card');
+    expect(within(totals).getByText('7')).toBeTruthy();
+    expect(within(totals).getByText('Totals')).toBeTruthy();
+  });
+
+  it('detail toggle works in card mode — the panel stacks as a full-width block below the card', async () => {
+    const { model, question } = createDetailMatrix();
+    setMobile(model);
+    await renderMatrixDropdown(question);
+    // The toggle lives in the card actions foot; no detail band yet.
+    expect(screen.getByTestId('matrix-detail-toggle-r1')).toBeTruthy();
+    expect(screen.queryAllByTestId(CARD_DETAIL_BAND)).toHaveLength(0);
+    await pressToggle('r1');
+    // The detail panel renders as a card-mode full-width block with the
+    // real SurveyPanel content inside.
+    expect(screen.getAllByTestId(CARD_DETAIL_BAND)).toHaveLength(1);
+    expect(screen.getByText('Detail One')).toBeTruthy();
+    expect(screen.getByTestId('d1-input')).toBeTruthy();
+  });
+
+  it('a runtime mobile flip re-renders grid → cards and back', async () => {
+    const { model, question } = createMatrixDropdown();
+    await renderMatrixDropdown(question);
+    // Starts wide.
+    expect(screen.getByTestId('matrix-scroll')).toBeTruthy();
+    expect(screen.queryByTestId('matrix-cards')).toBeNull();
+    // Flip to mobile: the reset rebuilds the table; the deferred ensure
+    // picks it up; the grid becomes cards.
+    act(() => setMobile(model, true));
+    await flush();
+    expect(screen.getByTestId('matrix-cards')).toBeTruthy();
+    expect(screen.queryByTestId('matrix-scroll')).toBeNull();
+    // Flip back to wide: cards become the scroll grid again.
+    act(() => setMobile(model, false));
+    await flush();
+    layoutGrid();
+    await flush();
+    expect(screen.getByTestId('matrix-scroll')).toBeTruthy();
+    expect(screen.queryByTestId('matrix-cards')).toBeNull();
+  });
+});
+
+describe('matrixdropdown — mobile card labels carry the required marker (3.1b finding 1)', () => {
+  it('a required compound-matrix column card label shows the requiredMark; a non-required one does not', async () => {
+    const { model, question } = createMatrixDropdown({
+      columns: [
+        { name: 'c1', cellType: 'text', isRequired: true },
+        { name: 'c2', cellType: 'text' },
+      ],
+    });
+    setMobile(model);
+    await renderMatrixDropdown(question);
+    // Web's mobile table shows the required marker on card labels
+    // (SurveyQuestionMatrixHeaderRequired in the responsive title); core
+    // sets `cell.requiredMark` only when `column.isRenderedRequired`, so the
+    // card label reuses the SAME marker the wide header renders.
+    const mark = (model as unknown as { requiredMark: string }).requiredMark;
+    // The required c1 column → one marker per card (2 rows); the
+    // non-required c2 column contributes NONE, so the total equals the row
+    // count, not twice it.
+    expect(mark.length).toBeGreaterThan(0);
+    // RNTL trims the ` ${mark}` marker Text to the bare mark (`*`).
+    expect(screen.getAllByText(mark)).toHaveLength(2);
+    // Both column labels still render (the marker is appended, not a
+    // replacement); c2 stays unmarked.
+    expect(screen.getAllByText('c1')).toHaveLength(2);
+    expect(screen.getAllByText('c2')).toHaveLength(2);
+  });
+});
+
+describe('matrixdropdown — mobile card omits the pair for a per-row-invisible cell (3.1b finding 2)', () => {
+  it('a column hidden by visibleIf renders NO card label/pair, reactively both directions', async () => {
+    const { model, question } = createMatrixDropdown({
+      columns: [
+        { name: 'c1', cellType: 'text' },
+        { name: 'c2', cellType: 'text', visibleIf: "{row.c1} = 'go'" },
+      ],
+    });
+    setMobile(model);
+    await renderMatrixDropdown(question);
+    // c2 is invisible in BOTH rows → web omits the whole cell. The card must
+    // render NOTHING for it: no orphan 'c2' column label and no input.
+    expect(screen.queryAllByText('c2')).toHaveLength(0);
+    expect(screen.queryAllByTestId('c2-input')).toHaveLength(0);
+    // c1 (the driver) still renders its label in both cards.
+    expect(screen.getAllByText('c1')).toHaveLength(2);
+
+    // Flip row 0's driver → exactly that card's c2 pair APPEARS (label +
+    // value), row 1 stays hidden.
+    act(() => {
+      question.visibleRows[0]!.cells[0]!.question.value = 'go';
+    });
+    await flush();
+    expect(screen.getAllByText('c2')).toHaveLength(1);
+    expect(screen.getAllByTestId('c2-input')).toHaveLength(1);
+
+    // Flip back → the pair disappears again (label + value), proving the
+    // card pair observes `cell.question.isVisible` in BOTH directions.
+    act(() => {
+      question.visibleRows[0]!.cells[0]!.question.value = 'stop';
+    });
+    await flush();
+    expect(screen.queryAllByText('c2')).toHaveLength(0);
+    expect(screen.queryAllByTestId('c2-input')).toHaveLength(0);
   });
 });

@@ -52,6 +52,7 @@ import { settings } from '../../core/facade';
 import type {
   Base,
   ItemValue,
+  LocalizableString,
   MatrixDropdownRowModelBase,
   PanelModel,
   Question,
@@ -850,6 +851,45 @@ export class MatrixTable extends SurveyElementBase<
     });
   }
 
+  /**
+   * The mobile card COLUMN LABEL for a labelled cell (§3b, 3.1b) — the
+   * cell's responsive column title (`responsiveLocTitle === cell.column.
+   * locTitle`), rendered with the `cardLabel` fragment. Returned only for
+   * the labelled kinds (question / Other-comment / exploded choice); the
+   * wide grid ignores it (the header band carries the label there), so
+   * building it eagerly is harmless. `undefined` when the cell has no
+   * column (e.g. a text/title slot) — the card then shows just the content.
+   */
+  private cardLabelFor(
+    cell: QuestionMatrixDropdownRenderedCell
+  ): React.ReactNode | undefined {
+    const loc = (
+      cell.column as unknown as { locTitle?: LocalizableString } | undefined
+    )?.locTitle;
+    if (!loc) return undefined;
+    const title = SurveyElementBase.renderLocString(
+      loc,
+      this.themeContext.recipes.matrix.fragments.cardLabel,
+      undefined,
+      'choice'
+    );
+    // 3.1b finding 1: a required compound-matrix column carries the SAME
+    // required marker the wide header band renders — core populates
+    // `cell.requiredMark` ONLY when `column.isRenderedRequired`
+    // (question_matrixdropdownrendered.ts:49-51), matching web's mobile
+    // `SurveyQuestionMatrixHeaderRequired`. Same bare-Text token + leading
+    // space as `buildColumns`' header. Simple-matrix columns have no
+    // required concept and never reach this compound-only path.
+    const requiredMark = cell.requiredMark;
+    if (!requiredMark) return title;
+    return (
+      <View style={localStyles.headerContent}>
+        {title}
+        <Text>{` ${requiredMark}`}</Text>
+      </View>
+    );
+  }
+
   /** Build one walked grid cell (render thunk per §2/§2a/§2b). */
   private buildGridCell(
     cell: QuestionMatrixDropdownRenderedCell,
@@ -927,10 +967,32 @@ export class MatrixTable extends SurveyElementBase<
       default:
         render = () => null;
     }
+    // §3b card-mode label: only the labelled kinds (question / Other /
+    // choice) carry a column label; the row-header title, actions, drag and
+    // empty cells get none (the title cell becomes the card title).
+    const label =
+      kind === 'question' || kind === 'other' || kind === 'choice'
+        ? this.cardLabelFor(cell)
+        : undefined;
+    // 3.1b finding 2: a whole-question cell can be hidden PER ROW by its
+    // column `visibleIf` (core's rendered-cell `isVisible` reflects
+    // `cell.question.isVisible` on mobile). The card path omits the WHOLE
+    // pair (label + slot) — like web — while subscribing this element so a
+    // flip re-adds it. The wide path ignores it (MatrixQuestionCell keeps
+    // the aligned slot); non-question cells carry no per-row visibility.
+    const cardVisibility =
+      kind === 'question'
+        ? {
+            element: cell.question as unknown as Base,
+            isVisible: (): boolean => cell.question.isVisible,
+          }
+        : undefined;
     return {
       key,
       kind: toGridCellKind(kind),
       span: cell.colSpans > 1 ? cell.colSpans : undefined,
+      label,
+      cardVisibility,
       render,
     };
   }

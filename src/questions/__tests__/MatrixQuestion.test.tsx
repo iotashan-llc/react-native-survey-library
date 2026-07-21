@@ -545,3 +545,63 @@ describe('MatrixQuestion — export shape', () => {
     expect(typeof MatrixQuestionElement).toBe('function');
   });
 });
+
+/** Flip the survey into mobile mode — drives the §3b stacked-card path. */
+function setMobile(model: InstanceType<typeof Model>, value = true): void {
+  (model as unknown as { setIsMobile(v: boolean): void }).setIsMobile(value);
+}
+
+describe('matrix (simple) — mobile stacked-card layout (§3b, 3.1b)', () => {
+  it('renders each row as a CARD (not the wide scroll grid): row title + labelled choice tiles', () => {
+    const { model, question } = createMatrix();
+    setMobile(model);
+    render(<MatrixQuestionElement question={question} creator={{}} />);
+    // Card stack, NOT the wide horizontal ScrollView.
+    expect(screen.getByTestId('matrix-cards')).toBeTruthy();
+    expect(screen.queryByTestId('matrix-scroll')).toBeNull();
+    // One card per row, row text as the card title.
+    expect(screen.getAllByTestId(/^matrix-card-title-/)).toHaveLength(2);
+    expect(screen.getByText('Row One')).toBeTruthy();
+    expect(screen.getByText('Row Two')).toBeTruthy();
+    // Each choice column is a labelled pair (column.locText) with its tile
+    // reused verbatim — 2 rows × 3 columns = 6 tiles, and each column label
+    // appears once per card (2 rows).
+    expect(screen.getAllByTestId(/^matrix-tile-/)).toHaveLength(6);
+    expect(screen.getAllByText('col1')).toHaveLength(2);
+    expect(screen.getAllByText('col2')).toHaveLength(2);
+    expect(screen.getAllByText('col3')).toHaveLength(2);
+    // The reused tile selection still works in card mode.
+    expect(screen.getByTestId('matrix-tile-r1-col1')).toBeTruthy();
+  });
+
+  it('a tile tap inside a card still commits the row value (reactivity preserved)', async () => {
+    const { model, question } = createMatrix();
+    setMobile(model);
+    render(<MatrixQuestionElement question={question} creator={{}} />);
+    fireEvent.press(screen.getByTestId('matrix-tile-r1-col2'));
+    await flush();
+    expect(question.value).toEqual({ r1: 'col2' });
+    expect(
+      screen.getByTestId('matrix-tile-r1-col2').props.accessibilityState.checked
+    ).toBe(true);
+  });
+
+  it('a runtime mobile flip re-renders grid → cards and back', async () => {
+    const { model, question } = createMatrix();
+    render(<MatrixQuestionElement question={question} creator={{}} />);
+    layoutGrid();
+    expect(screen.getByTestId('matrix-scroll')).toBeTruthy();
+    expect(screen.queryByTestId('matrix-cards')).toBeNull();
+    // Flip to mobile → cards.
+    act(() => setMobile(model, true));
+    await flush();
+    expect(screen.getByTestId('matrix-cards')).toBeTruthy();
+    expect(screen.queryByTestId('matrix-scroll')).toBeNull();
+    // Flip back → wide grid.
+    act(() => setMobile(model, false));
+    await flush();
+    layoutGrid();
+    expect(screen.getByTestId('matrix-scroll')).toBeTruthy();
+    expect(screen.queryByTestId('matrix-cards')).toBeNull();
+  });
+});

@@ -594,6 +594,33 @@ the tablet/wide affordance. **v0.3 does not run a per-matrix `processResponsiven
 measure loop** (unlike buttongroup 2.5b) — a wide matrix on a wide screen shows
 the scroll grid, not cards. (Open question §8 + DIFFERENCES.)
 
+> **Implementation amendment (3.1b, as-shipped).** The card path is a single
+> `contract.mobile` branch INSIDE the presentational `MatrixGrid`
+> (`render()` → `renderCards()`), keeping ONE primitive for both layouts —
+> the OWNER never forks a card renderer. `MatrixGridRoot` short-circuits its
+> measure/allocate defer when `contract.mobile` (cards need no dp geometry
+> or horizontal ScrollView), so cards render on the first frame with no
+> `onLayout` gate. The `{columnLabel}` is carried as a new optional
+> `GridCell.label` node the OWNER attaches to every labelled cell
+> (`cell.column.locTitle` for the dropdown pair — equivalently
+> `responsiveLocTitle`; `column.locText` for simple matrix), styled with the
+> recipe's `cardLabel` fragment; the row-header `title` cell becomes the
+> card title (no label) and `actions` cells render at the card foot (no
+> label). The card path REUSES the wide grid's per-cell `render()` thunks
+> verbatim (chrome-less question dispatch / choice items / `QuestionErrors`
+> / detail toggle / remove button) and the same `MatrixGridRowSubscriber`
+> per-row subscription — no new reactivity, keys unchanged. **One deviation
+> from "detail panel lives inside the card":** an expanded detail row is a
+> distinct `renderedRow` (its own reactive `getStateElement`), so it renders
+> as a full-width block IMMEDIATELY BELOW its data card
+> (`matrix-card-detail-<rowKey>`), not nested inside the card container
+> `View` — merging it would need a peek-ahead over the row list and would
+> entangle the detail row's independent subscription with the card's.
+> Recorded in DIFFERENCES ("Mobile stacked-card layout"). The **optional
+> sticky-first-column split-pane + bidirectional height-sync** part of 3.1b
+> (§3a.5, §7.5) remains DEFERRED — the single-ScrollView wide baseline is
+> unchanged; only the mobile card path shipped here.
+
 ### 3b.5. Transposed / vertical layout (`transposeData:true` on a wide screen)
 
 We CANNOT force horizontal on a wide screen — `isColumnLayoutHorizontal =
