@@ -180,6 +180,67 @@ describe('matrix column-width allocator — floor-safe largest-remainder roundin
   });
 });
 
+describe('matrix column-width allocator — sub-pixel over-fill: content never exceeds a fractional measured width (FIX C)', () => {
+  it('floors the fractional fill target so contentWidth <= measuredWidth (no spurious hairline horizontal scroll)', () => {
+    // single growable, viewport 100.6: rounding the target to 101 would make
+    // contentWidth (101) EXCEED the measured 100.6 -> a spurious scrollbar.
+    // Flooring the target to 100 keeps contentWidth <= measuredWidth (a
+    // benign <=1px right-edge gap).
+    const cols: MatrixColumnSpec[] = [{ minWidth: '10px' }];
+    const { widths, contentWidth, regime } = allocateColumnWidths(cols, 100.6);
+    expect(regime).toBe('fit');
+    expect(widths).toEqual([100]);
+    expect(contentWidth).toBe(100);
+    expect(contentWidth).toBeLessThanOrEqual(100.6);
+  });
+
+  it('the <=1px gap is floor-safe: no growable drops below its floor', () => {
+    // two growables floor 10 each, viewport 41.6 -> real targets 20.8 each ->
+    // floor 20 (sum 40) -> floor(41.6)=41 -> leftover 1 -> one growable +1.
+    const cols: MatrixColumnSpec[] = [
+      { minWidth: '10px' },
+      { minWidth: '10px' },
+    ];
+    const { widths, contentWidth } = allocateColumnWidths(cols, 41.6);
+    expect(contentWidth).toBe(41);
+    expect(contentWidth).toBeLessThanOrEqual(41.6);
+    expect(sum(widths)).toBe(41);
+    for (const w of widths) expect(w).toBeGreaterThanOrEqual(10);
+  });
+});
+
+describe('matrix column-width allocator — fixed %/fractional columns integer-snapped before water-fill (FIX D)', () => {
+  it('floors fixed columns BEFORE the fill so the "leftover in [0,|growable|)" invariant holds and a near-fit resolves FIT, not spurious overflow', () => {
+    // fixed 400.6 + fixed 279.5 + one auto growable, viewport 800.
+    // Un-snapped: S = 800.1 > 800 -> the columns are declared OVERFLOW even
+    // though their integer widths (400+279+120=799) fit. Snapping the fixed
+    // columns down first (400+279) yields S=799<=800 -> FIT, and the auto
+    // column absorbs the 1dp slack.
+    const cols: MatrixColumnSpec[] = [
+      { width: '400.6px' },
+      { width: '279.5px' },
+      {},
+    ];
+    const { widths, contentWidth, regime } = allocateColumnWidths(cols, 800);
+    expect(regime).toBe('fit');
+    expect(widths).toEqual([400, 279, 121]);
+    expect(contentWidth).toBe(800);
+    expect(contentWidth).toBeLessThanOrEqual(800);
+    for (const w of widths) expect(Number.isInteger(w)).toBe(true);
+  });
+
+  it('a fractional fixed column keeps its floored integer width while the growable takes the freed sub-pixel slack (single residual pass)', () => {
+    // fixed 150.9 + two auto growables, viewport 600 (integer).
+    // Snapped fixed = 150; S = 150 + 120 + 120 = 390 <= 600; slack 210 / 2 =
+    // 105 -> growables 225 each; Σ = 150 + 225 + 225 = 600 exactly.
+    const cols: MatrixColumnSpec[] = [{ width: '150.9px' }, {}, {}];
+    const { widths, contentWidth } = allocateColumnWidths(cols, 600);
+    expect(widths).toEqual([150, 225, 225]);
+    expect(contentWidth).toBe(600);
+    expect(sum(widths)).toBe(600);
+  });
+});
+
 describe('matrix column-width allocator — all-fixed underfill policy (design §3a.3c(a)3)', () => {
   it('when EVERY column is fixed and S < measuredWidth, fixed columns are NOT stretched; the grid sits logical-start and trailing space is empty', () => {
     const cols: MatrixColumnSpec[] = [{ width: '100px' }, { width: '200px' }];

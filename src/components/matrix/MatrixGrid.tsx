@@ -81,6 +81,7 @@ export class MatrixGrid extends React.Component<MatrixGridProps> {
               column.isRowHeader
                 ? fragments.rowHeaderCell
                 : fragments.headerCell,
+              styles.cellClip,
               { width: column.dp },
             ]}
           >
@@ -109,7 +110,7 @@ export class MatrixGrid extends React.Component<MatrixGridProps> {
         <View
           key={cell.key}
           testID={`matrix-cell-${row.key}-${slot}`}
-          style={[cellStyle, { width: cellWidth }]}
+          style={[cellStyle, styles.cellClip, { width: cellWidth }]}
         >
           {cell.render()}
         </View>
@@ -173,5 +174,13 @@ export class MatrixGrid extends React.Component<MatrixGridProps> {
 const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
+  },
+  // Clip intrinsically-wide cell content to the column's allocated dp width
+  // so nothing paints past its gridline (§3a.3f — the dp array is the single
+  // source of column geometry). `flexShrink: 0` keeps the cell pinned at its
+  // stamped dp inside the flex row rather than being squeezed by siblings.
+  cellClip: {
+    overflow: 'hidden',
+    flexShrink: 0,
   },
 });

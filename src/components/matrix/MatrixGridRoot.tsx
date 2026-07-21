@@ -26,8 +26,9 @@
  * `SurveyElementBase`-free: it owns only layout state (`measuredWidth`),
  * not model reactivity — the composing question-renderer owns the
  * survey-core subscription and re-renders this with a fresh contract when
- * the model changes. Width re-resolves whenever the contract or the
- * measured width changes.
+ * the model changes. The column-width allocation is memoized (§3a.3f): it
+ * re-resolves only when the measured width or the column specs change, so a
+ * row-value re-render (same columns) reuses the cached dp array.
  */
 import * as React from 'react';
 import { View } from 'react-native';
@@ -76,6 +77,23 @@ export class MatrixGridRoot extends React.Component<
   MatrixGridRootProps,
   MatrixGridRootState
 > {
+  /**
+   * Memoized allocation (§3a.3f: "recompute only when `measuredWidth`
+   * changes or the columns change"). The class-based cache (no hooks /
+   * useMemo, invariant 2) keys the expensive `allocateColumnWidths` run on
+   * the measured width + the column SPECS + the width config. A re-render
+   * that changes only rows (a value change hands down a fresh contract with
+   * the SAME columns) is a cache HIT — the allocator does NOT re-run; the
+   * cheap `ResolvedGridContract` wrapper is still rebuilt each render so
+   * current headers/rows flow through.
+   */
+  private allocationCache: {
+    key: string;
+    widths: number[];
+    contentWidth: number;
+    regime: 'fit' | 'overflow';
+  } | null = null;
+
   constructor(props: MatrixGridRootProps) {
     super(props);
     this.state = { measuredWidth: null };
@@ -88,14 +106,40 @@ export class MatrixGridRoot extends React.Component<
     }
   };
 
-  /** Resolve the raw contract into the dp-stamped contract MatrixGrid consumes. */
-  private resolveContract(measuredWidth: number): ResolvedGridContract {
+  /**
+   * The memoized allocation. Recomputes ONLY on a cache miss — a change to
+   * the measured width, the per-column allocation specs, or the width config
+   * (§3a.3f). Unchanged width + columns → the prior dp array is reused.
+   */
+  private getAllocation(measuredWidth: number): {
+    widths: number[];
+    contentWidth: number;
+    regime: 'fit' | 'overflow';
+  } {
     const { contract, config } = this.props;
+    const specs = contract.columns.map(toColumnSpec);
+    const key = JSON.stringify({
+      specs,
+      config: config ?? null,
+      measuredWidth,
+    });
+    const cached = this.allocationCache;
+    if (cached !== null && cached.key === key) {
+      return cached;
+    }
     const { widths, contentWidth, regime } = allocateColumnWidths(
-      contract.columns.map(toColumnSpec),
+      specs,
       measuredWidth,
       config
     );
+    this.allocationCache = { key, widths, contentWidth, regime };
+    return this.allocationCache;
+  }
+
+  /** Resolve the raw contract into the dp-stamped contract MatrixGrid consumes. */
+  private resolveContract(measuredWidth: number): ResolvedGridContract {
+    const { contract } = this.props;
+    const { widths, contentWidth, regime } = this.getAllocation(measuredWidth);
     const columns: ResolvedGridColumn[] = contract.columns.map((column, i) => ({
       key: column.key,
       header: column.header,

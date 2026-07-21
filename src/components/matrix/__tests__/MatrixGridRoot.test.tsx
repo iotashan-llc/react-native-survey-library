@@ -21,6 +21,7 @@ import { StyleSheet } from 'react-native';
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import { MatrixGridRoot } from '../MatrixGridRoot';
+import * as matrixColumnWidths from '../../../layout/matrix-column-widths';
 import type { GridCell, GridContract, GridRow } from '../grid-contract';
 
 function textCell(key: string, label: string): GridCell {
@@ -139,6 +140,18 @@ describe('MatrixGridRoot — allocator wiring: the resolved dp array is applied 
     expect(styleWidth('matrix-content')).toBe(1000);
   });
 
+  it('recomputes when a column spec changes even if the width is unchanged (a later contract with a wider data col re-resolves)', () => {
+    const { rerender } = render(<MatrixGridRoot contract={rawContract()} />);
+    layoutRoot(800);
+    expect(styleWidth('matrix-cell-r1-1')).toBe(200); // fixed 200 data col
+    const changed = rawContract();
+    changed.columns[1] = { ...changed.columns[1]!, width: '300px' };
+    rerender(<MatrixGridRoot contract={changed} />);
+    // S = 100 + 300 + 120 = 520 <= 800; auto col absorbs 280 -> 400
+    expect(styleWidth('matrix-cell-r1-1')).toBe(300);
+    expect(styleWidth('matrix-cell-r1-2')).toBe(400);
+  });
+
   it('honors the width config (columnMinWidth / columnWidthsByType) passed to the allocator', () => {
     const contract: GridContract = {
       columns: [{ key: 'c0', header: <Text>c0</Text>, cellType: 'comment' }],
@@ -157,5 +170,74 @@ describe('MatrixGridRoot — allocator wiring: the resolved dp array is applied 
     layoutRoot(100); // < 200 -> overflow, floor honored at 200
     expect(styleWidth('matrix-cell-r1-0')).toBe(200);
     expect(styleWidth('matrix-content')).toBe(200);
+  });
+});
+
+/**
+ * §3a.3f — "Recompute only when `measuredWidth` changes or the columns
+ * change." The allocation (dp array + summed content width) is the
+ * expensive resolution step; it must be GATED to width / column-spec
+ * changes, NOT rebuilt on every render (e.g. a row-value change that
+ * hands down a fresh contract with the SAME columns). Class-based cache on
+ * the instance — no hooks/useMemo (invariant 2).
+ */
+describe('MatrixGridRoot — allocation memoization (§3a.3f: gated to width/column changes)', () => {
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  /** A contract with the SAME column specs but distinct row objects (a value change). */
+  function rawContractWithLabel(label: string): GridContract {
+    const c = rawContract();
+    c.rows = [
+      row('r1', 'data', [
+        textCell('r1-0', 'R1'),
+        textCell('r1-1', label),
+        textCell('r1-2', 'b'),
+      ]),
+      row('ftr', 'footer', [
+        textCell('ftr-0', 'Total'),
+        textCell('ftr-1', '1'),
+        textCell('ftr-2', '2'),
+      ]),
+    ];
+    return c;
+  }
+
+  it('runs the allocator ONCE across re-renders that change only rows (width + columns unchanged)', () => {
+    const spy = jest.spyOn(matrixColumnWidths, 'allocateColumnWidths');
+    const { rerender } = render(
+      <MatrixGridRoot contract={rawContractWithLabel('a')} />
+    );
+    layoutRoot(800);
+    expect(spy).toHaveBeenCalledTimes(1);
+    // three more renders, each a fresh contract with the SAME columns but new rows
+    rerender(<MatrixGridRoot contract={rawContractWithLabel('b')} />);
+    rerender(<MatrixGridRoot contract={rawContractWithLabel('c')} />);
+    rerender(<MatrixGridRoot contract={rawContractWithLabel('d')} />);
+    // cache hit — the allocator did NOT re-run
+    expect(spy).toHaveBeenCalledTimes(1);
+    // ...and the new row content still rendered (contract wrapper rebuilt cheaply)
+    expect(screen.getByText('d')).toBeTruthy();
+  });
+
+  it('re-runs the allocator when the measured width changes', () => {
+    const spy = jest.spyOn(matrixColumnWidths, 'allocateColumnWidths');
+    render(<MatrixGridRoot contract={rawContract()} />);
+    layoutRoot(800);
+    expect(spy).toHaveBeenCalledTimes(1);
+    layoutRoot(1000);
+    expect(spy).toHaveBeenCalledTimes(2);
+  });
+
+  it('re-runs the allocator when a column spec changes at an unchanged width', () => {
+    const spy = jest.spyOn(matrixColumnWidths, 'allocateColumnWidths');
+    const { rerender } = render(<MatrixGridRoot contract={rawContract()} />);
+    layoutRoot(800);
+    expect(spy).toHaveBeenCalledTimes(1);
+    const changed = rawContract();
+    changed.columns[1] = { ...changed.columns[1]!, width: '250px' };
+    rerender(<MatrixGridRoot contract={changed} />);
+    expect(spy).toHaveBeenCalledTimes(2);
   });
 });

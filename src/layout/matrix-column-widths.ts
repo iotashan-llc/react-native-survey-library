@@ -31,9 +31,13 @@
  *     their floors so the grid exactly fills the viewport). Otherwise →
  *     OVERFLOW (each column takes its intrinsic/min, NO shrink; the
  *     surplus scrolls).
- *  4. Fit residual is a FLOOR-SAFE largest-remainder: floor every column
- *     down (never below its integral floor), then hand the non-negative
- *     leftover dp one at a time to the GROWABLE columns only, ordered by
+ *  4. Fit residual is a FLOOR-SAFE largest-remainder: with the fill target
+ *     `floor(measuredWidth)` (NOT round — so contentWidth is always
+ *     <= measuredWidth, trading a benign <=1px right-edge gap for NO
+ *     spurious hairline scroll) and FIXED columns integer-snapped up front
+ *     (so `leftover ∈ [0, |growable|)`), floor every column down (never
+ *     below its integral floor), then hand the non-negative leftover dp one
+ *     at a time to the GROWABLE columns only — a single pass — ordered by
  *     descending fractional remainder, ties by ascending slot index.
  *
  * The minWidth precedence mirrors core's `matrix.getColumnWidth`
@@ -125,7 +129,7 @@ function classifyColumn(
     MatrixWidthConfig
 ): ColumnClass {
   if (spec.intrinsic === 'actions' || spec.intrinsic === 'drag') {
-    return { kind: 'fixed', eff: config.actionsColDp };
+    return { kind: 'fixed', eff: Math.floor(config.actionsColDp) };
   }
 
   const widthDp = resolveDp(spec.width, measuredWidth);
@@ -145,7 +149,12 @@ function classifyColumn(
   const minDp = resolveDp(rawMin, measuredWidth);
 
   if (widthDp !== null) {
-    return { kind: 'fixed', eff: Math.max(widthDp, minDp ?? 0) };
+    // Integer-snap the fixed width BEFORE the water-fill (design §3a.3c(a)4.i):
+    // a fixed (px- or %-origin) column then contributes NO fractional part to
+    // the fit residual, keeping `leftover ∈ [0, |growable|)` so the residual
+    // distributes in a single pass instead of cycling. floor() is monotonic,
+    // so this stays floor-safe — the column sits exactly at its integer floor.
+    return { kind: 'fixed', eff: Math.floor(Math.max(widthDp, minDp ?? 0)) };
   }
   if (minDp !== null) {
     return { kind: 'floored', floor: minDp };
@@ -213,8 +222,18 @@ export function allocateColumnWidths(
   // FLOOR-SAFE largest-remainder residual: floor every column down (never
   // below its integral floor, since target >= floor and floor() is
   // monotonic), then hand the leftover dp to GROWABLE columns only.
+  //
+  // The fill target is `Math.floor(viewport)`, NOT `Math.round`: rounding a
+  // fractional measured width UP would make contentWidth exceed the measured
+  // viewport by up to ~0.5px, tripping a spurious hairline horizontal
+  // scrollbar. Flooring guarantees `contentWidth = floor(viewport) <=
+  // viewport`; the residual <=1px right-edge gap is benign (a spurious
+  // scrollbar is not). `Σ floor(target_i)` is an integer <= viewport, hence
+  // <= floor(viewport), so `leftover >= 0`; and with fixed columns pre-snapped
+  // to integers only growable fractions remain, so `leftover < |growable|` —
+  // the distribution below is therefore a single pass, never a cycle.
   const widths = targets.map((t) => Math.floor(t));
-  const target = Math.round(viewport);
+  const target = Math.floor(viewport);
   let leftover = target - widths.reduce((t, n) => t + n, 0);
 
   if (leftover > 0) {
@@ -224,9 +243,11 @@ export function allocateColumnWidths(
       if (fracB !== fracA) return fracB - fracA; // descending fractional remainder
       return a - b; // ties: ascending slot index
     });
-    // Distribute one dp at a time to growables (cycling if the leftover
-    // exceeds the growable count — only reachable with fractional inputs;
-    // a +1 only ever RAISES a growable, so no column falls below its floor).
+    // Distribute one dp at a time to growables. With fixed columns
+    // integer-snapped, `leftover < |growable|`, so this is a SINGLE pass —
+    // each growable receives at most +1 (the `% order.length` is defensive
+    // and never actually wraps). A +1 only ever RAISES a growable already
+    // at/above its floor, so no column falls below its floor.
     let idx = 0;
     while (leftover > 0) {
       const k = order[idx % order.length]!;

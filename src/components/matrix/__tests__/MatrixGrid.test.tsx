@@ -213,6 +213,46 @@ describe('MatrixGrid — row topology (§3g)', () => {
   });
 });
 
+describe('MatrixGrid — cells clip over-wide content to their dp gridline (overflow hidden)', () => {
+  it('stamps overflow:hidden on the header + column-aligned data/footer cell containers', () => {
+    render(<MatrixGrid contract={fitContract()} />);
+    for (const testID of [
+      'matrix-hcell-0',
+      'matrix-hcell-1',
+      'matrix-cell-r1-0',
+      'matrix-cell-r1-1',
+      'matrix-cell-ftr-1',
+    ]) {
+      const style = StyleSheet.flatten(
+        screen.getByTestId(testID).props.style
+      ) as { overflow?: string };
+      expect(style.overflow).toBe('hidden');
+    }
+  });
+
+  it('clips a colSpan cell to its summed dp width as well', () => {
+    const columns = [col('rowh', 100, true), col('c1', 200), col('c2', 150)];
+    const contract: ResolvedGridContract = {
+      columns,
+      contentWidth: 450,
+      showHeader: false,
+      hasFooter: false,
+      mobile: false,
+      stickyFirstColumn: false,
+      regime: 'fit',
+      rows: [
+        row('r1', 'data', [textCell('r1-0', 'R'), textCell('r1-1', 'wide', 2)]),
+      ],
+    };
+    render(<MatrixGrid contract={contract} />);
+    const style = StyleSheet.flatten(
+      screen.getByTestId('matrix-cell-r1-1').props.style
+    ) as { overflow?: string; width?: number };
+    expect(style.overflow).toBe('hidden');
+    expect(style.width).toBe(350);
+  });
+});
+
 describe('MatrixGrid — showHeader gates the header band', () => {
   it('omits the header band when showHeader is false', () => {
     const c = fitContract();
