@@ -52,12 +52,14 @@
  */
 import * as React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import type { GestureResponderEvent } from 'react-native';
+import type { GestureResponderEvent, LayoutChangeEvent } from 'react-native';
 import type {
   Base,
+  Question,
   QuestionRatingModel,
   RenderedRatingItem,
 } from '../core/facade';
+import { getResponsivenessMeasurer } from '../core/processResponsiveness';
 import { QuestionElementBase } from '../reactivity/QuestionElementBase';
 import type { QuestionElementBaseProps } from '../reactivity/QuestionElementBase';
 import { RNElementFactory } from '../factories/ElementFactory';
@@ -83,6 +85,12 @@ const styles = StyleSheet.create({
   itemRow: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  // The always-mounted measure wrapper (displayMode:"auto" only): reports
+  // the live available width via onLayout in the buttons view. `stretch`
+  // so it fills the column and its onLayout width is the real viewport.
+  measureWrapper: {
+    alignSelf: 'stretch',
   },
 });
 
@@ -338,6 +346,30 @@ export class RatingQuestion extends QuestionElementBase<QuestionElementBaseProps
     this.ratingQuestion.setValueFromClick(value);
   };
 
+  // ——— displayMode:"auto" responsive collapse (task 2.5c) ———
+  // Web drives `Question.processResponsiveness(requiredWidth,
+  // availableWidth)` from a ResizeObserver over the rate row. RN has no
+  // resize observer, so the buttons view feeds the same core method from
+  // two native callbacks — the always-mounted wrapper's onLayout (live
+  // available width) and the row ScrollView's onContentSizeChange
+  // (intrinsic required width) — through the shared per-question measurer,
+  // which survives the dispatch swap to RatingDropdownQuestion when core
+  // flips renderAs. CORE keeps the decision (the ±2 deadband, the flip);
+  // the measurer is passive until BOTH widths are known and gates design
+  // mode caller-side. Only mounted while `displayMode === 'auto'`, so
+  // `"buttons"` renders exactly as before (never measures, never flips).
+  private handleWrapperLayout = (event: LayoutChangeEvent): void => {
+    getResponsivenessMeasurer(
+      this.questionBase as unknown as Question
+    ).reportAvailableWidth(event.nativeEvent.layout.width);
+  };
+
+  private handleContentSizeChange = (contentWidth: number): void => {
+    getResponsivenessMeasurer(
+      this.questionBase as unknown as Question
+    ).reportRequiredWidth(contentWidth);
+  };
+
   /** Set during render on an item-dispatch miss (an unregistered custom
    * `itemComponent`), reported from the commit lifecycles below (0.7's
    * "no diagnostics during render" rule -- same pattern SurveyHeader's
@@ -410,10 +442,22 @@ export class RatingQuestion extends QuestionElementBase<QuestionElementBaseProps
           'choice'
         )
       : null;
-    return (
+    // `displayMode: "auto"` mounts the measurement seam; `"buttons"`
+    // renders the plain body (never measures, never flips). `"dropdown"`
+    // never reaches this component (it dispatches to RatingDropdownQuestion).
+    const autoMeasure =
+      (question as unknown as { displayMode?: string }).displayMode === 'auto';
+    const body = (
       <View style={styles.root} testID={`sv-rating-${question.name}`}>
         {minText}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          testID={autoMeasure ? `sv-rating-scroll-${question.name}` : undefined}
+          onContentSizeChange={
+            autoMeasure ? this.handleContentSizeChange : undefined
+          }
+        >
           <View
             testID={`sv-rating-row-${question.name}`}
             // Core defines the rating input's role as radiogroup
@@ -435,6 +479,16 @@ export class RatingQuestion extends QuestionElementBase<QuestionElementBaseProps
           </View>
         </ScrollView>
         {maxText}
+      </View>
+    );
+    if (!autoMeasure) return body;
+    return (
+      <View
+        testID={`sv-rating-measure-wrapper-${question.name}`}
+        onLayout={this.handleWrapperLayout}
+        style={styles.measureWrapper}
+      >
+        {body}
       </View>
     );
   }

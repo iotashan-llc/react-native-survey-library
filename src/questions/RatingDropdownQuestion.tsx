@@ -61,12 +61,14 @@
  */
 import * as React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import type { LayoutChangeEvent } from 'react-native';
 import type {
   Base,
   LocalizableString,
   PopupModel,
   Question,
 } from '../core/facade';
+import { getResponsivenessMeasurer } from '../core/processResponsiveness';
 import type { QuestionElementBaseProps } from '../reactivity/QuestionElementBase';
 import { SurveyElementBase } from '../reactivity/SurveyElementBase';
 import { OverlayControlBase } from '../reactivity/OverlayControlBase';
@@ -89,6 +91,9 @@ interface RatingDropdownListModelLike {
 
 interface RatingDropdownModelLike extends Question {
   renderAs: string;
+  /** Public API. `"auto"` mounts the flip-back measurement seam below;
+   * `"dropdown"` (always collapsed) never does (task 2.5c). */
+  displayMode: string;
   allowClear: boolean;
   isInputReadOnly: boolean;
   readOnlyText: string;
@@ -191,6 +196,22 @@ export class RatingDropdownQuestion extends OverlayControlBase<OverlayControlPro
   protected isOverlayMode(): boolean {
     return this.rating.renderAs === 'dropdown';
   }
+
+  // ——— displayMode:"auto" flip-BACK measurement seam (task 2.5c) ———
+  // When an "auto" rating is collapsed, RatingQuestion has unmounted, so
+  // the buttons ScrollView that measures the intrinsic required width is
+  // gone. The required width RatingQuestion measured before the collapse
+  // is carried on the shared per-question measurer; the collapsed control
+  // only needs the live available width, so its always-mounted wrapper's
+  // onLayout feeds that and CORE flips renderAs back to "default" (→ the
+  // dispatch swaps back to the buttons view) once it fits again. Only
+  // mounted while `displayMode === 'auto'`, so `"dropdown"` (always
+  // collapsed) renders exactly the 2.5a control with no measurement.
+  private handleWrapperLayout = (event: LayoutChangeEvent): void => {
+    getResponsivenessMeasurer(
+      this.questionBase as unknown as Question
+    ).reportAvailableWidth(event.nativeEvent.layout.width);
+  };
 
   // `getOverlayPopup` is the base default: the NON-CREATING
   // `dropdownListModelValue?.popupModel` read (2.5fu backport made the
@@ -302,16 +323,13 @@ export class RatingDropdownQuestion extends OverlayControlBase<OverlayControlPro
     const vm = this.isOverlayMode()
       ? question.dropdownListModelValue
       : undefined;
-    if (!vm) {
-      return (
-        <View
-          style={localStyles.row}
-          testID={`sv-rating-dropdown-fallback-${question.name}`}
-        />
-      );
-    }
     const readOnly = question.isInputReadOnly;
-    return (
+    const inner = !vm ? (
+      <View
+        style={localStyles.row}
+        testID={`sv-rating-dropdown-fallback-${question.name}`}
+      />
+    ) : (
       <View style={localStyles.row}>
         <Pressable
           ref={this.controlRef}
@@ -334,10 +352,26 @@ export class RatingDropdownQuestion extends OverlayControlBase<OverlayControlPro
         )}
       </View>
     );
+    // displayMode:"auto" wraps the collapsed control in the always-mounted
+    // flip-back measure wrapper; displayMode:"dropdown" renders the 2.5a
+    // control directly (never measures, never flips back).
+    if (question.displayMode !== 'auto') return inner;
+    return (
+      <View
+        testID={`sv-rating-measure-wrapper-${question.name}`}
+        onLayout={this.handleWrapperLayout}
+        style={localStyles.measureWrapper}
+      >
+        {inner}
+      </View>
+    );
   }
 }
 
 const localStyles = StyleSheet.create({
+  // The always-mounted flip-back measure wrapper (displayMode:"auto"
+  // only): reports the live available width via onLayout while collapsed.
+  measureWrapper: { alignSelf: 'stretch' },
   row: { flexDirection: 'row', alignItems: 'center' },
   control: {
     flex: 1,
