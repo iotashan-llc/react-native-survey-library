@@ -38,6 +38,14 @@ import { RNElementFactory } from '../factories/ElementFactory';
 import { preflightSurveyJson } from '../security/json-preflight';
 import type { UriPolicyConfig } from '../security/uri-policy';
 import { UriPolicyContext } from '../security/UriPolicyContext';
+import {
+  acquireChoicesByUrlGate,
+  installChoicesByUrlGate,
+  registerModelUriPolicy,
+  releaseChoicesByUrlGate,
+  runWithConstructionUriPolicy,
+  unregisterModelUriPolicy,
+} from '../security/choices-gate';
 import { reportDiagnostic } from '../diagnostics';
 import {
   createLifecycleRegistry,
@@ -563,6 +571,10 @@ export const Survey = React.forwardRef<SurveyRefHandle, SurveyProps>(
     // Model resolution — commit phase, every commit, internally guarded
     // (upstream does this in shouldComponentUpdate; see module header).
     React.useEffect(() => {
+      // Re-assert the request-time choicesByUrl gate every commit
+      // (idempotent single compare): a host hook assigned between commits
+      // is captured into the gate's chain instead of displacing it.
+      installChoicesByUrlGate();
       const condition: PropCondition =
         model !== undefined
           ? json !== undefined
@@ -595,6 +607,7 @@ export const Survey = React.forwardRef<SurveyRefHandle, SurveyProps>(
         // every 0.4 reactive subscriber, root and descendants) and the
         // commit after that actually disposes (dispose effect below).
         innerRef.current?.detachFromModel();
+        if (prev) unregisterModelUriPolicy(prev.model);
         if (prev?.owned && !prev.model.isDisposed) {
           disposeStagedRef.current.push(prev.model);
         }
@@ -602,6 +615,14 @@ export const Survey = React.forwardRef<SurveyRefHandle, SurveyProps>(
 
       if (model !== undefined) {
         // Host-owned path — `model` wins over `json` (diagnostic above).
+        // Request-time gate: a host model's runtime RE-runs are gated
+        // only when the host provided `uriPolicy` (its construction-time
+        // requests fired before this component existed — documented
+        // boundary); without the prop the documented trusted-by-host
+        // contract holds. Synced every commit so a uriPolicy prop
+        // change/removal takes effect.
+        if (uriPolicy !== undefined) registerModelUriPolicy(model, uriPolicy);
+        else unregisterModelUriPolicy(model);
         if (prev && !prev.owned && prev.model === model) return;
         disposePrevIfOwned();
         entryRef.current = {
@@ -620,6 +641,9 @@ export const Survey = React.forwardRef<SurveyRefHandle, SurveyProps>(
           !prev.model.isDisposed &&
           Helpers.isTwoValueEquals(prev.json, json)
         ) {
+          // Same model kept — refresh its request-time gate config so a
+          // uriPolicy-only prop change still takes effect.
+          registerModelUriPolicy(prev.model, uriPolicy);
           return; // deep-equal json — never recreate (upstream parity)
         }
         disposePrevIfOwned();
@@ -628,8 +652,18 @@ export const Survey = React.forwardRef<SurveyRefHandle, SurveyProps>(
           uriPolicy
         );
         for (const diagnostic of diagnostics) reportDiagnostic(diagnostic);
+        // Construction-context window (A11 request-time gate):
+        // choicesByUrl requests fire synchronously inside `new Model()`,
+        // before the instance exists to key the registry. An owned model
+        // is ALWAYS gated — `undefined` config gates with the fail-closed
+        // defaults, mirroring the preflight above.
+        const built = runWithConstructionUriPolicy(
+          uriPolicy,
+          () => new Model(clean as object)
+        ) as unknown as SurveyModel;
+        registerModelUriPolicy(built, uriPolicy);
         entryRef.current = {
-          model: new Model(clean as object) as unknown as SurveyModel,
+          model: built,
           owned: true,
           json,
           key: (prev?.key ?? 0) + 1,
@@ -680,11 +714,20 @@ export const Survey = React.forwardRef<SurveyRefHandle, SurveyProps>(
         disposeReadyRef.current = [];
         disposeStagedRef.current = [];
         const entry = entryRef.current;
+        if (entry) unregisterModelUriPolicy(entry.model);
         if (entry?.owned && !entry.model.isDisposed) entry.model.dispose();
         entryRef.current = null;
       },
       []
     );
+
+    // Request-time choicesByUrl gate lifetime: refcounted across ALL
+    // mounted Surveys (they share the one global hook safely); the last
+    // unmount restores whatever host hook the gate had captured.
+    React.useEffect(() => {
+      acquireChoicesByUrlGate();
+      return () => releaseChoicesByUrlGate();
+    }, []);
 
     // applyTheme — on model creation/swap and on theme change (canonical
     // snapshot compare, not reference compare). No theme prop -> no call.

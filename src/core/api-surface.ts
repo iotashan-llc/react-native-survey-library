@@ -1795,4 +1795,51 @@ export const API_SURFACE_WATCHLIST: readonly WatchedApiMember[] = [
     reason:
       '3.3a MatrixChoiceCell radiogroup write — single-arg select-only form.',
   },
+  // choicesByUrl request-time gate (src/security/choices-gate.ts): the
+  // hook seam plus the TS-private-but-real error-path members the gate's
+  // blocked/discard delivery invokes on the pinned 2.5.33 build (same
+  // watchlist rationale as _setIsTouch). Behaviorally covered by
+  // security/__tests__/choices-gate.test.tsx.
+  {
+    id: 'settings.web.onBeforeRequestChoices',
+    member: 'onBeforeRequestChoices',
+    // Core ships a default no-op FUNCTION here (data property holding a
+    // function classifies as 'method').
+    expectedKind: 'method',
+    resolveHost: (sc) =>
+      (sc as { settings: { web: Record<string, unknown> } }).settings.web,
+    reason:
+      'choicesByUrl gate hook seam — the only per-request callback core ' +
+      'exposes (fires inside `new Model()` too); the gate composes any ' +
+      'host auth-header hook after it.',
+  },
+  {
+    id: 'ChoicesRestful.beforeLoadRequest',
+    member: 'beforeLoadRequest',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.ChoicesRestful.prototype,
+    reason:
+      'choicesByUrl gate blocked/discard delivery — protected-in-typings ' +
+      "isRunning reset (also core's fetch-.catch never calls it: pinned " +
+      'quirk the gate compensates for).',
+  },
+  {
+    id: 'ChoicesRestful.onError',
+    member: 'onError',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.ChoicesRestful.prototype,
+    reason:
+      'choicesByUrl gate fail-closed route — private-in-typings error ' +
+      'path (WebRequestError + EMPTY choices via doEmptyResultCallback + ' +
+      'unregisterSameRequests, so the dedupe registry never hangs).',
+  },
+  {
+    id: 'ChoicesRestful.getSurvey',
+    member: 'getSurvey',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.ChoicesRestful.prototype,
+    reason:
+      'choicesByUrl gate registry lookup — sender → owning model for ' +
+      'runtime re-run policy resolution.',
+  },
 ];
