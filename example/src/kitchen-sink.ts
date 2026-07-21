@@ -473,7 +473,8 @@ export const kitchenSinkJson = {
           // core-correct.
           type: 'ranking',
           name: 'priorities',
-          title: 'Drag to rank these priorities (ranking — supported in RN as of 4.1)',
+          title:
+            'Drag to rank these priorities (ranking — supported in RN as of 4.1)',
           choices: ['Performance', 'Bundle size', 'Developer experience'],
         },
         {
