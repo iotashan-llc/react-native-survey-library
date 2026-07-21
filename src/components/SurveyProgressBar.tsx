@@ -3,21 +3,20 @@
  * of survey-react-ui's `SurveyProgress` (progress.tsx), bound to
  * `survey.progressValue`/`survey.progressText`/`survey.progressBarAriaLabel`.
  *
- * v1 scope (design: docs/IMPLEMENTATION-PLAN.md row 1.8 -- "v1: percentage
- * bar + text via progressText; button/TOC variants documented deferred"):
- * this component renders the percentage-bar visual for exactly the
+ * Scope: this component renders the percentage-bar visual for exactly the
  * `progressBarType` family upstream routes through its own
  * `SurveyProgress`
  * (`"pages"`/`"questions"`/`"requiredQuestions"`/`"correctQuestions"` --
  * they differ only in what `progressValue`/`progressText` COMPUTE to,
- * already core's own logic, consumed as-is). Upstream's obsolete
- * `"buttons"` value and the newer TOC/page-titles extension
- * (`ProgressButtons`, progressButtons.tsx) render through a materially
- * different component tree (scrollable page list, header/footer titles)
- * and are explicitly DEFERRED -- for those types this component renders
- * NULL and reports a once-per-instance
- * `progress-bar-type-unsupported` diagnostic (review round 1: showing
- * the percentage bar for them would misrepresent the survey's config).
+ * already core's own logic, consumed as-is). The `"buttons"` route
+ * (upstream's obsolete `"buttons"` value AND `"pages"` under the default
+ * css type, which `progressBarComponentName` normalizes to `"buttons"`)
+ * renders the step-button nav through `SurveyProgressButtons` (task 5.7c)
+ * -- a materially different tree (scrollable page-step list) delegated to
+ * that component. Any OTHER effective route (a future/unknown type)
+ * renders NULL and reports a once-per-instance
+ * `progress-bar-type-unsupported` diagnostic (showing the percentage bar
+ * for it would misrepresent the survey's config).
  *
  * Structure (review round 1): the height-limited, overflow-hidden track
  * contains ONLY the fill; the visible `progressText` is the track's
@@ -37,6 +36,7 @@ import { settings, surveyCss } from '../core/facade';
 import { SurveyElementBase } from '../reactivity/SurveyElementBase';
 import { composeStyles } from '../theme-rn/recipes/types';
 import { reportDiagnostic } from '../diagnostics';
+import { SurveyProgressButtons } from './SurveyProgressButtons';
 
 /** The EFFECTIVE progress routes upstream's percentage `SurveyProgress`
  * itself registers (sv-progress-pages/questions/correctquestions/
@@ -122,7 +122,10 @@ export class SurveyProgressBar extends SurveyElementBase<SurveyProgressBarProps>
     if (!this.survey || !this.survey.showProgressBar) return false;
     const progressBarType = this.survey.progressBarType;
     const effectiveType = effectiveProgressType(progressBarType);
-    if (PERCENTAGE_PROGRESS_TYPES.has(effectiveType.toLowerCase())) {
+    const normalized = effectiveType.toLowerCase();
+    // The percentage-bar family + the buttons step-nav (task 5.7c) are
+    // both rendered; only a future/unknown effective route is unsupported.
+    if (PERCENTAGE_PROGRESS_TYPES.has(normalized) || normalized === 'buttons') {
       return true;
     }
     this.pendingUnsupportedType = { progressBarType, effectiveType };
@@ -131,6 +134,14 @@ export class SurveyProgressBar extends SurveyElementBase<SurveyProgressBarProps>
 
   protected renderElement(): React.JSX.Element {
     const survey = this.survey;
+    // Buttons route (task 5.7c): delegate to the step-button nav. This
+    // covers the obsolete `"buttons"` value AND `"pages"` under the
+    // default css type (progressBarComponentName normalizes to buttons).
+    if (
+      effectiveProgressType(survey.progressBarType).toLowerCase() === 'buttons'
+    ) {
+      return <SurveyProgressButtons survey={survey} />;
+    }
     const { recipes, styles } = this.themeContext;
     const fragments = recipes.progress.fragments;
     const slots = styles.progress;

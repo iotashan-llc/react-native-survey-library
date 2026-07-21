@@ -139,6 +139,13 @@ export { SurveyNavigation } from './components/SurveyNavigation';
 export type { SurveyNavigationProps } from './components/SurveyNavigation';
 export { SurveyProgressBar } from './components/SurveyProgressBar';
 export type { SurveyProgressBarProps } from './components/SurveyProgressBar';
+// task 5.7c — the progress-buttons step nav (routed by SurveyProgressBar
+// for progressBarType "buttons"/"pages") and the notifier toast (mounted
+// by the <Survey> shell). Exported for hosts mounting the shell directly.
+export { SurveyProgressButtons } from './components/SurveyProgressButtons';
+export type { SurveyProgressButtonsProps } from './components/SurveyProgressButtons';
+export { SurveyNotifier } from './components/SurveyNotifier';
+export type { SurveyNotifierProps } from './components/SurveyNotifier';
 export { SurveyStateFrame } from './components/SurveyStateFrame';
 export type { SurveyStateFrameProps } from './components/SurveyStateFrame';
 // text question (task 1.10, A5) — the DraftCommitAdapter it wires

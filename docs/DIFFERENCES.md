@@ -2247,3 +2247,97 @@ Core's `tocLocation` is `"left" | "right"` (default `"left"`); RN treats
 any non-`"right"` value as `"left"`. (Web's `TOCModel.isTocNavigationInContainer`
 references a `"both"` container, but the public `tocLocation` property does
 not expose it.)
+
+## Progress buttons (`progressBarType: "buttons"` / `"pages"`, task 5.7c)
+
+`SurveyProgressButtons` is the RN port of web's `SurveyProgressButtons`
+(`progressButtons.tsx`). It reuses the survey's own `ProgressButtons`
+model (`survey.progressBar` — the lazily-created, cached instance), and
+`SurveyProgressBar` routes `progressBarType: "buttons"` (and `"pages"`
+under the default css type, which core's private `progressBarComponentName`
+normalizes to `"buttons"`) to it instead of the percentage bar.
+
+### Navigation goes only through `clickListElement`
+
+Tapping a step calls `ProgressButtons.clickListElement(page)` (which calls
+`survey.tryNavigateToPage(page)`) — never a hand-rolled `currentPage`
+setter. A step is tappable only when `ProgressButtons.isListElementClickable(index)`
+is true (core's own gate: always true unless a server-validation handler is
+attached and `checkErrorsMode !== "onComplete"`, in which case only steps up
+to `currentPageNo + 1` are clickable). A non-clickable step is disabled and
+dimmed; the active/passed highlight comes from the `getListElementCss(index)`
+CssClassBuilder tokens (`--passed` / `--current`), read and mapped to recipe
+fragments — never re-derived (invariant 6).
+
+### Responsivity is a horizontal `ScrollView`, not the DOM manager
+
+Web's `ProgressButtonsResponsivityManager` measures the `HTMLElement`
+width to (a) toggle left/right scroll-arrow buttons and (b) collapse
+per-step titles when they no longer fit (falling back to a single
+current-page header). RN has no equivalent measurement seam, so:
+
+- The step row lives in a **horizontal `ScrollView`** — overflow is
+  handled by native touch-scroll, and the DOM **scroll-arrow buttons are
+  omitted** (there is nothing to click; you swipe).
+- **Step titles are shown whenever `showItemTitles` is true**, with no
+  width-driven auto-collapse. Consequently the responsive-collapse
+  **header** (web's `canShowHeader` — the single current-page title shown
+  when per-step titles are hidden) has no analog and is not rendered.
+- When `showItemTitles` is **false** the **footer** shows the model's
+  `footerText` (the progress text, e.g. "Page 1 of 3"), matching web's
+  `canShowFooter = !showItemTitles`.
+
+### Reactivity subscribes to both the model and the survey
+
+The component's state elements are **both** the `ProgressButtons` model
+and the survey. The model's `onCurrentPageChanged` only fires a property
+change (via `resetProgressText`) when `progressText` was previously read
+and cached — which happens only when the footer is shown (titles-hidden
+mode). Subscribing to the survey too guarantees the active/passed
+highlight re-renders on every `currentPage` change regardless of the
+footer, while the model's `visiblePages` property array covers
+page-visibility changes.
+
+### Not ported
+
+The SVG connector-line geometry, hover styling, the `--fit-survey-width`
+max-width band, `--numbered` circle-size variant, and the RTL connector
+transforms are web-CSS-specific and not reproduced; the RN steps render
+centered numbered circles + optional titles inside the scroll row.
+
+## Notifier toast (`survey.notify`, task 5.7c)
+
+`SurveyNotifier` is the RN port of web's `NotifierComponent`
+(`components/notifier.tsx`), bound to `survey.notifier` (the core
+`Notifier`) and mounted by the `<Survey>` shell in its overlay layer.
+`survey.notify(message, type, showActions)` drives the model; the
+component only reflects it.
+
+### Show/hide is mount/unmount on `active`, not a CSS transition
+
+Web keeps the toast in the DOM and toggles `visibility` + opacity through
+a CSS `transition`. RN has no CSS transition cascade, so the toast is
+**mounted only while `notifier.active` is true** and unmounts when the
+model clears `active` on its auto-hide timer
+(`settings.notifications.lifetime`, default 2000ms). The animated slide/fade
+is not reproduced (a future enhancement could add a Reanimated entrance).
+
+### Type styling is read from the model's `css` string
+
+The info/error/success variant is taken from the notifier's own `css`
+(`Notifier.getCssClass` → `sv-save-data_info` / `_error` / `_success`) and
+mapped to the recipe variant — never re-derived (invariant 6). The
+`$success` text color (web `#ffffff`) is mapped to `$background` (the same
+"on-colored-surface" light color the error variant uses) to keep the
+recipe formula-first, and `$shadow-medium` is approximated with a constant
+elevation/shadow (the shadow-token mapper is question-recipe scoped).
+
+### `waitUserAction` actions and placement
+
+`survey.notify(message, type, /* showActions */ true)` takes the model's
+`waitUserAction` path: no auto-hide timer is scheduled and the notifier's
+registered actions (e.g. the built-in "try again" for `error`) become
+visible; they render through the shared `ActionButton`. The toast is an
+**absolute band pinned to the bottom of the survey root** (RN analog of
+web's viewport `position: fixed`) — it follows the survey container, not
+the device viewport. With no active message the component renders `null`.
