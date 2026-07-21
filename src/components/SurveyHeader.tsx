@@ -60,12 +60,23 @@ const BG_RESIZE_MODE_BY_FIT: Record<string, BgResizeMode> = {
   tile: 'repeat',
 };
 
-/** `CoverCell.contentStyle.textAlign` (`start`/`center`/`end`) → RN. */
-const TEXT_ALIGN_BY_CSS: Record<string, 'left' | 'center' | 'right'> = {
-  start: 'left',
-  center: 'center',
-  end: 'right',
-};
+/**
+ * `CoverCell.contentStyle.textAlign` (core's LOGICAL `start`/`center`/`end`,
+ * from `calcAlignText`) → a physical RN `textAlign`, resolved against the
+ * survey direction. RN's `textAlign` `'left'`/`'right'` do NOT follow the
+ * parent View's Yoga direction (only the sibling flex `alignItems` does), so
+ * `start`/`end` must be mirrored here for the cover text to align correctly in
+ * an RTL (ar/he/fa) locale — matching the cell's `alignItems`/`justifyContent`.
+ */
+export function resolveCoverTextAlign(
+  logical: string | undefined,
+  rtl: boolean
+): 'left' | 'center' | 'right' {
+  const v = logical ?? 'start';
+  if (v === 'center') return 'center';
+  if (v === 'end') return rtl ? 'left' : 'right';
+  return rtl ? 'right' : 'left';
+}
 
 const coverStyles = StyleSheet.create({
   /** The image layer + its content fill the cover bounds. */
@@ -419,7 +430,10 @@ export class SurveyHeader extends SurveyElementBase<SurveyHeaderProps> {
       },
     ];
     const textStyle = {
-      textAlign: TEXT_ALIGN_BY_CSS[content.textAlign ?? 'start'] ?? 'left',
+      textAlign: resolveCoverTextAlign(
+        content.textAlign,
+        this.themeContext.mode.rtl
+      ),
       ...(textAreaWidth != null ? { maxWidth: textAreaWidth } : null),
     };
     return (

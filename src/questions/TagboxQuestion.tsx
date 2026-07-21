@@ -451,7 +451,7 @@ const localStyles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: '#e0e0e0',
   },
-  chipText: { marginRight: 4 },
+  chipText: { marginEnd: 4 },
   chipRemove: { padding: 2 },
-  chevron: { marginLeft: 8 },
+  chevron: { marginStart: 8 },
 });

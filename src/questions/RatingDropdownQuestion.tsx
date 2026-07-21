@@ -379,5 +379,5 @@ const localStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  chevron: { marginLeft: 8 },
+  chevron: { marginStart: 8 },
 });

@@ -26,7 +26,7 @@ import { StyleSheet } from 'react-native';
 
 import { Model } from '../../core/facade';
 import '../../factories/register-all';
-import { SurveyHeader } from '../SurveyHeader';
+import { SurveyHeader, resolveCoverTextAlign } from '../SurveyHeader';
 import { UriPolicyContext } from '../../security/UriPolicyContext';
 import { setDiagnosticHandler } from '../../diagnostics';
 import type { DiagnosticPayload } from '../../diagnostics';
@@ -243,5 +243,23 @@ describe('SurveyHeader — advanced cover reactivity', () => {
     expect(model.hasActiveUISubscribers).toBe(true);
     view.unmount();
     expect(model.hasActiveUISubscribers).toBe(false);
+  });
+});
+
+describe('resolveCoverTextAlign — RTL mirroring (M6 RTL audit)', () => {
+  // RN textAlign 'left'/'right' does not follow Yoga direction, so core's
+  // logical start/end must be mirrored against the survey direction.
+  it('LTR: start→left, end→right, center→center, default→left', () => {
+    expect(resolveCoverTextAlign('start', false)).toBe('left');
+    expect(resolveCoverTextAlign('end', false)).toBe('right');
+    expect(resolveCoverTextAlign('center', false)).toBe('center');
+    expect(resolveCoverTextAlign(undefined, false)).toBe('left');
+  });
+
+  it('RTL: start→right, end→left, center→center, default→right', () => {
+    expect(resolveCoverTextAlign('start', true)).toBe('right');
+    expect(resolveCoverTextAlign('end', true)).toBe('left');
+    expect(resolveCoverTextAlign('center', true)).toBe('center');
+    expect(resolveCoverTextAlign(undefined, true)).toBe('right');
   });
 });

@@ -597,7 +597,7 @@ const localStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  chevron: { marginLeft: 8 },
+  chevron: { marginStart: 8 },
   /** Compact-mode measure host: mounted for measurement only —
    * invisible, untouchable, and (with the paired a11y props) hidden
    * from both platforms' accessibility trees. */
