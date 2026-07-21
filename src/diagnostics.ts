@@ -267,15 +267,42 @@ export interface ProgressBarTypeUnsupportedPayload {
 }
 
 /**
- * Task 2.10: the `image` question renders only `renderedMode === "image"`
- * in v1 — `"video"` is deferred (media task) and `"youtube"` is a
- * documented won't-support. Rendering nothing + reporting beats a
- * misleading empty frame (invariant 9's honest-degradation spirit).
+ * The `image` question renders `renderedMode` `"image"` (task 2.10),
+ * `"video"` (expo-video) and `"youtube"` (react-native-webview) — both
+ * added in task 5.5. Any OTHER `renderedMode` (survey-core preserves an
+ * empty `contentMode: ""` as `renderedMode: ""` rather than defaulting to
+ * `"image"`) is genuinely unsupported: rendering nothing + reporting beats
+ * a misleading empty frame (invariant 9's honest-degradation spirit).
  */
 export interface ImageContentModeUnsupportedPayload {
   code: 'image-content-mode-unsupported';
   questionName: string;
   contentMode: string;
+}
+
+/**
+ * 5.5 image `contentMode: "video"` — the batteries-included `expo-video`
+ * peer is not installed/resolvable, so there is no native player. The
+ * video branch degrades to a non-throwing poster fallback (the alt text) +
+ * this diagnostic rather than crashing (invariant 9). Install the peer for
+ * playback. Deduped per instance (commit-phase).
+ */
+export interface ImageVideoLibUnavailablePayload {
+  code: 'image-video-lib-unavailable';
+  questionName: string;
+}
+
+/**
+ * 5.5 image `contentMode: "youtube"` — the batteries-included
+ * `react-native-webview` peer is not installed/resolvable, so the YouTube
+ * embed cannot be presented. The youtube branch degrades to a documented
+ * text fallback (the alt text / link) + this diagnostic rather than
+ * crashing (invariant 9). YouTube is a documented-limited path. Deduped
+ * per instance (commit-phase).
+ */
+export interface ImageYoutubeWebviewUnavailablePayload {
+  code: 'image-youtube-webview-unavailable';
+  questionName: string;
 }
 
 /** 2.8a paneldynamic — a non-list `displayMode` (carousel/tab/progress) is
@@ -439,6 +466,8 @@ export type DiagnosticPayload =
   | LayoutDiagnosticPayload
   | ProgressBarTypeUnsupportedPayload
   | ImageContentModeUnsupportedPayload
+  | ImageVideoLibUnavailablePayload
+  | ImageYoutubeWebviewUnavailablePayload
   | PanelDynamicModeUnsupportedPayload
   | CustomContentMissingPayload
   | SignaturePadLibUnavailablePayload

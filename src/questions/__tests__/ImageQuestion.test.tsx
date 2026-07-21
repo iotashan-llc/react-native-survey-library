@@ -130,20 +130,23 @@ describe('ImageQuestion — core load-state contract', () => {
     expect(screen.getByText('fallback text')).toBeTruthy();
   });
 
-  it('a non-image contentMode renders null + a structured diagnostic (video deferred; youtube never)', () => {
+  it('contentMode "video" is now SUPPORTED — a blocked url fails closed to the video fallback (not the content-mode-unsupported path)', () => {
+    // Task 5.5: video renders through expo-video; it is no longer deferred.
+    // A non-allowlisted remote source fails CLOSED (invariant 8) to the
+    // poster fallback + an image-uri-blocked diagnostic — NOT the old
+    // image-content-mode-unsupported / render-nothing behavior.
     const payloads: DiagnosticPayload[] = [];
     setDiagnosticHandler((p) => payloads.push(p));
     const question = createImageQuestion({
       contentMode: 'video',
       imageLink: 'https://cdn.example.com/clip.mp4',
     });
-    const { toJSON } = render(
-      <ImageQuestion question={question} creator={{}} />
-    );
-    expect(toJSON()).toBeNull();
+    render(<ImageQuestion question={question} creator={{}} />);
+    expect(screen.getByTestId('sv-video-fallback-q1')).toBeTruthy();
+    expect(payloads.some((p) => p.code === 'image-uri-blocked')).toBe(true);
     expect(
       payloads.some((p) => p.code === 'image-content-mode-unsupported')
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it('an empty (non-image) contentMode still reports unsupported (falsy-guard gap)', () => {

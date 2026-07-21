@@ -251,6 +251,16 @@
           "altText": "Sample image (task 2.10)"
         },
         {
+          "type": "image",
+          "name": "heroVideo",
+          "contentMode": "video",
+          "imageLink": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+          "imageFit": "contain",
+          "imageWidth": "240",
+          "imageHeight": "135",
+          "altText": "Sample video (contentMode: video, task 5.5)"
+        },
+        {
           "type": "imagepicker",
           "name": "swatches",
           "title": "Pick swatches (imagepicker)",

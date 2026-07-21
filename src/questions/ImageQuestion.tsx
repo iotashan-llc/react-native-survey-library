@@ -1,34 +1,46 @@
 /**
- * `image` question (task 2.10) — static display + scaling modes. RN
- * analog of survey-react-ui's `SurveyQuestionImage` (image.tsx:28-40).
+ * `image` question (task 2.10 image; task 5.5 video/youtube) — static
+ * display + scaling modes. RN analog of survey-react-ui's
+ * `SurveyQuestionImage` (image.tsx): an `<img>` (image), `<video controls>`
+ * (video) or `<iframe>` (youtube) chosen by `renderedMode`.
  *
  * Contract consumed from core (invariant 6 — no re-derivation):
  * - `locImageLink` — localizable link; the class subscribes its
  *   `onStringChanged` (add/remove, never clobbering upstream's single
  *   `onChanged` slot) so locale/expression updates re-render (review
- *   round 1 #3).
- * - `renderedMode` — only `"image"` renders in v1; `"video"` is deferred
- *   and `"youtube"` is a documented won't-support — both emit a
- *   structured diagnostic and render nothing (invariant 9).
- * - `imageFit` → RN `resizeMode` (contain/cover/fill→stretch/none→center).
+ *   round 1 #3). For `renderedMode === "youtube"` core has ALREADY
+ *   transformed `renderedHtml` into the embed URL
+ *   (`https://www.youtube.com/embed/<id>`) via `getCorrectImageLink`.
+ * - `renderedMode` — `"image"` renders an RN `Image`; `"video"` renders an
+ *   expo-video player; `"youtube"` renders a react-native-webview to the
+ *   embed URL. Any OTHER mode (survey-core preserves an empty
+ *   `contentMode: ""` as `renderedMode: ""`) is unsupported: it renders
+ *   nothing + emits `image-content-mode-unsupported` (invariant 9).
+ * - `imageFit` → RN `resizeMode` (image) / expo-video `contentFit` (video).
  * - `renderedWidth`/`renderedHeight` — numeric px (serializer defaults
  *   200×150); an `undefined` dimension is omitted (LogoImage's `auto`
  *   caveat applies).
- * - `onLoadHandler`/`onErrorHandler`/`contentNotLoaded` — RN `Image`
- *   load events route INTO core. After an error the alt text renders,
- *   but a CHANGED link re-mounts the image so it can recover (review
- *   round 1 #2 — core never resets `contentNotLoaded` itself, and web
- *   recovers because its hidden `<img>` stays mounted).
+ * - `onLoadHandler`/`onErrorHandler`/`contentNotLoaded` — RN `Image` load
+ *   events (image mode only) route INTO core.
  *
- * URI policy (invariant 8): `validateUri(…, 'image', prop ?? context)`,
- * fail-closed; the SINK CONSUMES THE CANONICAL string (review round 1
- * #1 — validate-then-use-raw breaks normalization/base resolution). The
- * policy-consuming body is its own function component so a context-only
- * change still runs the commit-phase diagnostic flush (review round 1
- * #4).
+ * URI policy (invariant 8): the image source validates in the `'image'`
+ * context; the video source AND the youtube embed URL validate in the
+ * `'video'` context (both are remote media loaded automatically at render,
+ * so both are fail-closed automatic-fetch — a non-allowlisted origin is
+ * dropped with an `image-uri-blocked` diagnostic and a non-throwing
+ * fallback). The SINK CONSUMES THE CANONICAL string (review round 1 #1).
+ *
+ * Capability peers (invariant 7): `expo-video` (video) and
+ * `react-native-webview` (youtube) are batteries-included peerDependencies,
+ * LAZY-REQUIRED inside isolated hooks children. When a peer is absent the
+ * branch degrades to a non-throwing poster/text fallback + a structured
+ * `image-video-lib-unavailable` / `image-youtube-webview-unavailable`
+ * diagnostic — never a crash. Playback/embed are DEVICE gates (the peers
+ * are not installed here; jest drives OUR contract through root manual
+ * mocks). YouTube is a documented-limited path.
  */
 import * as React from 'react';
-import { Image, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 import type { ImageProps } from 'react-native';
 import type { Base } from '../core/facade';
 import { QuestionElementBase } from '../reactivity/QuestionElementBase';
@@ -45,6 +57,16 @@ const RESIZE_MODE_BY_IMAGE_FIT: Record<string, ImageResizeMode> = {
   cover: 'cover',
   fill: 'stretch',
   none: 'center',
+};
+
+/** expo-video `contentFit` (contain/cover/fill only — no `none`/`center`
+ * analog, so `none` degrades to `contain`). */
+type VideoContentFit = 'contain' | 'cover' | 'fill';
+const CONTENT_FIT_BY_IMAGE_FIT: Record<string, VideoContentFit> = {
+  contain: 'contain',
+  cover: 'cover',
+  fill: 'fill',
+  none: 'contain',
 };
 
 interface LocStringLike {
@@ -72,6 +94,83 @@ export interface ImageQuestionProps extends QuestionElementBaseProps {
   /** Explicit override; otherwise the survey-scoped context applies. */
   uriConfig?: UriPolicyConfig;
 }
+
+// ————————————————————————————————————————————————————————————————
+// Capability loaders (lazy-required; absent -> non-throwing fallback)
+// ————————————————————————————————————————————————————————————————
+
+type ComponentLike = React.ComponentType<Record<string, unknown>>;
+
+interface ExpoVideoModule {
+  useVideoPlayer: (
+    source: unknown,
+    setup?: (player: unknown) => void
+  ) => unknown;
+  VideoView: ComponentLike;
+}
+
+let cachedExpoVideo: ExpoVideoModule | null | undefined;
+
+/**
+ * Lazy-require `expo-video` (invariant 7). Returns null when the peer is
+ * unavailable (jest without it, or a consumer who has not installed the
+ * batteries-included peer) — the caller then renders the non-throwing
+ * fallback. Memoized so the resolve cost is paid once per module registry.
+ */
+export function loadExpoVideo(): ExpoVideoModule | null {
+  if (cachedExpoVideo !== undefined) return cachedExpoVideo;
+  try {
+    const mod = require('expo-video') as Record<string, unknown>;
+    const useVideoPlayer = mod.useVideoPlayer as
+      ExpoVideoModule['useVideoPlayer'] | undefined;
+    const VideoView = (mod.VideoView ?? mod.default) as
+      ComponentLike | undefined;
+    cachedExpoVideo =
+      typeof useVideoPlayer === 'function' && isRenderable(VideoView)
+        ? { useVideoPlayer, VideoView: VideoView as ComponentLike }
+        : null;
+  } catch {
+    cachedExpoVideo = null;
+  }
+  return cachedExpoVideo;
+}
+
+let cachedWebView: ComponentLike | null | undefined;
+
+/**
+ * Lazy-require `react-native-webview` (invariant 7). Returns null when the
+ * peer is unavailable — the caller then renders the documented text
+ * fallback. Memoized per module registry.
+ */
+export function loadWebView(): ComponentLike | null {
+  if (cachedWebView !== undefined) return cachedWebView;
+  try {
+    const mod = require('react-native-webview') as Record<string, unknown>;
+    const candidate = (mod.WebView ?? mod.default) as ComponentLike | undefined;
+    cachedWebView = isRenderable(candidate)
+      ? (candidate as ComponentLike)
+      : null;
+  } catch {
+    cachedWebView = null;
+  }
+  return cachedWebView;
+}
+
+/** A usable React component export: a function (function component /
+ * forwardRef render) or a component object with `$$typeof` (memo /
+ * forwardRef result). */
+function isRenderable(candidate: unknown): boolean {
+  return (
+    typeof candidate === 'function' ||
+    (typeof candidate === 'object' &&
+      candidate !== null &&
+      '$$typeof' in (candidate as object))
+  );
+}
+
+// ————————————————————————————————————————————————————————————————
+// Image branch (function child — consumes UriPolicyContext, invariant 8)
+// ————————————————————————————————————————————————————————————————
 
 /**
  * Policy-consuming body — a FUNCTION component so the context read and
@@ -143,6 +242,245 @@ function PolicyGatedImage(props: {
   );
 }
 
+// ————————————————————————————————————————————————————————————————
+// Video branch (task 5.5) — expo-video, lazy-required
+// ————————————————————————————————————————————————————————————————
+
+/** Dimension style for a media surface (width/height omitted when core
+ * reports `undefined`, matching the image branch). */
+function dimensionStyle(
+  width: number | undefined,
+  height: number | undefined
+): { width?: number; height?: number } {
+  return {
+    ...(width !== undefined ? { width } : null),
+    ...(height !== undefined ? { height } : null),
+  };
+}
+
+/** No autoplay / no loop — parity with web's `<video controls>` (which
+ * neither autoplays nor loops). Stable module-level ref so the player
+ * setup callback identity never churns. */
+function configureVideoPlayer(player: unknown): void {
+  const p = player as { loop?: boolean; muted?: boolean };
+  p.loop = false;
+}
+
+/** The slice of expo-video's `VideoPlayer` (a `SharedObject`) this branch
+ * reads: the removable `statusChange` event subscription. `status` moves
+ * through `idle → loading → readyToPlay | error`; the payload carries the
+ * new `status`. Typed narrowly (the lib is lazy-required as `unknown`). */
+interface VideoPlayerLike {
+  addListener?: (
+    event: string,
+    listener: (payload: { status?: string }) => void
+  ) => { remove?: () => void } | undefined;
+}
+
+/**
+ * Isolated hooks child: only mounted when expo-video resolved AND the
+ * source passed policy, so `useVideoPlayer` is called unconditionally at
+ * this component's top level (rules-of-hooks safe).
+ *
+ * Runtime load state routes INTO core (parity with the image branch and
+ * web's `<video onLoadedMetadata/onError>`): a `statusChange` to `error`
+ * (404/codec/network) calls `onError` (core `onErrorHandler` →
+ * `contentNotLoaded` true → the poster fallback); a `readyToPlay` calls
+ * `onLoad` (core `onLoadHandler` → clears a prior error). The listener
+ * lives only inside the mounted player, so it is peer-safe (no expo-video,
+ * no listener) and torn down on unmount.
+ */
+function VideoPlayer(props: {
+  lib: ExpoVideoModule;
+  question: ImageQuestionModel;
+  source: { uri: string };
+  contentFit: VideoContentFit;
+  width: number | undefined;
+  height: number | undefined;
+  onLoad: () => void;
+  onError: () => void;
+}): React.JSX.Element {
+  const { lib, question, source, contentFit, width, height, onLoad, onError } =
+    props;
+  const { useVideoPlayer, VideoView } = lib;
+  const player = useVideoPlayer(source, configureVideoPlayer);
+
+  React.useEffect(() => {
+    const p = player as VideoPlayerLike;
+    if (typeof p.addListener !== 'function') return;
+    const sub = p.addListener('statusChange', (payload) => {
+      const status = payload?.status;
+      if (status === 'error') onError();
+      else if (status === 'readyToPlay') onLoad();
+    });
+    return () => sub?.remove?.();
+  }, [player, onLoad, onError]);
+
+  return (
+    <VideoView
+      testID={`sv-video-${question.name}`}
+      player={player}
+      nativeControls
+      contentFit={contentFit}
+      accessibilityLabel={question.renderedAltText}
+      style={dimensionStyle(width, height)}
+    />
+  );
+}
+
+function PolicyGatedVideo(props: {
+  question: ImageQuestionModel;
+  rawUri: string;
+  uriConfig: UriPolicyConfig | undefined;
+}): React.JSX.Element {
+  const { question, rawUri, uriConfig } = props;
+  const contextPolicy = React.useContext(UriPolicyContext);
+  const effectivePolicy = uriConfig ?? contextPolicy;
+  const result = validateUri(rawUri, 'video', effectivePolicy);
+  const lib = loadExpoVideo();
+
+  // After a runtime load error, remember WHICH source failed: the poster
+  // fallback shows only while that source is still current — a changed
+  // source re-mounts the player so it can load again (recovery parity with
+  // the image branch / web's always-mounted `<video>`).
+  const lastErroredUriRef = React.useRef<string | null>(null);
+  const canonical = result.ok ? result.canonical : null;
+  const handleError = React.useCallback(() => {
+    lastErroredUriRef.current = canonical;
+    question.onErrorHandler();
+  }, [canonical, question]);
+  const handleLoad = React.useCallback(() => {
+    lastErroredUriRef.current = null;
+    question.onLoadHandler();
+  }, [question]);
+
+  const blockedReason = result.ok ? undefined : result.reason;
+  const libMissing = lib === null;
+  React.useEffect(() => {
+    if (blockedReason !== undefined) {
+      reportDiagnostic({
+        code: 'image-uri-blocked',
+        source: 'image-question',
+        uri: rawUri,
+        reason: blockedReason,
+      });
+    } else if (libMissing) {
+      reportDiagnostic({
+        code: 'image-video-lib-unavailable',
+        questionName: question.name,
+      });
+    }
+  }, [rawUri, blockedReason, libMissing, effectivePolicy, question.name]);
+
+  if (!result.ok || !lib) {
+    return (
+      <MediaFallback
+        testID={`sv-video-fallback-${question.name}`}
+        text={question.renderedAltText}
+      />
+    );
+  }
+
+  // Runtime load failure flipped core's `contentNotLoaded` — render the
+  // same poster fallback the policy-block/lib-absent paths use (web shows
+  // its `noImage` placeholder). Gated on the still-failed source so a
+  // changed source re-mounts the player instead of latching the fallback.
+  if (question.contentNotLoaded && lastErroredUriRef.current === canonical) {
+    return (
+      <MediaFallback
+        testID={`sv-video-fallback-${question.name}`}
+        text={question.renderedAltText}
+      />
+    );
+  }
+
+  return (
+    <VideoPlayer
+      lib={lib}
+      question={question}
+      source={{ uri: result.canonical }}
+      contentFit={CONTENT_FIT_BY_IMAGE_FIT[question.imageFit] ?? 'contain'}
+      width={question.renderedWidth}
+      height={question.renderedHeight}
+      onLoad={handleLoad}
+      onError={handleError}
+    />
+  );
+}
+
+// ————————————————————————————————————————————————————————————————
+// YouTube branch (task 5.5) — react-native-webview, lazy-required
+// ————————————————————————————————————————————————————————————————
+
+function YoutubeEmbed(props: {
+  question: ImageQuestionModel;
+  rawUri: string;
+  uriConfig: UriPolicyConfig | undefined;
+}): React.JSX.Element {
+  const { question, rawUri, uriConfig } = props;
+  const contextPolicy = React.useContext(UriPolicyContext);
+  const effectivePolicy = uriConfig ?? contextPolicy;
+  // Core already produced the youtube.com/embed/<id> URL in renderedHtml;
+  // the WebView is an automatic media surface, so it takes the same
+  // fail-closed `'video'` context as the direct video source (the consumer
+  // allowlists `https://www.youtube.com` — documented-limited path).
+  const result = validateUri(rawUri, 'video', effectivePolicy);
+  const WebView = loadWebView();
+
+  const blockedReason = result.ok ? undefined : result.reason;
+  const webviewMissing = WebView === null;
+  React.useEffect(() => {
+    if (blockedReason !== undefined) {
+      reportDiagnostic({
+        code: 'image-uri-blocked',
+        source: 'image-question',
+        uri: rawUri,
+        reason: blockedReason,
+      });
+    } else if (webviewMissing) {
+      reportDiagnostic({
+        code: 'image-youtube-webview-unavailable',
+        questionName: question.name,
+      });
+    }
+  }, [rawUri, blockedReason, webviewMissing, effectivePolicy, question.name]);
+
+  if (!result.ok || !WebView) {
+    return (
+      <MediaFallback
+        testID={`sv-youtube-fallback-${question.name}`}
+        text={question.renderedAltText || rawUri}
+      />
+    );
+  }
+
+  return (
+    <WebView
+      testID={`sv-youtube-${question.name}`}
+      source={{ uri: result.canonical }}
+      accessibilityLabel={question.renderedAltText}
+      style={dimensionStyle(question.renderedWidth, question.renderedHeight)}
+    />
+  );
+}
+
+/** Shared non-throwing media fallback: a labeled container with a text
+ * poster (the alt text, or the link for youtube). */
+function MediaFallback(props: {
+  testID: string;
+  text: string;
+}): React.JSX.Element {
+  return (
+    <View testID={props.testID} style={localStyles.fallback}>
+      <Text style={localStyles.fallbackText}>{props.text}</Text>
+    </View>
+  );
+}
+
+// ————————————————————————————————————————————————————————————————
+// The class-reactive question renderer
+// ————————————————————————————————————————————————————————————————
+
 export class ImageQuestion extends QuestionElementBase<ImageQuestionProps> {
   protected getStateElement(): Base {
     return this.questionBase;
@@ -208,21 +546,51 @@ export class ImageQuestion extends QuestionElementBase<ImageQuestionProps> {
   protected renderElement(): React.JSX.Element | null {
     const question = this.image;
     this.pendingMode = undefined;
+    const mode = question.renderedMode;
+    const rawUri = question.locImageLink.renderedHtml;
+    const uriConfig = this.props.uriConfig;
 
-    if (question.renderedMode !== 'image') {
-      this.pendingMode = question.renderedMode;
-      return null;
+    if (mode === 'image') {
+      if (!rawUri) return null;
+      return (
+        <PolicyGatedImage
+          question={question}
+          rawUri={rawUri}
+          uriConfig={uriConfig}
+        />
+      );
     }
 
-    const rawUri = question.locImageLink.renderedHtml;
-    if (!rawUri) return null;
+    if (mode === 'video') {
+      if (!rawUri) return null;
+      return (
+        <PolicyGatedVideo
+          question={question}
+          rawUri={rawUri}
+          uriConfig={uriConfig}
+        />
+      );
+    }
 
-    return (
-      <PolicyGatedImage
-        question={question}
-        rawUri={rawUri}
-        uriConfig={this.props.uriConfig}
-      />
-    );
+    if (mode === 'youtube') {
+      // Core blanks a youtube renderedHtml for a non-youtube link.
+      if (!rawUri) return null;
+      return (
+        <YoutubeEmbed
+          question={question}
+          rawUri={rawUri}
+          uriConfig={uriConfig}
+        />
+      );
+    }
+
+    // Genuinely unsupported/unknown mode (e.g. empty contentMode "").
+    this.pendingMode = mode;
+    return null;
   }
 }
+
+const localStyles = StyleSheet.create({
+  fallback: { alignItems: 'center', justifyContent: 'center', padding: 8 },
+  fallbackText: { textAlign: 'center' },
+});
