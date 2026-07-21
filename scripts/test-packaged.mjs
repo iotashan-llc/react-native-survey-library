@@ -219,25 +219,42 @@ console.log('7c: UNEXPECTED SUCCESS');
   {
     id: '7d',
     description:
-      "registrar side effect survives packaging: import('<pkg>') registers exactly the supported descriptor-table keys " +
-      '(design: docs/design/0.5-factories.md, "Registration & packaging" — must track src/factories/descriptors.ts as milestones land)',
+      "registrar side effect survives packaging: import('<pkg>') yields a sorted, deduped, all-string registry containing the stable core dispatch keys " +
+      '(design: docs/design/0.5-factories.md, "Registration & packaging" — structural + core-subset check, so new-milestone types need no edit here)',
     script: `${RN_PREAMBLE}
 const pkg = await import(${JSON.stringify(PKG_NAME)});
-const expectedQuestionTypes = JSON.stringify(['boolean', 'empty', 'expression', 'sv-boolean-checkbox', 'sv-boolean-radio']);
-const expectedElementTypes = JSON.stringify(['survey-header', 'sv-logo-image', 'sv-string-viewer']);
-const actualQuestionTypes = JSON.stringify(pkg.RNQuestionFactory.getAllTypes());
-const actualElementTypes = JSON.stringify(pkg.RNElementFactory.getAllTypes());
-if (actualQuestionTypes !== expectedQuestionTypes) {
-  throw new Error(
-    'RNQuestionFactory: expected ' + expectedQuestionTypes + ' got ' + actualQuestionTypes
-  );
-}
-if (actualElementTypes !== expectedElementTypes) {
-  throw new Error(
-    'RNElementFactory: expected ' + expectedElementTypes + ' got ' + actualElementTypes
-  );
-}
-console.log('7d: OK', actualQuestionTypes, actualElementTypes);
+// The built package IS the source of truth for the registered set (the
+// descriptor table is compiled in + register-all runs at import). Rather
+// than a frozen list that restales every milestone, assert the packaging
+// side-effect STRUCTURALLY: a sorted, deduped, all-string registry that
+// CONTAINS the stable core dispatch keys. New milestones add keys freely;
+// this catches a core type dropping out of the packaged registrar.
+const qTypes = pkg.RNQuestionFactory.getAllTypes();
+const eTypes = pkg.RNElementFactory.getAllTypes();
+const requiredQuestionTypes = ['boolean', 'checkbox', 'comment', 'dropdown', 'empty', 'expression', 'html', 'image', 'imagepicker', 'matrix', 'matrixdropdown', 'matrixdynamic', 'multipletext', 'paneldynamic', 'radiogroup', 'rating', 'tagbox', 'text'];
+const requiredElementTypes = ['survey-header', 'sv-logo-image', 'sv-string-viewer'];
+const assertRegistry = (label, actual, required) => {
+  if (!Array.isArray(actual) || actual.length === 0) {
+    throw new Error(label + ': empty or non-array registry: ' + JSON.stringify(actual));
+  }
+  if (!actual.every((k) => typeof k === 'string' && k.length > 0)) {
+    throw new Error(label + ': non-string key in ' + JSON.stringify(actual));
+  }
+  const sorted = [...actual].slice().sort();
+  if (JSON.stringify(actual) !== JSON.stringify(sorted)) {
+    throw new Error(label + ': not sorted: ' + JSON.stringify(actual));
+  }
+  if (new Set(actual).size !== actual.length) {
+    throw new Error(label + ': duplicate keys in ' + JSON.stringify(actual));
+  }
+  const missing = required.filter((k) => !actual.includes(k));
+  if (missing.length > 0) {
+    throw new Error(label + ': missing core keys ' + JSON.stringify(missing) + ' in ' + JSON.stringify(actual));
+  }
+};
+assertRegistry('RNQuestionFactory', qTypes, requiredQuestionTypes);
+assertRegistry('RNElementFactory', eTypes, requiredElementTypes);
+console.log('7d: OK', JSON.stringify(qTypes), JSON.stringify(eTypes));
 `,
     expectSuccess: true,
   },
