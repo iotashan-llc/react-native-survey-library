@@ -9,9 +9,10 @@
  *    community input and the range dual-thumb track, NOT the fallback,
  *  - the `signaturepad` question (task 5.1) renders as SUPPORTED — the WebView
  *    signature canvas (via the peer's root manual mock), NOT the fallback,
- *  - a genuinely still-unsupported type (`file`, M5 task 5.2) renders the
- *    NON-THROWING fallback panel (invariant 9) — so the graceful-fallback demo
- *    survives signaturepad becoming supported.
+ *  - the `file` question (task 5.2) renders as SUPPORTED — its choose actions
+ *    (via the pickers' root manual mocks), NOT the fallback. Every type on
+ *    the survey is now supported; the graceful-fallback path (invariant 9) is
+ *    covered by the dedicated unit suites (UnsupportedQuestion, dispatch-miss).
  *
  * SCOPE NOTE: jest has no Yoga; SurveyRow defers children one frame until
  * onLayout measures the row (1.3-design D3). This harness hand-feeds every
@@ -142,9 +143,14 @@ describe('kitchen-sink page 5 — signaturepad is supported (WebView canvas)', (
   });
 });
 
-describe('kitchen-sink page 5 — a genuinely unsupported type still falls back', () => {
-  it('the file question renders the NON-THROWING fallback panel', async () => {
+describe('kitchen-sink page 5 — file is supported (native pickers)', () => {
+  it('renders the file question + its choose actions (via the picker mocks), never the fallback', async () => {
     await renderFallbackPage();
-    expect(screen.getByTestId('unsupported-question-panel')).toBeTruthy();
+    expect(screen.getByTestId('sv-file-attachments')).toBeTruthy();
+    // sourceType 'file-camera' offers both actions; the root picker mocks
+    // resolve, so the buttons are enabled (not the disabled fallback).
+    expect(screen.getByTestId('sv-file-choose-attachments')).toBeTruthy();
+    expect(screen.getByTestId('sv-file-camera-attachments')).toBeTruthy();
+    expect(screen.queryByTestId('unsupported-question-panel')).toBeNull();
   });
 });

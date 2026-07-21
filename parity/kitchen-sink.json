@@ -632,8 +632,11 @@
         },
         {
           "type": "file",
-          "name": "notSupportedDemo",
-          "title": "Unsupported in RN (file) — graceful fallback demo"
+          "name": "attachments",
+          "title": "Attach files (file — supported in RN as of 5.2)",
+          "sourceType": "file-camera",
+          "allowMultiple": true,
+          "allowImagesPreview": true
         },
         {
           "type": "comment",

@@ -126,6 +126,121 @@ exports[`curated recipe golden snapshots ContrastLight: recipes build to a stabl
     "iconFill": [Function],
     "select": [Function],
   },
+  "file": {
+    "defaultImageHeight": 100,
+    "defaultImageWidth": 100,
+    "fragments": {
+      "actions": {
+        "columnGap": 4,
+        "flexDirection": "row",
+        "flexWrap": "wrap",
+        "rowGap": 4,
+      },
+      "chooseButton": {
+        "alignItems": "center",
+        "alignSelf": "flex-start",
+        "backgroundColor": "rgba(0, 0, 0, 1)",
+        "borderRadius": 4,
+        "columnGap": 4,
+        "flexDirection": "row",
+        "paddingHorizontal": 8,
+        "paddingVertical": 4,
+      },
+      "chooseButtonDisabled": {
+        "opacity": 0.5,
+      },
+      "chooseButtonText": {
+        "color": "rgba(255, 255, 255, 1)",
+        "fontSize": 16,
+      },
+      "decorator": {
+        "alignItems": "center",
+        "backgroundColor": "rgba(255, 255, 255, 1)",
+        "borderColor": "rgba(0, 0, 0, 1)",
+        "borderRadius": 4,
+        "borderWidth": 1,
+        "justifyContent": "center",
+        "padding": 8,
+      },
+      "fileName": {
+        "color": "rgba(0, 0, 0, 1)",
+        "fontSize": 12,
+        "textAlign": "center",
+      },
+      "item": {
+        "alignItems": "center",
+        "rowGap": 4,
+      },
+      "list": {
+        "columnGap": 4,
+        "flexDirection": "row",
+        "flexWrap": "wrap",
+        "rowGap": 4,
+      },
+      "loading": {
+        "alignItems": "center",
+        "columnGap": 4,
+        "flexDirection": "row",
+        "paddingVertical": 4,
+      },
+      "navButton": {
+        "borderColor": "rgba(0, 0, 0, 1)",
+        "borderRadius": 4,
+        "borderWidth": 1,
+        "paddingHorizontal": 8,
+        "paddingVertical": 4,
+      },
+      "navButtonText": {
+        "color": "rgba(0, 0, 0, 1)",
+        "fontSize": 16,
+      },
+      "navIndexText": {
+        "color": "rgba(0, 0, 0, 1)",
+        "fontSize": 16,
+      },
+      "navigator": {
+        "alignItems": "center",
+        "columnGap": 8,
+        "flexDirection": "row",
+      },
+      "placeholder": {
+        "alignSelf": "flex-start",
+        "backgroundColor": "rgba(255, 255, 255, 1)",
+        "borderColor": "rgba(0, 0, 0, 1)",
+        "borderRadius": 4,
+        "borderWidth": 1,
+        "paddingHorizontal": 8,
+        "paddingVertical": 4,
+      },
+      "placeholderText": {
+        "color": "rgba(0, 0, 0, 1)",
+        "fontSize": 16,
+      },
+      "removeButton": {
+        "alignSelf": "center",
+        "borderColor": "rgba(156, 2, 39, 1)",
+        "borderRadius": 4,
+        "borderWidth": 1,
+        "paddingHorizontal": 4,
+        "paddingVertical": 2,
+      },
+      "removeButtonText": {
+        "color": "rgba(156, 2, 39, 1)",
+        "fontSize": 12,
+      },
+      "root": {
+        "alignSelf": "flex-start",
+        "rowGap": 4,
+      },
+      "thumbnail": {
+        "backgroundColor": "rgba(255, 255, 255, 1)",
+        "borderColor": "rgba(0, 0, 0, 1)",
+        "borderRadius": 4,
+        "borderWidth": 1,
+      },
+    },
+    "loadingColor": "rgba(0, 0, 0, 1)",
+  },
   "header": {
     "cover": {
       "cell": {
@@ -1902,6 +2017,121 @@ exports[`curated recipe golden snapshots DefaultLight: recipes build to a stable
     "iconFill": [Function],
     "select": [Function],
   },
+  "file": {
+    "defaultImageHeight": 100,
+    "defaultImageWidth": 100,
+    "fragments": {
+      "actions": {
+        "columnGap": 4,
+        "flexDirection": "row",
+        "flexWrap": "wrap",
+        "rowGap": 4,
+      },
+      "chooseButton": {
+        "alignItems": "center",
+        "alignSelf": "flex-start",
+        "backgroundColor": "rgba(25, 179, 148, 1)",
+        "borderRadius": 4,
+        "columnGap": 4,
+        "flexDirection": "row",
+        "paddingHorizontal": 8,
+        "paddingVertical": 4,
+      },
+      "chooseButtonDisabled": {
+        "opacity": 0.5,
+      },
+      "chooseButtonText": {
+        "color": "rgba(255, 255, 255, 1)",
+        "fontSize": 16,
+      },
+      "decorator": {
+        "alignItems": "center",
+        "backgroundColor": "rgba(255, 255, 255, 1)",
+        "borderColor": "rgba(0, 0, 0, 0.16)",
+        "borderRadius": 4,
+        "borderWidth": 1,
+        "justifyContent": "center",
+        "padding": 8,
+      },
+      "fileName": {
+        "color": "rgba(0, 0, 0, 0.91)",
+        "fontSize": 12,
+        "textAlign": "center",
+      },
+      "item": {
+        "alignItems": "center",
+        "rowGap": 4,
+      },
+      "list": {
+        "columnGap": 4,
+        "flexDirection": "row",
+        "flexWrap": "wrap",
+        "rowGap": 4,
+      },
+      "loading": {
+        "alignItems": "center",
+        "columnGap": 4,
+        "flexDirection": "row",
+        "paddingVertical": 4,
+      },
+      "navButton": {
+        "borderColor": "rgba(0, 0, 0, 0.16)",
+        "borderRadius": 4,
+        "borderWidth": 1,
+        "paddingHorizontal": 8,
+        "paddingVertical": 4,
+      },
+      "navButtonText": {
+        "color": "rgba(0, 0, 0, 0.91)",
+        "fontSize": 16,
+      },
+      "navIndexText": {
+        "color": "rgba(0, 0, 0, 0.45)",
+        "fontSize": 16,
+      },
+      "navigator": {
+        "alignItems": "center",
+        "columnGap": 8,
+        "flexDirection": "row",
+      },
+      "placeholder": {
+        "alignSelf": "flex-start",
+        "backgroundColor": "rgba(255, 255, 255, 1)",
+        "borderColor": "rgba(0, 0, 0, 0.16)",
+        "borderRadius": 4,
+        "borderWidth": 1,
+        "paddingHorizontal": 8,
+        "paddingVertical": 4,
+      },
+      "placeholderText": {
+        "color": "rgba(0, 0, 0, 0.45)",
+        "fontSize": 16,
+      },
+      "removeButton": {
+        "alignSelf": "center",
+        "borderColor": "rgba(229, 10, 62, 1)",
+        "borderRadius": 4,
+        "borderWidth": 1,
+        "paddingHorizontal": 4,
+        "paddingVertical": 2,
+      },
+      "removeButtonText": {
+        "color": "rgba(229, 10, 62, 1)",
+        "fontSize": 12,
+      },
+      "root": {
+        "alignSelf": "flex-start",
+        "rowGap": 4,
+      },
+      "thumbnail": {
+        "backgroundColor": "rgba(255, 255, 255, 1)",
+        "borderColor": "rgba(0, 0, 0, 0.16)",
+        "borderRadius": 4,
+        "borderWidth": 1,
+      },
+    },
+    "loadingColor": "rgba(25, 179, 148, 1)",
+  },
   "header": {
     "cover": {
       "cell": {
@@ -3677,6 +3907,121 @@ exports[`curated recipe golden snapshots LayeredDark: recipes build to a stable 
     },
     "iconFill": [Function],
     "select": [Function],
+  },
+  "file": {
+    "defaultImageHeight": 100,
+    "defaultImageWidth": 100,
+    "fragments": {
+      "actions": {
+        "columnGap": 4,
+        "flexDirection": "row",
+        "flexWrap": "wrap",
+        "rowGap": 4,
+      },
+      "chooseButton": {
+        "alignItems": "center",
+        "alignSelf": "flex-start",
+        "backgroundColor": "rgba(164, 127, 243, 1)",
+        "borderRadius": 4,
+        "columnGap": 4,
+        "flexDirection": "row",
+        "paddingHorizontal": 8,
+        "paddingVertical": 4,
+      },
+      "chooseButtonDisabled": {
+        "opacity": 0.5,
+      },
+      "chooseButtonText": {
+        "color": "rgba(32, 32, 32, 1)",
+        "fontSize": 16,
+      },
+      "decorator": {
+        "alignItems": "center",
+        "backgroundColor": "rgba(39, 40, 50, 1)",
+        "borderColor": "rgba(67, 69, 85, 1)",
+        "borderRadius": 4,
+        "borderWidth": 1,
+        "justifyContent": "center",
+        "padding": 8,
+      },
+      "fileName": {
+        "color": "rgba(213, 215, 238, 1)",
+        "fontSize": 12,
+        "textAlign": "center",
+      },
+      "item": {
+        "alignItems": "center",
+        "rowGap": 4,
+      },
+      "list": {
+        "columnGap": 4,
+        "flexDirection": "row",
+        "flexWrap": "wrap",
+        "rowGap": 4,
+      },
+      "loading": {
+        "alignItems": "center",
+        "columnGap": 4,
+        "flexDirection": "row",
+        "paddingVertical": 4,
+      },
+      "navButton": {
+        "borderColor": "rgba(67, 69, 85, 1)",
+        "borderRadius": 4,
+        "borderWidth": 1,
+        "paddingHorizontal": 8,
+        "paddingVertical": 4,
+      },
+      "navButtonText": {
+        "color": "rgba(213, 215, 238, 1)",
+        "fontSize": 16,
+      },
+      "navIndexText": {
+        "color": "rgba(117, 120, 140, 1)",
+        "fontSize": 16,
+      },
+      "navigator": {
+        "alignItems": "center",
+        "columnGap": 8,
+        "flexDirection": "row",
+      },
+      "placeholder": {
+        "alignSelf": "flex-start",
+        "backgroundColor": "rgba(39, 40, 50, 1)",
+        "borderColor": "rgba(67, 69, 85, 1)",
+        "borderRadius": 4,
+        "borderWidth": 1,
+        "paddingHorizontal": 8,
+        "paddingVertical": 4,
+      },
+      "placeholderText": {
+        "color": "rgba(117, 120, 140, 1)",
+        "fontSize": 16,
+      },
+      "removeButton": {
+        "alignSelf": "center",
+        "borderColor": "rgba(254, 76, 108, 1)",
+        "borderRadius": 4,
+        "borderWidth": 1,
+        "paddingHorizontal": 4,
+        "paddingVertical": 2,
+      },
+      "removeButtonText": {
+        "color": "rgba(254, 76, 108, 1)",
+        "fontSize": 12,
+      },
+      "root": {
+        "alignSelf": "flex-start",
+        "rowGap": 4,
+      },
+      "thumbnail": {
+        "backgroundColor": "rgba(39, 40, 50, 1)",
+        "borderColor": "rgba(67, 69, 85, 1)",
+        "borderRadius": 4,
+        "borderWidth": 1,
+      },
+    },
+    "loadingColor": "rgba(164, 127, 243, 1)",
   },
   "header": {
     "cover": {
@@ -5550,6 +5895,121 @@ exports[`curated recipe golden snapshots SharpDark: recipes build to a stable sn
     "iconFill": [Function],
     "select": [Function],
   },
+  "file": {
+    "defaultImageHeight": 100,
+    "defaultImageWidth": 100,
+    "fragments": {
+      "actions": {
+        "columnGap": 4,
+        "flexDirection": "row",
+        "flexWrap": "wrap",
+        "rowGap": 4,
+      },
+      "chooseButton": {
+        "alignItems": "center",
+        "alignSelf": "flex-start",
+        "backgroundColor": "rgba(16, 226, 255, 1)",
+        "borderRadius": 4,
+        "columnGap": 4,
+        "flexDirection": "row",
+        "paddingHorizontal": 8,
+        "paddingVertical": 4,
+      },
+      "chooseButtonDisabled": {
+        "opacity": 0.5,
+      },
+      "chooseButtonText": {
+        "color": "rgba(32, 32, 32, 1)",
+        "fontSize": 16,
+      },
+      "decorator": {
+        "alignItems": "center",
+        "backgroundColor": "rgba(48, 48, 48, 1)",
+        "borderColor": "rgba(255, 255, 255, 0.22)",
+        "borderRadius": 4,
+        "borderWidth": 1,
+        "justifyContent": "center",
+        "padding": 8,
+      },
+      "fileName": {
+        "color": "rgba(255, 255, 255, 0.78)",
+        "fontSize": 12,
+        "textAlign": "center",
+      },
+      "item": {
+        "alignItems": "center",
+        "rowGap": 4,
+      },
+      "list": {
+        "columnGap": 4,
+        "flexDirection": "row",
+        "flexWrap": "wrap",
+        "rowGap": 4,
+      },
+      "loading": {
+        "alignItems": "center",
+        "columnGap": 4,
+        "flexDirection": "row",
+        "paddingVertical": 4,
+      },
+      "navButton": {
+        "borderColor": "rgba(255, 255, 255, 0.22)",
+        "borderRadius": 4,
+        "borderWidth": 1,
+        "paddingHorizontal": 8,
+        "paddingVertical": 4,
+      },
+      "navButtonText": {
+        "color": "rgba(255, 255, 255, 0.78)",
+        "fontSize": 16,
+      },
+      "navIndexText": {
+        "color": "rgba(255, 255, 255, 0.5)",
+        "fontSize": 16,
+      },
+      "navigator": {
+        "alignItems": "center",
+        "columnGap": 8,
+        "flexDirection": "row",
+      },
+      "placeholder": {
+        "alignSelf": "flex-start",
+        "backgroundColor": "rgba(48, 48, 48, 1)",
+        "borderColor": "rgba(255, 255, 255, 0.22)",
+        "borderRadius": 4,
+        "borderWidth": 1,
+        "paddingHorizontal": 8,
+        "paddingVertical": 4,
+      },
+      "placeholderText": {
+        "color": "rgba(255, 255, 255, 0.5)",
+        "fontSize": 16,
+      },
+      "removeButton": {
+        "alignSelf": "center",
+        "borderColor": "rgba(254, 76, 108, 1)",
+        "borderRadius": 4,
+        "borderWidth": 1,
+        "paddingHorizontal": 4,
+        "paddingVertical": 2,
+      },
+      "removeButtonText": {
+        "color": "rgba(254, 76, 108, 1)",
+        "fontSize": 12,
+      },
+      "root": {
+        "alignSelf": "flex-start",
+        "rowGap": 4,
+      },
+      "thumbnail": {
+        "backgroundColor": "rgba(48, 48, 48, 1)",
+        "borderColor": "rgba(255, 255, 255, 0.22)",
+        "borderRadius": 4,
+        "borderWidth": 1,
+      },
+    },
+    "loadingColor": "rgba(16, 226, 255, 1)",
+  },
   "header": {
     "cover": {
       "cell": {
@@ -7309,6 +7769,121 @@ exports[`curated recipe golden snapshots ThreeDimensionalLight: recipes build to
     },
     "iconFill": [Function],
     "select": [Function],
+  },
+  "file": {
+    "defaultImageHeight": 100,
+    "defaultImageWidth": 100,
+    "fragments": {
+      "actions": {
+        "columnGap": 4,
+        "flexDirection": "row",
+        "flexWrap": "wrap",
+        "rowGap": 4,
+      },
+      "chooseButton": {
+        "alignItems": "center",
+        "alignSelf": "flex-start",
+        "backgroundColor": "rgba(217, 74, 100, 1)",
+        "borderRadius": 4,
+        "columnGap": 4,
+        "flexDirection": "row",
+        "paddingHorizontal": 8,
+        "paddingVertical": 4,
+      },
+      "chooseButtonDisabled": {
+        "opacity": 0.5,
+      },
+      "chooseButtonText": {
+        "color": "rgba(255, 255, 255, 1)",
+        "fontSize": 16,
+      },
+      "decorator": {
+        "alignItems": "center",
+        "backgroundColor": "rgba(248, 248, 248, 1)",
+        "borderColor": "rgba(0, 0, 0, 0.08)",
+        "borderRadius": 4,
+        "borderWidth": 1,
+        "justifyContent": "center",
+        "padding": 8,
+      },
+      "fileName": {
+        "color": "rgba(0, 0, 0, 0.91)",
+        "fontSize": 12,
+        "textAlign": "center",
+      },
+      "item": {
+        "alignItems": "center",
+        "rowGap": 4,
+      },
+      "list": {
+        "columnGap": 4,
+        "flexDirection": "row",
+        "flexWrap": "wrap",
+        "rowGap": 4,
+      },
+      "loading": {
+        "alignItems": "center",
+        "columnGap": 4,
+        "flexDirection": "row",
+        "paddingVertical": 4,
+      },
+      "navButton": {
+        "borderColor": "rgba(0, 0, 0, 0.08)",
+        "borderRadius": 4,
+        "borderWidth": 1,
+        "paddingHorizontal": 8,
+        "paddingVertical": 4,
+      },
+      "navButtonText": {
+        "color": "rgba(0, 0, 0, 0.91)",
+        "fontSize": 16,
+      },
+      "navIndexText": {
+        "color": "rgba(0, 0, 0, 0.45)",
+        "fontSize": 16,
+      },
+      "navigator": {
+        "alignItems": "center",
+        "columnGap": 8,
+        "flexDirection": "row",
+      },
+      "placeholder": {
+        "alignSelf": "flex-start",
+        "backgroundColor": "rgba(248, 248, 248, 1)",
+        "borderColor": "rgba(0, 0, 0, 0.08)",
+        "borderRadius": 4,
+        "borderWidth": 1,
+        "paddingHorizontal": 8,
+        "paddingVertical": 4,
+      },
+      "placeholderText": {
+        "color": "rgba(0, 0, 0, 0.45)",
+        "fontSize": 16,
+      },
+      "removeButton": {
+        "alignSelf": "center",
+        "borderColor": "rgba(229, 10, 62, 1)",
+        "borderRadius": 4,
+        "borderWidth": 1,
+        "paddingHorizontal": 4,
+        "paddingVertical": 2,
+      },
+      "removeButtonText": {
+        "color": "rgba(229, 10, 62, 1)",
+        "fontSize": 12,
+      },
+      "root": {
+        "alignSelf": "flex-start",
+        "rowGap": 4,
+      },
+      "thumbnail": {
+        "backgroundColor": "rgba(248, 248, 248, 1)",
+        "borderColor": "rgba(0, 0, 0, 0.08)",
+        "borderRadius": 4,
+        "borderWidth": 1,
+      },
+    },
+    "loadingColor": "rgba(217, 74, 100, 1)",
   },
   "header": {
     "cover": {

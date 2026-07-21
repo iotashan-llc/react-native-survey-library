@@ -139,6 +139,22 @@ export interface SignatureStyleOverrides {
   image?: StyleProp<ImageStyle>;
 }
 
+/** File-upload slots (task 5.2: `FileQuestion`). */
+export interface FileStyleOverrides {
+  root?: StyleProp<ViewStyle>;
+  actions?: StyleProp<ViewStyle>;
+  chooseButton?: StyleProp<ViewStyle>;
+  chooseButtonText?: StyleProp<TextStyle>;
+  list?: StyleProp<ViewStyle>;
+  item?: StyleProp<ViewStyle>;
+  thumbnail?: StyleProp<ImageStyle>;
+  decorator?: StyleProp<ViewStyle>;
+  fileName?: StyleProp<TextStyle>;
+  removeButton?: StyleProp<ViewStyle>;
+  navigator?: StyleProp<ViewStyle>;
+  placeholder?: StyleProp<ViewStyle>;
+}
+
 /** Image-map slots (task 5.4: `ImageMapQuestion`). */
 export interface ImageMapStyleOverrides {
   container?: StyleProp<ViewStyle>;
@@ -202,6 +218,7 @@ export interface SurveyComponentStyles {
   ranking?: RankingStyleOverrides;
   slider?: SliderStyleOverrides;
   signature?: SignatureStyleOverrides;
+  file?: FileStyleOverrides;
   imagemap?: ImageMapStyleOverrides;
   listItem?: ListItemStyleOverrides;
   timerPanel?: TimerPanelStyleOverrides;

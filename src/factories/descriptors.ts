@@ -72,6 +72,7 @@ import { CompositeQuestion } from '../questions/CompositeQuestion';
 import { RankingQuestion } from '../questions/RankingQuestion';
 import { SliderQuestion } from '../questions/SliderQuestion';
 import { SignaturePadQuestion } from '../questions/SignaturePadQuestion';
+import { FileQuestion } from '../questions/FileQuestion';
 import { ImageMapQuestion } from '../questions/ImageMapQuestion';
 import { SingleInputSummary } from '../questions/SingleInputSummaryQuestion';
 import { ListItemGroupContent, ListPickerElement } from '../overlay/ListPicker';
@@ -437,6 +438,28 @@ export const DESCRIPTOR_TABLE: readonly Descriptor[] = [
     dispatchKey: 'signaturepad',
     route: 'template',
     component: () => SignaturePadQuestion,
+    milestone: 'M5',
+  },
+  // Task 5.2 (M5) — file. getTemplate() === 'file' (extends
+  // QuestionFileModelBase, no override); template route, dispatchKey ===
+  // questionType. Core owns the file state machine (loadFiles validates
+  // maxSize/maxFiles, stores [{name,type,content}], builds previewValue +
+  // renderedPages, drives currentState). The component drives the native
+  // pickers (expo-document-picker for sourceType 'file', expo-image-picker
+  // launchCameraAsync for 'camera', both for 'file-camera'), converts picked
+  // assets to real Files, and calls loadFiles — never binding a picker
+  // result straight to value. Image previews render through the URI policy
+  // (image context); non-images get a name decorator; multiple files
+  // paginate through core's fileNavigator. Peer-absent degrades to a disabled
+  // choose button + diagnostic (invariant 9). The pickers + fetch(file://)
+  // blob read are a device gate; the value/preview/remove/pagination flow is
+  // jest-tested through the pickers' root manual mocks.
+  {
+    status: 'supported',
+    questionType: 'file',
+    dispatchKey: 'file',
+    route: 'template',
+    component: () => FileQuestion,
     milestone: 'M5',
   },
   // Task 5.4 (M5) — imagemap. getTemplate() === 'imagemap' (extends

@@ -119,6 +119,8 @@
   "peerDependencies": {
     "@native-html/render": "~1.0.3",
     "@react-native-community/slider": ">=4.5.0 <6.0.0",
+    "expo-document-picker": ">=12.0.0",
+    "expo-image-picker": ">=15.0.0",
     "expo-video": ">=2.0.0",
     "react": "*",
     "react-native": "*",

@@ -69,6 +69,7 @@ describe('component modules are import-side-effect-free', () => {
       'dropdown',
       'empty',
       'expression',
+      'file',
       'html',
       'image',
       'imagemap',
