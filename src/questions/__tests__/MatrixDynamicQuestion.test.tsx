@@ -334,6 +334,88 @@ describe('matrixdynamic — per-action rendering in shared actions cells (§2b)'
   });
 });
 
+describe('matrixdynamic — row-action `enabled` flag honored (onGetMatrixRowActions)', () => {
+  /** The consumer-facing Action slice the event hands out (real core
+   * `Action` instances — `enabled` is the getter/setter pair backed by
+   * the `@property() _enabled` field). */
+  interface ActionLike {
+    id?: string;
+    enabled?: boolean;
+  }
+
+  function captureRowActions(
+    model: MatrixFixture['model'],
+    id: string,
+    mutate: (action: ActionLike) => void
+  ): ActionLike[] {
+    const captured: ActionLike[] = [];
+    (
+      model as unknown as {
+        onGetMatrixRowActions: {
+          add(handler: (sender: unknown, options: unknown) => void): void;
+        };
+      }
+    ).onGetMatrixRowActions.add((_, options) => {
+      const action = (options as { actions: ActionLike[] }).actions.find(
+        (a) => a.id === id
+      );
+      if (action) {
+        mutate(action);
+        captured.push(action);
+      }
+    });
+    return captured;
+  }
+
+  it('enabled=false on the default remove-row action disables the button and press does NOT remove; flipping enabled back re-enables reactively', async () => {
+    const { model, question } = createMatrixDynamic();
+    model.data = { mdyn: [{ c1: 'a' }, { c1: 'b' }] };
+    const captured = captureRowActions(model, 'remove-row', (action) => {
+      action.enabled = false;
+    });
+    await renderMatrixDynamic(question);
+    const removes = screen.getAllByTestId(REMOVE_BTN);
+    expect(removes).toHaveLength(2);
+    expect(captured).toHaveLength(2);
+    // Web parity (Action.disabled = enabled !== undefined && !enabled,
+    // action.ts:268-270): the locked row's button renders disabled...
+    expect(removes[0]!.props.accessibilityState?.disabled).toBe(true);
+    // ...and pressing it does NOT remove the row.
+    fireEvent.press(removes[0]!);
+    await settle();
+    expect(question.rowCount).toBe(2);
+    expect(plainValue(question)).toEqual([{ c1: 'a' }, { c1: 'b' }]);
+    // Re-enabling the SAME stored Action instance is reactive: `_enabled`
+    // is a core @property and the button subscribes the Action itself.
+    act(() => {
+      captured[0]!.enabled = true;
+    });
+    await settle();
+    const after = screen.getAllByTestId(REMOVE_BTN);
+    expect(after[0]!.props.accessibilityState?.disabled).toBe(false);
+    fireEvent.press(after[0]!);
+    await settle();
+    expect(question.rowCount).toBe(1);
+    expect(plainValue(question)).toEqual([{ c1: 'b' }]);
+  });
+
+  it('enabled=false on the show-detail action disables the detail toggle (same Action semantics) and press does NOT expand', async () => {
+    const { model, question } = createDetailDynamic();
+    captureRowActions(model, 'show-detail', (action) => {
+      action.enabled = false;
+    });
+    await renderMatrixDynamic(question);
+    const toggles = screen.getAllByTestId(/^matrix-detail-toggle-/);
+    expect(toggles).toHaveLength(2);
+    expect(toggles[0]!.props.accessibilityState?.disabled).toBe(true);
+    fireEvent.press(toggles[0]!);
+    await flush();
+    layoutRows();
+    await flush();
+    expect(screen.queryAllByTestId(DETAIL_BAND)).toHaveLength(0);
+  });
+});
+
 describe('matrixdynamic — §4 draft survival across in-place and reset row ops', () => {
   it('an external removal BEFORE the edited row (in-place, no reset) keeps the draft on the SAME question', async () => {
     const { question } = createMatrixDynamic();

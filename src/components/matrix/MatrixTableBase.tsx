@@ -299,6 +299,10 @@ interface MatrixDetailToggleCellProps {
   cell: QuestionMatrixDropdownRenderedCell;
   matrix: QuestionMatrixDropdownModelBase;
   testID: string;
+  /** The `show-detail`/`show-detail-mobile` `Action` this button renders
+   * — its `enabled` flag (mutable via `onGetMatrixRowActions`) drives the
+   * web-parity disabled state. */
+  action?: RowActionLike;
 }
 
 /**
@@ -346,7 +350,9 @@ export class MatrixDetailToggleCell extends SurveyElementBase<MatrixDetailToggle
   }
 
   protected getStateElement(): Base | null {
-    return null;
+    // The Action itself (see actionAsStateElement): `enabled` flips are
+    // reactive; expand/collapse re-render stays on the row callback.
+    return actionAsStateElement(this.props.action);
   }
 
   private attach(): void {
@@ -388,15 +394,20 @@ export class MatrixDetailToggleCell extends SurveyElementBase<MatrixDetailToggle
     const { matrix, testID } = this.props;
     const row = this.row;
     const expanded = row.isDetailPanelShowing;
+    // Web-parity Action.disabled semantics (NOT isInputReadOnly — details
+    // stay viewable on a read-only matrix, matching web; core never sets
+    // the show-detail action's enabled from readonly).
+    const disabled = isRowActionDisabled(this.props.action);
     const matrixRecipe = this.themeContext.recipes.matrix;
     return (
       <Pressable
         testID={testID}
         accessibilityRole="button"
-        accessibilityState={{ expanded }}
+        accessibilityState={{ expanded, disabled }}
         accessibilityLabel={matrix.getLocalizationString(
           expanded ? 'hideDetails' : 'showDetails'
         )}
+        disabled={disabled}
         onPress={() => row.showHideDetailPanelClick()}
         hitSlop={ACTION_HIT_SLOP}
         style={matrixRecipe.fragments.detailToggle}
@@ -412,11 +423,45 @@ export class MatrixDetailToggleCell extends SurveyElementBase<MatrixDetailToggle
 }
 
 /** The structural slice of a core row `Action` the per-action walk reads
- * (§2b action mapping — dispatch by `action.id`, slot by `location`). */
+ * (§2b action mapping — dispatch by `action.id`, slot by `location`;
+ * `enabled` is the core getter backed by the `@property() _enabled`
+ * field, action.ts:434/532-538 — consumers mutate it through
+ * `survey.onGetMatrixRowActions`, and core stores those SAME mutated
+ * `Action` instances into the cell's `ActionContainer`). */
 interface RowActionLike {
   id?: string;
   location?: string;
   visible?: boolean;
+  enabled?: boolean;
+}
+
+/**
+ * Web-parity per-action disabled read (`Action.disabled`,
+ * action.ts:268-270: `enabled !== undefined && !enabled`) — an action a
+ * consumer never touched (`enabled === undefined`) stays enabled; an
+ * explicit `enabled=false` (e.g. a "locked" row via
+ * `onGetMatrixRowActions`) disables its button. Core's own default
+ * `remove-row` action is built with `enabled: !matrix.isInputReadOnly`
+ * (question_matrixdropdownrendered.ts:774/791), so this read subsumes the
+ * readonly gate for the remove path too.
+ */
+function isRowActionDisabled(action: RowActionLike | undefined): boolean {
+  const enabled = action?.enabled;
+  return enabled !== undefined && !enabled;
+}
+
+/**
+ * Row actions are real core `Action` instances — `Base` subclasses whose
+ * `_enabled` is a core `@property`, so `action.enabled = …` mutations
+ * fire the standard `addOnPropertyValueChangedCallback` notification the
+ * existing `SurveyElementBase` subscription mechanism consumes. Returning
+ * the action as the state element makes the per-action disabled state
+ * REACTIVE (a consumer re-enabling a locked row re-renders the button).
+ * The cast is guarded downstream by `canMakeReact` (a non-`Base` custom
+ * action object simply stays a static read).
+ */
+function actionAsStateElement(action: RowActionLike | undefined): Base | null {
+  return (action as unknown as Base) ?? null;
 }
 
 /**
@@ -467,6 +512,10 @@ interface MatrixRemoveRowButtonProps {
   cell: QuestionMatrixDropdownRenderedCell;
   matrix: QuestionMatrixDropdownModelBase;
   testID: string;
+  /** The `remove-row` `Action` this button renders — its `enabled` flag
+   * (mutable via `onGetMatrixRowActions`) adds to the readonly gate the
+   * web-parity disabled state. */
+  action?: RowActionLike;
 }
 
 /**
@@ -483,14 +532,17 @@ interface MatrixRemoveRowButtonProps {
  */
 export class MatrixRemoveRowButton extends SurveyElementBase<MatrixRemoveRowButtonProps> {
   protected getStateElement(): Base | null {
-    return null;
+    // The Action itself (see actionAsStateElement): `enabled` flips are
+    // reactive, so a consumer re-enabling a locked row re-renders here.
+    return actionAsStateElement(this.props.action);
   }
 
   protected renderElement(): React.JSX.Element {
     const { cell, matrix, testID } = this.props;
     const dynamic = matrix as RemoveRowMatrixLike;
     const matrixRecipe = this.themeContext.recipes.matrix;
-    const disabled = matrix.isInputReadOnly;
+    const disabled =
+      matrix.isInputReadOnly || isRowActionDisabled(this.props.action);
     return (
       <Pressable
         testID={testID}
@@ -846,6 +898,7 @@ export class MatrixTable extends SurveyElementBase<
                     key={`remove:${index}`}
                     cell={cell}
                     matrix={question}
+                    action={action}
                     testID={`matrix-remove-row-${rowName}`}
                   />
                 ) : (
@@ -853,6 +906,7 @@ export class MatrixTable extends SurveyElementBase<
                     key={`detail:${index}`}
                     cell={cell}
                     matrix={question}
+                    action={action}
                     testID={`matrix-detail-toggle-${rowName}`}
                   />
                 )
