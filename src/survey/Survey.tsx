@@ -70,6 +70,7 @@ import { SurveyNavigation } from '../components/SurveyNavigation';
 import { SurveyStateFrame } from '../components/SurveyStateFrame';
 import { SurveyTimerPanel } from '../components/SurveyTimerPanel';
 import { SurveyTOC } from '../components/SurveyTOC';
+import { SurveyNotifier } from '../components/SurveyNotifier';
 import { createOverlayStack } from '../overlay/stack';
 import type { OverlayStack } from '../overlay/stack';
 import type { OverlayPayload } from '../overlay/popup-bridge';
@@ -550,6 +551,10 @@ class SurveyRoot extends SurveyElementBase<SurveyRootProps> {
           <View testID="survey-root" onLayout={this.handleRootLayout}>
             {content}
             <OverlayHost stack={this.overlayStack} />
+            {/* 5.7c notifier: a floating toast layer bound to
+              survey.notifier, pinned to the bottom of the survey root.
+              Renders null until survey.notify(...) activates a message. */}
+            <SurveyNotifier survey={survey} />
           </View>
         </OverlayContext.Provider>
       </LifecycleContext.Provider>

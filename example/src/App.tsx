@@ -9,6 +9,7 @@ import {
   Survey,
   setDiagnosticHandler,
 } from '@iotashan-llc/react-native-survey-library';
+import type { SurveyRefHandle } from '@iotashan-llc/react-native-survey-library';
 import type { ITheme } from 'survey-core';
 import { ComponentCollection } from 'survey-core';
 import {
@@ -20,6 +21,7 @@ import {
 
 import { kitchenSinkJson } from './kitchen-sink';
 import { timerSurveyJson } from './timer-survey';
+import { progressButtonsSurveyJson } from './progress-buttons-survey';
 import { registerKitchenSinkComponents } from './register-components';
 
 // Register the ComponentCollection custom/composite types the kitchen-sink
@@ -75,12 +77,23 @@ const THEMES: Array<{ name: string; theme: ITheme; dark: boolean }> = [
   { name: 'Advanced Header', theme: ADVANCED_HEADER_THEME, dark: false },
 ];
 
+const DEMOS: Array<{ name: string; json: object }> = [
+  { name: 'Kitchen Sink', json: kitchenSinkJson },
+  // Timer demo (task 5.7a): a small timed quiz (timeLimit +
+  // timeLimitPerPage + showTimer:'top').
+  { name: 'Timer', json: timerSurveyJson },
+  // Progress-buttons + notifier demo (task 5.7c): multi-page survey with
+  // progressBarType 'buttons'; the "Notify" button fires survey.notify.
+  { name: 'Progress Buttons', json: progressButtonsSurveyJson },
+];
+
 export default function App() {
   const [themeIndex, setThemeIndex] = React.useState(0);
-  // Timer demo toggle (task 5.7a): swap the kitchen-sink survey for a small
-  // timed quiz (timeLimit + timeLimitPerPage + showTimer:'top').
-  const [showTimerDemo, setShowTimerDemo] = React.useState(false);
+  // Demo cycle: kitchen sink -> timer -> progress buttons.
+  const [demoIndex, setDemoIndex] = React.useState(0);
+  const surveyRef = React.useRef<SurveyRefHandle>(null);
   const active = THEMES[themeIndex]!;
+  const demo = DEMOS[demoIndex]!;
   return (
     <SafeAreaView
       style={[styles.container, active.dark ? styles.darkBg : styles.lightBg]}
@@ -90,14 +103,22 @@ export default function App() {
           Theme: {active.name}
         </Text>
         <Pressable
-          testID="timer-demo-toggle"
+          testID="demo-toggle"
           accessibilityRole="button"
           style={styles.switchButton}
-          onPress={() => setShowTimerDemo((prev) => !prev)}
+          onPress={() => setDemoIndex((index) => (index + 1) % DEMOS.length)}
         >
-          <Text style={styles.switchLabel}>
-            {showTimerDemo ? 'Kitchen Sink' : 'Timer Demo'}
-          </Text>
+          <Text style={styles.switchLabel}>Demo: {demo.name}</Text>
+        </Pressable>
+        <Pressable
+          testID="notify-button"
+          accessibilityRole="button"
+          style={styles.switchButton}
+          onPress={() =>
+            surveyRef.current?.model?.notify('Progress saved!', 'success')
+          }
+        >
+          <Text style={styles.switchLabel}>Notify</Text>
         </Pressable>
         <Pressable
           testID="theme-switcher"
@@ -109,7 +130,8 @@ export default function App() {
         </Pressable>
       </View>
       <Survey
-        json={showTimerDemo ? timerSurveyJson : kitchenSinkJson}
+        ref={surveyRef}
+        json={demo.json}
         theme={active.theme}
         onComplete={(sender: { data: unknown }) => {
           console.log(

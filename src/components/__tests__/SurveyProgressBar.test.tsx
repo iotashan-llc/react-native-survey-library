@@ -150,25 +150,21 @@ describe('SurveyProgressBar -- effective progress-route guard (review round 2)',
     }
   );
 
-  it('"pages" under the default effective route (default css, non-legacy) routes to progress-buttons upstream: renders null + one diagnostic', () => {
+  it('"pages" under the default effective route (default css, non-legacy) routes to the progress-buttons step nav (task 5.7c)', () => {
     // Upstream's private progressBarComponentName converts pages ->
     // buttons when !settings.legacyProgressBarView && surveyCss.currentType
     // === "default" (survey.ts:2942-2949) — both hold in this RN runtime.
+    // 5.7c: that route now renders the real step-button nav, not null.
     const payloads: DiagnosticPayload[] = [];
     setDiagnosticHandler((p) => payloads.push(p));
     const model = twoPageModel({ progressBarType: 'pages' });
-    const { toJSON, rerender } = render(<SurveyProgressBar survey={model} />);
-    expect(toJSON()).toBeNull();
-    rerender(<SurveyProgressBar survey={model} />);
+    render(<SurveyProgressBar survey={model} />);
+    expect(screen.getByTestId('survey-progress-buttons')).toBeTruthy();
+    expect(screen.queryByTestId('survey-progress-bar-fill')).toBeNull();
     const relevant = payloads.filter(
       (p) => p.code === 'progress-bar-type-unsupported'
     );
-    expect(relevant).toHaveLength(1);
-    expect(relevant[0]).toMatchObject({
-      code: 'progress-bar-type-unsupported',
-      progressBarType: 'pages',
-      effectiveType: 'buttons',
-    });
+    expect(relevant).toHaveLength(0);
   });
 
   it('"pages" under legacyProgressBarView renders the percentage bar (upstream keeps the progress-pages route)', () => {
@@ -185,20 +181,16 @@ describe('SurveyProgressBar -- effective progress-route guard (review round 2)',
     }
   });
 
-  it('renders null for progressBarType "buttons" and emits a structured diagnostic once', () => {
+  it('progressBarType "buttons" renders the progress-buttons step nav (not the percentage bar, no diagnostic) (task 5.7c)', () => {
     const payloads: DiagnosticPayload[] = [];
     setDiagnosticHandler((p) => payloads.push(p));
     const model = twoPageModel({ progressBarType: 'buttons' });
-    const { toJSON, rerender } = render(<SurveyProgressBar survey={model} />);
-    expect(toJSON()).toBeNull();
-    rerender(<SurveyProgressBar survey={model} />);
+    render(<SurveyProgressBar survey={model} />);
+    expect(screen.getByTestId('survey-progress-buttons')).toBeTruthy();
+    expect(screen.queryByTestId('survey-progress-bar-fill')).toBeNull();
     const relevant = payloads.filter(
       (p) => p.code === 'progress-bar-type-unsupported'
     );
-    expect(relevant).toHaveLength(1);
-    expect(relevant[0]).toMatchObject({
-      code: 'progress-bar-type-unsupported',
-      progressBarType: 'buttons',
-    });
+    expect(relevant).toHaveLength(0);
   });
 });

@@ -169,6 +169,21 @@ export interface ProgressTocStyleOverrides {
   toggleGlyph?: StyleProp<TextStyle>;
 }
 
+/** Progress-buttons step-nav slots (task 5.7c: `SurveyProgressButtons`). */
+export interface ProgressButtonsStyleOverrides {
+  root?: StyleProp<ViewStyle>;
+  step?: StyleProp<ViewStyle>;
+  circle?: StyleProp<ViewStyle>;
+  title?: StyleProp<TextStyle>;
+  footerText?: StyleProp<TextStyle>;
+}
+
+/** Notifier-toast slots (task 5.7c: `SurveyNotifier`). */
+export interface NotifierStyleOverrides {
+  root?: StyleProp<ViewStyle>;
+  message?: StyleProp<TextStyle>;
+}
+
 /** Per-component slot overrides distributed via `SurveyThemeProvider`'s `styles` prop and `SurveyThemeContext`'s `styles` field. */
 export interface SurveyComponentStyles {
   item?: ItemStyleOverrides;
@@ -191,6 +206,8 @@ export interface SurveyComponentStyles {
   listItem?: ListItemStyleOverrides;
   timerPanel?: TimerPanelStyleOverrides;
   progressToc?: ProgressTocStyleOverrides;
+  progressButtons?: ProgressButtonsStyleOverrides;
+  notifier?: NotifierStyleOverrides;
 }
 
 /** Stable default so an omitted `styles` prop never churns the provider's memoized context value. */
