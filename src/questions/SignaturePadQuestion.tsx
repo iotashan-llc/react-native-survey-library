@@ -33,9 +33,12 @@
  * `signaturepad-lib-unavailable` diagnostic + a read-only image of any stored
  * value), never a crash.
  *
- * DRAWING is a DEVICE GATE: the actual pen input runs inside a WebView and is
- * verified on the example app, not in jest — the suites drive the library's
- * `onOK`/clear through its root manual mock.
+ * DRAWING is a DEVICE GATE (NOT yet verified): the actual pen input runs inside
+ * a WebView (react-native-signature-canvas + react-native-webview), declared as
+ * peerDependencies but not installed here — jest drives the library's `onOK`/
+ * clear through its root manual mock. On-device verification is pending an
+ * `expo install react-native-signature-canvas react-native-webview` + native
+ * build in the example app.
  */
 import * as React from 'react';
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';

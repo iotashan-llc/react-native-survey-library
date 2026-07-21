@@ -1849,9 +1849,11 @@ value is committed.
 
 ### Drawing is a device gate; upload mode is not ported
 
-The actual pen input runs inside a WebView and is verified on the example
-app, not in jest (the suites drive the library's `onOK`/clear through its
-root manual mock). When the peer is **absent** — jest without it, or a
+The actual pen input runs inside a WebView. `react-native-signature-canvas`
+and `react-native-webview` are declared peerDependencies but are **not
+installed** here, so on-device drawing is a pending device gate (not yet
+verified); jest drives the library's `onOK`/clear through its root manual
+mock. When the peer is **absent** — jest without it, or a
 consumer who has not installed `react-native-signature-canvas` /
 `react-native-webview` — `loadSignatureCanvasLib()` resolves null and the
 question degrades to a **non-throwing** fallback: a

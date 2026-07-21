@@ -6,7 +6,8 @@
  * node/jest, so this props-capturing `View` stub stands in and lets the
  * SignaturePadQuestion suites drive `onOK` (data-URL commit) / `onClear` and
  * assert OUR contract (the committed data URL, model-derived props) instead
- * of the WebView's internals. The real WebView pad is exercised on-device.
+ * of the WebView's internals. The real WebView pad is a pending device gate
+ * (the peer is not installed; on-device drawing is not yet verified).
  *
  * `forwardRef` + `useImperativeHandle` expose the ref surface the isolated
  * hooks child calls (`readSignature` on stroke-end, `clearSignature` on the
