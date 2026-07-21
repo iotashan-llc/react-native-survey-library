@@ -2172,3 +2172,78 @@ mount-commit window and trip the dev-only render-to-commit invariant
 (`docs/design/0.4-reactive-base.md`) — the same reason the `<Survey>` root
 defers `setIsMobile`. Behavior is unchanged (a 0ms deferral); the timer is
 running by the next frame.
+
+## Table of contents (task 5.7b)
+
+survey-core owns the **entire** TOC. `createTOCListModel(survey)` returns
+a `ListModel<Action>` with **one nav `Action` per page**: the list's
+`selectedItem` tracks `survey.currentPage` (via `onCurrentPageChanged`),
+the item set follows `survey.pages`
+(`registerFunctionOnPropertyValueChanged("pages", …)` +
+`onEndLoadingFromJson`), and each `Action.action` navigates through
+`survey.tryNavigateToPage(page)`. The RN `SurveyTOC` builds the core
+`TOCModel` (which bundles that list plus a mobile-drawer `PopupModel`)
+and only **renders** it. Navigation always goes through the core Action —
+the component never sets `survey.currentPage` itself (invariant).
+
+### Rendered through the shared overlay list stack (not a new engine)
+
+The TOC reuses the 2.1 overlay list primitives (`ListPicker` +
+`registerPopup` + `OverlayHost`) rather than a bespoke list/popup engine:
+
+- **Wide layout** (`survey.tocLocation` `"left"` / `"right"`): the
+  `ListModel` renders inline through `ListPickerElement` inside a side
+  **column** that is a flex sibling of the survey body (mirroring web's
+  `sv-components-row` → `sv-components-column`; the body takes the
+  remaining width). `TOCModel.popupModel`'s content component is
+  `"sv-list"`, which RN already registers to `ListPickerElement`, so the
+  mobile drawer renders through the exact same `ListPicker`.
+- **Mobile layout** (`survey.isMobile`): an inline **hamburger** (☰,
+  rendered near the top of the survey, not web's `position: fixed`
+  floating badge) toggles `TOCModel.popupModel`, which the Survey overlay
+  stack presents as a **sheet** via `OverlayHost` — the same bridge
+  dropdown/tagbox/rating-dropdown use. Tapping a page row navigates and
+  closes the sheet (core's `onAction` closure).
+
+The shell (`<Survey>`) renders the column beside the body only when
+`survey.showTOC` and pages are presenting, choosing left/right by
+`tocLocation` and mobile-vs-wide by `survey.isMobile`. `showTOC` false →
+**nothing** (non-throwing fallback).
+
+### Active-item highlight is delegated to the shared list recipe
+
+The active (current-page) row's highlight is the shared `listItem`
+recipe's **selected variant** — the RN analog of web's
+`.sv_progress-toc .sv-list__item--selected .sv-list__item-body`
+($primary-light). It is **not** re-implemented in the `progressToc`
+recipe (invariant 6 — model-state styling is never duplicated). The
+`progressToc` recipe therefore owns **only** the column container
+(`.sv_progress-toc` padding / background / min-max width band, `--left` /
+`--right` dividers) and the mobile toggle (`.sv_progress-toc--mobile`).
+Reactivity: `SurveyTOC` subscribes to the survey (re-renders on
+`showTOC` / `tocLocation` / `currentPage` / page add-remove), and the
+inner `ListPicker` subscribes to the `ListModel`, so a `currentPage`
+change re-highlights the active row and a page add/remove re-renders the
+list.
+
+### Model lifecycle — built on mount, disposed on unmount
+
+`SurveyTOC` builds the `TOCModel` **lazily in `componentDidMount`** (never
+the constructor: a StrictMode-discarded instance would leak its survey
+subscriptions with no `componentWillUnmount` to dispose them), gated on
+`showTOC`, and calls `TOCModel.dispose()` + unregisters the popup bridge
+on unmount — no leak. Two upstream-parity notes: (1) `createTOCListModel`
+adds anonymous `onCurrentPageChanged` / `onFocusInQuestion` closures that
+core never removes (not removable by reference); they are bounded by the
+survey's own lifetime, exactly as upstream. (2) `TOCModel`'s sticky-scroll
+plumbing (`updateStickyTOCSize`, `scroll` listeners, `onAfterRenderSurvey`)
+is **DOM-only** and no-ops under RN (`survey.rootElement` is `undefined`),
+so the RN TOC does **not** implement sticky positioning / scroll-follow —
+the column simply flows in the row.
+
+### `tocLocation: "both"` is not a core value
+
+Core's `tocLocation` is `"left" | "right"` (default `"left"`); RN treats
+any non-`"right"` value as `"left"`. (Web's `TOCModel.isTocNavigationInContainer`
+references a `"both"` container, but the public `tocLocation` property does
+not expose it.)

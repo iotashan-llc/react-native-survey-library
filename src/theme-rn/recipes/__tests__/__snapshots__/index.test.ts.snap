@@ -787,6 +787,38 @@ exports[`curated recipe golden snapshots ContrastLight: recipes build to a stabl
       },
     },
   },
+  "progressToc": {
+    "fragments": {
+      "container": {
+        "backgroundColor": "rgba(255, 255, 255, 1)",
+        "maxWidth": 336,
+        "minWidth": 256,
+        "paddingHorizontal": 8,
+        "paddingVertical": 8,
+      },
+      "containerLeft": {
+        "borderRightColor": "rgba(0, 0, 0, 0.2)",
+        "borderRightWidth": 1,
+      },
+      "containerRight": {
+        "borderLeftColor": "rgba(0, 0, 0, 0.2)",
+        "borderLeftWidth": 1,
+      },
+      "toggle": {
+        "alignItems": "center",
+        "alignSelf": "flex-end",
+        "backgroundColor": "rgba(255, 216, 77, 1)",
+        "borderRadius": 24,
+        "height": 48,
+        "justifyContent": "center",
+        "width": 48,
+      },
+      "toggleGlyph": {
+        "color": "rgba(0, 0, 0, 1)",
+        "fontSize": 24,
+      },
+    },
+  },
   "questionChrome": {
     "fragments": {
       "commentArea": {
@@ -2368,6 +2400,38 @@ exports[`curated recipe golden snapshots DefaultLight: recipes build to a stable
         "backgroundColor": "rgba(0, 0, 0, 0.09)",
         "height": 2,
         "overflow": "hidden",
+      },
+    },
+  },
+  "progressToc": {
+    "fragments": {
+      "container": {
+        "backgroundColor": "rgba(255, 255, 255, 1)",
+        "maxWidth": 336,
+        "minWidth": 256,
+        "paddingHorizontal": 8,
+        "paddingVertical": 8,
+      },
+      "containerLeft": {
+        "borderRightColor": "rgba(0, 0, 0, 0.09)",
+        "borderRightWidth": 1,
+      },
+      "containerRight": {
+        "borderLeftColor": "rgba(0, 0, 0, 0.09)",
+        "borderLeftWidth": 1,
+      },
+      "toggle": {
+        "alignItems": "center",
+        "alignSelf": "flex-end",
+        "backgroundColor": "rgba(243, 243, 243, 1)",
+        "borderRadius": 24,
+        "height": 48,
+        "justifyContent": "center",
+        "width": 48,
+      },
+      "toggleGlyph": {
+        "color": "rgba(0, 0, 0, 0.45)",
+        "fontSize": 24,
       },
     },
   },
@@ -4016,6 +4080,38 @@ exports[`curated recipe golden snapshots LayeredDark: recipes build to a stable 
         "backgroundColor": "rgba(54, 56, 69, 1)",
         "height": 2,
         "overflow": "hidden",
+      },
+    },
+  },
+  "progressToc": {
+    "fragments": {
+      "container": {
+        "backgroundColor": "rgba(39, 40, 50, 1)",
+        "maxWidth": 336,
+        "minWidth": 256,
+        "paddingHorizontal": 8,
+        "paddingVertical": 8,
+      },
+      "containerLeft": {
+        "borderRightColor": "rgba(54, 56, 69, 1)",
+        "borderRightWidth": 1,
+      },
+      "containerRight": {
+        "borderLeftColor": "rgba(54, 56, 69, 1)",
+        "borderLeftWidth": 1,
+      },
+      "toggle": {
+        "alignItems": "center",
+        "alignSelf": "flex-end",
+        "backgroundColor": "rgba(30, 31, 40, 1)",
+        "borderRadius": 24,
+        "height": 48,
+        "justifyContent": "center",
+        "width": 48,
+      },
+      "toggleGlyph": {
+        "color": "rgba(117, 120, 140, 1)",
+        "fontSize": 24,
       },
     },
   },
@@ -5699,6 +5795,38 @@ exports[`curated recipe golden snapshots SharpDark: recipes build to a stable sn
       },
     },
   },
+  "progressToc": {
+    "fragments": {
+      "container": {
+        "backgroundColor": "rgba(48, 48, 48, 1)",
+        "maxWidth": 336,
+        "minWidth": 256,
+        "paddingHorizontal": 8,
+        "paddingVertical": 8,
+      },
+      "containerLeft": {
+        "borderRightColor": "rgba(255, 255, 255, 0.22)",
+        "borderRightWidth": 1,
+      },
+      "containerRight": {
+        "borderLeftColor": "rgba(255, 255, 255, 0.22)",
+        "borderLeftWidth": 1,
+      },
+      "toggle": {
+        "alignItems": "center",
+        "alignSelf": "flex-end",
+        "backgroundColor": "rgba(27, 27, 27, 1)",
+        "borderRadius": 24,
+        "height": 48,
+        "justifyContent": "center",
+        "width": 48,
+      },
+      "toggleGlyph": {
+        "color": "rgba(255, 255, 255, 0.5)",
+        "fontSize": 24,
+      },
+    },
+  },
   "questionChrome": {
     "fragments": {
       "commentArea": {
@@ -7328,6 +7456,38 @@ exports[`curated recipe golden snapshots ThreeDimensionalLight: recipes build to
         "backgroundColor": "rgba(0, 0, 0, 0.08)",
         "height": 2,
         "overflow": "hidden",
+      },
+    },
+  },
+  "progressToc": {
+    "fragments": {
+      "container": {
+        "backgroundColor": "rgba(248, 248, 248, 1)",
+        "maxWidth": 336,
+        "minWidth": 256,
+        "paddingHorizontal": 8,
+        "paddingVertical": 8,
+      },
+      "containerLeft": {
+        "borderRightColor": "rgba(0, 0, 0, 0.08)",
+        "borderRightWidth": 1,
+      },
+      "containerRight": {
+        "borderLeftColor": "rgba(0, 0, 0, 0.08)",
+        "borderLeftWidth": 1,
+      },
+      "toggle": {
+        "alignItems": "center",
+        "alignSelf": "flex-end",
+        "backgroundColor": "rgba(255, 255, 255, 1)",
+        "borderRadius": 24,
+        "height": 48,
+        "justifyContent": "center",
+        "width": 48,
+      },
+      "toggleGlyph": {
+        "color": "rgba(0, 0, 0, 0.45)",
+        "fontSize": 24,
       },
     },
   },

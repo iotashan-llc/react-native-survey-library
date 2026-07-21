@@ -22,7 +22,7 @@
  * (typed surface only; DIFFERENCES.md).
  */
 import * as React from 'react';
-import { Dimensions, ScrollView, View } from 'react-native';
+import { Dimensions, ScrollView, StyleSheet, View } from 'react-native';
 import type {
   LayoutChangeEvent,
   NativeScrollEvent,
@@ -69,6 +69,7 @@ import { SurveyProgressBar } from '../components/SurveyProgressBar';
 import { SurveyNavigation } from '../components/SurveyNavigation';
 import { SurveyStateFrame } from '../components/SurveyStateFrame';
 import { SurveyTimerPanel } from '../components/SurveyTimerPanel';
+import { SurveyTOC } from '../components/SurveyTOC';
 import { createOverlayStack } from '../overlay/stack';
 import type { OverlayStack } from '../overlay/stack';
 import type { OverlayPayload } from '../overlay/popup-bridge';
@@ -479,6 +480,64 @@ class SurveyRoot extends SurveyElementBase<SurveyRootProps> {
     const survey = this.props.survey;
     const state = survey.state;
     const presentingPages = state === 'running' || state === 'starting';
+    // 5.7b table of contents: core owns showTOC/tocLocation/isMobile; the
+    // shell places the TOC as a left/right side column beside the body on
+    // wide layouts, and as an inline hamburger (opening the overlay
+    // popup) when the survey is mobile. Only while pages present.
+    const showToc = survey.showTOC && presentingPages;
+    const mobileToc = showToc && survey.isMobile;
+    const wideToc = showToc && !survey.isMobile;
+    const tocRight = survey.tocLocation === 'right';
+    const body = (
+      <View testID="survey-body" style={this.resolveRootWidthStyle()}>
+        <ScrollView
+          ref={this.scrollRef}
+          testID="survey-scroll"
+          onScroll={this.handleScroll}
+          onLayout={this.handleScrollLayout}
+          scrollEventThrottle={16}
+        >
+          {/* Shell assembly (task 1.17): header always (its own
+            renderedHasHeader gate applies); progress + nav only
+            while pages present; the state frame owns completed/
+            completedBefore/loading/empty. */}
+          <SurveyHeader survey={survey} />
+          {mobileToc ? (
+            <SurveyTOC
+              survey={survey}
+              location="mobile"
+              stack={this.overlayStack}
+            />
+          ) : null}
+          {presentingPages ? (
+            <SurveyTimerPanel survey={survey} location="top" />
+          ) : null}
+          {presentingPages ? <SurveyProgressBar survey={survey} /> : null}
+          {presentingPages ? (
+            this.renderActivePage()
+          ) : (
+            <SurveyStateFrame survey={survey} />
+          )}
+          {presentingPages ? <SurveyNavigation survey={survey} /> : null}
+          {presentingPages ? (
+            <SurveyTimerPanel survey={survey} location="bottom" />
+          ) : null}
+        </ScrollView>
+      </View>
+    );
+    // Wide layout: the TOC column is a SIBLING of the body inside a row,
+    // so it sits beside the whole survey (header/pages/nav) — mirroring
+    // web's `sv-components-row` → `sv-components-column`. Off / mobile:
+    // the body renders exactly as before (no structural change).
+    const content = wideToc ? (
+      <View testID="survey-toc-row" style={surveyStyles.tocRow}>
+        {!tocRight ? <SurveyTOC survey={survey} location="left" /> : null}
+        <View style={surveyStyles.tocMain}>{body}</View>
+        {tocRight ? <SurveyTOC survey={survey} location="right" /> : null}
+      </View>
+    ) : (
+      body
+    );
     return (
       <LifecycleContext.Provider value={this.lifecycleValue}>
         <OverlayContext.Provider value={this.overlayStack}>
@@ -489,34 +548,7 @@ class SurveyRoot extends SurveyElementBase<SurveyRootProps> {
             (review round 2: 1000dp parent + calc(100% - 40px) must stay
             960, not shrink 960→920→880 across layouts). */}
           <View testID="survey-root" onLayout={this.handleRootLayout}>
-            <View testID="survey-body" style={this.resolveRootWidthStyle()}>
-              <ScrollView
-                ref={this.scrollRef}
-                testID="survey-scroll"
-                onScroll={this.handleScroll}
-                onLayout={this.handleScrollLayout}
-                scrollEventThrottle={16}
-              >
-                {/* Shell assembly (task 1.17): header always (its own
-                  renderedHasHeader gate applies); progress + nav only
-                  while pages present; the state frame owns completed/
-                  completedBefore/loading/empty. */}
-                <SurveyHeader survey={survey} />
-                {presentingPages ? (
-                  <SurveyTimerPanel survey={survey} location="top" />
-                ) : null}
-                {presentingPages ? <SurveyProgressBar survey={survey} /> : null}
-                {presentingPages ? (
-                  this.renderActivePage()
-                ) : (
-                  <SurveyStateFrame survey={survey} />
-                )}
-                {presentingPages ? <SurveyNavigation survey={survey} /> : null}
-                {presentingPages ? (
-                  <SurveyTimerPanel survey={survey} location="bottom" />
-                ) : null}
-              </ScrollView>
-            </View>
+            {content}
             <OverlayHost stack={this.overlayStack} />
           </View>
         </OverlayContext.Provider>
@@ -542,6 +574,13 @@ class SurveyRoot extends SurveyElementBase<SurveyRootProps> {
     });
   }
 }
+
+/** 5.7b: wide-layout TOC row — the side column is a flex sibling of the
+ * body (which takes the remaining width). */
+const surveyStyles = StyleSheet.create({
+  tocRow: { flexDirection: 'row' },
+  tocMain: { flex: 1 },
+});
 
 // ---------------------------------------------------------------------
 // Outer function component — model lifecycle owner
