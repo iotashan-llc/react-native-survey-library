@@ -74,8 +74,9 @@ export type {
 export type { SurveyModelEventProps } from './survey/event-props';
 // Host opt-in link events (invariant 8): <Survey onLinkPress> provides
 // this context; every SanitizedHtml sink surfaces policy-validated link
-// presses as {url, context} events — the HOST decides navigation (e.g.
-// Linking.openURL). Without a handler, anchors render as plain text.
+// presses as {url, context, origin, scheme} events — the HOST decides
+// navigation (e.g. Linking.openURL). Without a handler, anchors render
+// as plain text.
 export { LinkPressContext } from './security/LinkPressContext';
 export type {
   SurveyLinkPressContext,
@@ -276,7 +277,10 @@ export type {
 // — ESLint-enforced) lazily requires it, so importing this package's
 // index does not eagerly pull the renderer in either.
 export { SanitizedHtml } from './components/SanitizedHtml';
-export type { SanitizedHtmlProps } from './components/SanitizedHtml';
+export type {
+  SanitizedHtmlProps,
+  LinkPressValidationMeta,
+} from './components/SanitizedHtml';
 export {
   sanitizeHtml,
   DEFAULT_RESOURCE_BOUNDS,

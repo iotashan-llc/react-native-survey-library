@@ -44,6 +44,16 @@ export interface SurveyLinkPressEvent {
   url: string;
   /** Which sink the anchor rendered in (`'html'` when unlabeled). */
   context: SurveyLinkPressContext;
+  /** The press-time validation's computed origin —
+   * `scheme://host[:non-default-port]` (lowercase) — or `null` for
+   * opaque schemes (`mailto:`, `tel:`). The policy's OWN parse, so a
+   * host trust decision never re-parses `url` (and never re-parses it
+   * DIFFERENTLY). Optional for backward compatibility of the type;
+   * always populated on events this library fires. */
+  origin?: string | null;
+  /** Lowercase scheme with trailing colon (e.g. `"https:"`), or `null`.
+   * Same provenance and optionality as `origin`. */
+  scheme?: string | null;
 }
 
 export type SurveyLinkPressHandler = (event: SurveyLinkPressEvent) => void;

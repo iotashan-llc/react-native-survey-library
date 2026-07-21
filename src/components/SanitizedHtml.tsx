@@ -51,6 +51,19 @@ import { LinkPressContext } from '../security/LinkPressContext';
 import type { SurveyLinkPressContext } from '../security/LinkPressContext';
 import { reportDiagnostic } from '../diagnostics';
 
+/** Validation metadata computed by the press-time policy revalidation
+ * and delivered alongside the canonical URL — so hosts can make trust
+ * decisions on the TRUE parsed origin/scheme rather than re-parsing (and
+ * possibly re-parsing DIFFERENTLY — the exact bug class the canonical
+ * contract exists to close). */
+export interface LinkPressValidationMeta {
+  /** `scheme://host[:non-default-port]` (lowercase), or `null` for
+   * opaque schemes (`mailto:`, `tel:`). */
+  origin: string | null;
+  /** Lowercase scheme with trailing colon (e.g. `"https:"`). */
+  scheme: string | null;
+}
+
 export interface SanitizedHtmlProps {
   /** Raw, untrusted author HTML. Sanitized on every render (memoized on
    * the arguments that affect the result). */
@@ -61,7 +74,11 @@ export interface SanitizedHtmlProps {
    * `LinkPressContext` handler. With NO callback resolvable from either
    * source, anchors render as PLAIN TEXT (no link a11y role, no
    * pressable) — never a dead control, never auto-navigation. */
-  onLinkPress?: (canonicalUrl: string, event: GestureResponderEvent) => void;
+  onLinkPress?: (
+    canonicalUrl: string,
+    event: GestureResponderEvent,
+    validation?: LinkPressValidationMeta
+  ) => void;
   /** Sink label delivered as `event.context` when the SURVEY-LEVEL
    * `onLinkPress` handler (via `LinkPressContext`) fires — e.g.
    * `'title'`, `'html-question'`, `'completed'`. Defaults to `'html'`.
@@ -125,6 +142,13 @@ function getInertAnchorElementModels(): Record<string, unknown> {
     cachedInertAnchorModels = {
       a: defaultHTMLElementModels.a.extend({
         getReactNativeProps: () => undefined,
+        // The default anchor model ALSO derives link VISUALS (anchor
+        // color + underline) from href presence via `getMixedUAStyles` —
+        // an inert anchor keeping them is a half-fixed dead control:
+        // looks pressable, does nothing. Suppress the styles too so the
+        // no-callback anchor reduces to genuinely plain text. (`extend`
+        // shallow-merges, so this key must be overridden explicitly.)
+        getMixedUAStyles: () => undefined,
       }),
     };
   }
@@ -177,7 +201,13 @@ export function createAnchorOnPress(
       );
       return;
     }
-    onLinkPress(revalidated.canonical, event);
+    // Deliver the validation result's origin/scheme WITH the canonical
+    // URL (review: the true origin was computed then discarded) — the
+    // host's trust decision gets the policy's own parse, not a re-parse.
+    onLinkPress(revalidated.canonical, event, {
+      origin: revalidated.origin,
+      scheme: revalidated.scheme,
+    });
   };
 }
 
@@ -253,8 +283,17 @@ export function SanitizedHtml(props: SanitizedHtmlProps): React.JSX.Element {
     if (onLinkPress) return onLinkPress;
     if (!surveyLinkPress) return undefined;
     const context = linkContext ?? 'html';
-    return (canonicalUrl: string) =>
-      surveyLinkPress({ url: canonicalUrl, context });
+    return (
+      canonicalUrl: string,
+      _event: GestureResponderEvent,
+      validation?: LinkPressValidationMeta
+    ) =>
+      surveyLinkPress({
+        url: canonicalUrl,
+        context,
+        origin: validation ? validation.origin : null,
+        scheme: validation ? validation.scheme : null,
+      });
   }, [onLinkPress, surveyLinkPress, linkContext]);
 
   const renderersProps = React.useMemo(

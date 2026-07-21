@@ -61,6 +61,8 @@ describe('SanitizedHtml consumes the survey-scoped link-press context', () => {
     expect(handler).toHaveBeenCalledWith({
       url: 'https://example.com/x',
       context: 'html',
+      origin: 'https://example.com',
+      scheme: 'https:',
     } satisfies SurveyLinkPressEvent);
     expect(openURLSpy).not.toHaveBeenCalled();
   });
@@ -82,6 +84,8 @@ describe('SanitizedHtml consumes the survey-scoped link-press context', () => {
     expect(handler).toHaveBeenCalledWith({
       url: 'https://example.com/x',
       context: 'completed',
+      origin: 'https://example.com',
+      scheme: 'https:',
     });
   });
 
@@ -172,6 +176,8 @@ describe('LocString viewer HTML path threads the sink label', () => {
     expect(handler).toHaveBeenCalledWith({
       url: 'https://example.com/t',
       context: 'title',
+      origin: 'https://example.com',
+      scheme: 'https:',
     });
   });
 
@@ -195,6 +201,8 @@ describe('LocString viewer HTML path threads the sink label', () => {
     expect(handler).toHaveBeenCalledWith({
       url: 'https://example.com/t',
       context: 'description',
+      origin: 'https://example.com',
+      scheme: 'https:',
     });
   });
 });
@@ -227,6 +235,8 @@ describe('<Survey onLinkPress> reaches every sink', () => {
     expect(handler).toHaveBeenCalledWith({
       url: 'https://example.com/x',
       context: 'html-question',
+      origin: 'https://example.com',
+      scheme: 'https:',
     });
     expect(openURLSpy).not.toHaveBeenCalled();
   });
@@ -250,6 +260,8 @@ describe('<Survey onLinkPress> reaches every sink', () => {
     expect(handler).toHaveBeenCalledWith({
       url: 'https://example.com/t',
       context: 'title',
+      origin: 'https://example.com',
+      scheme: 'https:',
     });
   });
 
@@ -269,6 +281,8 @@ describe('<Survey onLinkPress> reaches every sink', () => {
     expect(handler).toHaveBeenCalledWith({
       url: 'https://example.com/c',
       context: 'completed',
+      origin: 'https://example.com',
+      scheme: 'https:',
     });
   });
 

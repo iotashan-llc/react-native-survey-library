@@ -78,12 +78,16 @@ itself. Link presses are a **host opt-in**:
   from every sanitized-HTML sink in the tree — titles, descriptions,
   errors, the completed/completed-before/loading state pages, the
   `html` question, and choice captions. The event is
-  `{ url, context }`: `url` is the **policy-revalidated canonical URL**
-  (re-checked at press time; a policy-failing href never fires the
-  event) and `context` names the sink (`'title'`, `'description'`,
-  `'error'`, `'completed'`, `'html-question'`, `'choice'`, ...). The
-  host decides what to do — `Linking.openURL(event.url)` is the host's
-  line to write (open in-app, open externally, ask the user, block it).
+  `{ url, context, origin, scheme }`: `url` is the **policy-revalidated
+  canonical URL** (re-checked at press time; a policy-failing href never
+  fires the event), `context` names the sink (`'title'`,
+  `'description'`, `'error'`, `'completed'`, `'html-question'`,
+  `'choice'`, ...), and `origin`/`scheme` carry the validation's own
+  parse (`'https://example.com'` / `'https:'`; both `null` for opaque
+  schemes like `mailto:`/`tel:`) so a host trust decision never has to
+  re-parse `url` — and can never re-parse it *differently*. The host
+  decides what to do — `Linking.openURL(event.url)` is the host's line
+  to write (open in-app, open externally, ask the user, block it).
 - Rendering `<SanitizedHtml>` (a public export) directly with its own
   `onLinkPress` prop still works and wins over the survey-level handler
   for that sink.
@@ -102,7 +106,14 @@ central scheme/origin policy (`src/security/uri-policy.ts`) before it
 ever reaches a sink:
 
 - Anchor `href` (event-only, human-mediated): a broader scheme set
-  (`https http mailto tel`), no origin restriction.
+  (`https http mailto tel`) and no origin restriction — but URL-embedded
+  credentials (`https://user@host`, including host-lookalike forms like
+  `https://trusted.com@evil.com`) are rejected the same as in fetch
+  contexts, and protocol-relative refs (`//host/...`) are never passed
+  through unresolved: they resolve against a configured `baseUrl` (and
+  re-validate as an absolute link, true origin included) or fail closed.
+  Bare relative refs (`/help`, `docs/page`) still pass through unresolved
+  for the host to interpret.
 - The automatic-fetch contexts the policy governs (survey/background
   images, video, `choicesByUrl` — wired by later tasks): `https:` only by
   default, and **no origin is fetchable until explicitly allowlisted** —
