@@ -400,6 +400,43 @@ export const kitchenSinkJson = {
             { value: 'engineering', text: 'Engineering' },
           ],
         },
+        {
+          // matrixdynamic (M3 3.4 — dynamic rows): add-row button driven by
+          // renderedTable.showAddRowOnBottom, per-row remove buttons via
+          // removeRowUI with confirmDelete routed through the 2.2 RN dialog
+          // adapter, min/maxRowCount gating both affordances (remove hidden
+          // at min, add hidden at max).
+          type: 'matrixdynamic',
+          name: 'milestonesPlan',
+          title: 'Release milestones (matrixdynamic)',
+          confirmDelete: true,
+          rowCount: 2,
+          minRowCount: 1,
+          maxRowCount: 4,
+          columns: [
+            { name: 'milestone', title: 'Milestone', cellType: 'text' },
+            {
+              name: 'status',
+              title: 'Status',
+              cellType: 'dropdown',
+              choices: ['Planned', 'In progress', 'Done'],
+            },
+          ],
+        },
+        {
+          // matrixdynamic empty state (M3 3.4 §3e): hideColumnsIfEmpty +
+          // rowCount 0 renders the noRowsText placeholder whose add button
+          // gates on the STANDALONE renderedTable.showAddRow — the first
+          // row is added from the placeholder itself.
+          type: 'matrixdynamic',
+          name: 'openIssues',
+          title: 'Open issues (matrixdynamic, empty state)',
+          rowCount: 0,
+          minRowCount: 0,
+          hideColumnsIfEmpty: true,
+          noRowsText: 'No issues filed yet — add the first one.',
+          columns: [{ name: 'summary', title: 'Summary', cellType: 'text' }],
+        },
       ],
     },
     {

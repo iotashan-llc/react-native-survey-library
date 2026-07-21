@@ -1778,6 +1778,57 @@ export const API_SURFACE_WATCHLIST: readonly WatchedApiMember[] = [
       '3.3a §2b cell-kind precedence (structural -> question -> other -> ' +
       'choice) + choice-item reads.',
   })),
+  // Task 3.4 — matrixdynamic add/remove bindings (design M3 §3e/§6
+  // watchlist). The loc-string getters (`locAddRowText`/`locNoRowsText`/
+  // `locRemoveRowText`) ARE prototype accessors in v2.5.33 but the
+  // typings omit them; they are exercised behaviorally by the
+  // MatrixDynamicQuestion suite, and their string twins below anchor the
+  // reflection gate.
+  ...(
+    [
+      ['addRowUI', 'method'],
+      ['removeRowUI', 'method'],
+      ['addRow', 'method'],
+      ['addRowByIndex', 'method'],
+      ['removeRow', 'method'],
+      ['canAddRow', 'accessor'],
+      ['canRemoveRows', 'accessor'],
+      ['canRemoveRow', 'method'],
+      ['confirmDelete', 'accessor'],
+      ['addRowText', 'accessor'],
+      ['removeRowText', 'accessor'],
+      ['noRowsText', 'accessor'],
+    ] as const
+  ).map(([member, expectedKind]) => ({
+    id: `QuestionMatrixDynamicModel.${member}`,
+    member,
+    expectedKind: expectedKind as MemberKind,
+    resolveHost: (sc: typeof FacadeModule) =>
+      (sc as { QuestionMatrixDynamicModel: { prototype: unknown } })
+        .QuestionMatrixDynamicModel.prototype,
+    reason:
+      '3.4 MatrixDynamicQuestion add/remove UI wrappers, gates, and ' +
+      'captions (§3e — addRowUI/removeRowUI only, never raw mutations ' +
+      'from the renderer; addRowByIndex/removeRow are the external-model ' +
+      'reactivity test surface).',
+  })),
+  ...(
+    [
+      ['showAddRow', 'accessor'],
+      ['showAddRowOnTop', 'accessor'],
+      ['showAddRowOnBottom', 'accessor'],
+    ] as const
+  ).map(([member, expectedKind]) => ({
+    id: `QuestionMatrixDropdownRenderedTable.${member}`,
+    member,
+    expectedKind: expectedKind as MemberKind,
+    resolveHost: (sc: typeof FacadeModule) =>
+      (sc as { QuestionMatrixDropdownRenderedTable: { prototype: unknown } })
+        .QuestionMatrixDropdownRenderedTable.prototype,
+    reason:
+      '3.4 add-button placement + placeholder add gate are DRIVEN off ' +
+      'these (never recomputed — §3e).',
+  })),
   {
     id: 'QuestionCheckboxModel.clickItemHandler',
     member: 'clickItemHandler',

@@ -65,6 +65,7 @@ describe('index.tsx: registrar wiring (design: docs/design/0.5-factories.md)', (
       'imagepicker',
       'matrix',
       'matrixdropdown',
+      'matrixdynamic',
       'multipletext',
       'paneldynamic',
       'radiogroup',

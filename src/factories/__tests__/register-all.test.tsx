@@ -194,6 +194,7 @@ describe('registerAll (module side effect)', () => {
       'imagepicker',
       'matrix',
       'matrixdropdown',
+      'matrixdynamic',
       'multipletext',
       'paneldynamic',
       'radiogroup',

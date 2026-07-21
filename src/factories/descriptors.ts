@@ -66,6 +66,7 @@ import { ButtonGroupQuestionElement } from '../questions/ButtonGroupQuestion';
 import { PanelDynamicQuestion } from '../questions/PanelDynamicQuestion';
 import { MatrixQuestionElement } from '../questions/MatrixQuestion';
 import { MatrixDropdownQuestionElement } from '../questions/MatrixDropdownQuestion';
+import { MatrixDynamicQuestionElement } from '../questions/MatrixDynamicQuestion';
 import { CustomQuestion } from '../questions/CustomQuestion';
 import { CompositeQuestion } from '../questions/CompositeQuestion';
 import { ListItemGroupContent, ListPickerElement } from '../overlay/ListPicker';
@@ -361,8 +362,7 @@ export const DESCRIPTOR_TABLE: readonly Descriptor[] = [
   // tiles over the 3.1a MatrixGrid). getTemplate() === 'matrix' (no
   // override); template route, dispatchKey === questionType. The
   // OverlayContext-free `…QuestionElement` wrapper keeps the family shape
-  // uniform (simple matrix has no nested cell overlays). matrixdynamic
-  // (3.4) stays planned.
+  // uniform (simple matrix has no nested cell overlays).
   {
     status: 'supported',
     questionType: 'matrix',
@@ -382,6 +382,21 @@ export const DESCRIPTOR_TABLE: readonly Descriptor[] = [
     dispatchKey: 'matrixdropdown',
     route: 'template',
     component: () => MatrixDropdownQuestionElement,
+    milestone: 'M3',
+  },
+  // Task 3.4 (M3) — matrixdynamic (dynamic rows) over the SAME
+  // MatrixTableBase via the §1 hooks (add-row buttons + empty
+  // placeholder; per-action remove/detail cells in the shared walk).
+  // getTemplate() === 'matrixdynamic'; template route. Web's
+  // `sv-matrixdynamic-add-btn`/`sv-matrixdynamic-actions-cell`/
+  // `sv-placeholder-matrixdynamic` element registrations are collapsed
+  // into the RN components (design §6 — no element rows).
+  {
+    status: 'supported',
+    questionType: 'matrixdynamic',
+    dispatchKey: 'matrixdynamic',
+    route: 'template',
+    component: () => MatrixDynamicQuestionElement,
     milestone: 'M3',
   },
   {

@@ -36,6 +36,10 @@ export {
   MatrixDropdownQuestionElement,
 } from './questions/MatrixDropdownQuestion';
 export {
+  MatrixDynamicQuestion,
+  MatrixDynamicQuestionElement,
+} from './questions/MatrixDynamicQuestion';
+export {
   MatrixTableBase,
   MatrixTable,
   MatrixChoiceCell,

@@ -74,12 +74,30 @@ export interface MatrixRecipe {
     rubricText: TextStyle;
     /** Rubric cell text when checked. */
     rubricTextSelected: TextStyle;
+    // --- 3.4 matrixdynamic add/remove + empty-state fragments (§3e). ---
+    /** Add-row button (top/bottom/placeholder placements) — a plain themed
+     * text button (never an AdaptiveActionContainer, DIFFERENCES 6). */
+    addRowButton: ViewStyle;
+    /** Add-row button caption — accent (primary) tone. */
+    addRowText: TextStyle;
+    /** Per-row remove button — centers the delete glyph in the intrinsic
+     * actions column (same square target as the detail toggle). */
+    removeRowButton: ViewStyle;
+    /** Empty-state (`noRowsText`) placeholder container — full-width,
+     * centered (§3g: placeholder rows ignore per-column widths). */
+    placeholder: ViewStyle;
+    /** Empty-state placeholder text. */
+    placeholderText: TextStyle;
   };
   /** Detail-toggle icon size — the 16dp glyph family
    * (`expanddetails-16x16`/`collapsedetails-16x16`), base-unit-derived. */
   detailIconSize: number;
   /** Detail-toggle icon tint — the general forecolor token. */
   detailIconColor: string;
+  /** Remove-row icon size — the 24dp `delete-24x24` glyph, base-unit-derived. */
+  removeIconSize: number;
+  /** Remove-row icon tint — the general forecolor token. */
+  removeIconColor: string;
 }
 
 export function buildMatrixRecipe(
@@ -226,11 +244,47 @@ export function buildMatrixRecipe(
       color: primaryFore,
       textAlign: 'center',
     },
+    addRowButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      alignSelf: 'flex-start',
+      paddingVertical: padV,
+      paddingHorizontal: padH,
+      minHeight: calcSize(resolved, 4),
+    },
+    addRowText: {
+      fontFamily: baseFamily,
+      fontSize: calcFontSize(resolved, 1),
+      lineHeight: calcLineHeight(resolved, 1.5),
+      fontWeight: '600',
+      // The primary backcolor token IS the theme accent — the same value
+      // web's `.sd-matrixdynamic__add-btn` text rides.
+      color: primaryBg,
+    },
+    removeRowButton: {
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: calcSize(resolved, 4),
+      minWidth: calcSize(resolved, 4),
+    },
+    placeholder: {
+      alignItems: 'center',
+      paddingVertical: calcSize(resolved, 2),
+      paddingHorizontal: padH,
+    },
+    placeholderText: {
+      fontFamily: baseFamily,
+      fontSize: calcFontSize(resolved, 1),
+      lineHeight: calcLineHeight(resolved, 1.5),
+      color: foreColor,
+    },
   });
 
   return {
     fragments,
     detailIconSize: calcSize(resolved, 2),
     detailIconColor: foreColor,
+    removeIconSize: calcSize(resolved, 3),
+    removeIconColor: foreColor,
   };
 }
