@@ -7,9 +7,10 @@
  * text (a spread of inputTypes incl. a pattern mask), rating (numbers,
  * stars, smileys, custom string rateValues), expression, html (sanitized
  * rich content), the M3 3.2 simple matrix (single/multi-select + rubric
- * cells), completedHtml. A single genuinely-unsupported type (ranking,
- * planned for M4) sits on the last page to demonstrate the NON-THROWING
- * fallback panel (invariant 9); the rest of the survey stays representative.
+ * cells), ranking (drag-to-reorder + selectToRank, M4 4.1), completedHtml.
+ * A single genuinely-unsupported type (slider, planned for M4 task 4.4)
+ * sits on the last page to demonstrate the NON-THROWING fallback panel
+ * (invariant 9); the rest of the survey stays representative.
  */
 
 // 1x1 blue PNG — data: logos involve no network fetch (URI policy).
@@ -466,14 +467,36 @@ export const kitchenSinkJson = {
           html: '<p>The <code>html</code> question type renders rich content natively via the sanitized HTML pipeline: <strong>bold</strong>, <em>italic</em>, and <a href="https://surveyjs.io">links</a> (the renderer never auto-navigates; a press surfaces a {url, context} event to the onLinkPress handler this example logs to the console).</p>',
         },
         {
-          // A genuinely still-unsupported type (ranking, planned for M4):
-          // the web reference renders it, RN shows the NON-THROWING
-          // fallback panel (invariant 9). This is the graceful-fallback demo.
-          // (matrix moved to the 'Matrix (simple)' page now that 3.2 lands.)
+          // Ranking is SUPPORTED as of task 4.1 — drag-to-reorder (gesture-
+          // handler + reanimated) with accessible move-up/move-down controls;
+          // reorder is driven through the core model so value/events stay
+          // core-correct.
           type: 'ranking',
+          name: 'priorities',
+          title: 'Drag to rank these priorities (ranking — supported in RN as of 4.1)',
+          choices: ['Performance', 'Bundle size', 'Developer experience'],
+        },
+        {
+          // selectToRank mode — two areas (unranked ↔ ranked); moving an item
+          // between areas + reorder-within-ranked drive the same core model.
+          type: 'ranking',
+          name: 'featureShortlist',
+          title: 'Select and rank the features you care about (selectToRank)',
+          selectToRankEnabled: true,
+          choices: [
+            'Offline mode',
+            'Dark theme',
+            'Push notifications',
+            'Biometric login',
+          ],
+        },
+        {
+          // A genuinely still-unsupported type (slider, planned for M4 task
+          // 4.4): the web reference renders it, RN shows the NON-THROWING
+          // fallback panel (invariant 9). This is the graceful-fallback demo.
+          type: 'slider',
           name: 'notSupportedDemo',
-          title: 'Unsupported in RN (ranking) — fallback demo',
-          choices: ['First', 'Second', 'Third'],
+          title: 'Unsupported in RN (slider) — graceful fallback demo',
         },
         {
           type: 'comment',

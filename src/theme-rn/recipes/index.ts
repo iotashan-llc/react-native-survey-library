@@ -30,6 +30,7 @@ import { buildButtonGroupRecipe, type ButtonGroupRecipe } from './buttonGroup';
 import { buildOverlayRecipe, type OverlayRecipe } from './overlay';
 import { buildListItemRecipe, type ListItemRecipe } from './listItem';
 import { buildMatrixRecipe, type MatrixRecipe } from './matrix';
+import { buildRankingRecipe, type RankingRecipe } from './ranking';
 
 export interface Recipes {
   item: ItemRecipe;
@@ -55,6 +56,8 @@ export interface Recipes {
   listItem: ListItemRecipe;
   /** Matrix-family grid primitive: gridlines/header/row-header/data/footer/detail (task 3.1a). */
   matrix: MatrixRecipe;
+  /** Ranking item row: handle/rank-number/label/ghost + selectToRank areas (task 4.1). */
+  ranking: RankingRecipe;
 }
 
 export function buildRecipes(
@@ -76,6 +79,7 @@ export function buildRecipes(
     overlay: buildOverlayRecipe(resolved, buildCtx),
     listItem: buildListItemRecipe(resolved, buildCtx),
     matrix: buildMatrixRecipe(resolved, buildCtx),
+    ranking: buildRankingRecipe(resolved, buildCtx),
   };
 }
 
@@ -94,3 +98,4 @@ export * from './buttonGroup';
 export * from './overlay';
 export * from './listItem';
 export * from './matrix';
+export * from './ranking';

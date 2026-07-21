@@ -542,13 +542,30 @@
         },
         {
           "type": "ranking",
-          "name": "notSupportedDemo",
-          "title": "Unsupported in RN (ranking) — fallback demo",
+          "name": "priorities",
+          "title": "Drag to rank these priorities (ranking — supported in RN as of 4.1)",
           "choices": [
-            "First",
-            "Second",
-            "Third"
+            "Performance",
+            "Bundle size",
+            "Developer experience"
           ]
+        },
+        {
+          "type": "ranking",
+          "name": "featureShortlist",
+          "title": "Select and rank the features you care about (selectToRank)",
+          "selectToRankEnabled": true,
+          "choices": [
+            "Offline mode",
+            "Dark theme",
+            "Push notifications",
+            "Biometric login"
+          ]
+        },
+        {
+          "type": "slider",
+          "name": "notSupportedDemo",
+          "title": "Unsupported in RN (slider) — graceful fallback demo"
         },
         {
           "type": "comment",

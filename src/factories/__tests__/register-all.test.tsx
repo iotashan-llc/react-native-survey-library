@@ -198,6 +198,7 @@ describe('registerAll (module side effect)', () => {
       'multipletext',
       'paneldynamic',
       'radiogroup',
+      'ranking',
       'rating',
       'sv-boolean-checkbox',
       'sv-boolean-radio',

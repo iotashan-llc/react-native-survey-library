@@ -78,6 +78,7 @@ describe('component modules are import-side-effect-free', () => {
       'multipletext',
       'paneldynamic',
       'radiogroup',
+      'ranking',
       'rating',
       'sv-boolean-checkbox',
       'sv-boolean-radio',
