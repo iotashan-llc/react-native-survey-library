@@ -71,6 +71,8 @@ interface SliderModel extends Question {
   renderedMax: number;
   renderedValue: number[];
   tooltipVisibility: 'auto' | 'always' | 'never';
+  tooltipFormat: string;
+  allowSwap: boolean;
   showLabels: boolean;
   renderedLabels: SliderLabel[];
   isInputReadOnly: boolean;
@@ -145,6 +147,23 @@ function SliderSingleControl(
   const showTooltip =
     question.tooltipVisibility === 'always' ||
     (question.tooltipVisibility === 'auto' && active);
+  // During drag the model value is not yet committed (`getTooltipValue` reads
+  // `renderedValue`), so the tooltip must format the DRAFT via the same core
+  // path core's getTooltipValue uses (step-snap → formatNumber → tooltipFormat).
+  const tooltipText =
+    draft == null
+      ? question.getTooltipValue(0)
+      : question.tooltipFormat.replace(
+          '{0}',
+          String(
+            parseFloat(
+              (question.step
+                ? question.getClosestToStepValue(draft)
+                : draft
+              ).toFixed(4)
+            )
+          )
+        );
 
   return (
     <View style={recipe.fragments.track}>
@@ -153,12 +172,14 @@ function SliderSingleControl(
           testID={`sv-slider-tooltip-${question.name}-0`}
           style={[
             recipe.fragments.tooltip,
-            { left: `${question.getPercent(value)}%` },
+            {
+              left: `${question.getPercent(value)}%`,
+              // Center the bubble over the thumb (shift left by half its width).
+              transform: [{ translateX: '-50%' }],
+            },
           ]}
         >
-          <Text style={recipe.fragments.tooltipText}>
-            {question.getTooltipValue(0)}
-          </Text>
+          <Text style={recipe.fragments.tooltipText}>{tooltipText}</Text>
         </View>
       ) : null}
       <SliderComp
@@ -326,6 +347,7 @@ function SliderRangeBody(props: SliderRangeBodyProps): React.JSX.Element {
             value={thumbValue}
             trackWidth={trackWidth}
             readOnly={readOnly}
+            onStep={onStep}
             onDragCommit={onDragCommit}
           />
         ))}
@@ -367,11 +389,21 @@ interface SliderRangeThumbProps extends SliderChildProps {
   value: number;
   trackWidth: number;
   readOnly: boolean;
+  onStep(index: number, direction: 1 | -1): void;
   onDragCommit(index: number, value: number): void;
 }
 
 function SliderRangeThumb(props: SliderRangeThumbProps): React.JSX.Element {
-  const { question, recipe, slots, index, value, trackWidth, readOnly } = props;
+  const {
+    question,
+    recipe,
+    slots,
+    index,
+    value,
+    trackWidth,
+    readOnly,
+    onStep,
+  } = props;
   const [active, setActive] = React.useState(false);
   const dragLibs = readOnly ? null : loadRankingDragLibs();
   const showTooltip =
@@ -387,6 +419,13 @@ function SliderRangeThumb(props: SliderRangeThumbProps): React.JSX.Element {
         min: question.renderedMin,
         max: question.renderedMax,
         now: value,
+      }}
+      // The `adjustable` role promises VoiceOver/TalkBack swipe-to-adjust; wire
+      // the native adjust actions to the SAME model path as the +/- steppers.
+      accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
+      onAccessibilityAction={(event) => {
+        if (readOnly) return;
+        onStep(index, event.nativeEvent.actionName === 'increment' ? 1 : -1);
       }}
       style={[
         recipe.fragments.thumb,
@@ -547,11 +586,21 @@ export class SliderQuestion extends QuestionElementBase<SliderQuestionProps> {
   private commitThumb(index: number, raw: number): void {
     const q = this.slider;
     if (q.isInputReadOnly) return;
+    // Mirrors core `handleOnChange`: `ensureMaxRangeBorders` always applies,
+    // but `ensureMinRangeBorders` (which blocks a thumb from crossing its
+    // neighbor / breaching the min gap) is enforced ONLY when swapping is
+    // disallowed. `allowSwap` is a core DEFAULT of true and is forced false
+    // by a `minRangeLength`, so this single check honors both the swap and
+    // the clamp cases. When swapping is allowed the thumbs may cross; sorting
+    // reorders the value array afterwards (core `handlePointerUp`).
     let next = q.getClosestToStepValue(raw);
     next = q.ensureMaxRangeBorders(next, index);
-    next = q.ensureMinRangeBorders(next, index);
+    if (!q.allowSwap) {
+      next = q.ensureMinRangeBorders(next, index);
+    }
     const arr = q.renderedValue.slice();
     arr[index] = next;
+    arr.sort((a, b) => a - b);
     q.setSliderValue(arr);
   }
 

@@ -15,7 +15,14 @@
  * adjustable steppers that make range fully operable without drag, plus the
  * model-driven allowSwap/spacing enforcement.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react-native';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 import { Model } from '../../core/facade';
 import type { Question } from '../../core/facade';
 import '../../factories/register-all';
@@ -157,6 +164,114 @@ describe('slider — range mode (custom dual-thumb, a11y adjustable)', () => {
       screen.getByTestId('sv-slider-thumb-inc-r-0').props.accessibilityState
         ?.disabled
     ).toBe(true);
+  });
+});
+
+describe('slider — 4.4 review findings', () => {
+  // Finding 1 — range thumbs promise accessibilityRole="adjustable" but must
+  // also wire the native adjust actions so VoiceOver/TalkBack swipe-to-adjust
+  // drives the SAME model path as the visible +/- steppers.
+  it('range thumbs declare increment/decrement accessibilityActions per thumb', () => {
+    const question = makeSlider({ sliderType: 'range' });
+    renderSlider(question);
+    for (const id of ['sv-slider-thumb-r-0', 'sv-slider-thumb-r-1']) {
+      const thumb = screen.getByTestId(id);
+      expect(thumb.props.accessibilityActions).toEqual([
+        { name: 'increment' },
+        { name: 'decrement' },
+      ]);
+      expect(typeof thumb.props.onAccessibilityAction).toBe('function');
+    }
+  });
+
+  it('firing increment/decrement accessibilityActions on a thumb steps the value through the model', () => {
+    const question = makeSlider({ sliderType: 'range' });
+    act(() => {
+      question.value = [20, 80];
+    });
+    renderSlider(question);
+    fireEvent(
+      screen.getByTestId('sv-slider-thumb-r-0'),
+      'accessibilityAction',
+      {
+        nativeEvent: { actionName: 'increment' },
+      }
+    );
+    expect(vals(question)).toEqual([21, 80]);
+    fireEvent(
+      screen.getByTestId('sv-slider-thumb-r-1'),
+      'accessibilityAction',
+      {
+        nativeEvent: { actionName: 'decrement' },
+      }
+    );
+    expect(vals(question)).toEqual([21, 79]);
+  });
+
+  it('accessibilityAction respects read-only (value unchanged)', () => {
+    const question = makeSlider({ sliderType: 'range', readOnly: true });
+    act(() => {
+      question.value = [20, 80];
+    });
+    renderSlider(question);
+    fireEvent(
+      screen.getByTestId('sv-slider-thumb-r-0'),
+      'accessibilityAction',
+      {
+        nativeEvent: { actionName: 'increment' },
+      }
+    );
+    expect(vals(question)).toEqual([20, 80]);
+  });
+
+  // Finding 2 — allowSwap defaults to true in core; per handleOnChange the
+  // min-range border (crossing block) is only enforced when !allowSwap, and
+  // handlePointerUp reorders (sorts) the value array so a crossing thumb swaps.
+  it('allowSwap:true (default) lets a thumb cross its neighbor — the value array reorders', () => {
+    const question = makeSlider({ sliderType: 'range' }, 'sw');
+    act(() => {
+      question.value = [79, 80];
+    });
+    renderSlider(question);
+    // First increment: low thumb meets the high thumb (permitted with swap).
+    fireEvent.press(screen.getByTestId('sv-slider-thumb-inc-sw-0'));
+    expect(vals(question)).toEqual([80, 80]);
+    // Second increment: it crosses past — the array reorders (swap).
+    fireEvent.press(screen.getByTestId('sv-slider-thumb-inc-sw-0'));
+    expect(vals(question)).toEqual([80, 81]);
+  });
+
+  it('allowSwap:false keeps the clamp (thumbs cannot meet or cross)', () => {
+    const question = makeSlider(
+      { sliderType: 'range', allowSwap: false },
+      'ns'
+    );
+    act(() => {
+      question.value = [79, 80];
+    });
+    renderSlider(question);
+    fireEvent.press(screen.getByTestId('sv-slider-thumb-inc-ns-0'));
+    expect(vals(question)).toEqual([79, 80]);
+  });
+
+  // Finding 3 — single-mode tooltip must track the DRAFT during drag, not the
+  // last committed value (getTooltipValue reads renderedValue).
+  it('single-mode tooltip text follows the draft during drag', () => {
+    const question = makeSlider({ min: 0, max: 100, step: 1 });
+    renderSlider(question);
+    fireEvent(screen.getByTestId('sv-slider-input-r'), 'valueChange', 42);
+    const tooltip = screen.getByTestId('sv-slider-tooltip-r-0');
+    expect(within(tooltip).getByText('42')).toBeTruthy();
+  });
+
+  // Finding 4 — single-mode tooltip bubble centers over the thumb.
+  it('single-mode tooltip is horizontally centered over the thumb (translateX -50%)', () => {
+    const question = makeSlider();
+    renderSlider(question);
+    fireEvent(screen.getByTestId('sv-slider-input-r'), 'valueChange', 42);
+    const tooltip = screen.getByTestId('sv-slider-tooltip-r-0');
+    const flat = StyleSheet.flatten(tooltip.props.style);
+    expect(flat.transform).toEqual([{ translateX: '-50%' }]);
   });
 });
 
