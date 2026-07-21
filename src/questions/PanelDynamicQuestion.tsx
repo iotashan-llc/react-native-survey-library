@@ -188,6 +188,9 @@ class PanelDynamicItem extends SurveyElementBase<PanelDynamicItemProps> {
           <Pressable
             testID={`paneldynamic-toggle-${panelId}`}
             accessibilityRole="button"
+            accessibilityLabel={
+              (view as { title?: string }).title || 'Toggle panel'
+            }
             accessibilityState={{ expanded: view.renderedIsExpanded }}
             onPress={() => view.toggleState()}
             style={localStyles.toggle}
@@ -372,20 +375,32 @@ export class PanelDynamicQuestion extends QuestionElementBase<QuestionElementBas
             <Pressable
               testID="paneldynamic-prev"
               accessibilityRole="button"
+              accessibilityLabel={
+                (question as { panelPrevText?: string }).panelPrevText ||
+                'Previous panel'
+              }
               onPress={() => question.goToPrevPanel()}
               style={localStyles.navButton}
             >
-              <Text>‹</Text>
+              <Text accessibilityElementsHidden importantForAccessibility="no">
+                ‹
+              </Text>
             </Pressable>
           ) : null}
           {question.isNextButtonShowing ? (
             <Pressable
               testID="paneldynamic-next"
               accessibilityRole="button"
+              accessibilityLabel={
+                (question as { panelNextText?: string }).panelNextText ||
+                'Next panel'
+              }
               onPress={() => question.goToNextPanel()}
               style={localStyles.navButton}
             >
-              <Text>›</Text>
+              <Text accessibilityElementsHidden importantForAccessibility="no">
+                ›
+              </Text>
             </Pressable>
           ) : null}
         </View>

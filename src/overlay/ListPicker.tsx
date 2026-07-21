@@ -369,9 +369,17 @@ export class ListPicker extends SurveyElementBase<ListPickerProps> {
               <Pressable
                 testID="sv-list-filter-clear"
                 accessibilityRole="button"
+                accessibilityLabel="Clear"
+                hitSlop={12}
                 onPress={this.handleClear}
               >
-                <Text style={recipe.fragments.searchClear}>✕</Text>
+                <Text
+                  style={recipe.fragments.searchClear}
+                  accessibilityElementsHidden
+                  importantForAccessibility="no"
+                >
+                  ✕
+                </Text>
               </Pressable>
             ) : null}
           </View>

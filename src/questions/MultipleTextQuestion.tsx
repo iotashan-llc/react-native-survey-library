@@ -62,6 +62,7 @@ export class MultipleTextQuestion extends QuestionElementBase<QuestionElementBas
       <Text
         key={`err-${index}`}
         accessibilityRole="alert"
+        accessibilityLiveRegion="assertive"
         testID={`sv-multipletext-error-${editor.name}-${index}`}
       >
         {SurveyElementBase.renderLocString(

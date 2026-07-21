@@ -79,6 +79,10 @@ export class QuestionErrors extends SurveyElementBase<
       <View
         testID={`${question.name}-errors-${position}`}
         accessibilityRole="alert"
+        // Announce validation errors on Android/TalkBack (iOS honors role
+        // alert; Android needs an explicit live region). Errors are
+        // assertive by nature (vs the notifier toast's polite).
+        accessibilityLiveRegion="assertive"
         style={composeStyles(panelFragments, {
           override: chromeOverrides?.errorPanel,
         })}

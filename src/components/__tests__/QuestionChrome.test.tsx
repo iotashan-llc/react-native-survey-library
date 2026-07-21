@@ -249,6 +249,9 @@ describe('QuestionChrome', () => {
       render(<QuestionChrome question={question} />);
       const input = screen.getByTestId('q-comment-comment');
       expect(input.props.value).toBe('existing note');
+      // The comment field must carry an accessible name (its visible label
+      // is a separate Text, not associated) — a11y label association.
+      expect(input.props.accessibilityLabel).toBeTruthy();
     });
 
     it('commits the typed comment to question.comment onBlur, not on every keystroke', () => {

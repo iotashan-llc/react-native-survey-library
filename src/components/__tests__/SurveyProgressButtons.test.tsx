@@ -72,6 +72,19 @@ describe('SurveyProgressButtons — step items', () => {
     expect(within(step2).getByText('Page Three')).toBeTruthy();
   });
 
+  it('names every step even in the default config with no titles/numbers (a11y-high)', () => {
+    // progressBarType 'pages' with neither titles nor numbers renders an
+    // empty circle — without an accessibilityLabel the button is unnamed.
+    const model = threePageModel({
+      progressBarShowPageTitles: false,
+      progressBarShowPageNumbers: false,
+    });
+    render(<SurveyProgressButtons survey={model} />);
+    const step0 = screen.getByTestId('survey-progress-step-0');
+    expect(step0.props.accessibilityLabel).toBeTruthy();
+    expect(step0.props.accessibilityLabel).toBe('Page One');
+  });
+
   it('renders the nav title through the loc-string seam (markdown/html → sanitized, not literal tags)', () => {
     // Regression (5.7c review #1): the step title must route through
     // renderLocString like every sibling title renderer, so an html
