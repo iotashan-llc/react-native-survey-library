@@ -17,6 +17,7 @@ import {
 } from '@testing-library/react-native';
 import { Model } from '../../core/facade';
 import { SurveyProgressButtons } from '../SurveyProgressButtons';
+import { SanitizedHtml } from '../SanitizedHtml';
 
 function threePageModel(extra: Record<string, unknown> = {}): Model {
   return new Model({
@@ -69,6 +70,23 @@ describe('SurveyProgressButtons — step items', () => {
     expect(within(step0).getByText('Page One')).toBeTruthy();
     const step2 = screen.getByTestId('survey-progress-step-2');
     expect(within(step2).getByText('Page Three')).toBeTruthy();
+  });
+
+  it('renders the nav title through the loc-string seam (markdown/html → sanitized, not literal tags)', () => {
+    // Regression (5.7c review #1): the step title must route through
+    // renderLocString like every sibling title renderer, so an html
+    // navigationTitle renders sanitized rather than as literal markup.
+    const model = threePageModel();
+    model.onTextMarkdown.add((_sender, options) => {
+      options.html = options.text.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+    });
+    model.pages[0]!.navigationTitle = '**Bold** step';
+    render(<SurveyProgressButtons survey={model} />);
+    const step0 = screen.getByTestId('survey-progress-step-0');
+    // The plain-Text path would show the literal '**Bold** step'; the seam
+    // routes hasHtml through <SanitizedHtml> and shows no raw asterisks.
+    expect(within(step0).queryByText('**Bold** step')).toBeNull();
+    expect(within(step0).UNSAFE_queryByType(SanitizedHtml)).toBeTruthy();
   });
 
   it('renders null when showProgressBar is false', () => {

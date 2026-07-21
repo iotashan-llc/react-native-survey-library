@@ -180,15 +180,21 @@ export class SurveyProgressButtons extends SurveyElementBase<SurveyProgressButto
             {number}
           </Text>
         </View>
-        {showTitles ? (
-          <Text
-            testID={`survey-progress-step-title-${index}`}
-            numberOfLines={1}
-            style={composeStyles(f.title, { override: overrides?.title })}
-          >
-            {page.renderedNavigationTitle}
-          </Text>
-        ) : null}
+        {showTitles
+          ? // Route the nav title through the loc-string seam (web parity:
+            // progressButtons.tsx uses SurveyElementBase.renderLocString on
+            // page.locNavigationTitle) so a markdown/html navigationTitle
+            // renders sanitized (invariant 8) rather than as literal tags,
+            // and collapseHardLineBreaks applies — matching every sibling
+            // title renderer. Deviation: the seam's <Text> has no
+            // numberOfLines clamp (web truncates via CSS on an outer
+            // container, not the string seam).
+            this.renderLocString(
+              page.locNavigationTitle,
+              composeStyles(f.title, { override: overrides?.title }),
+              `step-title-${index}`
+            )
+          : null}
       </Pressable>
     );
   }

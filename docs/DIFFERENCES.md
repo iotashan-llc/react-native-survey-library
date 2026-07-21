@@ -2332,6 +2332,22 @@ mapped to the recipe variant — never re-derived (invariant 6). The
 recipe formula-first, and `$shadow-medium` is approximated with a constant
 elevation/shadow (the shadow-token mapper is question-recipe scoped).
 
+**Coupling caveat:** the variant is chosen by substring-matching `_error`
+/ `_success` in the model's `css` string, whereas web applies `css`
+verbatim as a className (token-name agnostic). A consumer who renamed the
+`css.saveData` class names would silently fall back to the info variant.
+This is inert for theme-token consumers (who never rename css classes) —
+no default-usage bug — but is a genuine web-vs-RN divergence.
+
+**Action-visibility reactivity:** the component's reactive state element
+is `survey.notifier` only; the notifier's `ActionBar`/`Action` models are
+not independently subscribed. `waitUserAction` action visibility re-renders
+because core flips it (`updateActionsVisibility`) inside `notify()` in the
+same tick it writes the subscribed `message`/`active`/`css` props — core's
+only call site, so it is correct today. A hypothetical future path that
+toggled action visibility without touching a notifier property would not
+re-render until the next notifier change.
+
 ### `waitUserAction` actions and placement
 
 `survey.notify(message, type, /* showActions */ true)` takes the model's

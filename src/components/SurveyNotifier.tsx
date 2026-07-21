@@ -72,9 +72,24 @@ export class SurveyNotifier extends SurveyElementBase<SurveyNotifierProps> {
     const recipe = recipes.notifier;
     const overrides = styles.notifier;
     const css = notifier.css ?? '';
+    // Variant from the model's css string (Notifier.getCssClass →
+    // `sv-save-data_{info,error,success}`). Divergence from web (review
+    // #2): web applies `notifier.css` verbatim as a className, so it is
+    // token-name agnostic; here we substring-match `_error`/`_success`.
+    // A consumer who renamed those css.saveData class names (never done by
+    // a theme-token consumer — no default-usage bug) would silently fall
+    // back to the info variant. See DIFFERENCES.md §Notifier.
     const isError = css.includes('_error');
     const isSuccess = css.includes('_success');
     const emphasis = isError || isSuccess;
+    // Reactivity note (review #3): the state element is `survey.notifier`
+    // only — the ActionBar/Action models are NOT subscribed. Action
+    // visibility flips (updateActionsVisibility) re-render solely because
+    // core calls them inside `notify()`, in the same tick it also writes
+    // the subscribed `message`/`active`/`css` props. That co-mutation is
+    // core's only call site, so this is correct today; a future core path
+    // that flipped action visibility WITHOUT touching a notifier property
+    // would need this component to also subscribe the actions.
     const visibleActions = notifier.actionBar.getVisibleActions() as Action[];
     const hasButtons = visibleActions.length > 0;
 
