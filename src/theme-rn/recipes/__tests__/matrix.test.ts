@@ -52,6 +52,27 @@ describe('matrix recipe — build shape', () => {
     expect(f.borderEndWidth).toBeGreaterThan(0);
     expect(typeof f.borderColor).toBe('string');
   });
+
+  it('exposes the 3.3b detail-toggle fragment + icon metrics (formula-first, token colors)', () => {
+    // The detail-toggle cell (3.3b) centers the expand/collapse RNIcon
+    // inside the intrinsic actions column with a real hit target.
+    const f = flat(recipe.fragments.detailToggle);
+    expect(f.alignItems).toBe('center');
+    expect(f.justifyContent).toBe('center');
+    expect(f.minHeight as number).toBeGreaterThan(0);
+    // 3.3b polish: a square visual target — minWidth rides the same
+    // calcSize(4) formula as minHeight so the visual box grows where the
+    // intrinsic actions column allows (hitSlop on the Pressable bridges
+    // the rest to the 44pt/48dp platform minimums).
+    expect(f.minWidth as number).toBeGreaterThan(0);
+    expect(f.minWidth).toBe(f.minHeight);
+    // Icon metrics ride the recipe (never component literals): the 16dp
+    // glyph family (expanddetails-16x16 / collapsedetails-16x16) sized
+    // from the base unit, tinted with the general forecolor token.
+    expect(recipe.detailIconSize).toBeGreaterThan(0);
+    expect(typeof recipe.detailIconColor).toBe('string');
+    expect(recipe.detailIconColor.length).toBeGreaterThan(0);
+  });
 });
 
 describe('matrix recipe — wired into the aggregate Recipes', () => {

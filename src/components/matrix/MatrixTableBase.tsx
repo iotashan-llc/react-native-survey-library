@@ -46,17 +46,20 @@
  * select-base APIs (`isItemSelected`/`clickItemHandler`).
  */
 import * as React from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import type { ViewStyle } from 'react-native';
 import { settings } from '../../core/facade';
 import type {
   Base,
   ItemValue,
+  MatrixDropdownRowModelBase,
+  PanelModel,
   Question,
   QuestionMatrixDropdownModelBase,
   QuestionMatrixDropdownRenderedCell,
   QuestionMatrixDropdownRenderedRow,
   QuestionMatrixDropdownRenderedTable,
+  SurveyModel,
 } from '../../core/facade';
 import { QuestionElementBase } from '../../reactivity/QuestionElementBase';
 import type { QuestionElementBaseProps } from '../../reactivity/QuestionElementBase';
@@ -69,6 +72,8 @@ import { QuestionErrors } from '../QuestionErrors';
 import { ChoiceItemRow } from '../ChoiceItemRow';
 import type { ChoiceItemRowProps } from '../ChoiceItemRow';
 import { OtherCommentDraftAdapter } from '../../inputs/OtherCommentDraftAdapter';
+import { RNIcon } from '../RNIcon';
+import { SurveyPanel } from '../composition/SurveyPanel';
 import {
   reportLayoutDiagnosticOnce,
   reportMatrixNullCellOnce,
@@ -290,6 +295,140 @@ export class MatrixQuestionCell extends SurveyElementBase<MatrixQuestionCellProp
   }
 }
 
+interface MatrixDetailToggleCellProps {
+  cell: QuestionMatrixDropdownRenderedCell;
+  matrix: QuestionMatrixDropdownModelBase;
+  testID: string;
+}
+
+/**
+ * 3.3b polish: the toggle's worst-case content box is the 16dp glyph wide
+ * x the recipe's 32dp `minHeight` tall — under the 44pt (iOS) / 48dp
+ * (Android) platform touch minimums. This slop bridges both axes to a
+ * >=44dp effective target (16+14+14 / 32+6+6); the recipe's square
+ * `minWidth`/`minHeight` grows the visual box where the intrinsic actions
+ * column allows. The toggle is the only interactive element in its
+ * column, so the slop cannot collide with a neighboring target.
+ */
+const DETAIL_TOGGLE_HIT_SLOP = {
+  top: 6,
+  bottom: 6,
+  left: 14,
+  right: 14,
+} as const;
+
+/**
+ * The detail-toggle action cell (3.3b, §3c) — the RN analog of web's
+ * `sv-matrix-detail-button`: press calls the row model's
+ * `showHideDetailPanelClick()` (core owns the toggle, including the
+ * `underRowSingle` collapse-others rule); the icon + a11y expanded state
+ * read `row.isDetailPanelShowing` at render. Expand/collapse re-render
+ * rides the design-named row callback: `row.onDetailPanelShowingChanged`
+ * is a SINGLE-ASSIGNMENT field on the source row (core fires it from
+ * `setIsDetailPanelShowing`, question_matrixdropdownbase.ts:398-400) —
+ * attached with the same one-stable-bound-handler + clear-only-if-still-
+ * ours discipline as the OUTER's `onRenderedTableResetCallback`. The icon
+ * id comes from core's own `getDetailPanelIconId` (`icon-expanddetail` /
+ * `icon-collapsedetail`, resolved through `renamedIcons` to the bundled
+ * `expanddetails-16x16`/`collapsedetails-16x16` glyphs).
+ */
+export class MatrixDetailToggleCell extends SurveyElementBase<MatrixDetailToggleCellProps> {
+  private boundRow: MatrixDropdownRowModelBase | null = null;
+  private readonly handleShowingChanged = (): void => {
+    this.setState((state) => ({ __svRev: (state.__svRev ?? 0) + 1 }));
+  };
+
+  private get row(): MatrixDropdownRowModelBase {
+    return this.props.cell.row as unknown as MatrixDropdownRowModelBase;
+  }
+
+  protected getStateElement(): Base | null {
+    return null;
+  }
+
+  private attach(): void {
+    this.row.onDetailPanelShowingChanged = this.handleShowingChanged;
+    this.boundRow = this.row;
+  }
+
+  /** Guarded clear: only null a field still pointing at OUR handler (a
+   * reset-swap may mount the replacement toggle before this unmounts). */
+  private detach(): void {
+    if (
+      this.boundRow &&
+      this.boundRow.onDetailPanelShowingChanged === this.handleShowingChanged
+    ) {
+      this.boundRow.onDetailPanelShowingChanged = undefined as never;
+    }
+    this.boundRow = null;
+  }
+
+  componentDidMount(): void {
+    super.componentDidMount();
+    this.attach();
+  }
+
+  componentDidUpdate(): void {
+    super.componentDidUpdate();
+    if (this.boundRow !== this.row) {
+      this.detach();
+      this.attach();
+    }
+  }
+
+  componentWillUnmount(): void {
+    this.detach();
+    super.componentWillUnmount();
+  }
+
+  protected renderElement(): React.JSX.Element {
+    const { matrix, testID } = this.props;
+    const row = this.row;
+    const expanded = row.isDetailPanelShowing;
+    const matrixRecipe = this.themeContext.recipes.matrix;
+    return (
+      <Pressable
+        testID={testID}
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+        accessibilityLabel={matrix.getLocalizationString(
+          expanded ? 'hideDetails' : 'showDetails'
+        )}
+        onPress={() => row.showHideDetailPanelClick()}
+        hitSlop={DETAIL_TOGGLE_HIT_SLOP}
+        style={matrixRecipe.fragments.detailToggle}
+      >
+        <RNIcon
+          iconName={matrix.getDetailPanelIconId(row)}
+          size={matrixRecipe.detailIconSize}
+          fill={matrixRecipe.detailIconColor}
+        />
+      </Pressable>
+    );
+  }
+}
+
+/** Structural read of an actions cell's `ActionContainer` (`cell.item.value`)
+ * for the ONE action kind 3.3b supports: the core-built detail toggle
+ * (`show-detail` wide / `show-detail-mobile`,
+ * question_matrixdropdownrendered.ts:800-825). Custom row actions remain
+ * v1-unsupported no-ops (DIFFERENCES). */
+function hasDetailToggleAction(
+  cell: QuestionMatrixDropdownRenderedCell
+): boolean {
+  const container = (
+    cell.item as unknown as {
+      value?: { actions?: Array<{ id?: string }> };
+    }
+  )?.value;
+  const actions = container?.actions;
+  if (!Array.isArray(actions)) return false;
+  return actions.some(
+    (action) =>
+      action?.id === 'show-detail' || action?.id === 'show-detail-mobile'
+  );
+}
+
 /** §2b cell-kind precedence — ALL no-question structural cells FIRST. */
 type WalkedCellKind =
   'drag' | 'empty' | 'actions' | 'question' | 'other' | 'choice' | 'title';
@@ -358,7 +497,12 @@ function hasNullCells(row: QuestionMatrixDropdownRenderedRow): boolean {
 
 /** Row keys per the §4 keying table (stable across renderedTable resets). */
 function rowKeyFor(row: QuestionMatrixDropdownRenderedRow): string {
-  if (row.row) return `row:${row.row.id}`;
+  if (row.row) {
+    // A detail rendered row carries the SAME source row as its data row
+    // (createDetailPanelRow sets `res.row = row`) — the §4 keying table's
+    // `parentDataRow.row.id + ':detail'` disambiguates the siblings.
+    return row.isDetailRow ? `row:${row.row.id}:detail` : `row:${row.row.id}`;
+  }
   // Transposed / vertical rendered row (NO source row): key off the
   // COLUMN identity it represents (stable `column.name`), never the
   // regenerating `renderedRow.uniqueId`; exploded vertical rows append
@@ -581,10 +725,23 @@ export class MatrixTable extends SurveyElementBase<
         render = () => SurveyElementBase.renderLocString(cell.locTitle);
         break;
       case 'actions':
-        // 3.3a: every row action (detail toggles included) is a
-        // v1-unsupported no-op — an inert placeholder keeps the column
-        // aligned without building an action bar (detail panels are 3.3b).
-        render = () => <View testID={`matrix-actions-${rowKey}-${slot}`} />;
+        // 3.3b: the core-built detail toggle is REAL (§3c); every OTHER
+        // row action remains a v1-unsupported no-op — an inert placeholder
+        // keeps the column aligned without building an action bar.
+        if (hasDetailToggleAction(cell)) {
+          const rowName = String(
+            (cell.row as unknown as { rowName?: unknown })?.rowName ?? rowKey
+          );
+          render = () => (
+            <MatrixDetailToggleCell
+              cell={cell}
+              matrix={question}
+              testID={`matrix-detail-toggle-${rowName}`}
+            />
+          );
+        } else {
+          render = () => <View testID={`matrix-actions-${rowKey}-${slot}`} />;
+        }
         break;
       default:
         render = () => null;
@@ -640,21 +797,59 @@ export class MatrixTable extends SurveyElementBase<
     });
   }
 
+  /**
+   * A detail rendered row (3.3b, §3c) → a FULL-WIDTH `'detail'` grid row
+   * (the approved §3g divergence): core's leading buttonCell / trailing
+   * actions slots are dropped and the row's REAL detail `PanelModel`
+   * (`cell.panel === row.detailPanel`) renders edge-to-edge through the
+   * existing SurveyPanel/SurveyRow composition (the paneldynamic
+   * precedent) — nested questions dispatch through the factory with FULL
+   * chrome (the chrome-less rule applies to CELLS, not detail content).
+   */
+  private buildDetailGridRow(
+    renderedRow: QuestionMatrixDropdownRenderedRow,
+    rowKey: string
+  ): GridRow {
+    const { question, creator } = this.props;
+    const survey = question.survey as unknown as SurveyModel;
+    const cells: GridCell[] = [];
+    for (const cell of renderedRow.cells) {
+      if (!cell || !cell.hasPanel) continue;
+      const panel = cell.panel as PanelModel;
+      cells.push({
+        key: `${rowKey}:panel`,
+        kind: 'panel' as const,
+        render: () => (
+          <SurveyPanel survey={survey} creator={creator} element={panel} />
+        ),
+      });
+    }
+    return {
+      key: rowKey,
+      kind: 'detail' as const,
+      cells,
+      getStateElement: (): Base => renderedRow as unknown as Base,
+    };
+  }
+
   /** Walk the held renderedTable into the raw GridContract (§3a). */
   private buildContract(
     table: QuestionMatrixDropdownRenderedTable
   ): GridContract {
     const question = this.props.question;
-    // §2a: skip core's rendered error rows entirely; detail rows are 3.3b
-    // (deferred — their toggle actions are no-ops this phase).
-    const dataRows = table.renderedRows.filter(
-      (row) => !row.isErrorsRow && !row.isDetailRow
-    );
+    // §2a: skip core's rendered error rows entirely. Detail rows RENDER
+    // (3.3b) but are excluded from the column-template derivation — their
+    // cells are span/panel slots, not per-column templates.
+    const bodyRows = table.renderedRows.filter((row) => !row.isErrorsRow);
+    const dataRows = bodyRows.filter((row) => !row.isDetailRow);
     const columns = this.buildColumns(table, dataRows);
 
-    const rows: GridRow[] = dataRows.map((renderedRow) => {
+    const rows: GridRow[] = bodyRows.map((renderedRow) => {
       if (hasNullCells(renderedRow)) this.nullCellsSeen = true;
       const rowKey = rowKeyFor(renderedRow);
+      if (renderedRow.isDetailRow) {
+        return this.buildDetailGridRow(renderedRow, rowKey);
+      }
       return {
         key: rowKey,
         kind: 'data' as const,
