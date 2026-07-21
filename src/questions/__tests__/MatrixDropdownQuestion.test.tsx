@@ -713,6 +713,23 @@ describe('matrixdropdown — detail panels (3.3b §3c): toggle cells expand a fu
     expect(expandedToggle.props.accessibilityLabel).toBe('Hide Details');
   });
 
+  it('detail toggle carries hitSlop bridging its icon-sized box to a ≥44dp effective target', async () => {
+    const { question } = createDetailMatrix();
+    await renderMatrixDropdown(question);
+
+    // Worst-case content box is the 16dp glyph wide x 32dp minHeight tall;
+    // slop bridges both axes to >=44 (16+14+14 / 32+6+6). The toggle is the
+    // only interactive element in its column, so the slop cannot collide
+    // with a neighboring target.
+    const toggle = screen.getByTestId('matrix-detail-toggle-r1');
+    expect(toggle.props.hitSlop).toEqual({
+      top: 6,
+      bottom: 6,
+      left: 14,
+      right: 14,
+    });
+  });
+
   it('detail-panel questions commit through the normal draft adapters into the row value slot', async () => {
     const { question } = createDetailMatrix();
     await renderMatrixDropdown(question);

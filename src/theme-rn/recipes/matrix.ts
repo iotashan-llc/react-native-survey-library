@@ -169,9 +169,12 @@ export function buildMatrixRecipe(
     detailToggle: {
       alignItems: 'center',
       justifyContent: 'center',
-      // calcSize(4) = 32dp minimum hit target inside the intrinsic
-      // actions column (same target the tile/rubric fragments use).
+      // calcSize(4) = 32dp minimum SQUARE visual target inside the
+      // intrinsic actions column (same target the tile/rubric fragments
+      // use). The Pressable's hitSlop bridges the remainder to the
+      // 44pt/48dp platform touch minimums.
       minHeight: calcSize(resolved, 4),
+      minWidth: calcSize(resolved, 4),
     },
     cellText: {
       fontFamily: baseFamily,

@@ -1288,14 +1288,25 @@ and the mobile `show-detail-mobile` id route to the same core toggle), the
 icon flips between core's own `getDetailPanelIconId` glyphs
 (`expanddetails-16x16`/`collapsedetails-16x16`), and the button exposes
 `accessibilityRole: "button"` with an `{ expanded }` a11y state and core's
-localized Show/Hide Details label. Web's `aria-controls` panel-id wiring
-has no RN analog and is not carried.
+localized Show/Hide Details label. One presentation divergence: web's
+mobile `show-detail-mobile` is a **titled text button** (`showTitle: true`
+— the localized Show/Hide Details string is the visible button label);
+RN renders the same icon-only button on every width and carries that
+string as the `accessibilityLabel` instead. Web's `aria-controls`
+panel-id wiring has no RN analog and is not carried.
 
 An expanded row's detail rendered row is emitted as a **full-width band**
 spanning the whole grid content width — an approved divergence from web,
 which keeps a leading row-header slot (`colSpans: 2` with row text) and an
 optional trailing actions slot around the panel cell (`createDetailPanelRow`).
-The RN band drops those empty slots entirely and renders the row's real
+The leading slot is empty chrome on every width (`buttonCell.isEmpty`);
+the trailing actions slot is empty in web's wide mode but **populated** in
+web's mobile mode, where `show-detail-mobile` co-locates with `remove-row`
+in the shared end-actions container. The RN band drops both flanking slots
+— pure chrome removal in the wide layout, but on mobile this also omits
+that populated trailing actions slot from the detail row (the same actions
+stay reachable from the data row's own actions cell, subject to the 3.4
+per-action-rendering item below) — and renders the row's real
 `row.detailPanel` `PanelModel` edge-to-edge through the same
 SurveyPanel/SurveyRow composition paneldynamic uses, so nested questions
 dispatch through the factory **with full question chrome** (title/
@@ -1310,7 +1321,12 @@ panel persist across collapse/expand (they live in the row value, e.g.
 
 Custom row actions (`onGetMatrixRowActions`) and action overflow-to-popup
 remain v1 unsupported: an actions cell without a detail toggle renders as
-an inert, aligned placeholder (no `AdaptiveActionContainer`). An
-unsupported `cellType` (e.g. `file` before M5) degrades to the
-non-throwing fallback panel **in that one cell** with a structured
-diagnostic — the rest of the matrix keeps working.
+an inert, aligned placeholder (no `AdaptiveActionContainer`). **Tracked
+3.4 obligation — per-action rendering in shared actions cells:** today an
+actions cell containing a detail toggle renders ONLY the toggle, so
+actions that co-locate with it in the same container (e.g. mobile
+`show-detail-mobile` + matrixdynamic `remove-row`) are not each rendered;
+3.4 must walk the cell's `ActionContainer` and render every supported
+action side by side. An unsupported `cellType` (e.g. `file` before M5)
+degrades to the non-throwing fallback panel **in that one cell** with a
+structured diagnostic — the rest of the matrix keeps working.

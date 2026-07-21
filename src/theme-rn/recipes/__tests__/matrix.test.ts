@@ -60,6 +60,12 @@ describe('matrix recipe — build shape', () => {
     expect(f.alignItems).toBe('center');
     expect(f.justifyContent).toBe('center');
     expect(f.minHeight as number).toBeGreaterThan(0);
+    // 3.3b polish: a square visual target — minWidth rides the same
+    // calcSize(4) formula as minHeight so the visual box grows where the
+    // intrinsic actions column allows (hitSlop on the Pressable bridges
+    // the rest to the 44pt/48dp platform minimums).
+    expect(f.minWidth as number).toBeGreaterThan(0);
+    expect(f.minWidth).toBe(f.minHeight);
     // Icon metrics ride the recipe (never component literals): the 16dp
     // glyph family (expanddetails-16x16 / collapsedetails-16x16) sized
     // from the base unit, tinted with the general forecolor token.

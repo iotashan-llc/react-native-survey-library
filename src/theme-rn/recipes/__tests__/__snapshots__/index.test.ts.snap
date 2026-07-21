@@ -461,6 +461,7 @@ exports[`curated recipe golden snapshots ContrastLight: recipes build to a stabl
         "alignItems": "center",
         "justifyContent": "center",
         "minHeight": 32,
+        "minWidth": 32,
       },
       "footerCell": {
         "backgroundColor": "rgba(255, 216, 77, 1)",
@@ -1571,6 +1572,7 @@ exports[`curated recipe golden snapshots DefaultLight: recipes build to a stable
         "alignItems": "center",
         "justifyContent": "center",
         "minHeight": 32,
+        "minWidth": 32,
       },
       "footerCell": {
         "backgroundColor": "rgba(243, 243, 243, 1)",
@@ -2745,6 +2747,7 @@ exports[`curated recipe golden snapshots LayeredDark: recipes build to a stable 
         "alignItems": "center",
         "justifyContent": "center",
         "minHeight": 32,
+        "minWidth": 32,
       },
       "footerCell": {
         "backgroundColor": "rgba(30, 31, 40, 1)",
@@ -3951,6 +3954,7 @@ exports[`curated recipe golden snapshots SharpDark: recipes build to a stable sn
         "alignItems": "center",
         "justifyContent": "center",
         "minHeight": 32,
+        "minWidth": 32,
       },
       "footerCell": {
         "backgroundColor": "rgba(27, 27, 27, 1)",
@@ -5109,6 +5113,7 @@ exports[`curated recipe golden snapshots ThreeDimensionalLight: recipes build to
         "alignItems": "center",
         "justifyContent": "center",
         "minHeight": 32,
+        "minWidth": 32,
       },
       "footerCell": {
         "backgroundColor": "rgba(255, 255, 255, 1)",

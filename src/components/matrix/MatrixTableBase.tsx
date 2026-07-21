@@ -302,6 +302,22 @@ interface MatrixDetailToggleCellProps {
 }
 
 /**
+ * 3.3b polish: the toggle's worst-case content box is the 16dp glyph wide
+ * x the recipe's 32dp `minHeight` tall — under the 44pt (iOS) / 48dp
+ * (Android) platform touch minimums. This slop bridges both axes to a
+ * >=44dp effective target (16+14+14 / 32+6+6); the recipe's square
+ * `minWidth`/`minHeight` grows the visual box where the intrinsic actions
+ * column allows. The toggle is the only interactive element in its
+ * column, so the slop cannot collide with a neighboring target.
+ */
+const DETAIL_TOGGLE_HIT_SLOP = {
+  top: 6,
+  bottom: 6,
+  left: 14,
+  right: 14,
+} as const;
+
+/**
  * The detail-toggle action cell (3.3b, §3c) — the RN analog of web's
  * `sv-matrix-detail-button`: press calls the row model's
  * `showHideDetailPanelClick()` (core owns the toggle, including the
@@ -379,6 +395,7 @@ export class MatrixDetailToggleCell extends SurveyElementBase<MatrixDetailToggle
           expanded ? 'hideDetails' : 'showDetails'
         )}
         onPress={() => row.showHideDetailPanelClick()}
+        hitSlop={DETAIL_TOGGLE_HIT_SLOP}
         style={matrixRecipe.fragments.detailToggle}
       >
         <RNIcon
