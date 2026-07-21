@@ -107,6 +107,14 @@ Every type below renders natively from the same SurveyModel JSON you'd run on we
 
 See [docs/DIFFERENCES.md](docs/DIFFERENCES.md) for every observable divergence from `survey-react-ui`, each with its rationale and workaround.
 
+## Documentation
+
+- [API reference](docs/API.md) — the `<Survey>` component, props, events, security config, diagnostics, and every public export.
+- [Theming guide](docs/THEMING.md) — applying survey-core themes and overriding component styles.
+- [Custom questions](docs/CUSTOM-QUESTIONS.md) — ComponentCollection custom/composite + the low-level factories.
+- [Compatibility & version policy](docs/COMPATIBILITY.md) — the `survey-core` band, peer-dependency bands, and the platform target.
+- [Differences from `survey-react-ui`](docs/DIFFERENCES.md) — every deliberate behavioral divergence, with rationale.
+
 ## Example app
 
 ```sh
