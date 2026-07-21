@@ -47,6 +47,41 @@ export interface HeaderRecipe {
     /** `.sd-logo__image`. */
     logoImage: ImageStyle;
   };
+  /**
+   * Advanced header / cover (task 5.6) — RN port of `.sv-header`
+   * (default-theme/blocks/header.scss) + the `Cover`/`CoverCell` model
+   * (survey-core/header.ts). Fixed metrics from the GRID rule set
+   * (`.sv-header__content`), not the `.sv-header--mobile` stack: RN
+   * renders the 3x3 positioning grid on every device (documented delta —
+   * the mobile stacked variant is not ported; the grid subsumes it).
+   */
+  cover: {
+    /** `.sv-header` container. backgroundColor/height/overlap are applied
+     * per-render from the model (dynamic) on top of this base. */
+    root: ViewStyle;
+    /** `.sv-header__content` — the 3x3 grid container (rows column). */
+    content: ViewStyle;
+    /** One grid row: `grid-template-columns: 1fr 1fr 1fr` + column-gap. */
+    row: ViewStyle;
+    /** A grid cell (`.sv-header__cell`); alignItems/justifyContent are
+     * applied per-render from `CoverCell.contentStyle`. */
+    cell: ViewStyle;
+    /** `.sv-header__title .sd-title` — cover title (header-title vars). */
+    title: TextStyle;
+    /** `.sv-header__description .sd-description` — cover description. */
+    description: TextStyle;
+  };
+  /** Resolved solid background color for the cover (accent → primary,
+   * custom → the hex; `undefined` when the header has no solid color, so
+   * the background stays transparent). From the theme-rn resolve pipeline
+   * — the only place `var(--sjs-primary-backcolor)` becomes a real color.
+   */
+  coverBackgroundColor: string | undefined;
+  /** `.sv-header__overlap` metrics (mobile tier — RN is the mobile
+   * context): the header's own bottom padding + the negative bottom
+   * margin that pulls the following body up onto the header. Applied only
+   * when `cover.overlapEnabled && cover.hasBackground`. */
+  coverOverlap: { paddingBottom: number; marginBottom: number };
 }
 
 /**
@@ -185,5 +220,96 @@ export function buildHeaderRecipe(
     },
   });
 
-  return { fragments };
+  // --- Advanced header / cover (task 5.6) --------------------------------
+  // header_title mixin (mixins.scss:199): var(--sjs-font-headertitle-size,
+  // calc(2 * fontsize)) — lineHeight multiply(1.25, size).
+  const coverTitleFontSize =
+    resolvePxVar(resolved, '--sjs-font-headertitle-size') ??
+    calcFontSize(resolved, 2);
+  // header_description mixin (mixins.scss:205): var(
+  // --sjs-font-headerdescription-size, 20px) — a LITERAL 20px default
+  // (not the base font size) — lineHeight multiply(1.5, size).
+  const coverDescriptionFontSize =
+    resolvePxVar(resolved, '--sjs-font-headerdescription-size') ?? 20;
+
+  const themeHeader = resolved.header;
+  const cover = StyleSheet.create({
+    root: {
+      // .sv-header { position: relative } — width spans the shell; overflow
+      // clips the (aspect-filled) background image to the cover bounds.
+      position: 'relative',
+      width: '100%',
+      overflow: 'hidden',
+    },
+    content: {
+      // .sv-header__content { padding: calcSize(5); row-gap:
+      // var(--lbr-cover-row-gap, calcSize(1.5)) }. The GRID (not the
+      // .sv-header--mobile calcSize(3) stack) — RN renders the grid.
+      // flexGrow so the rows fill a fixed-height cover (vertical
+      // justifyContent within each cell then has room to place content).
+      padding: calcSize(resolved, 5),
+      rowGap: calcSize(resolved, 1.5),
+      flexGrow: 1,
+    },
+    row: {
+      // grid-template-columns: 1fr 1fr 1fr + column-gap
+      // var(--lbr-cover-column-gap, calcSize(6)). Each row shares the
+      // content height equally (grid-template-rows: 1fr 1fr 1fr).
+      flexDirection: 'row',
+      columnGap: calcSize(resolved, 6),
+      flex: 1,
+    },
+    cell: {
+      // .sv-header__cell — one 1fr column. The cell is a column flexbox;
+      // alignItems (cross → horizontal) + justifyContent (main → vertical)
+      // come per-render from CoverCell.contentStyle. rowGap spaces a
+      // logo/title/description that share the SAME cell (default: title +
+      // description both bottom-left) — .sv-header__title~.sv-header__
+      // description { margin-top: calcSize(1) }.
+      flex: 1,
+      flexDirection: 'column',
+      rowGap: calcSize(resolved, 1),
+    },
+    title: {
+      fontSize: coverTitleFontSize,
+      lineHeight: 1.25 * coverTitleFontSize,
+      fontWeight: resolveWeightVar(
+        resolved,
+        '--sjs-font-headertitle-weight',
+        '700'
+      ),
+      fontFamily: resolveFamilyVar(resolved, '--sjs-font-headertitle-family'),
+      color: themeHeader.colors.resolved.titleColor.css,
+    },
+    description: {
+      fontSize: coverDescriptionFontSize,
+      lineHeight: 1.5 * coverDescriptionFontSize,
+      fontWeight: resolveWeightVar(
+        resolved,
+        '--sjs-font-headerdescription-weight',
+        '400'
+      ),
+      fontFamily: resolveFamilyVar(
+        resolved,
+        '--sjs-font-headerdescription-family'
+      ),
+      color: themeHeader.colors.resolved.descriptionColor.css,
+    },
+  });
+
+  const coverBackgroundColor =
+    themeHeader.backgroundKind === 'none'
+      ? undefined
+      : themeHeader.colors.resolved.backgroundColor.css;
+
+  // .sv-header__overlap (mobile tier — .sd-root-modern--mobile): the header
+  // pads calcSize(2) at the bottom and the following body pulls up
+  // calcSize(5); in RN a negative marginBottom on the cover pulls the next
+  // sibling up (the CSS sibling `~ .sv-body { margin-top }` analog).
+  const coverOverlap = {
+    paddingBottom: calcSize(resolved, 2),
+    marginBottom: -calcSize(resolved, 5),
+  };
+
+  return { fragments, cover, coverBackgroundColor, coverOverlap };
 }

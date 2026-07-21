@@ -127,6 +127,47 @@ exports[`curated recipe golden snapshots ContrastLight: recipes build to a stabl
     "select": [Function],
   },
   "header": {
+    "cover": {
+      "cell": {
+        "flex": 1,
+        "flexDirection": "column",
+        "rowGap": 8,
+      },
+      "content": {
+        "flexGrow": 1,
+        "padding": 40,
+        "rowGap": 12,
+      },
+      "description": {
+        "color": "rgba(0, 0, 0, 1)",
+        "fontFamily": undefined,
+        "fontSize": 20,
+        "fontWeight": "400",
+        "lineHeight": 30,
+      },
+      "root": {
+        "overflow": "hidden",
+        "position": "relative",
+        "width": "100%",
+      },
+      "row": {
+        "columnGap": 48,
+        "flex": 1,
+        "flexDirection": "row",
+      },
+      "title": {
+        "color": "rgba(0, 0, 0, 1)",
+        "fontFamily": undefined,
+        "fontSize": 32,
+        "fontWeight": "700",
+        "lineHeight": 40,
+      },
+    },
+    "coverBackgroundColor": undefined,
+    "coverOverlap": {
+      "marginBottom": -40,
+      "paddingBottom": 16,
+    },
     "fragments": {
       "description": {
         "color": "rgba(0, 0, 0, 1)",
@@ -1660,6 +1701,47 @@ exports[`curated recipe golden snapshots DefaultLight: recipes build to a stable
     "select": [Function],
   },
   "header": {
+    "cover": {
+      "cell": {
+        "flex": 1,
+        "flexDirection": "column",
+        "rowGap": 8,
+      },
+      "content": {
+        "flexGrow": 1,
+        "padding": 40,
+        "rowGap": 12,
+      },
+      "description": {
+        "color": "rgba(0, 0, 0, 0.45)",
+        "fontFamily": undefined,
+        "fontSize": 20,
+        "fontWeight": "400",
+        "lineHeight": 30,
+      },
+      "root": {
+        "overflow": "hidden",
+        "position": "relative",
+        "width": "100%",
+      },
+      "row": {
+        "columnGap": 48,
+        "flex": 1,
+        "flexDirection": "row",
+      },
+      "title": {
+        "color": "rgba(0, 0, 0, 0.91)",
+        "fontFamily": undefined,
+        "fontSize": 32,
+        "fontWeight": "700",
+        "lineHeight": 40,
+      },
+    },
+    "coverBackgroundColor": undefined,
+    "coverOverlap": {
+      "marginBottom": -40,
+      "paddingBottom": 16,
+    },
     "fragments": {
       "description": {
         "color": "rgba(0, 0, 0, 0.45)",
@@ -3193,6 +3275,47 @@ exports[`curated recipe golden snapshots LayeredDark: recipes build to a stable 
     "select": [Function],
   },
   "header": {
+    "cover": {
+      "cell": {
+        "flex": 1,
+        "flexDirection": "column",
+        "rowGap": 8,
+      },
+      "content": {
+        "flexGrow": 1,
+        "padding": 40,
+        "rowGap": 12,
+      },
+      "description": {
+        "color": "rgba(117, 119, 141, 1)",
+        "fontFamily": undefined,
+        "fontSize": 20,
+        "fontWeight": "400",
+        "lineHeight": 30,
+      },
+      "root": {
+        "overflow": "hidden",
+        "position": "relative",
+        "width": "100%",
+      },
+      "row": {
+        "columnGap": 48,
+        "flex": 1,
+        "flexDirection": "row",
+      },
+      "title": {
+        "color": "rgba(213, 215, 238, 1)",
+        "fontFamily": undefined,
+        "fontSize": 32,
+        "fontWeight": "700",
+        "lineHeight": 40,
+      },
+    },
+    "coverBackgroundColor": undefined,
+    "coverOverlap": {
+      "marginBottom": -40,
+      "paddingBottom": 16,
+    },
     "fragments": {
       "description": {
         "color": "rgba(117, 120, 140, 1)",
@@ -4822,6 +4945,47 @@ exports[`curated recipe golden snapshots SharpDark: recipes build to a stable sn
     "select": [Function],
   },
   "header": {
+    "cover": {
+      "cell": {
+        "flex": 1,
+        "flexDirection": "column",
+        "rowGap": 8,
+      },
+      "content": {
+        "flexGrow": 1,
+        "padding": 40,
+        "rowGap": 12,
+      },
+      "description": {
+        "color": "rgba(255, 255, 255, 0.55)",
+        "fontFamily": undefined,
+        "fontSize": 20,
+        "fontWeight": "400",
+        "lineHeight": 30,
+      },
+      "root": {
+        "overflow": "hidden",
+        "position": "relative",
+        "width": "100%",
+      },
+      "row": {
+        "columnGap": 48,
+        "flex": 1,
+        "flexDirection": "row",
+      },
+      "title": {
+        "color": "rgba(255, 255, 255, 0.8)",
+        "fontFamily": undefined,
+        "fontSize": 32,
+        "fontWeight": "700",
+        "lineHeight": 40,
+      },
+    },
+    "coverBackgroundColor": undefined,
+    "coverOverlap": {
+      "marginBottom": -40,
+      "paddingBottom": 16,
+    },
     "fragments": {
       "description": {
         "color": "rgba(255, 255, 255, 0.5)",
@@ -6339,6 +6503,47 @@ exports[`curated recipe golden snapshots ThreeDimensionalLight: recipes build to
     "select": [Function],
   },
   "header": {
+    "cover": {
+      "cell": {
+        "flex": 1,
+        "flexDirection": "column",
+        "rowGap": 8,
+      },
+      "content": {
+        "flexGrow": 1,
+        "padding": 40,
+        "rowGap": 12,
+      },
+      "description": {
+        "color": "rgba(0, 0, 0, 0.45)",
+        "fontFamily": undefined,
+        "fontSize": 20,
+        "fontWeight": "400",
+        "lineHeight": 30,
+      },
+      "root": {
+        "overflow": "hidden",
+        "position": "relative",
+        "width": "100%",
+      },
+      "row": {
+        "columnGap": 48,
+        "flex": 1,
+        "flexDirection": "row",
+      },
+      "title": {
+        "color": "rgba(0, 0, 0, 0.91)",
+        "fontFamily": undefined,
+        "fontSize": 32,
+        "fontWeight": "700",
+        "lineHeight": 40,
+      },
+    },
+    "coverBackgroundColor": undefined,
+    "coverOverlap": {
+      "marginBottom": -40,
+      "paddingBottom": 16,
+    },
     "fragments": {
       "description": {
         "color": "rgba(0, 0, 0, 0.45)",

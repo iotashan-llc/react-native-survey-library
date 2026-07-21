@@ -34,11 +34,44 @@ setDiagnosticHandler((payload) => {
   console.log('[survey diagnostic]', payload.code, payload);
 });
 
+// Advanced header / cover demo (task 5.6): DefaultLight + a survey-level
+// `header` cover. `headerView: 'advanced'` turns the header into a cover
+// band — an accent-colored background with the kitchen-sink logo/title/
+// description positioned via the 3x3 grid (logo top-left, title +
+// description bottom-left). The background COLOR is driven by theme
+// `cssVariables` (not `header.backgroundColor`), exactly as web does; the
+// accent `var(--sjs-primary-backcolor)` is dereferenced to a real color by
+// the theme pipeline. `overlapEnabled` lifts the survey body up onto the
+// cover. See docs/DIFFERENCES.md → "Advanced header / cover".
+const ADVANCED_HEADER_THEME: ITheme = {
+  ...DefaultLight,
+  headerView: 'advanced',
+  cssVariables: {
+    ...(DefaultLight.cssVariables ?? {}),
+    '--sjs-header-backcolor': 'var(--sjs-primary-backcolor)',
+    '--sjs-font-headertitle-color': '#ffffff',
+    '--sjs-font-headerdescription-color': 'rgba(255, 255, 255, 0.85)',
+  },
+  header: {
+    height: 280,
+    overlapEnabled: true,
+    backgroundImageFit: 'cover',
+    backgroundImageOpacity: 1,
+    logoPositionX: 'left',
+    logoPositionY: 'top',
+    titlePositionX: 'left',
+    titlePositionY: 'bottom',
+    descriptionPositionX: 'left',
+    descriptionPositionY: 'bottom',
+  } as any,
+};
+
 const THEMES: Array<{ name: string; theme: ITheme; dark: boolean }> = [
   { name: 'Default Light', theme: DefaultLight, dark: false },
   { name: 'Default Dark', theme: DefaultDark, dark: true },
   { name: 'Sharp Light', theme: SharpLight, dark: false },
   { name: 'Contrast Dark', theme: ContrastDark, dark: true },
+  { name: 'Advanced Header', theme: ADVANCED_HEADER_THEME, dark: false },
 ];
 
 export default function App() {

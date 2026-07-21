@@ -839,6 +839,137 @@ export const API_SURFACE_WATCHLIST: readonly WatchedApiMember[] = [
     reason:
       "SurveyHeader's logo wrapper data (host-transformable via onElementWrapperComponentData).",
   },
+  // ------------------------------------------------------------------
+  // Advanced header / cover (task 5.6). SurveyHeader.renderCover reads the
+  // survey-level Cover model (inserted as the `advanced-header` layout
+  // element by applyTheme) + its 9 CoverCells. `Cover.cells` is an
+  // INSTANCE field (set in the constructor), not a prototype member, so it
+  // is not reflectable through this prototype-based harvester and is
+  // deliberately excluded — its shape is exercised behaviorally by the
+  // 5.6 suites (SurveyHeaderCover.test.tsx).
+  // ------------------------------------------------------------------
+  {
+    id: 'Model.headerView',
+    member: 'headerView',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Model.prototype,
+    reason: "SurveyHeader's basic-vs-advanced (cover) render gate.",
+  },
+  {
+    id: 'Model.findLayoutElement',
+    member: 'findLayoutElement',
+    expectedKind: 'method',
+    resolveHost: (sc) => sc.Model.prototype,
+    reason:
+      "SurveyHeader resolves the advanced-header Cover via the 'advanced-header' layout element.",
+  },
+  {
+    id: 'Cover.isEmpty',
+    member: 'isEmpty',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Cover.prototype,
+    reason: 'SurveyHeader cover gate — no logo/title/description → basic path.',
+  },
+  {
+    id: 'Cover.renderedHeight',
+    member: 'renderedHeight',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Cover.prototype,
+    reason: 'Cover container height (isMobile-aware; parsed px).',
+  },
+  {
+    id: 'Cover.renderedTextAreaWidth',
+    member: 'renderedTextAreaWidth',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Cover.prototype,
+    reason: 'Cover cell title/description maxWidth (textAreaWidth).',
+  },
+  {
+    id: 'Cover.hasBackground',
+    member: 'hasBackground',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Cover.prototype,
+    reason: 'Cover overlap gate (overlap applies only over a background).',
+  },
+  {
+    id: 'Cover.overlapEnabled',
+    member: 'overlapEnabled',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Cover.prototype,
+    reason: 'Cover overlap flag.',
+  },
+  {
+    id: 'Cover.backgroundImage',
+    member: 'backgroundImage',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Cover.prototype,
+    reason: 'Cover background image URI (validated through the URI policy).',
+  },
+  {
+    id: 'Cover.backgroundImageOpacity',
+    member: 'backgroundImageOpacity',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Cover.prototype,
+    reason: 'Cover background image opacity (ImageBackground imageStyle).',
+  },
+  {
+    id: 'Cover.backgroundImageFit',
+    member: 'backgroundImageFit',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Cover.prototype,
+    reason: 'Cover background image fit → RN resizeMode.',
+  },
+  {
+    id: 'Cover.survey',
+    member: 'survey',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.Cover.prototype,
+    reason:
+      'Cover→survey binding (web-parity set in renderCover; no-op when bound).',
+  },
+  {
+    id: 'CoverCell.style',
+    member: 'style',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.CoverCell.prototype,
+    reason: 'CoverCell gridRow/gridColumn placement (3x3 grid bucketing).',
+  },
+  {
+    id: 'CoverCell.contentStyle',
+    member: 'contentStyle',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.CoverCell.prototype,
+    reason:
+      'CoverCell alignItems/justifyContent/textAlign (cell content alignment).',
+  },
+  {
+    id: 'CoverCell.showLogo',
+    member: 'showLogo',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.CoverCell.prototype,
+    reason: 'CoverCell logo occupancy.',
+  },
+  {
+    id: 'CoverCell.showTitle',
+    member: 'showTitle',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.CoverCell.prototype,
+    reason: 'CoverCell title occupancy.',
+  },
+  {
+    id: 'CoverCell.showDescription',
+    member: 'showDescription',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.CoverCell.prototype,
+    reason: 'CoverCell description occupancy.',
+  },
+  {
+    id: 'CoverCell.isEmpty',
+    member: 'isEmpty',
+    expectedKind: 'accessor',
+    resolveHost: (sc) => sc.CoverCell.prototype,
+    reason: 'CoverCell empty-slot detection (spacer vs content).',
+  },
   {
     id: 'Model.navigationBar',
     member: 'navigationBar',
