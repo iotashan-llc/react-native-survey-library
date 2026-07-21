@@ -446,6 +446,11 @@ export class QuestionChrome extends QuestionElementBase<
         )}
         <TextInput
           testID={`${question.name}-comment`}
+          accessibilityLabel={
+            (question as { commentText?: string }).commentText ||
+            question.renderedCommentPlaceholder ||
+            question.name
+          }
           value={this.state.commentDraft}
           onChangeText={this.handleCommentChange}
           onBlur={this.handleCommentBlur}

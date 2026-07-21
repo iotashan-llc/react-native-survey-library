@@ -309,8 +309,11 @@ describe('OverlayHost — review round 1 regressions', () => {
     act(() => {
       popup.show();
     });
+    // Icon-only ✕ close must carry an accessible name (a11y-high).
+    const closeBtn = screen.getByTestId('overlay-close');
+    expect(closeBtn.props.accessibilityLabel).toBe('Close');
     act(() => {
-      fireEvent.press(screen.getByTestId('overlay-close'));
+      fireEvent.press(closeBtn);
     });
     expect(onCancel).toHaveBeenCalledTimes(1);
     expect(stack.entries()).toHaveLength(0);

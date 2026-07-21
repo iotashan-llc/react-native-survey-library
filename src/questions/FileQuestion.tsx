@@ -659,10 +659,17 @@ export class FileQuestion extends QuestionElementBase<FileQuestionProps> {
         <Pressable
           testID={`sv-file-nav-prev-${q.name}`}
           accessibilityRole="button"
+          accessibilityLabel={prev?.title || 'Previous file'}
           onPress={() => prev?.action?.()}
           style={recipe.fragments.navButton}
         >
-          <Text style={recipe.fragments.navButtonText}>‹</Text>
+          <Text
+            style={recipe.fragments.navButtonText}
+            accessibilityElementsHidden
+            importantForAccessibility="no"
+          >
+            ‹
+          </Text>
         </Pressable>
         <Text
           testID={`sv-file-nav-index-${q.name}`}
@@ -673,10 +680,17 @@ export class FileQuestion extends QuestionElementBase<FileQuestionProps> {
         <Pressable
           testID={`sv-file-nav-next-${q.name}`}
           accessibilityRole="button"
+          accessibilityLabel={next?.title || 'Next file'}
           onPress={() => next?.action?.()}
           style={recipe.fragments.navButton}
         >
-          <Text style={recipe.fragments.navButtonText}>›</Text>
+          <Text
+            style={recipe.fragments.navButtonText}
+            accessibilityElementsHidden
+            importantForAccessibility="no"
+          >
+            ›
+          </Text>
         </Pressable>
       </View>
     );

@@ -88,6 +88,8 @@ describe('QuestionErrors', () => {
     const fragments = buildQuestionChromeRecipe(resolveTheme()).fragments;
     const panel = screen.getByTestId('qe-below-errors-below');
     expect(panel.props.accessibilityRole).toBe('alert');
+    // Android/TalkBack needs an explicit live region to announce errors.
+    expect(panel.props.accessibilityLiveRegion).toBe('assertive');
     const style = flatStyle(panel.props.style);
     expect(style.backgroundColor).toBe(fragments.errorPanel.backgroundColor);
     expect(style.marginTop).toBe(fragments.errorPanelBelow.marginTop);

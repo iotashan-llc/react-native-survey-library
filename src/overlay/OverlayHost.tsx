@@ -192,10 +192,18 @@ function DefaultPresenter(props: OverlayPresenterProps): React.JSX.Element {
             <Pressable
               testID="overlay-close"
               accessibilityRole="button"
+              accessibilityLabel="Close"
+              hitSlop={12}
               style={localStyles.close}
               onPress={() => requestCancel()}
             >
-              <Text style={fragments.title}>✕</Text>
+              <Text
+                style={fragments.title}
+                accessibilityElementsHidden
+                importantForAccessibility="no"
+              >
+                ✕
+              </Text>
             </Pressable>
           ) : null}
           {payload.title ? (

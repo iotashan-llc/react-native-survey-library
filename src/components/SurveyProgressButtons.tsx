@@ -152,6 +152,10 @@ export class SurveyProgressButtons extends SurveyElementBase<SurveyProgressButto
         key={`step-${index}`}
         testID={`survey-progress-step-${index}`}
         accessibilityRole="button"
+        // Always name the step: the default config (progressBarType "pages",
+        // no page titles/numbers) renders an empty number + no title, so
+        // without this the button has no accessible name (review a11y-high).
+        accessibilityLabel={page.renderedNavigationTitle || page.name}
         accessibilityState={{ selected: isCurrent, disabled: !clickable }}
         disabled={!clickable}
         onPress={() => this.handlePress(page, index)}
