@@ -2006,3 +2006,106 @@ the **plain base image with no tappable hotspot overlay** plus an
 `imagemap-lib-unavailable` diagnostic — never a throw (invariant 9). The
 design-mode SVG editing (control-point dragging, `addCoord`/`removeCoord`)
 is authoring-only and not ported.
+
+## Advanced header / cover (task 5.6)
+
+SurveyJS themes can carry a `header` block (or `headerView: "advanced"`)
+that turns the survey header into a *cover*: a background layer (color +
+optional image) behind a 3x3 grid that positions the logo, title, and
+description independently. Web renders this through `Header`/`HeaderCell`
+(survey-react-ui `components/header.tsx`) over the survey-core
+`Cover`/`CoverCell` model (`header.ts`). This library renders the same
+model through `SurveyHeader`'s advanced branch
+(`src/components/SurveyHeader.tsx`, `renderCover`). The cover exists only
+after the theme is applied (`<Survey theme>` → `model.applyTheme`, which
+inserts the `Cover` as the `advanced-header` layout element); the basic
+header (title/description column + logo) is unchanged and still used when
+`headerView` is `"basic"`.
+
+Placement, dimensions, background, overlap, and per-cell occupancy are all
+consumed from the model (invariant 6 — never re-derived). The deltas below
+are RN-platform consequences.
+
+### The 3x3 grid is flexbox, not CSS Grid
+
+Web lays the cover out with `display: grid` (`grid-template-columns: 1fr
+1fr 1fr`, `grid-template-rows: 1fr 1fr 1fr`) and positions each cell via
+`grid-row`/`grid-column`. RN has no CSS Grid, so the cover is a column of
+flex rows, each a row of three `flex: 1` columns. The renderer buckets the
+model's nine `CoverCell`s by their computed `style.gridRow`/`gridColumn`
+(the model already accounts for the empty-row collapse that happens when
+the cover has no explicit `height`), fills absent columns with empty
+spacers to hold the 1fr geometry, and aligns each occupied cell's content
+from `CoverCell.contentStyle` (`alignItems`/`justifyContent`, plus
+`textAlign` mapped `start→left`/`end→right`). Logo/title/description land
+in the cell matching their `logoPositionX/Y`, `titlePositionX/Y`,
+`descriptionPositionX/Y`.
+
+### The mobile stacked variant is not ported — the grid renders on every device
+
+Web swaps the grid for a simpler stacked layout (`HeaderMobile`) when
+`survey.isMobile` is true. This library always renders the 3x3 grid, on
+every form factor — the grid already honors positions, so it subsumes the
+stacked variant. (`Cover.renderedHeight` still honors `mobileHeight` over
+`height` when the survey is in mobile mode.)
+
+### Cell content-width spanning (`getContentMaxWidth`) is not applied
+
+Web's `CoverCell.getContentMaxWidth` returns CSS-grid spans like `"300%"`
+so a single-occupant row's content can bleed across neighboring empty
+columns. That is a grid-track behavior with no flexbox analog; each cell
+stays within its own 1fr column. The per-cell `textAreaWidth` cap (the
+`Cover.renderedTextAreaWidth` `maxWidth` on the title/description) **is**
+applied.
+
+### Background image goes through the image URI policy (fail-closed)
+
+`Cover.backgroundImage` is validated through the same central URI policy
+as every other remote image (context `image`, honoring the survey-level
+`<Survey uriPolicy>` / `UriPolicyContext`) before it reaches an RN
+`ImageBackground`. A blocked URI (denied scheme, or a remote origin not in
+the allowlist — automatic-fetch contexts are fail-closed) drops the image
+layer and the cover renders with its **color background only** — never a
+crash (invariant 9) — plus one structured `image-uri-blocked` diagnostic
+(source `survey-header-background`). `backgroundImageFit` maps to
+`resizeMode` (`cover→cover`, `fill→stretch`, `contain→contain`,
+`tile→repeat`); `backgroundImageOpacity` is applied to the image layer
+only (via `ImageBackground`'s `imageStyle`), not the content.
+
+### The background COLOR comes from the theme's `cssVariables`, resolved
+
+`Cover.backgroundColor` (and the header title/description colors) are **not**
+serialized cover properties — they are driven by the theme's
+`cssVariables` (`--sjs-header-backcolor`, `--sjs-font-headertitle-color`,
+`--sjs-font-headerdescription-color`), exactly as web does. Setting
+`header.backgroundColor` in the theme JSON has no effect (mirrors web).
+The concrete color the renderer paints comes from the theme-rn resolve
+pipeline (`resolved.header.colors.resolved.*`), which is the only place a
+CSS variable reference such as the accent `var(--sjs-primary-backcolor)`
+is dereferenced to a real color RN can render. A header with a transparent
+/ unset background paints no color (stays transparent).
+
+### Overlap is approximated with a negative bottom margin
+
+Web's `sv-header__overlap` lifts the survey body up onto the header via a
+sibling-combinator negative `margin-top` on the body plus bottom padding
+on the header. RN has no sibling combinator; when `overlapEnabled` **and**
+the cover has a background (`Cover.hasBackground`), the renderer applies a
+negative `marginBottom` to the cover so the following content is pulled up
+onto it — the mobile-tier overlap metrics (`padding-bottom: calcSize(2)`,
+pull-up `calcSize(5)`), since RN is the mobile context. Without a
+background, overlap is suppressed (web parity —
+`sv-header__without-background` zeroes it).
+
+### `textGlowEnabled`, `inheritWidthFrom`, and live cover mutation
+
+`textGlowEnabled` (a CSS `text-shadow` glow) has no RN analog and is not
+rendered. `inheritWidthFrom`/the static-width content clamp
+(`sv-header__content--static`, `max-width: calcSize(90)`) is not applied —
+the cover content spans the header width. Cover *property* mutation is not
+independently subscribed (the component's reactive state element is the
+survey): title/description text changes flow through the locstring
+viewer's own subscription and `logo`/`headerView` through the survey, and
+a theme re-apply rebuilds the cover and re-renders the tree through the
+provider — so the realistic runtime paths update, but imperatively poking
+a live `Cover` instance's properties without re-theming will not.

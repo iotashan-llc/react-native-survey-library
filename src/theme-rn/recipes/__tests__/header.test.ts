@@ -88,6 +88,79 @@ describe('buildHeaderRecipe — formulas from resolved tokens', () => {
   });
 });
 
+describe('buildHeaderRecipe — advanced cover (task 5.6)', () => {
+  const recipe = buildHeaderRecipe(resolved);
+
+  it('content: grid container padding calcSize(5)=40, rowGap calcSize(1.5)=12, flexGrow 1 (.sv-header__content)', () => {
+    expect(recipe.cover.content.padding).toBe(40);
+    expect(recipe.cover.content.rowGap).toBe(12);
+    expect(recipe.cover.content.flexGrow).toBe(1);
+  });
+
+  it('row: 1fr/1fr/1fr flex row, columnGap calcSize(6)=48, shares the content height (flex 1)', () => {
+    expect(recipe.cover.row.flexDirection).toBe('row');
+    expect(recipe.cover.row.columnGap).toBe(48);
+    expect(recipe.cover.row.flex).toBe(1);
+  });
+
+  it('cell: 1fr column flexbox with rowGap calcSize(1)=8 (.sv-header__cell content stacking)', () => {
+    expect(recipe.cover.cell.flex).toBe(1);
+    expect(recipe.cover.cell.flexDirection).toBe('column');
+    expect(recipe.cover.cell.rowGap).toBe(8);
+  });
+
+  it('title: header_title mixin — fontSize 2x base = 32, lineHeight 1.25x = 40, weight 700, color = resolved header title color', () => {
+    expect(recipe.cover.title.fontSize).toBe(32);
+    expect(recipe.cover.title.lineHeight).toBe(40);
+    expect(recipe.cover.title.fontWeight).toBe('700');
+    expect(recipe.cover.title.color).toBe(
+      resolved.header.colors.resolved.titleColor.css
+    );
+  });
+
+  it('description: header_description mixin — LITERAL 20px default, lineHeight 1.5x = 30, weight 400, color = resolved header description color', () => {
+    expect(recipe.cover.description.fontSize).toBe(20);
+    expect(recipe.cover.description.lineHeight).toBe(30);
+    expect(recipe.cover.description.fontWeight).toBe('400');
+    expect(recipe.cover.description.color).toBe(
+      resolved.header.colors.resolved.descriptionColor.css
+    );
+  });
+
+  it('coverOverlap: mobile-tier metrics — paddingBottom calcSize(2)=16, marginBottom -calcSize(5)=-40', () => {
+    expect(recipe.coverOverlap.paddingBottom).toBe(16);
+    expect(recipe.coverOverlap.marginBottom).toBe(-40);
+  });
+
+  it('coverBackgroundColor: undefined for a header-less theme (backgroundKind none → transparent)', () => {
+    expect(recipe.coverBackgroundColor).toBeUndefined();
+  });
+
+  it('coverBackgroundColor: resolves a custom --sjs-header-backcolor to a concrete color', () => {
+    const custom = resolveTheme({
+      cssVariables: { '--sjs-header-backcolor': 'rgba(1, 2, 3, 1)' },
+    });
+    const customRecipe = buildHeaderRecipe(custom);
+    expect(customRecipe.coverBackgroundColor).toBe(
+      custom.header.colors.resolved.backgroundColor.css
+    );
+    expect(customRecipe.coverBackgroundColor).toBe('rgba(1, 2, 3, 1)');
+  });
+
+  it('coverBackgroundColor: resolves the accent var(--sjs-primary-backcolor) to the concrete primary color (RN cannot render a raw CSS var)', () => {
+    const accent = resolveTheme({
+      cssVariables: {
+        '--sjs-header-backcolor': 'var(--sjs-primary-backcolor)',
+      },
+    });
+    const accentRecipe = buildHeaderRecipe(accent);
+    expect(accentRecipe.coverBackgroundColor).toBe(
+      resolveColorVar(accent, '--sjs-primary-backcolor').css
+    );
+    expect(accentRecipe.coverBackgroundColor).not.toContain('var(');
+  });
+});
+
 describe('buildRecipes aggregation', () => {
   it('exposes the header recipe on the shared Recipes bag', async () => {
     const { buildRecipes } = await import('../index');
