@@ -1170,7 +1170,33 @@ Whole-question `eachRowRequired` (`RequiredInAllRowsError`) and
 (matrix dispatches as an ordinary chrome-wrapped question). In addition,
 the per-row `row.hasError` flag tints that row's tiles (the shared item
 recipe's error decorator) and marks the row header inline, so a respondent
-sees *which* rows are missing an answer.
+sees *which* rows are missing an answer. Tile tinting follows core's
+`getItemClass` gate exactly: with `eachRowRequired`/`eachRowUnique` set the
+tint is per-row (`row.hasError`); with neither set, a question-level
+visible error (e.g. an unanswered `isRequired` matrix at validation) tints
+**all** tiles via the question's `hasCssError()` — web parity, no
+divergence.
+
+### The check glyph is fixed — consumer `itemSvgIconId` overrides are not honored
+
+The checkbox checkmark (and the preview check glyph) always render core's
+default `icon-check-16x16`. Web reads `question.itemSvgIcon`, which honors
+a consumer-customized `cssClasses.itemSvgIconId`/`itemPreviewSvgIconId`;
+the RN tile cannot read that getter in render because it dereferences
+`question.cssClasses`, which is built lazily on first access and fires a
+`cssRoot` property change — a setState-in-render hazard. Customizing the
+matrix check glyph via css classes is therefore not supported in v0.3
+(render-purity trade-off).
+
+### Rubric cell lookup stringifies the row key (numeric rows resolve correctly)
+
+`hasCellText` (rubric) cells look up their text with the row key passed as
+`String(row.name)`. Web passes the raw `row.name`, and a **numeric** row
+value is then misread as a row *index* by `MatrixCells.
+getCellRowColumnValue` (`question_matrix.ts`) — web resolves the wrong
+row's rubric text (or none) for `rows: [1, 2, …]`. The cells JSON is
+string-keyed, so RN's stringified key resolves the intended cell text for
+every row value — a deliberate, favorable divergence.
 
 ### Grid a11y has no native grid/rowheader/columnheader roles
 

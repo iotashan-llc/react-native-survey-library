@@ -20,13 +20,18 @@
  * `visibleRowsChangedCallback` (single-assignment field, one stable bound
  * handler → `setState`; attach in `componentDidMount`, retarget-safe in
  * `componentDidUpdate`, guarded-clear in `componentWillUnmount`). Each cell
- * is its own reactive `SurveyElementBase` whose `getStateElement()` is the
- * `MatrixRowModel` (the web `SurveyQuestionMatrixRow` per-row pattern) so a
- * cell tap re-renders exactly that row's cells (value → checked) and a
- * validation pass (`row.hasError`) re-renders the row header's error
- * marker — the merged `MatrixGrid` primitive renders cells individually, so
- * the reactive unit is the per-cell/per-row-header component subscribed to
- * the row, not a single row wrapper.
+ * is its own reactive `SurveyElementBase` whose `getStateElements()` is
+ * `[row, row.item]` — the `MatrixRowModel` carries value/`hasError`
+ * notifications, and the row's `ItemValue` carries the `enableIf` flips
+ * (core's `ItemValue.runEnabledConditionsForItems` →
+ * `item.setIsEnabled` notifies the ITEM, which is what the web
+ * `SurveyQuestionMatrixRow` subscribes: `getStateElement → row.item`,
+ * reactquestion_matrix.tsx). A cell tap re-renders exactly that row's
+ * cells (value → checked) and a validation pass (`row.hasError`)
+ * re-renders the row header's error marker — the merged `MatrixGrid`
+ * primitive renders cells individually, so the reactive unit is the
+ * per-cell/per-row-header component subscribed to the row+item, not a
+ * single row wrapper.
  *
  * Tile state (invariant 6): `checked`/`readOnly`/`error` are read from the
  * MatrixRowModel's OWN computed getters — `row.isChecked(column)` /
@@ -84,6 +89,19 @@ import { RNIcon } from '../components/RNIcon';
  */
 const DEFAULT_CHECK_ICON = 'icon-check-16x16';
 
+/**
+ * THE isolated protected-API cast (the repo's single-cast pattern, cf.
+ * ButtonGroupQuestion R3): core's `hasCssError()` (question.ts:1491-1498)
+ * is protected but PURE — it walks `this.errors` for a visible error and
+ * falls back to `hasCssErrorCallback()`; it never touches `cssClasses` or
+ * any lazily-built css state, so it is safe to call in render. It is the
+ * exact gate core's `getItemClass` uses to tint every tile when neither
+ * `eachRowRequired` nor `eachRowUnique` is set.
+ */
+function questionHasCssError(question: QuestionMatrixModel): boolean {
+  return (question as unknown as { hasCssError(): boolean }).hasCssError();
+}
+
 /** The subset of MatrixColumn/ItemValue the tile + contract read. */
 interface MatrixColumnLike {
   value: unknown;
@@ -100,12 +118,18 @@ interface MatrixCellProps {
 
 /**
  * One reactive matrix data cell — a radio/checkbox tile (or a rubric text
- * cell when `hasCellText`). Subscribes the MatrixRowModel so a value or
- * `hasError` change on that row re-renders it (`getStateElement → row`).
+ * cell when `hasCellText`). Subscribes the MatrixRowModel AND its backing
+ * `ItemValue` (`getStateElements → [row, row.item]`): the row carries
+ * value/`hasError` changes, the item carries `enableIf` enabled-flips
+ * (core notifies the ITEM — `ItemValue.setIsEnabled` → `setPropertyValue`;
+ * web subscribes `row.item`, reactquestion_matrix.tsx). The base dedupes.
  */
 class MatrixSimpleCell extends SurveyElementBase<MatrixCellProps> {
-  protected getStateElement(): Base {
-    return this.props.row as unknown as Base;
+  protected getStateElements(): Base[] {
+    return [
+      this.props.row as unknown as Base,
+      this.props.row.item as unknown as Base,
+    ];
   }
 
   private handlePress = (): void => {
@@ -121,14 +145,22 @@ class MatrixSimpleCell extends SurveyElementBase<MatrixCellProps> {
 
     const checked = row.isChecked(columnItem);
     const disabled = row.isReadOnly;
-    // Per-row error state (eachRowRequired / eachRowUnique flip
-    // `row.hasError`, a plain MatrixRowModel @property read). Core's
-    // getItemClass ALSO tints tiles on a question-level css error via the
-    // protected `hasCssError()`, but that getter mutates question css state
-    // — calling it in render triggers a cross-component setState-in-render
-    // — so RN uses the pure `row.hasError` read; a whole-question error
-    // without eachRow* still surfaces through QuestionChrome (DIFFERENCES).
-    const error = row.hasError;
+    // Preview state (core survey-element.ts `isPreviewStyle` — a pure
+    // `survey.state === "preview"` read). Web suppresses readOnly styling
+    // while previewing (`isReadOnlyStyle = isReadOnly && !isPreview`); the
+    // Pressable stays disabled either way (core's cellClick no-ops).
+    const preview = question.isPreviewStyle;
+    const readOnlyStyle = disabled && !preview;
+    // Error tint, exactly core's getItemClass gate (question_matrix.ts):
+    // `eachRowRequired || eachRowUnique ? row.hasError : hasCssError()` —
+    // per-row tint when a row-level rule is on, otherwise every tile tints
+    // on a question-level visible error. `hasCssError()` is a PURE
+    // protected read (see questionHasCssError above), so calling it in
+    // render is safe.
+    const error =
+      question.eachRowRequired || question.eachRowUnique
+        ? row.hasError
+        : questionHasCssError(question);
     const shape = question.isMultiSelect ? 'checkbox' : 'radio';
     const rowName = String(row.name);
     const colValue = String(column.value);
@@ -142,6 +174,12 @@ class MatrixSimpleCell extends SurveyElementBase<MatrixCellProps> {
     };
 
     if (question.hasCellText) {
+      // Deliberate web divergence (DIFFERENCES, "Rubric cell lookup"): web
+      // passes RAW `row.name`, and a NUMERIC row value is then misread as
+      // a row INDEX by MatrixCells.getCellRowColumnValue
+      // (question_matrix.ts) — resolving the wrong row's rubric text. The
+      // cells JSON is string-keyed, so the stringified name is the correct
+      // lookup key for every row value.
       const loc = question.getCellDisplayLocText(rowName, columnItem);
       return (
         <Pressable
@@ -174,8 +212,8 @@ class MatrixSimpleCell extends SurveyElementBase<MatrixCellProps> {
               checked,
               pressed,
               focused: false,
-              readOnly: disabled,
-              preview: false,
+              readOnly: readOnlyStyle,
+              preview,
               error,
               allowHover: false,
             },
@@ -185,8 +223,8 @@ class MatrixSimpleCell extends SurveyElementBase<MatrixCellProps> {
           const iconFill = selectIconFill(recipes.item, {
             checked,
             focused: false,
-            readOnly: disabled,
-            preview: false,
+            readOnly: readOnlyStyle,
+            preview,
           });
           return (
             <View
@@ -194,14 +232,18 @@ class MatrixSimpleCell extends SurveyElementBase<MatrixCellProps> {
                 override: overrides.item?.decorator,
               })}
             >
-              {checked && shape === 'checkbox' ? (
+              {checked && (shape === 'checkbox' || preview) ? (
+                // Preview swaps the radio dot for the check glyph too:
+                // core's `itemSvgIcon` returns `itemPreviewSvgIconId`
+                // ("#icon-check-16x16") while previewing.
                 <RNIcon
+                  testID={`${testID}-check-icon`}
                   iconName={DEFAULT_CHECK_ICON}
                   size={recipes.item.iconSize}
                   fill={iconFill}
                 />
               ) : null}
-              {checked && shape === 'radio' ? (
+              {checked && shape === 'radio' && !preview ? (
                 <View
                   style={{
                     width: recipes.item.iconSize * 0.5,
@@ -225,10 +267,15 @@ interface MatrixRowHeaderProps {
 }
 
 /** Reactive row-header cell — renders the row title and an inline error
- * marker when the row is flagged (`row.hasError`, eachRowRequired/unique). */
+ * marker when the row is flagged (`row.hasError`, eachRowRequired/unique).
+ * Subscribes `[row, row.item]` like the data cells: the item carries
+ * `enableIf` flips and loc/text changes on the backing ItemValue. */
 class MatrixRowHeaderCell extends SurveyElementBase<MatrixRowHeaderProps> {
-  protected getStateElement(): Base {
-    return this.props.row as unknown as Base;
+  protected getStateElements(): Base[] {
+    return [
+      this.props.row as unknown as Base,
+      this.props.row.item as unknown as Base,
+    ];
   }
 
   protected renderElement(): React.JSX.Element {
@@ -330,8 +377,12 @@ export class MatrixQuestion extends QuestionElementBase<MatrixQuestionProps> {
       });
     }
     for (const column of visibleColumns) {
+      // Keyed off the ItemValue's `uniqueId` (web parity —
+      // reactquestion_matrix.tsx keys headers by `column.uniqueId`):
+      // column values are NOT unique post-String() (`1` vs `"1"`
+      // collide), while the visibleColumns ItemValue instances persist.
       columns.push({
-        key: `col-${String(column.value)}`,
+        key: `col-${column.uniqueId}`,
         header: this.renderLocString(column.locText),
         width: columnMinWidth,
         minWidth: columnMinWidth,
@@ -353,13 +404,21 @@ export class MatrixQuestion extends QuestionElementBase<MatrixQuestionProps> {
         }
         for (const column of visibleColumns) {
           cells.push({
-            key: `${rowName}:col-${String(column.value)}`,
+            key: `${rowName}:col-${column.uniqueId}`,
             kind: 'choice' as const,
             render: (): React.ReactNode => (
               <MatrixSimpleCell question={question} row={row} column={column} />
             ),
           });
         }
+        // Row keys stay the row NAME — a documented stability tradeoff,
+        // the opposite call from the columns above: MatrixRowModel
+        // instances are destroyed/rebuilt by `clearGeneratedRows()` on any
+        // rows change, and a wholesale `question.rows = [...]` assignment
+        // mints NEW ItemValues (fresh uniqueIds), so a uniqueId key would
+        // remount every surviving row; the name reconciles them in place.
+        // Duplicate row values are rejected by core's row schema
+        // (`uniqueProperty: "value"`), so name collisions cannot occur.
         return {
           key: rowName,
           kind: 'data' as const,

@@ -776,6 +776,20 @@ per callback calling `this.setState` — NOT `forceUpdate`; attach in
   re-renders one row — the web `SurveyQuestionMatrixRow` (`getStateElement =
   row.item`) pattern, and the established per-row pattern (ButtonGroupItemRow,
   PanelDynamicItem, ImagePickerTile).
+
+  > **Implementation amendment (3.2, as-shipped).** The reactive unit is
+  > **per-cell** (`MatrixSimpleCell`) plus a **per-row-header** component
+  > (`MatrixRowHeaderCell`) — there is NO `MatrixSimpleRow` row wrapper. The
+  > merged 3.1a `MatrixGrid` primitive renders cells individually through
+  > per-cell `render()` callbacks in the `GridContract`, so no single
+  > component owns a whole row's markup to subscribe from; instead each
+  > cell/row-header subscribes `getStateElements() → [row, row.item]` (the
+  > `MatrixRowModel` for value/`hasError`, the backing `ItemValue` for
+  > `enableIf` enabled-flips — the same pair of notification sources the web
+  > per-row component covers via `getStateElement → row.item` plus its
+  > `cellClick` setState). Behavior is equivalent, granularity finer: a
+  > row-scoped change re-renders that row's cells rather than one row
+  > wrapper.
 - **Dropdown / dynamic** (`MatrixTableBase`) — a **two-level component split**,
   because `renderedTable` is an unstable state-element identity. `resetRenderedTable()`
   calls `resetPropertyValue("renderedTable")` (DESTROYS the old instance; the next
