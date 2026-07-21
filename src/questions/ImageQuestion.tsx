@@ -266,10 +266,29 @@ function configureVideoPlayer(player: unknown): void {
   p.loop = false;
 }
 
+/** The slice of expo-video's `VideoPlayer` (a `SharedObject`) this branch
+ * reads: the removable `statusChange` event subscription. `status` moves
+ * through `idle → loading → readyToPlay | error`; the payload carries the
+ * new `status`. Typed narrowly (the lib is lazy-required as `unknown`). */
+interface VideoPlayerLike {
+  addListener?: (
+    event: string,
+    listener: (payload: { status?: string }) => void
+  ) => { remove?: () => void } | undefined;
+}
+
 /**
  * Isolated hooks child: only mounted when expo-video resolved AND the
  * source passed policy, so `useVideoPlayer` is called unconditionally at
  * this component's top level (rules-of-hooks safe).
+ *
+ * Runtime load state routes INTO core (parity with the image branch and
+ * web's `<video onLoadedMetadata/onError>`): a `statusChange` to `error`
+ * (404/codec/network) calls `onError` (core `onErrorHandler` →
+ * `contentNotLoaded` true → the poster fallback); a `readyToPlay` calls
+ * `onLoad` (core `onLoadHandler` → clears a prior error). The listener
+ * lives only inside the mounted player, so it is peer-safe (no expo-video,
+ * no listener) and torn down on unmount.
  */
 function VideoPlayer(props: {
   lib: ExpoVideoModule;
@@ -278,10 +297,25 @@ function VideoPlayer(props: {
   contentFit: VideoContentFit;
   width: number | undefined;
   height: number | undefined;
+  onLoad: () => void;
+  onError: () => void;
 }): React.JSX.Element {
-  const { lib, question, source, contentFit, width, height } = props;
+  const { lib, question, source, contentFit, width, height, onLoad, onError } =
+    props;
   const { useVideoPlayer, VideoView } = lib;
   const player = useVideoPlayer(source, configureVideoPlayer);
+
+  React.useEffect(() => {
+    const p = player as VideoPlayerLike;
+    if (typeof p.addListener !== 'function') return;
+    const sub = p.addListener('statusChange', (payload) => {
+      const status = payload?.status;
+      if (status === 'error') onError();
+      else if (status === 'readyToPlay') onLoad();
+    });
+    return () => sub?.remove?.();
+  }, [player, onLoad, onError]);
+
   return (
     <VideoView
       testID={`sv-video-${question.name}`}
@@ -304,6 +338,21 @@ function PolicyGatedVideo(props: {
   const effectivePolicy = uriConfig ?? contextPolicy;
   const result = validateUri(rawUri, 'video', effectivePolicy);
   const lib = loadExpoVideo();
+
+  // After a runtime load error, remember WHICH source failed: the poster
+  // fallback shows only while that source is still current — a changed
+  // source re-mounts the player so it can load again (recovery parity with
+  // the image branch / web's always-mounted `<video>`).
+  const lastErroredUriRef = React.useRef<string | null>(null);
+  const canonical = result.ok ? result.canonical : null;
+  const handleError = React.useCallback(() => {
+    lastErroredUriRef.current = canonical;
+    question.onErrorHandler();
+  }, [canonical, question]);
+  const handleLoad = React.useCallback(() => {
+    lastErroredUriRef.current = null;
+    question.onLoadHandler();
+  }, [question]);
 
   const blockedReason = result.ok ? undefined : result.reason;
   const libMissing = lib === null;
@@ -332,6 +381,19 @@ function PolicyGatedVideo(props: {
     );
   }
 
+  // Runtime load failure flipped core's `contentNotLoaded` — render the
+  // same poster fallback the policy-block/lib-absent paths use (web shows
+  // its `noImage` placeholder). Gated on the still-failed source so a
+  // changed source re-mounts the player instead of latching the fallback.
+  if (question.contentNotLoaded && lastErroredUriRef.current === canonical) {
+    return (
+      <MediaFallback
+        testID={`sv-video-fallback-${question.name}`}
+        text={question.renderedAltText}
+      />
+    );
+  }
+
   return (
     <VideoPlayer
       lib={lib}
@@ -340,6 +402,8 @@ function PolicyGatedVideo(props: {
       contentFit={CONTENT_FIT_BY_IMAGE_FIT[question.imageFit] ?? 'contain'}
       width={question.renderedWidth}
       height={question.renderedHeight}
+      onLoad={handleLoad}
+      onError={handleError}
     />
   );
 }

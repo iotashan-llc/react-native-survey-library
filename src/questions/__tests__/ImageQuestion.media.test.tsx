@@ -18,9 +18,10 @@
  * `video` context — so the consumer allowlists `https://www.youtube.com`
  * (documented-limited path).
  */
-import { render, screen } from '@testing-library/react-native';
+import { act, render, screen } from '@testing-library/react-native';
 import { Model } from '../../core/facade';
 import type { Question } from '../../core/facade';
+import type { MockVideoPlayer } from '../../../__mocks__/expo-video';
 import '../../factories/register-all';
 import { ImageQuestion, loadExpoVideo, loadWebView } from '../ImageQuestion';
 import { UriPolicyContext } from '../../security/UriPolicyContext';
@@ -124,6 +125,68 @@ describe('image — contentMode "video" (expo-video)', () => {
         (p) => p.code === 'image-uri-blocked' && p.source === 'image-question'
       )
     ).toBe(true);
+  });
+});
+
+describe('image — video runtime load/error routes through core (task 5.5)', () => {
+  function renderVideo(altText = 'clip poster') {
+    const question = makeImage({
+      contentMode: 'video',
+      imageLink: MP4,
+      altText,
+    });
+    render(
+      <UriPolicyContext.Provider value={CDN}>
+        <ImageQuestion question={question} creator={{}} />
+      </UriPolicyContext.Provider>
+    );
+    const player = screen.getByTestId('sv-video-q1').props
+      .player as MockVideoPlayer;
+    return { question, player };
+  }
+
+  it('registers a statusChange listener on the mounted player', () => {
+    const { player } = renderVideo();
+    expect(player.__listenerCount('statusChange')).toBeGreaterThan(0);
+  });
+
+  it('an "error" status flips contentNotLoaded and shows the poster fallback', () => {
+    const { question, player } = renderVideo();
+    expect(screen.getByTestId('sv-video-q1')).toBeTruthy();
+    act(() => {
+      player.__setStatus('error', { message: '404' });
+    });
+    expect(
+      (question as unknown as { contentNotLoaded: boolean }).contentNotLoaded
+    ).toBe(true);
+    expect(screen.queryByTestId('sv-video-q1')).toBeNull();
+    expect(screen.getByTestId('sv-video-fallback-q1')).toBeTruthy();
+    expect(screen.getByText('clip poster')).toBeTruthy();
+  });
+
+  it('a "readyToPlay" status routes through core onLoadHandler (contentNotLoaded false)', () => {
+    const { question, player } = renderVideo();
+    act(() => {
+      player.__setStatus('error', { message: '404' });
+    });
+    expect(
+      (question as unknown as { contentNotLoaded: boolean }).contentNotLoaded
+    ).toBe(true);
+    // A changed source re-mounts the player (recovery parity with the image
+    // branch); a readyToPlay then clears the error state through core.
+    act(() => {
+      (question as unknown as { imageLink: string }).imageLink =
+        'https://cdn.example.com/other.mp4';
+    });
+    const recovered = screen.getByTestId('sv-video-q1').props
+      .player as MockVideoPlayer;
+    act(() => {
+      recovered.__setStatus('readyToPlay');
+    });
+    expect(
+      (question as unknown as { contentNotLoaded: boolean }).contentNotLoaded
+    ).toBe(false);
+    expect(screen.getByTestId('sv-video-q1')).toBeTruthy();
   });
 });
 

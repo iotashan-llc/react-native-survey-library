@@ -821,10 +821,19 @@ non-allowlisted remote source is dropped fail-closed with an
 fallback (the alt text). When expo-video itself is absent (a consumer who
 has not installed the peer, or jest), the player degrades to the same
 poster fallback plus an `image-video-lib-unavailable` diagnostic — never a
-crash. Playback is a device gate (verified on the example app, not in
-jest). Note: a `data:` video source is NOT accepted — the `data:` scheme
-exception is `image`-context-only; a video must be an allowlisted `https:`
-URL.
+crash. A **runtime** load failure of an allowlisted source (404 / codec /
+network) is also routed into core, at parity with the image branch and
+web's `<video onLoadedMetadata/onError>`: the player's expo-video
+`statusChange` event drives core's own `onLoadHandler`/`onErrorHandler`
+(`readyToPlay` → loaded, `error` → `contentNotLoaded`), and a
+`contentNotLoaded` video shows the **same poster fallback** web shows its
+`noImage` placeholder for. As in the image branch, the fallback is pinned
+to the failed source — a changed source re-mounts the player so it can load
+again. Playback is a device gate (verified on the example app, not in
+jest); the `statusChange` → core routing is unit-tested through the
+expo-video root mock. Note: a `data:` video source is NOT accepted — the
+`data:` scheme exception is `image`-context-only; a video must be an
+allowlisted `https:` URL.
 
 ### `contentMode: "youtube"` embeds via react-native-webview (documented, limited)
 
@@ -856,7 +865,11 @@ honest degradation).
 Web sets `display:none` on a broken `<img>` (`contentNotLoaded`).
 Native screens render `renderedAltText` (altText || title) instead —
 an accessible fallback beats a silent blank. Load state still routes
-through core's own `onLoadHandler`/`onErrorHandler`.
+through core's own `onLoadHandler`/`onErrorHandler` — and the **video**
+branch now routes the same way (its expo-video `statusChange` → those
+handlers → the poster fallback on `contentNotLoaded`; see the video
+section above), so a failed video load no longer diverges into a blank
+player.
 
 ### `imageFit` maps to RN `resizeMode`
 
