@@ -238,14 +238,33 @@ export class TagboxQuestion extends OverlayControlBase<TagboxQuestionProps> {
     const rendered = question.renderedValue;
     const entries = Array.isArray(rendered) ? rendered : [];
     const choices = question.selectedChoices;
+    // O(k) value→choice lookup keyed by a canonical primitive form, built
+    // once per render. The key is never LESS discriminating than the
+    // case-sensitive / no-trim / no-number-convert `isTwoValueEquals` match
+    // below (a distinct `typeof` or `String()` ⇒ a distinct key), so a Map
+    // HIT is always a correct match and a MISS simply falls back to the
+    // linear scan — collapsing the common primitive-valued tagbox from
+    // O(k²) to O(k) on the tag-toggle hot path while preserving exact
+    // behavior for object-valued / type-mismatched entries.
+    const keyOf = (v: unknown): string | null =>
+      v === null || typeof v === 'object' ? null : `${typeof v}:${String(v)}`;
+    const byValue = new Map<string, SelectedChoiceLike>();
+    for (const c of choices) {
+      const k = keyOf(c.value);
+      if (k !== null && !byValue.has(k)) byValue.set(k, c);
+    }
     return entries.map((entry, i) => {
       // Case-sensitive, no-trim match — isTwoValueEquals DEFAULTS are
       // case-insensitive + trim, which would false-match distinct values
       // like 'A'/'a' that selectedChoices keeps separate (PR #30 review
       // r4). Args: (a, b, ignoreOrder=false, caseSensitive=true, trim=false).
-      const choice = choices.find((c) =>
-        Helpers.isTwoValueEquals(c.value, entry, false, true, false)
-      );
+      // Map fast-path first; the linear scan is the correctness fallback.
+      const entryKey = keyOf(entry);
+      const choice =
+        (entryKey !== null ? byValue.get(entryKey) : undefined) ??
+        choices.find((c) =>
+          Helpers.isTwoValueEquals(c.value, entry, false, true, false)
+        );
       if (choice) {
         return this.renderChip(
           String(choice.renderedId),

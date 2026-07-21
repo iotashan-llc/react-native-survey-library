@@ -147,6 +147,35 @@ describe('TagboxQuestion — review r1 correctness', () => {
     expect(screen.getByTestId('sv-tagbox-chip-date')).toBeTruthy();
   });
 
+  it('case-sensitive distinct values keep separate chips through the value→choice map (perf opt)', async () => {
+    // The O(k²)→O(k) lookup keys by `${typeof}:${String(v)}`; this must NOT
+    // merge case-different values 'A'/'a', which selectedChoices keeps
+    // distinct (isTwoValueEquals caseSensitive=true, trim=false).
+    const model = new Model({
+      elements: [
+        {
+          type: 'tagbox',
+          name: 'tb',
+          choices: [
+            { value: 'A', text: 'Upper A' },
+            { value: 'a', text: 'Lower a' },
+            { value: ' b', text: 'Spaced b' },
+            { value: 'b', text: 'Plain b' },
+          ],
+        },
+      ],
+    });
+    const question = model.getQuestionByName('tb')!;
+    question.value = ['A', 'a', ' b', 'b'];
+    render(<TagboxQuestion question={question} creator={{}} />);
+    await flush();
+    // Each distinct value shows its OWN label — no case/trim collision.
+    expect(screen.getByText('Upper A')).toBeTruthy();
+    expect(screen.getByText('Lower a')).toBeTruthy();
+    expect(screen.getByText('Spaced b')).toBeTruthy();
+    expect(screen.getByText('Plain b')).toBeTruthy();
+  });
+
   it('object-valued choices render + remove correctly (r1 #1/#6)', async () => {
     const model = new Model({
       elements: [
