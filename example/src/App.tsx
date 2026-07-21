@@ -19,6 +19,7 @@ import {
 } from 'survey-core/themes';
 
 import { kitchenSinkJson } from './kitchen-sink';
+import { timerSurveyJson } from './timer-survey';
 import { registerKitchenSinkComponents } from './register-components';
 
 // Register the ComponentCollection custom/composite types the kitchen-sink
@@ -76,6 +77,9 @@ const THEMES: Array<{ name: string; theme: ITheme; dark: boolean }> = [
 
 export default function App() {
   const [themeIndex, setThemeIndex] = React.useState(0);
+  // Timer demo toggle (task 5.7a): swap the kitchen-sink survey for a small
+  // timed quiz (timeLimit + timeLimitPerPage + showTimer:'top').
+  const [showTimerDemo, setShowTimerDemo] = React.useState(false);
   const active = THEMES[themeIndex]!;
   return (
     <SafeAreaView
@@ -86,6 +90,16 @@ export default function App() {
           Theme: {active.name}
         </Text>
         <Pressable
+          testID="timer-demo-toggle"
+          accessibilityRole="button"
+          style={styles.switchButton}
+          onPress={() => setShowTimerDemo((prev) => !prev)}
+        >
+          <Text style={styles.switchLabel}>
+            {showTimerDemo ? 'Kitchen Sink' : 'Timer Demo'}
+          </Text>
+        </Pressable>
+        <Pressable
           testID="theme-switcher"
           accessibilityRole="button"
           style={styles.switchButton}
@@ -95,7 +109,7 @@ export default function App() {
         </Pressable>
       </View>
       <Survey
-        json={kitchenSinkJson}
+        json={showTimerDemo ? timerSurveyJson : kitchenSinkJson}
         theme={active.theme}
         onComplete={(sender: { data: unknown }) => {
           console.log(

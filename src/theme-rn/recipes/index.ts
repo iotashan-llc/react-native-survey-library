@@ -34,6 +34,7 @@ import { buildRankingRecipe, type RankingRecipe } from './ranking';
 import { buildSliderRecipe, type SliderRecipe } from './slider';
 import { buildSignatureRecipe, type SignatureRecipe } from './signature';
 import { buildImageMapRecipe, type ImageMapRecipe } from './imagemap';
+import { buildTimerPanelRecipe, type TimerPanelRecipe } from './timerPanel';
 
 export interface Recipes {
   item: ItemRecipe;
@@ -67,6 +68,8 @@ export interface Recipes {
   signature: SignatureRecipe;
   /** Image-map base image + svg-hotspot idle/selected color defaults + fallback (task 5.4). */
   imagemap: ImageMapRecipe;
+  /** Survey timer panel: clock badge (major/minor) + plain-text root (task 5.7a). */
+  timerPanel: TimerPanelRecipe;
 }
 
 export function buildRecipes(
@@ -92,6 +95,7 @@ export function buildRecipes(
     slider: buildSliderRecipe(resolved, buildCtx),
     signature: buildSignatureRecipe(resolved, buildCtx),
     imagemap: buildImageMapRecipe(resolved, buildCtx),
+    timerPanel: buildTimerPanelRecipe(resolved, buildCtx),
   };
 }
 
@@ -114,3 +118,4 @@ export * from './ranking';
 export * from './slider';
 export * from './signature';
 export * from './imagemap';
+export * from './timerPanel';

@@ -1518,6 +1518,48 @@ exports[`curated recipe golden snapshots ContrastLight: recipes build to a stabl
     "thumbColor": "rgba(0, 0, 0, 1)",
     "thumbSize": 24,
   },
+  "timerPanel": {
+    "fragments": {
+      "majorText": {
+        "color": "rgba(0, 0, 0, 1)",
+        "fontSize": 32,
+        "fontWeight": "700",
+        "lineHeight": 40,
+      },
+      "minorText": {
+        "color": "rgba(0, 0, 0, 1)",
+        "fontSize": 16,
+        "fontWeight": "600",
+        "lineHeight": 24,
+      },
+      "root": {
+        "alignItems": "center",
+        "alignSelf": "center",
+        "justifyContent": "center",
+        "paddingHorizontal": 16,
+        "paddingVertical": 8,
+      },
+      "rootBottom": {
+        "marginTop": 16,
+      },
+      "rootTop": {
+        "marginBottom": 8,
+        "marginTop": 32,
+      },
+      "text": {
+        "color": "rgba(0, 0, 0, 1)",
+        "fontSize": 16,
+        "fontWeight": "600",
+        "lineHeight": 24,
+        "textAlign": "center",
+      },
+      "textContainer": {
+        "alignItems": "center",
+        "flexDirection": "column",
+        "rowGap": 4,
+      },
+    },
+  },
   "unsupportedQuestion": {
     "fragments": {
       "errorAccentBar": {
@@ -3059,6 +3101,48 @@ exports[`curated recipe golden snapshots DefaultLight: recipes build to a stable
     "minTrackColor": "rgba(25, 179, 148, 1)",
     "thumbColor": "rgba(25, 179, 148, 1)",
     "thumbSize": 24,
+  },
+  "timerPanel": {
+    "fragments": {
+      "majorText": {
+        "color": "rgba(25, 179, 148, 1)",
+        "fontSize": 32,
+        "fontWeight": "700",
+        "lineHeight": 40,
+      },
+      "minorText": {
+        "color": "rgba(0, 0, 0, 0.45)",
+        "fontSize": 16,
+        "fontWeight": "600",
+        "lineHeight": 24,
+      },
+      "root": {
+        "alignItems": "center",
+        "alignSelf": "center",
+        "justifyContent": "center",
+        "paddingHorizontal": 16,
+        "paddingVertical": 8,
+      },
+      "rootBottom": {
+        "marginTop": 16,
+      },
+      "rootTop": {
+        "marginBottom": 8,
+        "marginTop": 32,
+      },
+      "text": {
+        "color": "rgba(25, 179, 148, 1)",
+        "fontSize": 16,
+        "fontWeight": "600",
+        "lineHeight": 24,
+        "textAlign": "center",
+      },
+      "textContainer": {
+        "alignItems": "center",
+        "flexDirection": "column",
+        "rowGap": 4,
+      },
+    },
   },
   "unsupportedQuestion": {
     "fragments": {
@@ -4762,6 +4846,48 @@ exports[`curated recipe golden snapshots LayeredDark: recipes build to a stable 
     "thumbColor": "rgba(164, 127, 243, 1)",
     "thumbSize": 24,
   },
+  "timerPanel": {
+    "fragments": {
+      "majorText": {
+        "color": "rgba(164, 127, 243, 1)",
+        "fontSize": 32,
+        "fontWeight": "700",
+        "lineHeight": 40,
+      },
+      "minorText": {
+        "color": "rgba(117, 119, 141, 1)",
+        "fontSize": 16,
+        "fontWeight": "600",
+        "lineHeight": 24,
+      },
+      "root": {
+        "alignItems": "center",
+        "alignSelf": "center",
+        "justifyContent": "center",
+        "paddingHorizontal": 16,
+        "paddingVertical": 8,
+      },
+      "rootBottom": {
+        "marginTop": 16,
+      },
+      "rootTop": {
+        "marginBottom": 8,
+        "marginTop": 32,
+      },
+      "text": {
+        "color": "rgba(164, 127, 243, 1)",
+        "fontSize": 16,
+        "fontWeight": "600",
+        "lineHeight": 24,
+        "textAlign": "center",
+      },
+      "textContainer": {
+        "alignItems": "center",
+        "flexDirection": "column",
+        "rowGap": 4,
+      },
+    },
+  },
   "unsupportedQuestion": {
     "fragments": {
       "errorAccentBar": {
@@ -6303,6 +6429,48 @@ exports[`curated recipe golden snapshots SharpDark: recipes build to a stable sn
     "minTrackColor": "rgba(16, 226, 255, 1)",
     "thumbColor": "rgba(16, 226, 255, 1)",
     "thumbSize": 24,
+  },
+  "timerPanel": {
+    "fragments": {
+      "majorText": {
+        "color": "rgba(16, 226, 255, 1)",
+        "fontSize": 32,
+        "fontWeight": "700",
+        "lineHeight": 40,
+      },
+      "minorText": {
+        "color": "rgba(255, 255, 255, 0.55)",
+        "fontSize": 16,
+        "fontWeight": "600",
+        "lineHeight": 24,
+      },
+      "root": {
+        "alignItems": "center",
+        "alignSelf": "center",
+        "justifyContent": "center",
+        "paddingHorizontal": 16,
+        "paddingVertical": 8,
+      },
+      "rootBottom": {
+        "marginTop": 16,
+      },
+      "rootTop": {
+        "marginBottom": 8,
+        "marginTop": 32,
+      },
+      "text": {
+        "color": "rgba(16, 226, 255, 1)",
+        "fontSize": 16,
+        "fontWeight": "600",
+        "lineHeight": 24,
+        "textAlign": "center",
+      },
+      "textContainer": {
+        "alignItems": "center",
+        "flexDirection": "column",
+        "rowGap": 4,
+      },
+    },
   },
   "unsupportedQuestion": {
     "fragments": {
@@ -7941,6 +8109,48 @@ exports[`curated recipe golden snapshots ThreeDimensionalLight: recipes build to
     "minTrackColor": "rgba(217, 74, 100, 1)",
     "thumbColor": "rgba(217, 74, 100, 1)",
     "thumbSize": 24,
+  },
+  "timerPanel": {
+    "fragments": {
+      "majorText": {
+        "color": "rgba(217, 74, 100, 1)",
+        "fontSize": 32,
+        "fontWeight": "700",
+        "lineHeight": 40,
+      },
+      "minorText": {
+        "color": "rgba(0, 0, 0, 0.45)",
+        "fontSize": 16,
+        "fontWeight": "600",
+        "lineHeight": 24,
+      },
+      "root": {
+        "alignItems": "center",
+        "alignSelf": "center",
+        "justifyContent": "center",
+        "paddingHorizontal": 16,
+        "paddingVertical": 8,
+      },
+      "rootBottom": {
+        "marginTop": 16,
+      },
+      "rootTop": {
+        "marginBottom": 8,
+        "marginTop": 32,
+      },
+      "text": {
+        "color": "rgba(217, 74, 100, 1)",
+        "fontSize": 16,
+        "fontWeight": "600",
+        "lineHeight": 24,
+        "textAlign": "center",
+      },
+      "textContainer": {
+        "alignItems": "center",
+        "flexDirection": "column",
+        "rowGap": 4,
+      },
+    },
   },
   "unsupportedQuestion": {
     "fragments": {
