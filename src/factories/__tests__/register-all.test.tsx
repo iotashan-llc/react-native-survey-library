@@ -192,6 +192,7 @@ describe('registerAll (module side effect)', () => {
       'html',
       'image',
       'imagepicker',
+      'matrix',
       'multipletext',
       'paneldynamic',
       'radiogroup',

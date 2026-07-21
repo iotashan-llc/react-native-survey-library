@@ -63,6 +63,7 @@ describe('index.tsx: registrar wiring (design: docs/design/0.5-factories.md)', (
       'html',
       'image',
       'imagepicker',
+      'matrix',
       'multipletext',
       'paneldynamic',
       'radiogroup',

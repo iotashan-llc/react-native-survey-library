@@ -240,7 +240,16 @@ export const MODEL_TYPE_CLASSIFICATION: Readonly<
   },
 
   // Phase 3 — v0.3 (M3).
-  matrix: { status: 'planned', milestone: 'M3', reason: 'task 3.2' },
+  matrix: {
+    status: 'supported',
+    milestone: 'M3',
+    reason: 'task 3.2',
+    runtimeRenderable: {
+      expectedTemplate: 'matrix',
+      expectedRoute: 'template',
+      fixtureJson: { type: 'matrix', columns: ['a', 'b'], rows: ['r1'] },
+    },
+  },
   matrixdropdown: { status: 'planned', milestone: 'M3', reason: 'task 3.3' },
   matrixdynamic: { status: 'planned', milestone: 'M3', reason: 'task 3.4' },
 

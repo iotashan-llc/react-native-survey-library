@@ -27,6 +27,10 @@ export type {
 } from './components/UnsupportedQuestion';
 export { QuestionChrome } from './components/QuestionChrome';
 export { PanelDynamicQuestion } from './questions/PanelDynamicQuestion';
+export {
+  MatrixQuestion,
+  MatrixQuestionElement,
+} from './questions/MatrixQuestion';
 export { CustomQuestion } from './questions/CustomQuestion';
 export { CompositeQuestion } from './questions/CompositeQuestion';
 export type { QuestionChromeProps } from './components/QuestionChrome';

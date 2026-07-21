@@ -56,7 +56,7 @@ describe('manifest: model-type inventory', () => {
     }
   });
 
-  it('"empty"/"text"/"rating" are classified supported (M0/M1); "matrix" is still classified planned with a milestone', () => {
+  it('"empty"/"text"/"rating" are classified supported (M0/M1); "matrix" is now supported/M3 (task 3.2); "matrixdropdown" stays planned', () => {
     expect(MODEL_TYPE_CLASSIFICATION.empty).toMatchObject({
       status: 'supported',
       milestone: 'M0',
@@ -70,6 +70,15 @@ describe('manifest: model-type inventory', () => {
       milestone: 'M1',
     });
     expect(MODEL_TYPE_CLASSIFICATION.matrix).toMatchObject({
+      status: 'supported',
+      milestone: 'M3',
+    });
+    expect(MODEL_TYPE_CLASSIFICATION.matrix?.runtimeRenderable).toMatchObject({
+      expectedTemplate: 'matrix',
+      expectedRoute: 'template',
+    });
+    // matrixdropdown/matrixdynamic (3.3/3.4) are NOT part of 3.2.
+    expect(MODEL_TYPE_CLASSIFICATION.matrixdropdown).toMatchObject({
       status: 'planned',
       milestone: 'M3',
     });
@@ -183,16 +192,16 @@ describe('manifest: classification/descriptor status consistency', () => {
   });
 
   it('detects a supported descriptor row whose model-type classification is not supported', () => {
-    // 'imagepicker' is still classified 'planned' (task 2.7, M2) — a
+    // 'matrixdropdown' is still classified 'planned' (task 3.3, M3) — a
     // supported descriptor row for it is the inconsistency this test
-    // wants ('text'/'checkbox' can't be reused here anymore: tasks
-    // 1.10/1.12 landed them as genuinely supported on both sides).
+    // wants ('matrix' can't be reused here anymore: task 3.2 landed it as
+    // genuinely supported on both sides).
     const descriptors: Descriptor[] = [
       ...DESCRIPTOR_TABLE,
       {
         status: 'supported',
-        questionType: 'matrix',
-        dispatchKey: 'matrix',
+        questionType: 'matrixdropdown',
+        dispatchKey: 'matrixdropdown',
         route: 'template',
         component: () => (() => null) as never,
         milestone: 'M3',
@@ -202,7 +211,7 @@ describe('manifest: classification/descriptor status consistency', () => {
       MODEL_TYPE_CLASSIFICATION,
       descriptors
     );
-    expect(violations.some((v) => v.includes('matrix'))).toBe(true);
+    expect(violations.some((v) => v.includes('matrixdropdown'))).toBe(true);
   });
 
   it('detects a supported classification entry lacking runtimeRenderable safe-construction metadata', () => {
