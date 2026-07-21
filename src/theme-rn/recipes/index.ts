@@ -29,6 +29,7 @@ import { buildRowRecipe, type RowRecipe } from './row';
 import { buildButtonGroupRecipe, type ButtonGroupRecipe } from './buttonGroup';
 import { buildOverlayRecipe, type OverlayRecipe } from './overlay';
 import { buildListItemRecipe, type ListItemRecipe } from './listItem';
+import { buildMatrixRecipe, type MatrixRecipe } from './matrix';
 
 export interface Recipes {
   item: ItemRecipe;
@@ -52,6 +53,8 @@ export interface Recipes {
   overlay: OverlayRecipe;
   /** List-picker rows/search/empty (task 2.1). */
   listItem: ListItemRecipe;
+  /** Matrix-family grid primitive: gridlines/header/row-header/data/footer/detail (task 3.1a). */
+  matrix: MatrixRecipe;
 }
 
 export function buildRecipes(
@@ -72,6 +75,7 @@ export function buildRecipes(
     buttonGroup: buildButtonGroupRecipe(resolved, buildCtx),
     overlay: buildOverlayRecipe(resolved, buildCtx),
     listItem: buildListItemRecipe(resolved, buildCtx),
+    matrix: buildMatrixRecipe(resolved, buildCtx),
   };
 }
 
@@ -89,3 +93,4 @@ export * from './row';
 export * from './buttonGroup';
 export * from './overlay';
 export * from './listItem';
+export * from './matrix';
