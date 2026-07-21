@@ -69,4 +69,11 @@ describe('Survey shell — table of contents (5.7b)', () => {
     expect(screen.queryByTestId('survey-toc-left')).toBeNull();
     expect(screen.queryByTestId('sv-list')).toBeNull();
   });
+
+  // NOTE: the shell's `mobileToc = showToc && survey.isMobile` branch is
+  // not driven from <Survey> here: the responsive effect defers
+  // `setIsMobile(narrow)` a macrotask after mount with the default
+  // narrow=false, so any pre-set isMobile is raced back to false — a
+  // shell test would be timer-flaky. The mobile hamburger + popup path is
+  // fully covered as a unit in components/__tests__/SurveyTOC.test.tsx.
 });

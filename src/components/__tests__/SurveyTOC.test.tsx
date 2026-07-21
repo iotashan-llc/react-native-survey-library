@@ -100,6 +100,47 @@ describe('SurveyTOC — wide side column', () => {
     expect(toJSON()).toBeNull();
     expect(screen.queryByTestId('sv-list')).toBeNull();
   });
+
+  it('an in-place showTOC false→true toggle replaces the empty frame with the built TOC', async () => {
+    // Regression (5.7b review #1): the model is built post-render in
+    // componentDidUpdate; without the built-now forceUpdate the flip
+    // render's null frame would persist until an unrelated property fired.
+    const model = tocSurvey({ showTOC: false });
+    render(<SurveyTOC survey={model} location="left" />);
+    expect(screen.queryByTestId('sv-list')).toBeNull();
+    act(() => {
+      model.showTOC = true;
+    });
+    await flush();
+    expect(screen.getByTestId('sv-list')).toBeTruthy();
+    expect(screen.getByTestId('sv-list-item-p1')).toBeTruthy();
+    expect(screen.getByTestId('sv-list-item-p3')).toBeTruthy();
+  });
+
+  it('the item set follows survey.pages (add / remove a page)', async () => {
+    // Regression (5.7b review #2): createTOCListModel registers a `pages`
+    // property listener that calls listModel.setItems(getTOCItems(...)),
+    // and the ListPicker re-derives rows from renderedActions — so a page
+    // added or removed on a mounted TOC must update the row set.
+    const model = tocSurvey();
+    render(<SurveyTOC survey={model} location="left" />);
+    await flush();
+    expect(screen.queryByTestId('sv-list-item-p4')).toBeNull();
+    act(() => {
+      const page = model.addNewPage('p4');
+      page.title = 'Page Four';
+      page.addNewQuestion('text', 'q4');
+    });
+    await flush();
+    expect(screen.getByTestId('sv-list-item-p4')).toBeTruthy();
+    act(() => {
+      model.removePage(model.getPageByName('p2'));
+    });
+    await flush();
+    expect(screen.queryByTestId('sv-list-item-p2')).toBeNull();
+    expect(screen.getByTestId('sv-list-item-p1')).toBeTruthy();
+    expect(screen.getByTestId('sv-list-item-p4')).toBeTruthy();
+  });
 });
 
 describe('SurveyTOC — mobile toggle + popup', () => {

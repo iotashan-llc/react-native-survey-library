@@ -84,9 +84,10 @@ export class SurveyTOC extends SurveyElementBase<SurveyTOCProps> {
    * StrictMode-discarded instance would leak its survey subscriptions
    * with no `componentWillUnmount` to dispose them). Gated on `showTOC`
    * so a hidden TOC costs nothing until it is turned on. */
-  private ensureModel(): void {
-    if (this.tocModel || !this.survey || !this.survey.showTOC) return;
+  private ensureModel(): boolean {
+    if (this.tocModel || !this.survey || !this.survey.showTOC) return false;
     this.tocModel = new TOCModel(this.survey);
+    return true;
   }
 
   componentDidMount(): void {
@@ -97,8 +98,16 @@ export class SurveyTOC extends SurveyElementBase<SurveyTOCProps> {
 
   componentDidUpdate(): void {
     super.componentDidUpdate();
-    this.ensureModel();
+    const built = this.ensureModel();
     this.reconcileRegistration();
+    // In-place `showTOC` false→true toggle: the flip render returns the
+    // null frame (tocModel still null), then this post-render build sets
+    // the model with no other state change to schedule a re-render — the
+    // empty frame would persist until an unrelated survey property fires.
+    // Bump once so the built TOC replaces the null frame immediately.
+    // (The mount path bumps via componentDidMount, so this only fires on
+    // an in-place toggle of an already-mounted instance.)
+    if (built) this.forceUpdate();
   }
 
   componentWillUnmount(): void {
@@ -146,8 +155,9 @@ export class SurveyTOC extends SurveyElementBase<SurveyTOCProps> {
 
   protected renderElement(): React.JSX.Element | null {
     const tocModel = this.tocModel;
-    // Pre-mount frame: the model is built in componentDidMount, which then
-    // bumps a re-render — one empty frame, never a crash.
+    // Pre-model frame: the model is built in componentDidMount (mount) or,
+    // for an in-place showTOC toggle, in componentDidUpdate which then
+    // forceUpdates — one empty frame, never a crash.
     if (!tocModel) return null;
     const { recipes, styles } = this.themeContext;
     const recipe = recipes.progressToc;
