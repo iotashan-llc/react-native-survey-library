@@ -71,6 +71,7 @@ import { CustomQuestion } from '../questions/CustomQuestion';
 import { CompositeQuestion } from '../questions/CompositeQuestion';
 import { RankingQuestion } from '../questions/RankingQuestion';
 import { SliderQuestion } from '../questions/SliderQuestion';
+import { SignaturePadQuestion } from '../questions/SignaturePadQuestion';
 import { SingleInputSummary } from '../questions/SingleInputSummaryQuestion';
 import { ListItemGroupContent, ListPickerElement } from '../overlay/ListPicker';
 
@@ -418,6 +419,24 @@ export const DESCRIPTOR_TABLE: readonly Descriptor[] = [
     route: 'template',
     component: () => SliderQuestion,
     milestone: 'M4',
+  },
+  // Task 5.1 (M5) — signaturepad. getTemplate() === 'signaturepad' (extends
+  // QuestionFileModelBase, no override); template route, dispatchKey ===
+  // questionType. No renderAs variants upstream (signaturepad.tsx registers a
+  // single 'signaturepad' key). The component wraps the batteries-included
+  // `react-native-signature-canvas` (a WebView signature pad, lazy-required)
+  // inside an isolated hooks child; onOK commits the data-URL value in the
+  // EXACT web format (keyed to dataFormat), read-only/absent-peer degrade to
+  // a non-throwing static image + diagnostic (invariant 9). The drawing input
+  // is a device gate; the value-commit + clear are jest-tested via the peer's
+  // root manual mock.
+  {
+    status: 'supported',
+    questionType: 'signaturepad',
+    dispatchKey: 'signaturepad',
+    route: 'template',
+    component: () => SignaturePadQuestion,
+    milestone: 'M5',
   },
   // Task 3.4 (M3) — matrixdynamic (dynamic rows) over the SAME
   // MatrixTableBase via the §1 hooks (add-row buttons + empty

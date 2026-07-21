@@ -200,6 +200,7 @@ describe('registerAll (module side effect)', () => {
       'radiogroup',
       'ranking',
       'rating',
+      'signaturepad',
       'slider',
       'sv-boolean-checkbox',
       'sv-boolean-radio',

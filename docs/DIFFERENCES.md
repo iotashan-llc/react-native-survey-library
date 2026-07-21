@@ -1781,3 +1781,82 @@ hosts needing a visible clear control should add one in their own chrome.
 (Overlay-backed questions — dropdown/tagbox/rating-dropdown — render their
 own in-control clear affordance via `OverlayControlBase`, which is a
 separate mechanism, not the title-action toolbar.)
+
+## Signature-pad question (task 5.1)
+
+The `signaturepad` question is supported. Web renders an HTML `<canvas>`
+driven by the `signature_pad` library; RN wraps the batteries-included
+**`react-native-signature-canvas`** — a WebView signature pad — inside an
+isolated hooks child, **lazy-required** so it is only loaded when a
+`signaturepad` question actually renders (a required peer dependency along
+with its own `react-native-webview` peer).
+
+### Value parity — the committed data URL matches web exactly
+
+On the default `storeDataAsText` path, web commits the drawing on each
+stroke end as `signaturePad.toDataURL(getFormat())` — a
+`data:image/<png|jpeg|svg+xml>;base64,…` string written straight to
+`question.value`. The RN control uses the library's recommended auto-save
+flow (`onEnd` → `readSignature()` → `onOK(dataURL)`) and writes the SAME
+data URL to `question.value`. The `dataFormat` property maps to the
+library's `imageType` (`png` → `image/png`, `jpeg` → `image/jpeg`, `svg`
+→ `image/svg+xml`), so the committed data-URL prefix matches web for every
+format. `penColor`, `backgroundColor`, and `penMinWidth`/`penMaxWidth`
+drive the pad's pen/background/stroke; when `penColor`/`backgroundColor`
+are unset they fall back to the theme's primary/background tokens (web's
+`updateColors` default).
+
+### `signatureWidth`/`signatureHeight` size the pad; auto-scale is not ported
+
+The canvas box is sized to `signatureWidth`×`signatureHeight` (serializer
+defaults 300×200). Web's `signatureAutoScaleEnabled` (scale-to-fit while
+keeping aspect) has no RN analog in v1 — the pad renders at its model
+dimensions. The saved image dimensions are the model's, matching web.
+
+### Read-only renders a static `<Image>`, not a live canvas
+
+Web calls `signaturePad.off()` for a read-only pad and repaints the stored
+value onto the same canvas. RN has no shared canvas, so a **read-only**
+question renders the stored signature as a non-interactive RN
+`<Image source={{ uri: value }}>`; an **editable** question with an
+existing value rehydrates it INTO the canvas via the library's `dataURL`
+prop. A read-only empty pad shows the read-only placeholder.
+
+### SVG signatures do not display in the read-only image
+
+`dataFormat: "svg"` commits an `image/svg+xml` data URL with full web
+parity, and the live pad draws normally. But RN's `<Image>` cannot
+rasterize an SVG data URL, so the **read-only / peer-absent static image**
+of an SVG signature will not display (PNG and JPEG display fine). Use
+`png`/`jpeg` when a read-only preview is needed, or render the stored SVG
+in your own chrome.
+
+### Clear control
+
+`allowClear` (via core's `canShowClearButton`, which self-gates on
+read-only + a present value) surfaces a clear control that calls the pad's
+`clearSignature()` and the model's `clearValue()`. The library's own
+built-in footer (Clear/Confirm buttons) is hidden via `webStyle` — commit
+is auto-save on stroke end and clear is the model-driven control, so the
+question owns both affordances.
+
+### Placeholder
+
+`showPlaceholder` + `needShowPlaceholder()` overlay the model's
+`placeholder` / `placeholderReadOnly` text on the empty pad
+(`pointerEvents: none`, so drawing passes through); it disappears once a
+value is committed.
+
+### Drawing is a device gate; upload mode is not ported
+
+The actual pen input runs inside a WebView and is verified on the example
+app, not in jest (the suites drive the library's `onOK`/clear through its
+root manual mock). When the peer is **absent** — jest without it, or a
+consumer who has not installed `react-native-signature-canvas` /
+`react-native-webview` — `loadSignatureCanvasLib()` resolves null and the
+question degrades to a **non-throwing** fallback: a
+`signaturepad-lib-unavailable` diagnostic plus a read-only image of any
+stored value, never a crash (invariant 9). `storeDataAsText: false`
+(server upload of the signature as a file via `waitForUpload`) is **not
+ported** — RN always stores the data URL as text; hosts needing an upload
+should read `question.value` (the data URL) and upload it themselves.

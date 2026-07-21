@@ -8,10 +8,11 @@
  * stars, smileys, custom string rateValues), expression, html (sanitized
  * rich content), the M3 3.2 simple matrix (single/multi-select + rubric
  * cells), ranking (drag-to-reorder + selectToRank, M4 4.1), slider
- * (single + range dual-thumb, M4 4.4), completedHtml. A single
- * genuinely-unsupported type (signaturepad, planned for M5 task 5.1) sits
- * on the last page to demonstrate the NON-THROWING fallback panel
- * (invariant 9); the rest of the survey stays representative.
+ * (single + range dual-thumb, M4 4.4), signaturepad (WebView signature
+ * pad, M5 5.1), completedHtml. A single genuinely-unsupported type (file,
+ * planned for M5 task 5.2) sits on the last page to demonstrate the
+ * NON-THROWING fallback panel (invariant 9); the rest of the survey stays
+ * representative.
  */
 
 // 1x1 blue PNG — data: logos involve no network fetch (URI policy).
@@ -521,13 +522,27 @@ export const kitchenSinkJson = {
           defaultValue: [200, 800],
         },
         {
-          // A genuinely still-unsupported type (signaturepad, planned for M5
-          // task 5.1): the web reference renders it, RN shows the
-          // NON-THROWING fallback panel (invariant 9). This is the
-          // graceful-fallback demo (slider is supported as of 4.4).
+          // signaturepad — SUPPORTED in RN as of task 5.1. Wraps the
+          // batteries-included react-native-signature-canvas (a WebView
+          // signature pad); onOK commits the data-URL value in the EXACT web
+          // format (keyed to dataFormat), read-only shows the stored image,
+          // and the clear control drives clearValue. Absent the peer it
+          // degrades to a non-throwing static image + diagnostic.
           type: 'signaturepad',
+          name: 'signature',
+          title: 'Sign here (signaturepad — supported in RN as of 5.1)',
+          penColor: '#1f6feb',
+          signatureWidth: 320,
+          signatureHeight: 180,
+        },
+        {
+          // A genuinely still-unsupported type (file, planned for M5 task
+          // 5.2): the web reference renders it, RN shows the NON-THROWING
+          // fallback panel (invariant 9). This is the graceful-fallback demo
+          // (signaturepad is supported as of 5.1).
+          type: 'file',
           name: 'notSupportedDemo',
-          title: 'Unsupported in RN (signaturepad) — graceful fallback demo',
+          title: 'Unsupported in RN (file) — graceful fallback demo',
         },
         {
           type: 'comment',

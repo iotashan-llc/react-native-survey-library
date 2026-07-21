@@ -43,6 +43,7 @@ describe('DESCRIPTOR_TABLE (M0 + M1)', () => {
       'radiogroup',
       'ranking',
       'rating',
+      'signaturepad',
       'slider',
       'survey-header',
       'sv-boolean-checkbox',

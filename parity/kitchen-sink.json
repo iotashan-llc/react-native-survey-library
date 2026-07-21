@@ -492,6 +492,7 @@
           "name": "milestonesPlan",
           "title": "Release milestones (matrixdynamic)",
           "confirmDelete": true,
+          "allowRowsDragAndDrop": true,
           "rowCount": 2,
           "minRowCount": 1,
           "maxRowCount": 4,
@@ -586,8 +587,16 @@
         },
         {
           "type": "signaturepad",
+          "name": "signature",
+          "title": "Sign here (signaturepad — supported in RN as of 5.1)",
+          "penColor": "#1f6feb",
+          "signatureWidth": 320,
+          "signatureHeight": 180
+        },
+        {
+          "type": "file",
           "name": "notSupportedDemo",
-          "title": "Unsupported in RN (signaturepad) — graceful fallback demo"
+          "title": "Unsupported in RN (file) — graceful fallback demo"
         },
         {
           "type": "comment",
