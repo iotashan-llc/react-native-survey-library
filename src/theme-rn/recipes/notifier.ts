@@ -104,10 +104,11 @@ export function buildNotifierRecipe(
     },
     rootWithButtons: {
       // .sv-save-data_root--with-buttons { padding: calcSize(2) calcSize(2)
-      // calcSize(2) calcSize(6) }.
+      // calcSize(2) calcSize(6) } (web T R B L). Logical start/end so the
+      // asymmetric leading (message-side) padding mirrors in RTL.
       paddingVertical: calcSize(resolved, 2),
-      paddingLeft: calcSize(resolved, 6),
-      paddingRight: calcSize(resolved, 2),
+      paddingStart: calcSize(resolved, 6),
+      paddingEnd: calcSize(resolved, 2),
       gap: calcSize(resolved, 4),
     },
     variantInfo: {

@@ -883,8 +883,8 @@ exports[`curated recipe golden snapshots ContrastLight: recipes build to a stabl
       },
       "rootWithButtons": {
         "gap": 32,
-        "paddingLeft": 48,
-        "paddingRight": 16,
+        "paddingEnd": 16,
+        "paddingStart": 48,
         "paddingVertical": 16,
       },
       "variantError": {
@@ -2742,8 +2742,8 @@ exports[`curated recipe golden snapshots DefaultLight: recipes build to a stable
       },
       "rootWithButtons": {
         "gap": 32,
-        "paddingLeft": 48,
-        "paddingRight": 16,
+        "paddingEnd": 16,
+        "paddingStart": 48,
         "paddingVertical": 16,
       },
       "variantError": {
@@ -4665,8 +4665,8 @@ exports[`curated recipe golden snapshots LayeredDark: recipes build to a stable 
       },
       "rootWithButtons": {
         "gap": 32,
-        "paddingLeft": 48,
-        "paddingRight": 16,
+        "paddingEnd": 16,
+        "paddingStart": 48,
         "paddingVertical": 16,
       },
       "variantError": {
@@ -6620,8 +6620,8 @@ exports[`curated recipe golden snapshots SharpDark: recipes build to a stable sn
       },
       "rootWithButtons": {
         "gap": 32,
-        "paddingLeft": 48,
-        "paddingRight": 16,
+        "paddingEnd": 16,
+        "paddingStart": 48,
         "paddingVertical": 16,
       },
       "variantError": {
@@ -8527,8 +8527,8 @@ exports[`curated recipe golden snapshots ThreeDimensionalLight: recipes build to
       },
       "rootWithButtons": {
         "gap": 32,
-        "paddingLeft": 48,
-        "paddingRight": 16,
+        "paddingEnd": 16,
+        "paddingStart": 48,
         "paddingVertical": 16,
       },
       "variantError": {
