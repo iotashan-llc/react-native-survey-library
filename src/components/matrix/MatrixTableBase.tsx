@@ -69,7 +69,10 @@ import { QuestionErrors } from '../QuestionErrors';
 import { ChoiceItemRow } from '../ChoiceItemRow';
 import type { ChoiceItemRowProps } from '../ChoiceItemRow';
 import { OtherCommentDraftAdapter } from '../../inputs/OtherCommentDraftAdapter';
-import { reportLayoutDiagnosticOnce } from '../../diagnostics';
+import {
+  reportLayoutDiagnosticOnce,
+  reportMatrixNullCellOnce,
+} from '../../diagnostics';
 import { MatrixGridRoot } from './MatrixGridRoot';
 import type { MatrixWidthConfig } from '../../layout/matrix-column-widths';
 import type {
@@ -250,6 +253,43 @@ export class MatrixOtherCell extends SurveyElementBase<MatrixOtherCellProps> {
   }
 }
 
+interface MatrixQuestionCellProps {
+  cell: QuestionMatrixDropdownRenderedCell;
+  creator: unknown;
+}
+
+/**
+ * One whole-question cell (§2b case 2) — a CLASS-BASED reactive wrapper
+ * whose `getStateElement()` is the cell question, honoring PER-ROW cell
+ * visibility (3.3a review finding 1). Core's rendered-cell `isVisible` is
+ * a MOBILE-only affordance (`(!hasQuestion && !isErrorsCell) ||
+ * !matrix?.isMobile || question.isVisible`,
+ * question_matrixdropdownrendered.ts:110-111) — always true for a question
+ * cell on the wide path. The real per-row state (column `visibleIf`
+ * conditions) lives on `cell.question.isVisible`, which web gates the cell
+ * BODY on (`renderQuestion`, reactquestion_matrixdropdownbase.tsx:407)
+ * while keeping the td. Mirrored here: an invisible cell question renders
+ * an EMPTY body — `MatrixGrid` keeps the allocated cell View/slot — and
+ * because this wrapper (not the unmounted leaf) subscribes the question,
+ * visibility flips re-render it in BOTH directions.
+ */
+export class MatrixQuestionCell extends SurveyElementBase<MatrixQuestionCellProps> {
+  protected getStateElement(): Base | null {
+    return (this.props.cell.question as unknown as Base) ?? null;
+  }
+
+  protected renderElement(): React.JSX.Element | null {
+    const { cell, creator } = this.props;
+    if (!cell.question.isVisible) return null;
+    return (
+      <View style={localStyles.cellBody}>
+        {renderCellQuestion(cell.question, creator)}
+        <QuestionErrors question={cell.question} />
+      </View>
+    );
+  }
+}
+
 /** §2b cell-kind precedence — ALL no-question structural cells FIRST. */
 type WalkedCellKind =
   'drag' | 'empty' | 'actions' | 'question' | 'other' | 'choice' | 'title';
@@ -297,31 +337,53 @@ function toGridCellKind(kind: WalkedCellKind): GridCell['kind'] {
 function visibleCells(
   row: QuestionMatrixDropdownRenderedRow
 ): QuestionMatrixDropdownRenderedCell[] {
+  // Null-hardening (3.3a review finding 5, invariant 9): core's transposed
+  // end-actions row pushes `getRowActionsCell(i, "end")` UNGUARDED
+  // (question_matrixdropdownrendered.ts:1043) and it returns null for rows
+  // without end actions (:733) — unlike the horizontal path, which
+  // substitutes an empty cell (:896-905). Skip null/undefined cells; the
+  // walker reports the anomaly through the deduped diagnostic seam from a
+  // commit lifecycle (never during render).
   // §2a: core's per-cell error affordances (mobile interleave) are the
   // web's error surfacing — skipped entirely, replaced by the inline
   // QuestionErrors render.
-  return row.cells.filter((cell) => !cell.isErrorsCell);
+  return row.cells.filter((cell) => !!cell && !cell.isErrorsCell);
+}
+
+/** True when core handed us a rendered row containing null/undefined
+ * cells (the finding-5 shape `visibleCells` skips defensively). */
+function hasNullCells(row: QuestionMatrixDropdownRenderedRow): boolean {
+  return row.cells.some((cell) => !cell);
 }
 
 /** Row keys per the §4 keying table (stable across renderedTable resets). */
-function rowKeyFor(
-  row: QuestionMatrixDropdownRenderedRow,
-  index: number
-): string {
+function rowKeyFor(row: QuestionMatrixDropdownRenderedRow): string {
   if (row.row) return `row:${row.row.id}`;
   // Transposed / vertical rendered row (NO source row): key off the
   // COLUMN identity it represents (stable `column.name`), never the
   // regenerating `renderedRow.uniqueId`; exploded vertical rows append
-  // their choice index.
-  const columnCell = row.cells.find((cell) => !!cell.column);
+  // their choice index. (Null-filtered first — see visibleCells.)
+  const cells = row.cells.filter((cell) => !!cell);
+  const columnCell = cells.find((cell) => !!cell.column);
   if (columnCell) {
-    const choiceCell = row.cells.find(
+    const choiceCell = cells.find(
       (cell) => cell.isChoice && typeof cell.choiceIndex === 'number'
     );
     const suffix = choiceCell ? `:c${choiceCell.choiceIndex}` : '';
     return `vcol:${columnCell.column!.name}${suffix}`;
   }
-  return `vrow:${index}`;
+  // The one enumerated column-less vertical row kind (3.3a review finding
+  // 4): buildVerticalRows' END-ACTIONS row (createEndVerticalActionRow,
+  // question_matrixdropdownrendered.ts:973-974/1036-1049) — exactly one
+  // per table, keyed semantically, never by array index (§4).
+  if (cells.some((cell) => cell.isActionsCell)) return 'vrow:actions-end';
+  // WARN fallback — genuinely UNKNOWN vertical row kind (none exist in
+  // v2.5.33): a content-derived stable token (the row's cell-kind
+  // signature), never a bare index. Two unknown rows with an identical
+  // signature would collide — acceptable for an unreachable branch;
+  // revisit if core grows a new column-less vertical row kind.
+  const signature = cells.map((cell) => classifyCell(cell)).join('.');
+  return `vrow:unknown:${signature || 'empty'}`;
 }
 
 /** Cell keys per the §4 keying table — immutable question identity
@@ -335,7 +397,20 @@ function cellKeyFor(
 ): string {
   switch (kind) {
     case 'question':
-      return `q:${cell.question.uniqueId}`;
+      // Sibling-unique disambiguation (3.3a review finding 2): the
+      // exploded totals footer (createMutlipleColumnsFooter →
+      // createMutlipleEditCells(isFooter=true),
+      // question_matrixdropdownrendered.ts:1050-1067/1110-1115) renders
+      // one cell PER CHOICE all sharing ONE total question (no `item` ⇒
+      // not 'choice'), so a bare q:<uniqueId> repeats among footer
+      // siblings. Footer question cells append their column slot —
+      // reset-stability is moot there (read-only expression displays hold
+      // no draft/focus state). DATA-row keys stay pure question identity
+      // so leaves reconcile across resets even when slots shift (e.g. a
+      // column visibility flip) — the §4 keying table's whole point.
+      return rowKey === 'footer'
+        ? `q:${cell.question.uniqueId}:s${slot}`
+        : `q:${cell.question.uniqueId}`;
     case 'choice':
       return `q:${cell.question.uniqueId}:c${cell.choiceIndex}`;
     case 'other':
@@ -375,6 +450,9 @@ export class MatrixTable extends SurveyElementBase<
 > {
   private unmounted = false;
   private ensureScheduled = false;
+  /** Set during the render-phase walk when core handed us null cells
+   * (finding 5); flushed post-commit — no diagnostics during render. */
+  private nullCellsSeen = false;
 
   constructor(props: MatrixTableProps) {
     super(props);
@@ -399,6 +477,7 @@ export class MatrixTable extends SurveyElementBase<
     super.componentDidMount();
     this.scheduleEnsure();
     this.flushLayoutDiagnostic();
+    this.flushNullCellDiagnostic();
   }
 
   componentDidUpdate(): void {
@@ -408,6 +487,7 @@ export class MatrixTable extends SurveyElementBase<
     super.componentDidUpdate();
     this.scheduleEnsure();
     this.flushLayoutDiagnostic();
+    this.flushNullCellDiagnostic();
   }
 
   componentWillUnmount(): void {
@@ -459,6 +539,21 @@ export class MatrixTable extends SurveyElementBase<
     });
   }
 
+  /** Finding 5's post-commit flush — deduped once per matrix question by
+   * the diagnostics module (same seam discipline as the layout flush). */
+  private flushNullCellDiagnostic(): void {
+    if (!this.nullCellsSeen) return;
+    const question = this.props.question;
+    reportMatrixNullCellOnce(question, {
+      code: 'matrix-null-cell',
+      elementName: question.name,
+      elementType: question.getType(),
+      message:
+        'renderedTable contained null cells (transposed end-actions row with ' +
+        'per-row actions); the walker skipped them (invariant 9).',
+    });
+  }
+
   /** Build one walked grid cell (render thunk per §2/§2a/§2b). */
   private buildGridCell(
     cell: QuestionMatrixDropdownRenderedCell,
@@ -471,13 +566,10 @@ export class MatrixTable extends SurveyElementBase<
     let render: () => React.ReactNode;
     switch (kind) {
       case 'question':
-        render = () =>
-          cell.isVisible ? (
-            <View style={localStyles.cellBody}>
-              {renderCellQuestion(cell.question, creator)}
-              <QuestionErrors question={cell.question} />
-            </View>
-          ) : null;
+        // NOT gated on the rendered cell's `isVisible` (mobile-only, always
+        // true on the wide path) — MatrixQuestionCell owns the per-row
+        // `cell.question.isVisible` gate AND its reactivity (finding 1).
+        render = () => <MatrixQuestionCell cell={cell} creator={creator} />;
         break;
       case 'choice':
         render = () => <MatrixChoiceCell cell={cell} matrix={question} />;
@@ -560,8 +652,9 @@ export class MatrixTable extends SurveyElementBase<
     );
     const columns = this.buildColumns(table, dataRows);
 
-    const rows: GridRow[] = dataRows.map((renderedRow, index) => {
-      const rowKey = rowKeyFor(renderedRow, index);
+    const rows: GridRow[] = dataRows.map((renderedRow) => {
+      if (hasNullCells(renderedRow)) this.nullCellsSeen = true;
+      const rowKey = rowKeyFor(renderedRow);
       return {
         key: rowKey,
         kind: 'data' as const,
@@ -578,6 +671,7 @@ export class MatrixTable extends SurveyElementBase<
     // cell, aligned to the shared column dp array.
     if (table.showFooter && table.footerRow) {
       const footerRow = table.footerRow;
+      if (hasNullCells(footerRow)) this.nullCellsSeen = true;
       rows.push({
         key: 'footer',
         kind: 'footer' as const,

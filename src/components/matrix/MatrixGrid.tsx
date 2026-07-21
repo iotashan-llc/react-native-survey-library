@@ -8,11 +8,23 @@
  * Contract (design §3 "MatrixGrid ownership"): the question-renderer OWNER
  * measures the outer root, runs the width allocator (§3a.3), and hands
  * `MatrixGrid` a fully-resolved `ResolvedGridContract` — dp widths + the
- * summed content width already computed. `MatrixGrid` is therefore
- * `SurveyElementBase`-free, holds NO layout state, and RESOLVES NOTHING;
- * it only lays out Views. (This file is a plain `React.Component` with
- * `static contextType` so it can read the theme's `matrix` recipe — the
- * provider docblock's sanctioned non-`SurveyElementBase` context path.)
+ * summed content width already computed. `MatrixGrid` holds NO layout
+ * state and RESOLVES NOTHING; it only lays out Views. (The grid class is
+ * a plain `React.Component` with `static contextType` so it can read the
+ * theme's `matrix` recipe — the provider docblock's sanctioned
+ * non-`SurveyElementBase` context path.)
+ *
+ * Documented amendment (design §4, 3.3a review finding 3): the design
+ * names a per-row reactive unit (`MatrixTableRow`) subscribing the row's
+ * state element — core mutates `renderedRow.isGhostRow`/`visible` IN
+ * PLACE (question_matrixdropdownrendered.ts:169-171), which no
+ * table-level subscription observes (3.3b detail rows / 3.4 drag
+ * ghost-row need it). Since `MatrixGrid` renders per-cell thunks, that
+ * unit lands HERE as the thin `MatrixGridRowSubscriber` below: each row
+ * band is wrapped in a `SurveyElementBase` whose `getStateElement()` is
+ * the contract row's `getStateElement()` — the ONE model-reactive piece
+ * in this otherwise reactivity-free file. The grid layout itself still
+ * subscribes nothing.
  *
  * The 3.1a wide baseline (§3a): ONE horizontal `ScrollView` whose content
  * is the whole grid — the row-header column lives INSIDE the scroll
@@ -33,6 +45,8 @@
 import * as React from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import type { ViewStyle } from 'react-native';
+import type { Base } from '../../core/facade';
+import { SurveyElementBase } from '../../reactivity/SurveyElementBase';
 import { SurveyThemeContext } from '../../theme-rn/provider';
 import type { SurveyThemeContextValue } from '../../theme-rn/provider';
 import type {
@@ -43,6 +57,40 @@ import type {
 
 export interface MatrixGridProps {
   contract: ResolvedGridContract;
+}
+
+interface MatrixGridRowSubscriberProps {
+  row: GridRow;
+  /** Fresh-per-render row-band builder — a thunk (never pre-built
+   * children) so a row-model notification re-runs the cell thunks. */
+  renderRow: () => React.ReactNode;
+}
+
+/**
+ * The per-row reactive unit (design §4 amendment — see file doc):
+ * subscribes the contract row's declared state element so an IN-PLACE
+ * property write on it (core's `renderedRow.visible`/`isGhostRow`)
+ * re-renders exactly that row band. A non-subscribable state element
+ * (e.g. a plain-object unit-test stub) is filtered to null HERE — not
+ * merely skipped at subscribe time — because the base's D4 retarget bump
+ * re-fires for every "added" element: a getter minting a fresh
+ * non-subscribable object per call would otherwise loop
+ * `componentDidUpdate` → bump forever. (Real contracts return a STABLE
+ * core `Base` per row — see the GridRow docblock.)
+ */
+class MatrixGridRowSubscriber extends SurveyElementBase<MatrixGridRowSubscriberProps> {
+  protected getStateElement(): Base | null {
+    const element = this.props.row.getStateElement?.() ?? null;
+    const subscribable =
+      !!element &&
+      typeof (element as { addOnPropertyValueChangedCallback?: unknown })
+        .addOnPropertyValueChangedCallback === 'function';
+    return subscribable ? element : null;
+  }
+
+  protected renderElement(): React.JSX.Element {
+    return <>{this.props.renderRow()}</>;
+  }
 }
 
 export class MatrixGrid extends React.Component<MatrixGridProps> {
@@ -164,7 +212,13 @@ export class MatrixGrid extends React.Component<MatrixGridProps> {
           style={[fragments.grid, { width: contract.contentWidth }]}
         >
           {contract.showHeader && this.renderHeaderBand()}
-          {contract.rows.map((row) => this.renderRow(row))}
+          {contract.rows.map((row) => (
+            <MatrixGridRowSubscriber
+              key={row.key}
+              row={row}
+              renderRow={() => this.renderRow(row)}
+            />
+          ))}
         </View>
       </ScrollView>
     );

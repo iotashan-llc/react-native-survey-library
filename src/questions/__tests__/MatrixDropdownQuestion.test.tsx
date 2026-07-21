@@ -501,6 +501,114 @@ describe('matrixdropdown — transposed (vertical) layout renders faithfully + d
   });
 });
 
+describe('matrixdropdown — per-row cell-question visibility (column visibleIf)', () => {
+  it('an invisible cell question renders NO input, and visibility flips are reactive per row', async () => {
+    const { question } = createMatrixDropdown({
+      columns: [
+        { name: 'c1', cellType: 'text' },
+        { name: 'c2', cellType: 'text', visibleIf: "{row.c1} = 'go'" },
+      ],
+    });
+    await renderMatrixDropdown(question);
+    // The c2 cell question is invisible in BOTH rows (driver empty): the
+    // wide path must render an EMPTY cell body — no live input. (Core's
+    // rendered-cell `isVisible` is mobile-only —
+    // question_matrixdropdownrendered.ts:110-111 — the per-row state is
+    // `cell.question.isVisible`, which web gates the cell body on.)
+    expect(screen.getAllByTestId('c1-input')).toHaveLength(2);
+    expect(screen.queryAllByTestId('c2-input')).toHaveLength(0);
+
+    // Flip the driver in row 1 only → exactly that row's c2 appears.
+    act(() => {
+      question.visibleRows[0]!.cells[0]!.question.value = 'go';
+    });
+    await flush();
+    expect(screen.getAllByTestId('c2-input')).toHaveLength(1);
+
+    // Flip back → it disappears again (reactive both directions).
+    act(() => {
+      question.visibleRows[0]!.cells[0]!.question.value = 'stop';
+    });
+    await flush();
+    expect(screen.queryAllByTestId('c2-input')).toHaveLength(0);
+  });
+});
+
+describe('matrixdropdown — exploded totals footer keys (§4 sibling-unique)', () => {
+  it('showInMultipleColumns column + totals footer renders with NO duplicate React keys', async () => {
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    try {
+      const { question } = createMatrixDropdown({
+        columns: [
+          { name: 'c1', cellType: 'text', totalType: 'sum' },
+          {
+            name: 'c3',
+            cellType: 'checkbox',
+            showInMultipleColumns: true,
+            choices: ['x', 'y', 'z'],
+          },
+        ],
+      });
+      await renderMatrixDropdown(question);
+      expect(screen.getByTestId('matrix-row-footer')).toBeTruthy();
+      // Core's createMutlipleColumnsFooter emits one footer cell PER
+      // CHOICE all sharing ONE total question (no item ⇒ not a choice
+      // cell) — bare q:<uniqueId> keys would collide among siblings.
+      const duplicateKeyErrors = errorSpy.mock.calls.filter((call) =>
+        call.some((arg) => typeof arg === 'string' && arg.includes('same key'))
+      );
+      expect(duplicateKeyErrors).toEqual([]);
+    } finally {
+      errorSpy.mockRestore();
+    }
+  });
+});
+
+describe('matrixdropdown — transposed end-actions row (§4 keying + invariant 9)', () => {
+  it('keys the vertical end-actions row semantically (vrow:actions-end), never by array index', async () => {
+    const { model, question } = createMatrixDropdown({
+      transposeData: true,
+      columns: [{ name: 'c1', cellType: 'text' }],
+    });
+    model.onGetMatrixRowActions.add((_, options) => {
+      options.actions.push({ id: 'act', title: 'Act', location: 'end' });
+    });
+    await renderMatrixDropdown(question);
+    expect(screen.getByTestId('matrix-row-vrow:actions-end')).toBeTruthy();
+  });
+
+  it('tolerates NULL action cells (only SOME rows have end actions) with a deduped diagnostic', async () => {
+    const captured: DiagnosticPayload[] = [];
+    setDiagnosticHandler((payload) => captured.push(payload));
+    try {
+      const { model, question } = createMatrixDropdown({
+        transposeData: true,
+        columns: [{ name: 'c1', cellType: 'text' }],
+      });
+      model.onGetMatrixRowActions.add((_, options) => {
+        // Only r1 gets an end action → core's createEndVerticalActionRow
+        // pushes getRowActionsCell(i,'end') UNGUARDED, which returns null
+        // for r2 (question_matrixdropdownrendered.ts:1036-1049, 714-734).
+        const rowName = (options.row as unknown as { rowName?: string })
+          .rowName;
+        if (rowName === 'r1') {
+          options.actions.push({ id: 'act', title: 'Act', location: 'end' });
+        }
+      });
+      await renderMatrixDropdown(question);
+      // The walker must skip the null cell defensively — never throw
+      // (invariant 9): the grid still renders every real cell question.
+      expect(screen.getAllByTestId('c1-input')).toHaveLength(2);
+      expect(screen.getByTestId('matrix-row-vrow:actions-end')).toBeTruthy();
+      expect(
+        captured.filter((p) => (p.code as string) === 'matrix-null-cell')
+      ).toHaveLength(1);
+    } finally {
+      setDiagnosticHandler(undefined);
+    }
+  });
+});
+
 describe('matrixdropdown — unsupported cellType degrades per cell (invariant 9)', () => {
   it('a `file` column renders the non-throwing fallback in each cell; the rest of the matrix still works', async () => {
     const { question } = createMatrixDropdown({

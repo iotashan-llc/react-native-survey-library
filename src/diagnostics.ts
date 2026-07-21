@@ -348,8 +348,22 @@ export interface TagboxSelectModeUnsupportedPayload {
   questionName: string;
 }
 
+/** 3.3a review (finding 5): core's transposed end-actions row pushes
+ * `getRowActionsCell(...)` UNGUARDED into `renderedRow.cells`, and it
+ * returns null for rows without end actions
+ * (question_matrixdropdownrendered.ts:1036-1049, 714-734). The walker
+ * skips null cells defensively (invariant 9) and surfaces the anomaly
+ * here — once per matrix question. */
+export interface MatrixNullCellPayload {
+  code: 'matrix-null-cell';
+  elementName: string | undefined;
+  elementType: string;
+  message: string;
+}
+
 export type DiagnosticPayload =
   | UnsupportedQuestionTypePayload
+  | MatrixNullCellPayload
   | CustomWidgetIgnoredPayload
   | DropdownSelectModeUnsupportedPayload
   | DropdownInputComponentMissingPayload
@@ -447,6 +461,19 @@ export function reportLayoutDiagnosticOnce(
   const key = `${payload.layoutCode}|${payload.property}|${payload.value}`;
   if (emittedKeys.has(key)) return;
   emittedKeys.add(key);
+  reportDiagnostic(payload);
+}
+
+/** Once per MATRIX QUESTION, full stop: every rebuilt renderedTable
+ * repeating the same structural anomaly must not spam the handler. */
+const matrixNullCellEmitted = new WeakSet<object>();
+
+export function reportMatrixNullCellOnce(
+  matrix: object,
+  payload: MatrixNullCellPayload
+): void {
+  if (matrixNullCellEmitted.has(matrix)) return;
+  matrixNullCellEmitted.add(matrix);
   reportDiagnostic(payload);
 }
 
