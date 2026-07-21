@@ -26,11 +26,10 @@ The `html` question type (supported since v0.2.1) renders
 `question.html` through this same `<SanitizedHtml>` sink rather than
 web's `dangerouslySetInnerHTML`, so every constraint in this section
 applies to it — the tag allowlist, the stripped remote `<img>` sources,
-and the no-auto-navigation link policy (a link inside html content is
-currently **inert**: nothing is wired to receive a link press, so a tap is
-a no-op plus a dev-only diagnostic — it does not navigate and does not yet
-surface an event; host-callback plumbing lands with the separate
-`onLinkPress` task — see "Links never auto-navigate" below). No new
+and the host-opt-in link policy (a link inside html content surfaces
+through the survey-level `<Survey onLinkPress>` handler labeled
+`context: 'html-question'`; with no handler anywhere the anchor renders
+as plain text — see "Links never auto-navigate" below). No new
 deviation beyond those already listed here.
 
 ### Tag support is an explicit allowlist, not "any HTML"
@@ -73,19 +72,31 @@ per-element inline `style`.
 
 Web's native `<a href>` navigates the browser directly on click/tap.
 `<SanitizedHtml>` never calls `Linking.openURL` (or any navigation API)
-itself. With no `onLinkPress` prop supplied, a press is silently a
-no-op (plus a dev-only diagnostic); with one supplied, it receives the
-**policy-revalidated canonical URL** and the host app decides what to do
-(open in-app, open externally, ask the user, block it, etc.).
+itself. Link presses are a **host opt-in**:
 
-**Workaround:** render `<SanitizedHtml>` (a public export) directly with an
-`onLinkPress` if link presses inside HTML content should do anything at all.
-Note the `<Survey>` root does **not** yet expose an `onLinkPress` prop, and it
-does not thread a link callback down to the HTML it renders (the `html`
-question, the completed/completed-before/loading state HTML) — those mount
-`<SanitizedHtml>` with no host callback, so link presses inside a `<Survey>`
-are currently inert (a no-op plus a dev-only diagnostic). A survey-level
-link-press hook is a tracked TODO, not yet built.
+- `<Survey onLinkPress={(event) => ...}>` receives every anchor press
+  from every sanitized-HTML sink in the tree — titles, descriptions,
+  errors, the completed/completed-before/loading state pages, the
+  `html` question, and choice captions. The event is
+  `{ url, context, origin, scheme }`: `url` is the **policy-revalidated
+  canonical URL** (re-checked at press time; a policy-failing href never
+  fires the event), `context` names the sink (`'title'`,
+  `'description'`, `'error'`, `'completed'`, `'html-question'`,
+  `'choice'`, ...), and `origin`/`scheme` carry the validation's own
+  parse (`'https://example.com'` / `'https:'`; both `null` for opaque
+  schemes like `mailto:`/`tel:`) so a host trust decision never has to
+  re-parse `url` — and can never re-parse it *differently*. The host
+  decides what to do — `Linking.openURL(event.url)` is the host's line
+  to write (open in-app, open externally, ask the user, block it).
+- Rendering `<SanitizedHtml>` (a public export) directly with its own
+  `onLinkPress` prop still works and wins over the survey-level handler
+  for that sink.
+
+**A11y honesty:** with NO handler resolvable (no `<Survey onLinkPress>`,
+no per-sink prop), anchors render as **plain text** — no link
+accessibility role, no pressable. A screen reader is never offered a
+"link" that does nothing; the role and pressability appear exactly when
+a press actually surfaces an event.
 
 ### URL scheme/origin policy is restrictive by default
 
@@ -95,7 +106,14 @@ central scheme/origin policy (`src/security/uri-policy.ts`) before it
 ever reaches a sink:
 
 - Anchor `href` (event-only, human-mediated): a broader scheme set
-  (`https http mailto tel`), no origin restriction.
+  (`https http mailto tel`) and no origin restriction — but URL-embedded
+  credentials (`https://user@host`, including host-lookalike forms like
+  `https://trusted.com@evil.com`) are rejected the same as in fetch
+  contexts, and protocol-relative refs (`//host/...`) are never passed
+  through unresolved: they resolve against a configured `baseUrl` (and
+  re-validate as an absolute link, true origin included) or fail closed.
+  Bare relative refs (`/help`, `docs/page`) still pass through unresolved
+  for the host to interpret.
 - The automatic-fetch contexts the policy governs (survey/background
   images, video, `choicesByUrl` — wired by later tasks): `https:` only by
   default, and **no origin is fetchable until explicitly allowlisted** —

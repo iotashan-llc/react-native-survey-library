@@ -137,7 +137,8 @@ export function RatingDropdownItemContent(
           {SurveyElementBase.renderLocString(
             item.description,
             undefined,
-            'rating-dd-item-description'
+            'rating-dd-item-description',
+            'choice'
           )}
         </View>
       ) : null}
@@ -277,7 +278,8 @@ export class RatingDropdownQuestion extends OverlayControlBase<OverlayControlPro
           {SurveyElementBase.renderLocString(
             question.selectedItemLocText,
             undefined,
-            'rating-dd-value'
+            'rating-dd-value',
+            'choice'
           )}
         </View>
       );

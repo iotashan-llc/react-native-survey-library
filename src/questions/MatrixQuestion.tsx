@@ -191,7 +191,9 @@ class MatrixSimpleCell extends SurveyElementBase<MatrixCellProps> {
         >
           {this.renderLocString(
             loc,
-            checked ? frag.rubricTextSelected : frag.rubricText
+            checked ? frag.rubricTextSelected : frag.rubricText,
+            undefined,
+            'choice'
           )}
         </Pressable>
       );
@@ -287,7 +289,9 @@ class MatrixRowHeaderCell extends SurveyElementBase<MatrixRowHeaderProps> {
       <View testID={`matrix-rowheader-${rowName}`}>
         {this.renderLocString(
           row.locText,
-          hasError ? frag.rowHeaderTextError : frag.rowHeaderText
+          hasError ? frag.rowHeaderTextError : frag.rowHeaderText,
+          undefined,
+          'choice'
         )}
         {hasError ? (
           <View
@@ -383,7 +387,12 @@ export class MatrixQuestion extends QuestionElementBase<MatrixQuestionProps> {
       // collide), while the visibleColumns ItemValue instances persist.
       columns.push({
         key: `col-${column.uniqueId}`,
-        header: this.renderLocString(column.locText),
+        header: this.renderLocString(
+          column.locText,
+          undefined,
+          undefined,
+          'choice'
+        ),
         width: columnMinWidth,
         minWidth: columnMinWidth,
       });

@@ -135,7 +135,12 @@ export class BooleanQuestion extends QuestionElementBase<QuestionElementBaseProp
     return (
       <View style={styles.switchRow}>
         <Text style={styles.switchLabel}>
-          {this.renderLocString(question.locLabelLeft)}
+          {this.renderLocString(
+            question.locLabelLeft,
+            undefined,
+            undefined,
+            'choice'
+          )}
         </Text>
         <Switch
           testID={`sv-boolean-switch-${question.name}`}
@@ -152,7 +157,12 @@ export class BooleanQuestion extends QuestionElementBase<QuestionElementBaseProp
           }}
         />
         <Text style={styles.switchLabel}>
-          {this.renderLocString(question.locLabelRight)}
+          {this.renderLocString(
+            question.locLabelRight,
+            undefined,
+            undefined,
+            'choice'
+          )}
         </Text>
       </View>
     );
@@ -243,7 +253,7 @@ export class BooleanRadioQuestion extends QuestionElementBase<QuestionElementBas
       >
         <View style={selected.decorator} />
         <Text style={recipes.item.fragments.label}>
-          {this.renderLocString(locText)}
+          {this.renderLocString(locText, undefined, undefined, 'choice')}
         </Text>
       </Pressable>
     );

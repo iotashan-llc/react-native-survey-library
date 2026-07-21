@@ -397,13 +397,17 @@ export class RatingQuestion extends QuestionElementBase<QuestionElementBaseProps
     const minText = question.hasMinLabel
       ? this.renderLocString(
           question.locMinRateDescription,
-          fragments.minMaxText
+          fragments.minMaxText,
+          undefined,
+          'choice'
         )
       : null;
     const maxText = question.hasMaxLabel
       ? this.renderLocString(
           question.locMaxRateDescription,
-          fragments.minMaxText
+          fragments.minMaxText,
+          undefined,
+          'choice'
         )
       : null;
     return (

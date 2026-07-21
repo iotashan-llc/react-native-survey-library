@@ -575,8 +575,19 @@ function validateLinkAbsolute(
   const canonical = schemeLower + rest;
   const { authority } = splitSchemeRest(rest);
   if (authority === null) {
-    // Opaque scheme (mailto:, tel:) — no network origin.
+    // Opaque scheme (mailto:, tel:) — no network origin. Their `@` is an
+    // address, not URL userinfo — only `//authority` forms are checked.
     return ok(canonical, schemeLower, null);
+  }
+  // Same credentials policy as validateFetchAbsolute (review: link-context
+  // policy must not be WEAKER than fetch): `https://trusted.com@evil.com`
+  // is a host-lookalike phish, and the computed origin below would name
+  // evil.com while the human reads trusted.com. Checked on the RAW
+  // authority text — RFC 3986 forbids `@` in host/port, so ANY `@` here is
+  // userinfo — which also catches an authority that parseAuthority
+  // otherwise rejects (e.g. an out-of-range port next to credentials).
+  if (authority.includes('@')) {
+    return fail('credentials-in-url');
   }
   const parsedAuthority = parseAuthority(authority);
   if (!parsedAuthority) {
@@ -641,9 +652,19 @@ function validateRelative(
   context: UriContext,
   config: UriPolicyConfig | undefined
 ): UriValidationResult {
-  if (context === 'link') {
+  if (context === 'link' && !trimmed.startsWith('//')) {
+    // Bare relative reference (`/help`, `docs/page`, `?q`, `#frag`) —
+    // human-mediated, passed through unresolved for the host to interpret.
     return ok(trimmed, null, null);
   }
+  // A PROTOCOL-RELATIVE ref (`//evil.com/x`) is NOT a same-site path — it
+  // names a whole other authority (review: link context passed these
+  // through ok with a null origin, hiding the real target from the host).
+  // In link context it takes the same path as fetch contexts: resolved
+  // against a validated baseUrl and re-checked as an absolute link
+  // (userinfo rejection + TRUE origin computation included), or rejected
+  // fail-closed when no base is configured — as at the press-time
+  // revalidation call site, which passes no config.
 
   const baseUrl = ownProp(config, 'baseUrl');
   if (typeof baseUrl !== 'string' || baseUrl.length === 0) {

@@ -72,14 +72,18 @@ export class SurveyHeader extends SurveyElementBase<SurveyHeaderProps> {
       >
         {this.renderLocString(
           this.survey.locTitle,
-          composeStyles(fragments.title, { override: slots?.title })
+          composeStyles(fragments.title, { override: slots?.title }),
+          undefined,
+          'title'
         )}
         {this.survey.renderedHasDescription
           ? this.renderLocString(
               this.survey.locDescription,
               composeStyles(fragments.description, {
                 override: slots?.description,
-              })
+              }),
+              undefined,
+              'description'
             )
           : null}
       </View>

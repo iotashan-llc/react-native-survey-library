@@ -430,7 +430,8 @@ export class PanelDynamicQuestion extends QuestionElementBase<QuestionElementBas
                 {SurveyElementBase.renderLocString(
                   tab.locTitle as unknown as LocalizableString,
                   undefined,
-                  `tab-${i}`
+                  `tab-${i}`,
+                  'title'
                 )}
               </Pressable>
             );

@@ -62,10 +62,15 @@ export class SurveyPage extends SurveyPanelBase<SurveyPageProps> {
     return (
       <View testID="sv-page-header">
         {page.hasTitle
-          ? this.renderLocString(page.locTitle, undefined, 'title')
+          ? this.renderLocString(page.locTitle, undefined, 'title', 'title')
           : null}
         {this.showDescription
-          ? this.renderLocString(page.locDescription, undefined, 'description')
+          ? this.renderLocString(
+              page.locDescription,
+              undefined,
+              'description',
+              'description'
+            )
           : null}
       </View>
     );

@@ -89,7 +89,8 @@ export class QuestionErrors extends SurveyElementBase<
             composeStyles(itemFragments, {
               override: chromeOverrides?.errorItem,
             }),
-            `error-${position}-${index}`
+            `error-${position}-${index}`,
+            'error'
           )
         )}
       </View>

@@ -9,11 +9,18 @@
  *
  * 1. `source={{ dom }}` is fed the PRIVATE allowlisted AST produced by
  *    `sanitizeHtml` — the renderer never parses raw author HTML itself.
- * 2. `renderersProps.a.onPress` is ALWAYS installed, replacing the
- *    library's own default (`Linking.openURL` — i.e. auto-navigation).
- *    With no host `onLinkPress` callback, a press is a no-op (dev
- *    diagnostic only). The canonical URI is RE-VALIDATED at press time
- *    against whatever the renderer actually hands back (its own
+ * 2. The `renderersProps.a.onPress` KEY is ALWAYS passed, replacing the
+ *    library's own default (`Linking.openURL` — i.e. auto-navigation;
+ *    the renderer merges `renderersProps` with `mergeDeepRight`, so an
+ *    OMITTED key would keep that default — the key itself is the
+ *    security seam). Its VALUE is a11y-honest: with a resolvable host
+ *    callback (the explicit `onLinkPress` prop, else the Survey-level
+ *    `LinkPressContext` handler) the guarded press handler is installed
+ *    and the anchor is a real link (role + pressable); with NO callback
+ *    the value is `undefined`, so the anchor renders as PLAIN TEXT — no
+ *    link a11y role, no pressable — never a dead a11y control. On a
+ *    press the canonical URI is RE-VALIDATED at press time against
+ *    whatever the renderer actually hands back (its own
  *    `useNormalizedUrl` pass) — never trusting a value validated once and
  *    used again elsewhere ("validate one, use another" is exactly what
  *    the design calls out to close). This library's own code path NEVER
@@ -40,7 +47,22 @@ import type {
 import { validateUri } from '../security/uri-policy';
 import type { UriPolicyConfig } from '../security/uri-policy';
 import { UriPolicyContext } from '../security/UriPolicyContext';
+import { LinkPressContext } from '../security/LinkPressContext';
+import type { SurveyLinkPressContext } from '../security/LinkPressContext';
 import { reportDiagnostic } from '../diagnostics';
+
+/** Validation metadata computed by the press-time policy revalidation
+ * and delivered alongside the canonical URL — so hosts can make trust
+ * decisions on the TRUE parsed origin/scheme rather than re-parsing (and
+ * possibly re-parsing DIFFERENTLY — the exact bug class the canonical
+ * contract exists to close). */
+export interface LinkPressValidationMeta {
+  /** `scheme://host[:non-default-port]` (lowercase), or `null` for
+   * opaque schemes (`mailto:`, `tel:`). */
+  origin: string | null;
+  /** Lowercase scheme with trailing colon (e.g. `"https:"`). */
+  scheme: string | null;
+}
 
 export interface SanitizedHtmlProps {
   /** Raw, untrusted author HTML. Sanitized on every render (memoized on
@@ -48,10 +70,21 @@ export interface SanitizedHtmlProps {
   html: string;
   /** Called with the RE-VALIDATED canonical URI when an anchor is
    * pressed. The host owns navigation — this library never calls
-   * `Linking.openURL` itself. Omitting this prop makes every anchor
-   * press a no-op (plus a dev diagnostic) rather than silently falling
-   * back to auto-navigation. */
-  onLinkPress?: (canonicalUrl: string, event: GestureResponderEvent) => void;
+   * `Linking.openURL` itself. Wins over the Survey-level
+   * `LinkPressContext` handler. With NO callback resolvable from either
+   * source, anchors render as PLAIN TEXT (no link a11y role, no
+   * pressable) — never a dead control, never auto-navigation. */
+  onLinkPress?: (
+    canonicalUrl: string,
+    event: GestureResponderEvent,
+    validation?: LinkPressValidationMeta
+  ) => void;
+  /** Sink label delivered as `event.context` when the SURVEY-LEVEL
+   * `onLinkPress` handler (via `LinkPressContext`) fires — e.g.
+   * `'title'`, `'html-question'`, `'completed'`. Defaults to `'html'`.
+   * Ignored when the explicit `onLinkPress` prop is in play (that
+   * callback already knows its own sink). */
+  linkContext?: SurveyLinkPressContext;
   /** Forwarded to the renderer; required for correct text-wrapping
    * layout. Defaults to the window width if omitted. */
   contentWidth?: number;
@@ -83,6 +116,43 @@ function getRenderHTML(): ComponentType<Record<string, unknown>> {
     ).default;
   }
   return cachedRenderHTML;
+}
+
+/**
+ * The renderer's DEFAULT anchor element model assigns `accessible: true`
+ * + `accessibilityRole: 'link'` from href PRESENCE alone — independent
+ * of any press handler. With no host callback that is exactly the dead
+ * a11y control the a11y-honest contract forbids: a screen reader
+ * announces a link that does nothing. This custom `a` model suppresses
+ * the model-level a11y props; the press-gated branch of the renderer's
+ * own `getNativePropsForTNode` re-adds `accessibilityRole: 'link'`
+ * whenever a real `onPress` is installed — so role/pressability appear
+ * IF AND ONLY IF a press actually does something. Lazily built (same
+ * deferred-evaluation contract as `getRenderHTML`) and cached for a
+ * stable identity (the renderer memoizes its engine on prop identity).
+ */
+let cachedInertAnchorModels: Record<string, unknown> | undefined;
+function getInertAnchorElementModels(): Record<string, unknown> {
+  if (!cachedInertAnchorModels) {
+    const { defaultHTMLElementModels } = require('@native-html/render') as {
+      defaultHTMLElementModels: {
+        a: { extend(shape: Record<string, unknown>): unknown };
+      };
+    };
+    cachedInertAnchorModels = {
+      a: defaultHTMLElementModels.a.extend({
+        getReactNativeProps: () => undefined,
+        // The default anchor model ALSO derives link VISUALS (anchor
+        // color + underline) from href presence via `getMixedUAStyles` —
+        // an inert anchor keeping them is a half-fixed dead control:
+        // looks pressable, does nothing. Suppress the styles too so the
+        // no-callback anchor reduces to genuinely plain text. (`extend`
+        // shallow-merges, so this key must be overridden explicitly.)
+        getMixedUAStyles: () => undefined,
+      }),
+    };
+  }
+  return cachedInertAnchorModels;
 }
 
 function warnLinkPressDropped(reason: string): void {
@@ -131,7 +201,13 @@ export function createAnchorOnPress(
       );
       return;
     }
-    onLinkPress(revalidated.canonical, event);
+    // Deliver the validation result's origin/scheme WITH the canonical
+    // URL (review: the true origin was computed then discarded) — the
+    // host's trust decision gets the policy's own parse, not a re-parse.
+    onLinkPress(revalidated.canonical, event, {
+      origin: revalidated.origin,
+      scheme: revalidated.scheme,
+    });
   };
 }
 
@@ -161,6 +237,7 @@ export function SanitizedHtml(props: SanitizedHtmlProps): React.JSX.Element {
   const {
     html,
     onLinkPress,
+    linkContext,
     contentWidth,
     relaxedFormatting,
     bounds,
@@ -198,16 +275,44 @@ export function SanitizedHtml(props: SanitizedHtmlProps): React.JSX.Element {
     }
   }, [sanitizeResult]);
 
-  const onAnchorPress = React.useMemo(
-    () => createAnchorOnPress(onLinkPress),
-    [onLinkPress]
-  );
+  // Host-callback resolution: the explicit prop wins; otherwise the
+  // <Survey onLinkPress> context handler applies, adapted to the
+  // low-level `(canonicalUrl, event)` shape with this sink's label.
+  const surveyLinkPress = React.useContext(LinkPressContext);
+  const resolvedOnLinkPress = React.useMemo(() => {
+    if (onLinkPress) return onLinkPress;
+    if (!surveyLinkPress) return undefined;
+    const context = linkContext ?? 'html';
+    return (
+      canonicalUrl: string,
+      _event: GestureResponderEvent,
+      validation?: LinkPressValidationMeta
+    ) =>
+      surveyLinkPress({
+        url: canonicalUrl,
+        context,
+        origin: validation ? validation.origin : null,
+        scheme: validation ? validation.scheme : null,
+      });
+  }, [onLinkPress, surveyLinkPress, linkContext]);
 
   const renderersProps = React.useMemo(
     () => ({
-      a: { onPress: onAnchorPress },
+      // The `onPress` KEY must ALWAYS be present: the renderer merges
+      // `renderersProps` over its defaults with `mergeDeepRight`, so an
+      // omitted key would resurrect its default anchor handler —
+      // `Linking.openURL`, i.e. auto-navigation (invariant 8 violation).
+      // An explicit `undefined` overrides it, and a value-less anchor
+      // renders as plain text: no onPress, no link a11y role (the
+      // renderer only decorates anchors that received a function) — the
+      // a11y-honest no-callback contract.
+      a: {
+        onPress: resolvedOnLinkPress
+          ? createAnchorOnPress(resolvedOnLinkPress)
+          : undefined,
+      },
     }),
-    [onAnchorPress]
+    [resolvedOnLinkPress]
   );
 
   const RenderHTML = getRenderHTML();
@@ -221,6 +326,9 @@ export function SanitizedHtml(props: SanitizedHtmlProps): React.JSX.Element {
       source={{ dom: sanitizeResult.dom }}
       contentWidth={resolvedContentWidth}
       renderersProps={renderersProps}
+      customHTMLElementModels={
+        resolvedOnLinkPress ? undefined : getInertAnchorElementModels()
+      }
       enableCSSInlineProcessing={false}
       baseStyle={
         props.baseStyle

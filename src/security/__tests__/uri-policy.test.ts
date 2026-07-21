@@ -55,9 +55,62 @@ describe('validateUri — scheme matrix x contexts', () => {
       expect(result.ok).toBe(true);
     });
 
-    it('allows credentials in the URL (link has no credentials restriction)', () => {
+    it('rejects credentials in the URL (same policy as fetch contexts)', () => {
       const result = validateUri('https://user:pass@example.com/x', 'link');
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.reason).toBe('credentials-in-url');
+    });
+
+    it('rejects a host-lookalike userinfo (https://trusted.com@evil.com)', () => {
+      const result = validateUri('https://trusted.com@evil.com/x', 'link');
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.reason).toBe('credentials-in-url');
+    });
+
+    it('rejects an empty userinfo (https://@evil.com)', () => {
+      const result = validateUri('https://@evil.com/x', 'link');
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.reason).toBe('credentials-in-url');
+    });
+
+    it('rejects userinfo even when the rest of the authority is malformed', () => {
+      // parseAuthority fails on the out-of-range port — the '@' must
+      // still be rejected, not passed through as "malformed but
+      // human-mediated".
+      const result = validateUri('https://a@evil.com:99999/x', 'link');
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.reason).toBe('credentials-in-url');
+    });
+
+    it('still allows mailto: (its @ is an address, not URL userinfo)', () => {
+      const result = validateUri('mailto:person@example.com', 'link');
       expect(result.ok).toBe(true);
+    });
+
+    it('rejects a protocol-relative ref (//evil.com) with no baseUrl — never ok with a null origin', () => {
+      const result = validateUri('//evil.com/x', 'link');
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.reason).toBe('relative-url-not-allowed');
+    });
+
+    it('resolves a protocol-relative ref against a configured baseUrl and computes the TRUE origin', () => {
+      const result = validateUri('//cdn.example.com/x', 'link', {
+        baseUrl: 'https://example.com/base',
+      });
+      expect(result.ok).toBe(true);
+      if (result.ok) {
+        expect(result.canonical).toBe('https://cdn.example.com/x');
+        expect(result.scheme).toBe('https:');
+        expect(result.origin).toBe('https://cdn.example.com');
+      }
+    });
+
+    it('a baseUrl-resolved protocol-relative ref still rejects userinfo', () => {
+      const result = validateUri('//a@evil.com/x', 'link', {
+        baseUrl: 'https://example.com/base',
+      });
+      expect(result.ok).toBe(false);
+      if (!result.ok) expect(result.reason).toBe('credentials-in-url');
     });
   });
 

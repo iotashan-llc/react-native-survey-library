@@ -16,8 +16,10 @@
  * Documented RN deltas:
  * - `hasHtml` strings render through `<SanitizedHtml>` (A10/A11) — never
  *   `dangerouslySetInnerHTML`, never raw markup as text. Link presses
- *   surface through SanitizedHtml's own policy (no host callback wired
- *   here yet — that is Survey-root plumbing, task 1.1/1.8).
+ *   surface through SanitizedHtml's own policy: the Survey-level
+ *   `onLinkPress` (via `LinkPressContext`) receives them with this
+ *   viewer's `linkContext` sink label; with no handler anywhere the
+ *   anchor renders as plain text (a11y-honest, never auto-navigation).
  * - Upstream's `getStringViewerClassName`/`textClass` CSS-class channel
  *   has no RN meaning; callers pass a `style` (recipe-composed) instead
  *   (invariant 6 — interaction styling is the caller's recipe's job).
@@ -35,10 +37,15 @@ import { Text } from 'react-native';
 import type { StyleProp, TextStyle } from 'react-native';
 import type { LocalizableString } from '../core/facade';
 import { SanitizedHtml } from './SanitizedHtml';
+import type { SurveyLinkPressContext } from '../security/LinkPressContext';
 
 export interface SurveyLocStringViewerProps {
   model: LocalizableString;
   style?: StyleProp<TextStyle>;
+  /** Sink label forwarded to the `hasHtml` branch's `<SanitizedHtml>` —
+   * names this string's slot (`'title'`, `'description'`, `'error'`,
+   * `'choice'`, ...) in Survey-level `onLinkPress` events. */
+  linkContext?: SurveyLinkPressContext;
 }
 
 interface SurveyLocStringViewerState {
@@ -112,6 +119,7 @@ export class SurveyLocStringViewer extends React.Component<
         <SanitizedHtml
           html={this.locStr.renderedHtml}
           baseStyle={this.props.style}
+          linkContext={this.props.linkContext}
         />
       );
     }

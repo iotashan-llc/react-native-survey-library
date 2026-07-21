@@ -70,6 +70,15 @@ export default function App() {
             JSON.stringify(sender.data, null, 2)
           );
         }}
+        // Host opt-in link events: every anchor press inside sanitized
+        // survey HTML delivers the policy-validated URL + sink label.
+        // Navigation stays the HOST's decision — e.g. call
+        // Linking.openURL(event.url) here if that is the desired UX; the
+        // library itself never navigates (invariant 8). Without this
+        // prop, anchors render as plain text (no dead a11y link role).
+        onLinkPress={(event) => {
+          console.log('[kitchen-sink] link press:', event.context, event.url);
+        }}
       />
     </SafeAreaView>
   );

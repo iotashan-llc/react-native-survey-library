@@ -8,11 +8,10 @@
  * Upstream renders `locHtml.renderedHtml` through `dangerouslySetInnerHTML`.
  * This library renders that SAME processed string through `<SanitizedHtml>`
  * (task 0.9): the allowlisted-tag sanitizer, the URI/scheme policy, and the
- * no-auto-navigation link handling (invariant 8) all apply. This component
- * supplies no `onLinkPress`, so a link inside html content is currently
- * INERT — a press is a no-op (plus a dev diagnostic), never navigation; the
- * host-callback plumbing (event-surfacing) lands with the separate
- * `onLinkPress` task.
+ * no-auto-navigation link handling (invariant 8) all apply. Link presses
+ * surface to the Survey-level `onLinkPress` handler (via
+ * `LinkPressContext`) labeled `context: 'html-question'`; with no handler
+ * anywhere, anchors render as plain text (a11y-honest, never navigation).
  * It renders through `<SanitizedHtml>` DIRECTLY, not through
  * `SurveyLocStringViewer`: that viewer's `hasHtml` branch is gated on
  * MARKDOWN conversion (`LocalizableString.hasHtml` → `owner.getMarkdownHtml`,
@@ -116,6 +115,7 @@ export class HtmlQuestion extends QuestionElementBase<
         <SanitizedHtml
           html={question.locHtml.renderedHtml}
           baseStyle={buildBodyTextStyle(this.themeContext.resolved)}
+          linkContext="html-question"
         />
       </View>
     );

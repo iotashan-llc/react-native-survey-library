@@ -227,7 +227,8 @@ class ButtonGroupItemRow extends SurveyElementBase<ButtonGroupItemRowProps> {
                 ],
                 { override: slots?.caption }
               ),
-              `caption-${index}`
+              `caption-${index}`,
+              'choice'
             )
           : null}
       </Pressable>
@@ -479,7 +480,8 @@ export class ButtonGroupQuestion extends OverlayControlBase<OverlayControlProps>
           {SurveyElementBase.renderLocString(
             question.selectedItemLocText,
             undefined,
-            'bg-value'
+            'bg-value',
+            'choice'
           )}
         </View>
       );
